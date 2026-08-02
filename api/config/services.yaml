@@ -2,11 +2,22 @@ parameters:
   upload_dir: '%kernel.project_dir%/var/private/cvs'
   private_dir: '%kernel.project_dir%/var/private'
   initial_data_dir: '%kernel.project_dir%/initial-data'
+  env(ADZUNA_APP_ID): ''
+  env(ADZUNA_APP_KEY): ''
+  env(ADZUNA_COUNTRY): 'fr'
+  env(ADZUNA_WHERE): ''
+  env(ADZUNA_RESULTS_PER_QUERY): '20'
+  env(ARBEITNOW_PAGES): '3'
+  env(JOB_SYNC_INTERVAL_SECONDS): '21600'
 
 services:
   _defaults:
     autowire: true
     autoconfigure: true
+
+  _instanceof:
+    App\Service\JobProviderInterface:
+      tags: ['app.job_provider']
 
   App\:
     resource: '../src/'
@@ -23,6 +34,24 @@ services:
     arguments:
       $privateDir: '%private_dir%'
       $encryptionKey: '%env(APP_ENCRYPTION_KEY)%'
+
+  App\Service\ArbeitnowJobProvider:
+    arguments:
+      $pages: '%env(int:ARBEITNOW_PAGES)%'
+
+  App\Service\AdzunaJobProvider:
+    arguments:
+      $appId: '%env(ADZUNA_APP_ID)%'
+      $appKey: '%env(ADZUNA_APP_KEY)%'
+      $country: '%env(ADZUNA_COUNTRY)%'
+      $where: '%env(ADZUNA_WHERE)%'
+      $resultsPerQuery: '%env(int:ADZUNA_RESULTS_PER_QUERY)%'
+
+  App\Service\JobSearchSyncService:
+    arguments:
+      $providers: !tagged_iterator app.job_provider
+      $privateDir: '%private_dir%'
+      $intervalSeconds: '%env(int:JOB_SYNC_INTERVAL_SECONDS)%'
 
   App\Command\BootstrapCommand:
     arguments:

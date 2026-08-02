@@ -15,18 +15,32 @@ final class JobProviderTest extends TestCase
     public function testArbeitnowFiltersAndNormalizesMatchingFrenchJob(): void
     {
         $client = new MockHttpClient(new MockResponse(json_encode([
-            'data' => [[
-                'slug' => 'senior-symfony-paris',
-                'company_name' => 'Example Company',
-                'title' => 'Senior Symfony Developer',
-                'description' => '<p>PHP Symfony React API Platform</p>',
-                'remote' => false,
-                'url' => 'https://example.test/jobs/symfony',
-                'tags' => ['PHP', 'Symfony'],
-                'job_types' => ['full_time'],
-                'location' => 'Paris, France',
-                'created_at' => '2026-08-02T10:00:00+00:00',
-            ]],
+            'data' => [
+                [
+                    'slug' => 'senior-symfony-paris',
+                    'company_name' => 'Example Company',
+                    'title' => 'Senior Symfony Developer',
+                    'description' => '<p>PHP Symfony React API Platform</p>',
+                    'remote' => false,
+                    'url' => 'https://example.test/jobs/symfony',
+                    'tags' => ['PHP', 'Symfony'],
+                    'job_types' => ['full_time'],
+                    'location' => 'Paris, France',
+                    'created_at' => '2026-08-02T10:00:00+00:00',
+                ],
+                [
+                    'slug' => 'creative-account-manager-remote',
+                    'company_name' => 'Unrelated Company',
+                    'title' => 'Creative Account Manager',
+                    'description' => '<p>Creative interaction with international clients.</p>',
+                    'remote' => true,
+                    'url' => 'https://example.test/jobs/account-manager',
+                    'tags' => ['Sales'],
+                    'job_types' => ['full_time'],
+                    'location' => 'Remote',
+                    'created_at' => '2026-08-02T10:00:00+00:00',
+                ],
+            ],
             'links' => ['next' => null],
         ], JSON_THROW_ON_ERROR), [
             'http_code' => 200,
@@ -34,7 +48,7 @@ final class JobProviderTest extends TestCase
         ]));
 
         $provider = new ArbeitnowJobProvider($client, true, 1);
-        $offers = $provider->search(['Senior Symfony Developer'], ['PHP', 'Symfony']);
+        $offers = $provider->search(['Senior Symfony Developer'], ['PHP', 'Symfony', 'React']);
 
         self::assertCount(1, $offers);
         self::assertSame('Arbeitnow', $offers[0]['source']);

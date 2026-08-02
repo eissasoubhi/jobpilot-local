@@ -62,6 +62,7 @@ jobs:
       APP_SECRET: test-secret
       APP_ENCRYPTION_KEY: ""
       DATABASE_URL: postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot_test?serverVersion=17&charset=utf8
+      ARBEITNOW_ENABLED: 0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -132,7 +133,7 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
       - name: Build and start JobPilot
-        run: docker compose up --build -d
+        run: ARBEITNOW_ENABLED=0 docker compose up --build -d
       - name: Wait for JobPilot
         run: |
           for i in {1..90}; do

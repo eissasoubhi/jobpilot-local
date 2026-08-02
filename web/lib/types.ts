@@ -1,0 +1,28 @@
+export type Profile = {
+  fullName: string; email: string; phone: string; city: string; postalCode: string;
+  mobility: string; workAuthorisation: string; availability: string; noticePeriod: string;
+  yearsOfExperience: number; languages: { language: string; level: string }[];
+  acceptedContracts: string[]; workModePreference: string; linkedinUrl?: string; portfolioUrl?: string;
+};
+
+export type Settings = {
+  interfaceLanguage: string; targetJobs: string[]; exclusions: string[]; skills: string[];
+  matchingThreshold: number; defaultIdfTjm: number; defaultOutsideIdfTjm: number;
+  defaultRemoteTjm: number; minimumFreelanceTjm: number; maximumTjm: number;
+  minimumCdiSalary: number; salaryIncludesTotalCompensation: boolean; cddSalaryRule?: string | null;
+  autoPrepare: boolean; finalSubmissionMode: string;
+};
+
+export type Cv = { id: number; name: string; originalName: string; language: string; category: string; tags: string[]; active: boolean; defaultForLanguage: boolean; size: number; downloadUrl: string };
+
+export type Job = {
+  id: number; source: string; sourceUrl?: string; title: string; company: string; clientName?: string;
+  location: string; contractType: string; workMode: string; language: string; description: string;
+  publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
+  tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;
+  score: number; scoreReasons: string[]; status: string; recommendedCv?: Cv;
+};
+
+export type Application = { id: number; jobOffer: { id:number; title:string; company:string; score:number; language:string }; channel:string; status:string; submittedAt?:string; cvDocument?:Cv; message:string; coverLetter:string; compensationAnswer?:string; confirmationRef?:string; updatedAt:string };
+
+export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };

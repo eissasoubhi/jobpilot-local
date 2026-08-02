@@ -1,0 +1,8 @@
+.env
+.env.local
+.DS_Store
+api/vendor/
+api/var/
+web/node_modules/
+web/.next/
+extension/dist/

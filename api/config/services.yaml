@@ -1,0 +1,29 @@
+parameters:
+  upload_dir: '%kernel.project_dir%/var/private/cvs'
+  private_dir: '%kernel.project_dir%/var/private'
+  initial_data_dir: '%kernel.project_dir%/initial-data'
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  App\:
+    resource: '../src/'
+    exclude:
+      - '../src/DependencyInjection/'
+      - '../src/Entity/'
+      - '../src/Kernel.php'
+
+  App\Service\CvStorage:
+    arguments:
+      $uploadDir: '%upload_dir%'
+
+  App\Service\GmailTokenStore:
+    arguments:
+      $privateDir: '%private_dir%'
+      $encryptionKey: '%env(APP_ENCRYPTION_KEY)%'
+
+  App\Command\BootstrapCommand:
+    arguments:
+      $initialDataDir: '%initial_data_dir%'

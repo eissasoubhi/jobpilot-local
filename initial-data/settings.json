@@ -1,0 +1,53 @@
+{
+  "interfaceLanguage": "fr",
+  "targetJobs": [
+    "Senior PHP Developer",
+    "Senior Symfony Developer",
+    "Backend PHP/Symfony Developer",
+    "Full-Stack Symfony/React Developer",
+    "Full-Stack Symfony/Vue Developer",
+    "Senior React/Next.js Developer",
+    "Senior Vue/Nuxt.js Developer",
+    "Native PHP Developer",
+    "Frontend Developer"
+  ],
+  "exclusions": [
+    "Internships",
+    "Apprenticeships",
+    "Stage",
+    "Alternance",
+    "Internship",
+    "Apprenticeship"
+  ],
+  "skills": [
+    "PHP",
+    "Symfony",
+    "React",
+    "Next.js",
+    "Vue.js",
+    "Nuxt.js",
+    "TypeScript",
+    "JavaScript",
+    "API Platform",
+    "Doctrine",
+    "RabbitMQ",
+    "Redis",
+    "Docker",
+    "PostgreSQL",
+    "MySQL",
+    "Elasticsearch",
+    "GitLab CI",
+    "Jenkins"
+  ],
+  "matchingThreshold": 50,
+  "defaultIdfTjm": 500,
+  "defaultOutsideIdfTjm": 480,
+  "defaultRemoteTjm": 480,
+  "minimumFreelanceTjm": 300,
+  "maximumTjm": 520,
+  "minimumCdiSalary": 35000,
+  "salaryIncludesTotalCompensation": true,
+  "cddSalaryRule": null,
+  "autoPrepare": true,
+  "finalSubmissionMode": "ONE_CLICK"
+}

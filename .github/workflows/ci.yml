@@ -132,13 +132,50 @@ jobs:
     needs: apply-bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      ARBEITNOW_ENABLED: 0
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
-      - name: Build and start JobPilot
-        run: ARBEITNOW_ENABLED=0 docker compose -f docker-compose.yml up --build -d db api web
-      - name: Wait for JobPilot
+
+      - name: Build API and frontend images
+        run: timeout 12m docker compose -f docker-compose.yml build --progress=plain api web
+
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.yml up -d --no-build db
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..60}; do
+            if docker compose -f docker-compose.yml exec -T db pg_isready -U jobpilot -d jobpilot >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml ps
+          docker compose -f docker-compose.yml logs --no-color --tail=300 db
+          exit 1
+
+      - name: Start Symfony API
+        run: docker compose -f docker-compose.yml up -d --no-build api
+
+      - name: Wait for Symfony API
+        run: |
+          for i in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml ps
+          docker compose -f docker-compose.yml logs --no-color --tail=500 db api
+          exit 1
+
+      - name: Start Next.js
+        run: docker compose -f docker-compose.yml up -d --no-build web
+
+      - name: Wait for Next.js
         run: |
           for i in {1..90}; do
             if curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null; then
@@ -147,25 +184,30 @@ jobs:
             sleep 2
           done
           docker compose -f docker-compose.yml ps
-          docker compose -f docker-compose.yml logs --tail=300 db api web
+          docker compose -f docker-compose.yml logs --no-color --tail=500 api web
           exit 1
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install Playwright dependencies
         working-directory: web
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
+
       - name: Run Playwright
         working-directory: web
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
         run: npm run test:e2e
+
       - name: Show container logs on failure
         if: failure()
         run: docker compose -f docker-compose.yml logs --no-color --tail=500 db api web
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -174,6 +216,7 @@ jobs:
           path: web/playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
       - name: Stop containers
         if: always()
         run: docker compose -f docker-compose.yml down -v --remove-orphans

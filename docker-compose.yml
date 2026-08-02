@@ -28,6 +28,13 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/integrations/gmail/callback}
       WEB_URL: ${WEB_URL:-http://localhost:3000}
       GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR mission OR candidature OR application OR recruiter) newer_than:30d}"
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
+      ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-fr}
+      ADZUNA_WHERE: ${ADZUNA_WHERE:-}
+      ADZUNA_RESULTS_PER_QUERY: ${ADZUNA_RESULTS_PER_QUERY:-20}
+      ARBEITNOW_PAGES: ${ARBEITNOW_PAGES:-3}
+      JOB_SYNC_INTERVAL_SECONDS: ${JOB_SYNC_INTERVAL_SECONDS:-21600}
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +46,42 @@ services:
       timeout: 3s
       retries: 30
       start_period: 10s
+    volumes:
+      - ./api:/app
+      - api_vendor:/app/vendor
+      - api_cache:/app/var/cache
+      - api_logs:/app/var/log
+      - ./initial-data:/app/initial-data:ro
+      - jobpilot_private:/app/var/private
+
+  scheduler:
+    build:
+      context: ./api
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          php bin/console app:jobs:sync || true
+          sleep "$${JOB_SYNC_INTERVAL_SECONDS:-21600}"
+        done
+    restart: unless-stopped
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+      APP_SECRET: ${APP_SECRET:-change-me}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-jobpilot}:${POSTGRES_PASSWORD:-jobpilot}@db:5432/${POSTGRES_DB:-jobpilot}?serverVersion=17&charset=utf8
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
+      ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-fr}
+      ADZUNA_WHERE: ${ADZUNA_WHERE:-}
+      ADZUNA_RESULTS_PER_QUERY: ${ADZUNA_RESULTS_PER_QUERY:-20}
+      ARBEITNOW_PAGES: ${ARBEITNOW_PAGES:-3}
+      JOB_SYNC_INTERVAL_SECONDS: ${JOB_SYNC_INTERVAL_SECONDS:-21600}
+    depends_on:
+      api:
+        condition: service_healthy
     volumes:
       - ./api:/app
       - api_vendor:/app/vendor

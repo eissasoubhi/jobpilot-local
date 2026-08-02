@@ -129,7 +129,8 @@ final class AdzunaJobProvider implements JobProviderInterface
         $company = is_array($job['company'] ?? null)
             ? $this->clean((string) ($job['company']['display_name'] ?? ''))
             : '';
-        $combined = $title.' '.$description.' '.(string) ($job['contract_type'] ?? '');
+        $advertisedContractType = $this->clean((string) ($job['contract_type'] ?? ''));
+        $combined = $title.' '.$description;
 
         return [
             'source' => 'Adzuna',
@@ -138,7 +139,7 @@ final class AdzunaJobProvider implements JobProviderInterface
             'title' => $title,
             'company' => $company,
             'location' => $location,
-            'contractType' => $this->contractType($combined),
+            'contractType' => $this->contractType($advertisedContractType, $combined),
             'workMode' => $this->workMode($combined),
             'description' => $description !== '' ? $description : $title,
             'publishedAt' => $this->date((string) ($job['created'] ?? '')),
@@ -148,12 +149,24 @@ final class AdzunaJobProvider implements JobProviderInterface
         ];
     }
 
-    private function contractType(string $text): string
+    private function contractType(string $advertisedType, string $fallbackText): string
     {
-        if (preg_match('/freelance|mission|contractor/i', $text) === 1) {
+        if ($advertisedType !== '') {
+            if (preg_match('/freelance|contractor|self[ -]?employed/i', $advertisedType) === 1) {
+                return 'Freelance';
+            }
+            if (preg_match('/permanent|full[ -]?time|cdi/i', $advertisedType) === 1) {
+                return 'CDI';
+            }
+            if (preg_match('/contract|temporary|fixed[ -]?term|cdd/i', $advertisedType) === 1) {
+                return 'CDD';
+            }
+        }
+
+        if (preg_match('/freelance|contractor|independant|indépendant/i', $fallbackText) === 1) {
             return 'Freelance';
         }
-        if (preg_match('/contract|temporary|fixed[ -]?term|cdd/i', $text) === 1) {
+        if (preg_match('/\bcdd\b|fixed[ -]?term|temporary/i', $fallbackText) === 1) {
             return 'CDD';
         }
 

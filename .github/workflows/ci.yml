@@ -88,6 +88,8 @@ jobs:
         run: |
           php bin/console doctrine:migrations:migrate --no-interaction
           php bin/console app:bootstrap --no-interaction
+          echo "Doctrine schema difference:"
+          php bin/console doctrine:schema:update --dump-sql
           php bin/console doctrine:schema:validate
       - name: Run PHPUnit
         working-directory: api

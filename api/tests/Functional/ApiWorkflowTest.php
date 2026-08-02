@@ -14,11 +14,13 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->request('GET', '/api/health');
         self::assertResponseIsSuccessful();
-        self::assertJsonContains(['status' => 'ok']);
+        $health = $this->decodeResponse($client);
+        self::assertSame('ok', $health['status']);
 
         $client->request('GET', '/api/profile');
         self::assertResponseIsSuccessful();
-        self::assertJsonContains(['fullName' => 'Aissa SOUBHI']);
+        $profile = $this->decodeResponse($client);
+        self::assertSame('Aissa SOUBHI', $profile['fullName']);
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',
@@ -33,7 +35,7 @@ final class ApiWorkflowTest extends WebTestCase
             'tjmMax' => 600,
         ]);
         self::assertResponseStatusCodeSame(201);
-        $job = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $job = $this->decodeResponse($client);
         self::assertSame('fr', $job['language']);
         self::assertSame(520, $job['proposedTjm']);
         self::assertSame('PREPARED', $job['status']);
@@ -41,7 +43,7 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->request('GET', '/api/applications');
         self::assertResponseIsSuccessful();
-        $applications = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $applications = $this->decodeResponse($client);
         self::assertNotEmpty($applications);
         self::assertStringContainsString('Bonjour', $applications[0]['message']);
 
@@ -57,7 +59,7 @@ final class ApiWorkflowTest extends WebTestCase
             'salaryMax' => 65_000,
         ]);
         self::assertResponseStatusCodeSame(201);
-        $englishJob = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $englishJob = $this->decodeResponse($client);
         self::assertSame('en', $englishJob['language']);
         self::assertSame(60_000, $englishJob['proposedSalary']);
 
@@ -71,7 +73,8 @@ final class ApiWorkflowTest extends WebTestCase
             'description' => 'Stage en développement PHP Symfony.',
         ]);
         self::assertResponseStatusCodeSame(201);
-        self::assertJsonContains(['status' => 'REJECTED_BY_FILTER']);
+        $rejectedJob = $this->decodeResponse($client);
+        self::assertSame('REJECTED_BY_FILTER', $rejectedJob['status']);
 
         $positioning = [
             'finalClient' => 'France Télévisions',
@@ -89,7 +92,8 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->jsonRequest('POST', '/api/positionings', $positioning);
         self::assertResponseStatusCodeSame(201);
-        self::assertJsonContains(['proposedTjm' => 450]);
+        $createdPositioning = $this->decodeResponse($client);
+        self::assertSame(450, $createdPositioning['proposedTjm']);
 
         $client->jsonRequest('POST', '/api/positionings', [
             ...$positioning,
@@ -99,8 +103,19 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->request('GET', '/api/dashboard');
         self::assertResponseIsSuccessful();
-        $dashboard = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $dashboard = $this->decodeResponse($client);
         self::assertGreaterThanOrEqual(3, $dashboard['counts']['jobs']);
         self::assertGreaterThanOrEqual(1, $dashboard['counts']['positionings']);
+    }
+
+    /**
+     * @return array<string|int, mixed>
+     */
+    private function decodeResponse(object $client): array
+    {
+        $content = $client->getResponse()->getContent();
+        self::assertIsString($content);
+
+        return json_decode($content, true, 512, JSON_THROW_ON_ERROR);
     }
 }

@@ -12,6 +12,7 @@ final class ArbeitnowJobProvider implements JobProviderInterface
 
     public function __construct(
         private HttpClientInterface $httpClient,
+        private bool $enabled = true,
         private int $pages = 3,
     ) {
     }
@@ -23,11 +24,15 @@ final class ArbeitnowJobProvider implements JobProviderInterface
 
     public function isConfigured(): bool
     {
-        return true;
+        return $this->enabled;
     }
 
     public function search(array $targetJobs, array $skills): array
     {
+        if (!$this->enabled) {
+            return [];
+        }
+
         $offers = [];
         $seen = [];
         $pages = max(1, min(5, $this->pages));
@@ -201,9 +206,9 @@ final class ArbeitnowJobProvider implements JobProviderInterface
 
     private function normalizeText(string $value): string
     {
-        $value = mb_strtolower($this->clean($value));
-        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $clean = $this->clean($value);
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $clean);
 
-        return $transliterated === false ? $value : strtolower($transliterated);
+        return strtolower($transliterated === false ? $clean : $transliterated);
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -37,7 +39,11 @@ class JobOffer
     #[ORM\Column(nullable: true)] private ?\DateTimeImmutable $preparedAt = null;
     #[ORM\Column(type: 'json')] private array $rawData = [];
 
-    public function __construct() { $this->discoveredAt = new \DateTimeImmutable(); }
+    public function __construct()
+    {
+        $this->discoveredAt = new \DateTimeImmutable();
+    }
+
     public function getId(): ?int { return $this->id; }
     public function getTitle(): string { return $this->title; }
     public function getCompany(): string { return $this->company; }
@@ -61,36 +67,69 @@ class JobOffer
 
     public function fill(array $data): self
     {
-        foreach (['source','sourceUrl','externalId','title','company','clientName','location','contractType','workMode','language','description','status'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = $data[$field] === null ? null : trim((string) $data[$field]);
+        foreach (['source', 'title', 'company', 'location', 'contractType', 'workMode', 'language', 'description', 'status'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = trim((string) ($data[$field] ?? ''));
+            }
         }
-        foreach (['salaryMin','salaryMax','tjmFixed','tjmMin','tjmMax'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = $data[$field] === null || $data[$field] === '' ? null : (int) $data[$field];
+
+        foreach (['sourceUrl', 'externalId', 'clientName'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $value = trim((string) ($data[$field] ?? ''));
+                $this->{$field} = $value === '' ? null : $value;
+            }
         }
+
+        foreach (['salaryMin', 'salaryMax', 'tjmFixed', 'tjmMin', 'tjmMax'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = $data[$field] === null || $data[$field] === ''
+                    ? null
+                    : max(0, (int) $data[$field]);
+            }
+        }
+
         if (array_key_exists('publishedAt', $data)) {
-            $this->publishedAt = empty($data['publishedAt']) ? null : new \DateTimeImmutable((string) $data['publishedAt']);
+            $this->publishedAt = $this->parseDate($data['publishedAt'], 'Date de publication invalide.');
         }
-        if (array_key_exists('rawData', $data)) $this->rawData = is_array($data['rawData']) ? $data['rawData'] : [];
+
+        if (array_key_exists('rawData', $data)) {
+            $this->rawData = is_array($data['rawData']) ? $data['rawData'] : [];
+        }
+
         return $this;
     }
 
-    public function setEvaluation(string $language, int $score, array $reasons, ?int $proposedTjm, ?int $proposedSalary, string $status, ?CvDocument $cv): void
-    {
+    public function setEvaluation(
+        string $language,
+        int $score,
+        array $reasons,
+        ?int $proposedTjm,
+        ?int $proposedSalary,
+        string $status,
+        ?CvDocument $cv,
+    ): void {
         $this->language = $language;
         $this->score = max(0, min(100, $score));
-        $this->scoreReasons = $reasons;
+        $this->scoreReasons = array_values($reasons);
         $this->proposedTjm = $proposedTjm;
         $this->proposedSalary = $proposedSalary;
         $this->status = $status;
         $this->recommendedCv = $cv;
-        if ($status === 'PREPARED') $this->preparedAt = new \DateTimeImmutable();
+        $this->preparedAt = $status === 'PREPARED' ? new \DateTimeImmutable() : null;
     }
 
-    public function markPrepared(): void { $this->status = 'PREPARED'; $this->preparedAt = new \DateTimeImmutable(); }
+    public function markPrepared(): void
+    {
+        $this->status = 'PREPARED';
+        $this->preparedAt = new \DateTimeImmutable();
+    }
 
     public function toArray(): array
     {
-        $ageHours = $this->publishedAt ? max(0, (int) floor((time() - $this->publishedAt->getTimestamp()) / 3600)) : null;
+        $ageHours = $this->publishedAt
+            ? max(0, (int) floor((time() - $this->publishedAt->getTimestamp()) / 3600))
+            : null;
+
         return [
             'id' => $this->id,
             'source' => $this->source,
@@ -120,5 +159,18 @@ class JobOffer
             'recommendedCv' => $this->recommendedCv?->toArray(),
             'preparedAt' => $this->preparedAt?->format(DATE_ATOM),
         ];
+    }
+
+    private function parseDate(mixed $value, string $message): ?\DateTimeImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable((string) $value);
+        } catch (\Exception) {
+            throw new \InvalidArgumentException($message);
+        }
     }
 }

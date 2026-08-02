@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -32,7 +34,12 @@ class Positioning
     #[ORM\Column] private \DateTimeImmutable $createdAt;
     #[ORM\Column] private \DateTimeImmutable $updatedAt;
 
-    public function __construct() { $this->createdAt = $this->updatedAt = new \DateTimeImmutable(); }
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function getId(): ?int { return $this->id; }
     public function getFinalClient(): string { return $this->finalClient; }
     public function getMissionTitle(): string { return $this->missionTitle; }
@@ -42,18 +49,43 @@ class Positioning
 
     public function fill(array $data, ?JobOffer $job = null, ?CvDocument $cv = null): self
     {
-        if ($job !== null) $this->jobOffer = $job;
-        if ($cv !== null) $this->cvDocument = $cv;
-        foreach (['finalClient','agency','recruiterName','recruiterEmail','recruiterPhone','missionTitle','description','callForTenderReference','location','remotePolicy','proofEmailId','status'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = $data[$field] === null ? null : trim((string) $data[$field]);
+        if ($job !== null) {
+            $this->jobOffer = $job;
         }
-        foreach (['advertisedTjmMin','advertisedTjmMax','advertisedTjmFixed','proposedTjm','acceptedTjm'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = $data[$field] === null || $data[$field] === '' ? null : (int) $data[$field];
+        if ($cv !== null) {
+            $this->cvDocument = $cv;
         }
-        foreach (['startDate','agreementGivenAt'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = empty($data[$field]) ? null : new \DateTimeImmutable((string) $data[$field]);
+
+        foreach (['finalClient', 'agency', 'recruiterName', 'missionTitle', 'description', 'location', 'remotePolicy', 'status'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = trim((string) ($data[$field] ?? ''));
+            }
         }
+
+        foreach (['recruiterEmail', 'recruiterPhone', 'callForTenderReference', 'proofEmailId'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $value = trim((string) ($data[$field] ?? ''));
+                $this->{$field} = $value === '' ? null : $value;
+            }
+        }
+
+        foreach (['advertisedTjmMin', 'advertisedTjmMax', 'advertisedTjmFixed', 'proposedTjm', 'acceptedTjm'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = $data[$field] === null || $data[$field] === ''
+                    ? null
+                    : max(0, (int) $data[$field]);
+            }
+        }
+
+        if (array_key_exists('startDate', $data)) {
+            $this->startDate = $this->parseDate($data['startDate'], 'Date de démarrage invalide.');
+        }
+        if (array_key_exists('agreementGivenAt', $data)) {
+            $this->agreementGivenAt = $this->parseDate($data['agreementGivenAt'], 'Date d’accord invalide.');
+        }
+
         $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 
@@ -61,16 +93,20 @@ class Positioning
     {
         $rate = $this->acceptedTjm ?? $this->proposedTjm;
         $subject = 'Confirmation de positionnement - '.$this->missionTitle;
-        $body = "Bonjour".($this->recruiterName !== '' ? ' '.$this->recruiterName : '').",\n\n";
+        $body = 'Bonjour'.($this->recruiterName !== '' ? ' '.$this->recruiterName : '').",\n\n";
         $body .= "Je vous confirme mon accord pour être positionné sur la mission \"{$this->missionTitle}\" auprès de {$this->finalClient}";
-        if ($rate !== null) $body .= " pour un TJM de {$rate} € HT/jour";
+        if ($rate !== null) {
+            $body .= " pour un TJM de {$rate} € HT/jour";
+        }
         $body .= ".\n\n";
-        if ($this->callForTenderReference !== null && $this->callForTenderReference !== '') {
+
+        if ($this->callForTenderReference !== null) {
             $body .= "Référence de l'appel d'offres : {$this->callForTenderReference}.\n\n";
         } else {
             $body .= "Merci de me confirmer la référence de l'appel d'offres, si elle est disponible.\n\n";
         }
-        $body .= "Bien cordialement";
+
+        $body .= 'Bien cordialement';
 
         return [
             'id' => $this->id,
@@ -97,9 +133,24 @@ class Positioning
             'status' => $this->status,
             'agreementEmailSubject' => $subject,
             'agreementEmailBody' => $body,
-            'mailtoUrl' => $this->recruiterEmail ? 'mailto:'.$this->recruiterEmail.'?'.http_build_query(['subject'=>$subject,'body'=>$body], '', '&', PHP_QUERY_RFC3986) : null,
+            'mailtoUrl' => $this->recruiterEmail
+                ? 'mailto:'.$this->recruiterEmail.'?'.http_build_query(['subject' => $subject, 'body' => $body], '', '&', PHP_QUERY_RFC3986)
+                : null,
             'createdAt' => $this->createdAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];
+    }
+
+    private function parseDate(mixed $value, string $message): ?\DateTimeImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable((string) $value);
+        } catch (\Exception) {
+            throw new \InvalidArgumentException($message);
+        }
     }
 }

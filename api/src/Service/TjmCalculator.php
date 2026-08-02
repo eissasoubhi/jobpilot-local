@@ -41,6 +41,8 @@ final class TjmCalculator
             return null;
         }
 
+        // Full remote follows the same geographical rule as any other mission.
+        // The dedicated remote value is only a fallback when no location is known.
         if ($this->isIleDeFrance($location)) {
             return $this->withinConfiguredLimits($settings->getDefaultIdfTjm(), $settings);
         }

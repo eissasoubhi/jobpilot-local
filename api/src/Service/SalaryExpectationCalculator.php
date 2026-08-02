@@ -41,6 +41,8 @@ final class SalaryExpectationCalculator
             return ['eligible' => true, 'proposed' => $minimum, 'reason' => null];
         }
 
+        // Jusqu’à 50 k€ : viser le maximum annoncé.
+        // Au-dessus : rester environ 5 k€ sous le maximum sans descendre sous le minimum.
         $proposed = $maximum <= 50_000
             ? $maximum
             : max($minimum ?? 0, $maximum - 5_000);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -27,21 +29,50 @@ class CandidateProfile
     #[ORM\Column(length: 255, nullable: true)] private ?string $portfolioUrl = null;
     #[ORM\Column] private \DateTimeImmutable $updatedAt;
 
-    public function __construct() { $this->updatedAt = new \DateTimeImmutable(); }
-    public function getId(): ?int { return $this->id; }
+    public function __construct()
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 
     public function fill(array $data): self
     {
         foreach ([
-            'fullName','email','phone','city','postalCode','mobility','workAuthorisation',
-            'availability','noticePeriod','workModePreference','linkedinUrl','portfolioUrl'
+            'fullName', 'email', 'phone', 'city', 'postalCode', 'mobility',
+            'workAuthorisation', 'availability', 'noticePeriod', 'workModePreference',
         ] as $field) {
-            if (array_key_exists($field, $data)) { $this->{$field} = $data[$field] === null ? null : trim((string) $data[$field]); }
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = trim((string) ($data[$field] ?? ''));
+            }
         }
-        if (array_key_exists('yearsOfExperience', $data)) { $this->yearsOfExperience = max(0, (int) $data['yearsOfExperience']); }
-        if (array_key_exists('languages', $data)) { $this->languages = is_array($data['languages']) ? $data['languages'] : []; }
-        if (array_key_exists('acceptedContracts', $data)) { $this->acceptedContracts = is_array($data['acceptedContracts']) ? $data['acceptedContracts'] : []; }
+
+        foreach (['linkedinUrl', 'portfolioUrl'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $value = trim((string) ($data[$field] ?? ''));
+                $this->{$field} = $value === '' ? null : $value;
+            }
+        }
+
+        if (array_key_exists('yearsOfExperience', $data)) {
+            $this->yearsOfExperience = max(0, (int) $data['yearsOfExperience']);
+        }
+
+        if (array_key_exists('languages', $data)) {
+            $this->languages = is_array($data['languages']) ? array_values($data['languages']) : [];
+        }
+
+        if (array_key_exists('acceptedContracts', $data)) {
+            $this->acceptedContracts = is_array($data['acceptedContracts'])
+                ? array_values(array_filter(array_map('strval', $data['acceptedContracts'])))
+                : [];
+        }
+
         $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 

@@ -11,12 +11,30 @@ const links = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">JP</span><div><strong>JobPilot</strong><small>Local</small></div></div>
-      <nav>{links.map(([href,label,icon]) => <Link key={href} href={href} className={pathname === href ? 'active' : ''}><span>{icon}</span>{label}</Link>)}</nav>
-      <div className="local-badge">● Données locales</div>
-    </aside>
-    <main className="main">{children}</main>
-  </div>;
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">JP</span>
+          <div><strong>JobPilot</strong><small>Local</small></div>
+        </div>
+        <nav>
+          {links.map(([href, label, icon]) => (
+            <Link key={href} href={href} className={pathname === href ? 'active' : ''}>
+              <span>{icon}</span>{label}
+            </Link>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="local-badge">● Données locales</div>
+          <div className="job-source-links" aria-label="Sources des offres">
+            <a href="https://www.arbeitnow.com" target="_blank" rel="noreferrer">Jobs by Arbeitnow</a>
+            <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Jobs by Adzuna</a>
+          </div>
+        </div>
+      </aside>
+      <main className="main">{children}</main>
+    </div>
+  );
 }

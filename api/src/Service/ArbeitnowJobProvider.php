@@ -88,7 +88,7 @@ final class ArbeitnowJobProvider implements JobProviderInterface
         $needles = $this->profileNeedles($targetJobs, $skills);
         $matchesTechnology = $needles === [];
         foreach ($needles as $needle) {
-            if (str_contains($haystack, $needle)) {
+            if ($this->containsTerm($haystack, $needle)) {
                 $matchesTechnology = true;
                 break;
             }
@@ -146,7 +146,8 @@ final class ArbeitnowJobProvider implements JobProviderInterface
         $slug = trim((string) ($job['slug'] ?? ''));
         $externalId = $slug !== '' ? $slug : hash('sha256', $url.'|'.$title);
         $remote = (bool) ($job['remote'] ?? false);
-        $combined = $title.' '.$description.' '.implode(' ', is_array($job['job_types'] ?? null) ? $job['job_types'] : []);
+        $jobTypes = is_array($job['job_types'] ?? null) ? array_map('strval', $job['job_types']) : [];
+        $combined = $title.' '.$description;
 
         return [
             'source' => 'Arbeitnow',
@@ -155,7 +156,7 @@ final class ArbeitnowJobProvider implements JobProviderInterface
             'title' => $title,
             'company' => $this->clean((string) ($job['company_name'] ?? '')),
             'location' => $this->clean((string) ($job['location'] ?? ($remote ? 'Télétravail' : ''))),
-            'contractType' => $this->contractType($combined),
+            'contractType' => $this->contractType($jobTypes, $title),
             'workMode' => $remote ? 'Télétravail' : $this->workMode($combined),
             'description' => $description !== '' ? $description : $title,
             'publishedAt' => $this->publishedAt($job['created_at'] ?? null),
@@ -165,12 +166,23 @@ final class ArbeitnowJobProvider implements JobProviderInterface
         ];
     }
 
-    private function contractType(string $text): string
+    /** @param list<string> $jobTypes */
+    private function contractType(array $jobTypes, string $fallbackTitle): string
     {
-        if (preg_match('/freelance|contractor|mission/i', $text) === 1) {
+        $advertisedTypes = implode(' ', $jobTypes);
+        if (preg_match('/freelance|contractor|self[ -]?employed/i', $advertisedTypes) === 1) {
             return 'Freelance';
         }
-        if (preg_match('/fixed[ -]?term|temporary|cdd|contract/i', $text) === 1) {
+        if (preg_match('/full[ _-]?time|permanent|cdi/i', $advertisedTypes) === 1) {
+            return 'CDI';
+        }
+        if (preg_match('/fixed[ _-]?term|temporary|cdd|contract/i', $advertisedTypes) === 1) {
+            return 'CDD';
+        }
+        if (preg_match('/freelance|contractor|independant|indépendant/i', $fallbackTitle) === 1) {
+            return 'Freelance';
+        }
+        if (preg_match('/\bcdd\b|fixed[ -]?term|temporary/i', $fallbackTitle) === 1) {
             return 'CDD';
         }
 
@@ -197,6 +209,14 @@ final class ArbeitnowJobProvider implements JobProviderInterface
         } catch (\Exception) {
             return null;
         }
+    }
+
+    private function containsTerm(string $haystack, string $needle): bool
+    {
+        return preg_match(
+            '/(?<![a-z0-9])'.preg_quote($needle, '/').'(?![a-z0-9])/',
+            $haystack,
+        ) === 1;
     }
 
     private function clean(string $value): string

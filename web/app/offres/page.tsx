@@ -25,6 +25,32 @@ type JobForm = {
   tjmMax: string;
 };
 
+type ProviderSync = {
+  name: string;
+  configured?: boolean;
+  received?: number;
+  imported?: number;
+  duplicates?: number;
+  failed?: number;
+  error?: string | null;
+};
+
+type SyncResult = {
+  configured: boolean;
+  providers: ProviderSync[];
+  lastSyncedAt: string | null;
+  nextSyncAt: string | null;
+  due: boolean;
+  busy?: boolean;
+  skipped?: boolean;
+  message?: string;
+  received?: number;
+  imported?: number;
+  duplicates?: number;
+  failed?: number;
+  errors?: string[];
+};
+
 const initialForm: JobForm = {
   source: 'Manuel',
   sourceUrl: '',
@@ -60,12 +86,23 @@ function nullableNumber(value: string): number | null {
   return value === '' ? null : Number(value);
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return 'Jamais';
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [form, setForm] = useState<JobForm>(initialForm);
   const [error, setError] = useState('');
   const [show, setShow] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [syncing, setSyncing] = useState(false);
+  const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -76,9 +113,26 @@ export default function JobsPage() {
     }
   }, []);
 
+  const syncJobs = useCallback(async (force: boolean): Promise<void> => {
+    setSyncing(true);
+
+    try {
+      const result = await api<SyncResult>(`/job-search/sync${force ? '?force=1' : ''}`, {
+        method: 'POST',
+      });
+      setSyncInfo(result);
+      await load();
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setSyncing(false);
+    }
+  }, [load]);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void syncJobs(false);
+  }, [load, syncJobs]);
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -119,18 +173,71 @@ export default function JobsPage() {
     [jobs, filter],
   );
 
+  const providerNames = syncInfo?.providers
+    .filter((provider) => provider.configured !== false)
+    .map((provider) => provider.name)
+    .join(', ');
+
   return (
     <>
       <PageHeader
         title="Offres"
-        description="Les offres les plus récentes sont prioritaires, puis triées par score."
+        description="Recherche automatique, classement par fraîcheur, puis par score de compatibilité."
         actions={
-          <button className="btn" type="button" onClick={() => setShow(true)}>
-            Ajouter une offre
-          </button>
+          <div className="actions">
+            <button
+              className="btn secondary"
+              type="button"
+              disabled={syncing}
+              onClick={() => void syncJobs(true)}
+            >
+              {syncing ? 'Recherche en cours…' : 'Rechercher maintenant'}
+            </button>
+            <button className="btn" type="button" onClick={() => setShow(true)}>
+              Ajouter une offre
+            </button>
+          </div>
         }
       />
       {error !== '' && <ErrorBox message={error} />}
+
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <strong>Recherche automatique</strong>
+            <div className="muted small" style={{ marginTop: 5 }}>
+              {syncing
+                ? 'JobPilot consulte les sources et analyse les nouvelles offres.'
+                : syncInfo?.message ?? 'Initialisation de la recherche automatique…'}
+            </div>
+          </div>
+          <div className="small muted">
+            Dernière recherche : <strong>{formatDate(syncInfo?.lastSyncedAt)}</strong>
+          </div>
+        </div>
+
+        {syncInfo && (
+          <div className="actions" style={{ marginTop: 12 }}>
+            <Badge tone="blue">Sources : {providerNames || 'aucune'}</Badge>
+            {syncInfo.imported != null && <Badge tone="good">{syncInfo.imported} nouvelle(s)</Badge>}
+            {syncInfo.duplicates != null && <Badge>{syncInfo.duplicates} doublon(s)</Badge>}
+            {syncInfo.failed != null && syncInfo.failed > 0 && <Badge tone="warn">{syncInfo.failed} échec(s)</Badge>}
+          </div>
+        )}
+
+        {syncInfo?.errors && syncInfo.errors.length > 0 && (
+          <details style={{ marginTop: 10 }}>
+            <summary className="small muted">Détails des sources indisponibles</summary>
+            <ul>
+              {syncInfo.errors.map((syncError) => <li className="small" key={syncError}>{syncError}</li>)}
+            </ul>
+          </details>
+        )}
+
+        <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
+          Arbeitnow fonctionne sans compte. Pour davantage d’offres françaises, ajoute les identifiants Adzuna dans le fichier <code>.env</code>.
+        </p>
+      </Card>
 
       <div className="tabs" aria-label="Filtres des offres">
         {[
@@ -151,10 +258,10 @@ export default function JobsPage() {
       </div>
 
       <Card>
-        {jobs === null ? (
+        {jobs === null || (syncing && jobs.length === 0) ? (
           <Loading />
         ) : displayed.length === 0 ? (
-          <Empty>Aucune offre dans cette catégorie.</Empty>
+          <Empty>Aucune offre correspondante pour le moment. La prochaine recherche sera automatique.</Empty>
         ) : (
           displayed.map((job) => (
             <div className="list-row" key={job.id}>
@@ -163,6 +270,7 @@ export default function JobsPage() {
                   <Badge tone={tone(job.status)}>{job.status}</Badge>
                   <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
                   <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
+                  <Badge>{job.source}</Badge>
                   {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
                   {job.proposedSalary != null && (
                     <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
@@ -170,7 +278,7 @@ export default function JobsPage() {
                 </div>
                 <h3>{job.title}</h3>
                 <div className="muted small">
-                  {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)} · {job.source}
+                  {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
                 </div>
                 {job.recommendedCv && (
                   <div className="small" style={{ marginTop: 7 }}>
@@ -197,6 +305,12 @@ export default function JobsPage() {
               <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
             </div>
           ))
+        )}
+
+        {jobs?.some((job) => job.source === 'Adzuna') && (
+          <p className="small muted" style={{ marginBottom: 0, marginTop: 16 }}>
+            Jobs by <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Adzuna</a>
+          </p>
         )}
       </Card>
 

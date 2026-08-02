@@ -7,6 +7,7 @@ parameters:
   env(ADZUNA_COUNTRY): 'fr'
   env(ADZUNA_WHERE): ''
   env(ADZUNA_RESULTS_PER_QUERY): '20'
+  env(ARBEITNOW_ENABLED): '1'
   env(ARBEITNOW_PAGES): '3'
   env(JOB_SYNC_INTERVAL_SECONDS): '21600'
 
@@ -37,6 +38,7 @@ services:
 
   App\Service\ArbeitnowJobProvider:
     arguments:
+      $enabled: '%env(bool:ARBEITNOW_ENABLED)%'
       $pages: '%env(int:ARBEITNOW_PAGES)%'
 
   App\Service\AdzunaJobProvider:

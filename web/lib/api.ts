@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
@@ -14,13 +14,20 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ error: `Erreur HTTP ${response.status}` }));
-    throw new Error(payload.error ?? `Erreur HTTP ${response.status}`);
+    const payload = await response
+      .json()
+      .catch(() => ({ error: `Erreur HTTP ${response.status}` }));
+
+    throw new Error(
+      typeof payload?.error === 'string'
+        ? payload.error
+        : `Erreur HTTP ${response.status}`,
+    );
   }
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    return undefined as T;
+  }
 
   return response.json() as Promise<T>;
 }
-
-export { API_URL };

@@ -127,38 +127,87 @@ jobs:
           API_INTERNAL_URL: http://127.0.0.1:8080
         run: npm run build
 
+  compose-config:
+    name: Docker Compose configuration
+    needs: apply-bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Validate image-only configuration
+        run: docker compose -f docker-compose.yml config --quiet
+      - name: Validate local development configuration
+        run: docker compose -f docker-compose.yml -f docker-compose.override.yml config --quiet
+
   e2e:
     name: Chromium end-to-end tests
     needs: apply-bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jobpilot_e2e
+          POSTGRES_USER: jobpilot
+          POSTGRES_PASSWORD: jobpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobpilot -d jobpilot_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
+      APP_ENV: test
+      APP_DEBUG: 1
+      APP_SECRET: e2e-secret
+      APP_ENCRYPTION_KEY: ""
+      DATABASE_URL: postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot_e2e?serverVersion=17&charset=utf8
       ARBEITNOW_ENABLED: 0
+      NEXT_PUBLIC_API_URL: /api
+      API_INTERNAL_URL: http://127.0.0.1:8080
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Build API and frontend images
-        run: timeout 12m docker compose -f docker-compose.yml build --progress=plain api web
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
+          coverage: none
+          tools: composer:v2
 
-      - name: Start PostgreSQL
-        run: docker compose -f docker-compose.yml up -d --no-build db
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Wait for PostgreSQL
+      - name: Install backend dependencies
+        working-directory: api
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install frontend and Chromium dependencies
+        working-directory: web
         run: |
-          for i in {1..60}; do
-            if docker compose -f docker-compose.yml exec -T db pg_isready -U jobpilot -d jobpilot >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose -f docker-compose.yml ps
-          docker compose -f docker-compose.yml logs --no-color --tail=300 db
-          exit 1
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Prepare E2E database
+        run: |
+          cp -R initial-data api/initial-data
+          cd api
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console app:bootstrap --no-interaction
 
       - name: Start Symfony API
-        run: docker compose -f docker-compose.yml up -d --no-build api
+        run: |
+          cd api
+          nohup php -S 127.0.0.1:8080 -t public public/index.php > /tmp/jobpilot-api.log 2>&1 &
+          echo $! > /tmp/jobpilot-api.pid
 
       - name: Wait for Symfony API
         run: |
@@ -168,12 +217,14 @@ jobs:
             fi
             sleep 2
           done
-          docker compose -f docker-compose.yml ps
-          docker compose -f docker-compose.yml logs --no-color --tail=500 db api
+          cat /tmp/jobpilot-api.log || true
           exit 1
 
       - name: Start Next.js
-        run: docker compose -f docker-compose.yml up -d --no-build web
+        working-directory: web
+        run: |
+          nohup npm run dev > /tmp/jobpilot-web.log 2>&1 &
+          echo $! > /tmp/jobpilot-web.pid
 
       - name: Wait for Next.js
         run: |
@@ -183,20 +234,9 @@ jobs:
             fi
             sleep 2
           done
-          docker compose -f docker-compose.yml ps
-          docker compose -f docker-compose.yml logs --no-color --tail=500 api web
+          cat /tmp/jobpilot-api.log || true
+          cat /tmp/jobpilot-web.log || true
           exit 1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Playwright dependencies
-        working-directory: web
-        run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
 
       - name: Run Playwright
         working-directory: web
@@ -204,9 +244,11 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
         run: npm run test:e2e
 
-      - name: Show container logs on failure
+      - name: Show application logs on failure
         if: failure()
-        run: docker compose -f docker-compose.yml logs --no-color --tail=500 db api web
+        run: |
+          cat /tmp/jobpilot-api.log || true
+          cat /tmp/jobpilot-web.log || true
 
       - name: Upload Playwright report
         if: always()
@@ -217,6 +259,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Stop containers
+      - name: Stop application servers
         if: always()
-        run: docker compose -f docker-compose.yml down -v --remove-orphans
+        run: |
+          test ! -f /tmp/jobpilot-web.pid || kill "$(cat /tmp/jobpilot-web.pid)" || true
+          test ! -f /tmp/jobpilot-api.pid || kill "$(cat /tmp/jobpilot-api.pid)" || true

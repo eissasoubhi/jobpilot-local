@@ -82,7 +82,7 @@ jobs:
       - name: Validate Symfony configuration
         working-directory: api
         run: |
-          php bin/console lint:yaml config
+          php bin/console lint:yaml --parse-tags config
           php bin/console lint:container
       - name: Create test database
         working-directory: api

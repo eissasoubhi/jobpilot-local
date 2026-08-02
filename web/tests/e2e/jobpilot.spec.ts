@@ -30,6 +30,11 @@ test('all main pages load without browser or server errors', async ({ page }) =>
   for (const [route, heading] of routes) {
     await page.goto(route);
     await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+
+    if (route === '/offres') {
+      await expect(page.getByRole('button', { name: 'Rechercher maintenant' })).toBeVisible();
+      await expect(page.getByText('Recherche automatique', { exact: true })).toBeVisible();
+    }
   }
 
   expect(failures).toEqual([]);
@@ -68,9 +73,11 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }) =
   await dialog.getByLabel('Description').fill('Nous recherchons un développeur senior PHP Symfony React TypeScript Docker API Platform avec 11 ans d’expérience.');
   await dialog.getByRole('button', { name: 'Analyser et enregistrer' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Senior Symfony React Developer', level: 3 })).toBeVisible();
-  await expect(page.getByText('TJM proposé : 520 €')).toBeVisible();
-  await expect(page.getByText('PREPARED')).toBeVisible();
+  const jobHeading = page.getByRole('heading', { name: 'Senior Symfony React Developer', level: 3 });
+  await expect(jobHeading).toBeVisible();
+  const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  await expect(jobRow.getByText('TJM proposé : 520 €')).toBeVisible();
+  await expect(jobRow.getByText('PREPARED')).toBeVisible();
 
   await page.goto('/candidatures');
   await expect(page.getByRole('heading', { name: 'Senior Symfony React Developer', level: 3 })).toBeVisible();

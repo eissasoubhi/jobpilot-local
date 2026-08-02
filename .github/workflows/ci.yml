@@ -26,7 +26,8 @@ jobs:
             exit 0
           fi
           python3 tools/apply_bundle.py
-          rm -f tools/bundle.part* tools/apply_bundle.py .github/workflows/apply-bundle.yml
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/apply-bundle.yml
+          rm -f tools/bundle.part* tools/apply_bundle.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add --all

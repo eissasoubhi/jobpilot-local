@@ -40,8 +40,13 @@ test('all main pages load without browser or server errors', async ({ page }) =>
   expect(failures).toEqual([]);
 });
 
-test('profile, CV, job preparation and positioning workflow', async ({ page }) => {
+test('profile, CV, job preparation and positioning workflow', async ({ page }, testInfo) => {
   const failures = watchForBrowserFailures(page);
+  const uniqueSuffix = `${testInfo.workerIndex}-${Date.now()}-${testInfo.retry}`;
+  const cvName = `CV Symfony React FR ${uniqueSuffix}`;
+  const jobTitle = `Senior Symfony React Developer ${uniqueSuffix}`;
+  const positioningTitle = `Mission Symfony React ${uniqueSuffix}`;
+  const tenderReference = `AO-E2E-${uniqueSuffix}`;
 
   await page.goto('/profil');
   await expect(page.getByLabel('Nom complet')).toHaveValue('Aissa SOUBHI');
@@ -50,21 +55,21 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }) =
   await expect(page.getByText('Profil enregistré.')).toBeVisible();
 
   await page.goto('/cv');
-  await page.getByLabel('Nom du CV').fill('CV Symfony React FR');
+  await page.getByLabel('Nom du CV').fill(cvName);
   await page.getByLabel('Tags').fill('Symfony, React, PHP');
   await page.getByLabel('Fichier PDF ou Word').setInputFiles({
-    name: 'cv-fr.pdf',
+    name: `cv-fr-${uniqueSuffix}.pdf`,
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4\n% JobPilot test CV\n'),
   });
   await page.getByLabel('CV par défaut pour cette langue').check();
   await page.getByRole('button', { name: 'Téléverser' }).click();
-  await expect(page.getByRole('heading', { name: 'CV Symfony React FR', level: 3 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: cvName, level: 3, exact: true })).toBeVisible();
 
   await page.goto('/offres');
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
-  await dialog.getByLabel('Intitulé').fill('Senior Symfony React Developer');
+  await dialog.getByLabel('Intitulé').fill(jobTitle);
   await dialog.getByLabel('Entreprise').fill('Example Company');
   await dialog.getByLabel('Lieu').fill('Paris');
   await dialog.getByLabel('Contrat').selectOption({ label: 'Freelance' });
@@ -73,17 +78,19 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }) =
   await dialog.getByLabel('Description').fill('Nous recherchons un développeur senior PHP Symfony React TypeScript Docker API Platform avec 11 ans d’expérience.');
   await dialog.getByRole('button', { name: 'Analyser et enregistrer' }).click();
 
-  const jobHeading = page.getByRole('heading', { name: 'Senior Symfony React Developer', level: 3 });
+  const jobHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(jobHeading).toBeVisible();
   const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
   await expect(jobRow.getByText('TJM proposé : 520 €')).toBeVisible();
   await expect(jobRow.getByText('PREPARED')).toBeVisible();
 
   await page.goto('/candidatures');
-  await expect(page.getByRole('heading', { name: 'Senior Symfony React Developer', level: 3 })).toBeVisible();
-  await page.getByRole('button', { name: 'Ouvrir' }).click();
-  await expect(page.getByRole('dialog', { name: 'Candidature Senior Symfony React Developer' })).toBeVisible();
-  await page.getByLabel('Confirmation / référence').fill('CONF-TEST-001');
+  const applicationHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
+  await expect(applicationHeading).toBeVisible();
+  const applicationRow = applicationHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  await applicationRow.getByRole('button', { name: 'Ouvrir' }).click();
+  await expect(page.getByRole('dialog', { name: `Candidature ${jobTitle}` })).toBeVisible();
+  await page.getByLabel('Confirmation / référence').fill(`CONF-${uniqueSuffix}`);
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   await page.goto('/positionnements');
@@ -91,17 +98,19 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }) =
   const positioningDialog = page.getByRole('dialog', { name: 'Nouveau positionnement' });
   await positioningDialog.getByLabel('Client final').fill('France Télévisions');
   await positioningDialog.getByLabel('Agence / ESN').fill('Agence Test');
-  await positioningDialog.getByLabel('Commercial').fill('Jean Dupont');
-  await positioningDialog.getByLabel('Référence appel d’offres').fill('AO-E2E-001');
-  await positioningDialog.getByLabel('Intitulé de la mission').fill('Mission Symfony React');
+  await positioningDialog.getByLabel('Commercial', { exact: true }).fill('Jean Dupont');
+  await positioningDialog.getByLabel('Référence appel d’offres').fill(tenderReference);
+  await positioningDialog.getByLabel('Intitulé de la mission').fill(positioningTitle);
   await positioningDialog.getByLabel('Description').fill('Mission Symfony React pour une plateforme média.');
   await positioningDialog.getByLabel('TJM fixe').fill('450');
   await positioningDialog.getByLabel('Lieu').fill('Paris');
-  await positioningDialog.getByLabel('Statut').selectOption('AGREEMENT_GIVEN');
+  await positioningDialog.getByLabel('Statut', { exact: true }).selectOption('AGREEMENT_GIVEN');
   await positioningDialog.getByRole('button', { name: 'Enregistrer' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Mission Symfony React', level: 3 })).toBeVisible();
-  await expect(page.getByText('450 €')).toBeVisible();
+  const positioningHeading = page.getByRole('heading', { name: positioningTitle, level: 3, exact: true });
+  await expect(positioningHeading).toBeVisible();
+  const positioningRow = positioningHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  await expect(positioningRow.getByText('450 €')).toBeVisible();
 
   expect(failures).toEqual([]);
 });

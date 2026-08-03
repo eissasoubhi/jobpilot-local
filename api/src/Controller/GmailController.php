@@ -27,6 +27,7 @@ final class GmailController
     {
         return new JsonResponse([
             'connected' => $this->store->isConnected(),
+            'sendPermission' => $this->gmail->hasSendPermission(),
             ...$this->gmail->configuration(),
         ]);
     }
@@ -78,7 +79,7 @@ final class GmailController
     {
         $this->store->clear();
 
-        return new JsonResponse(['connected' => false]);
+        return new JsonResponse(['connected' => false, 'sendPermission' => false]);
     }
 
     #[Route('/messages', methods: ['GET'])]

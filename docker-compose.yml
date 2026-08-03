@@ -60,6 +60,7 @@ services:
       - |
         while true; do
           php bin/console app:jobs:sync || true
+          php bin/console app:applications:auto-submit || true
           sleep "$${JOB_SYNC_INTERVAL_SECONDS:-21600}"
         done
     restart: unless-stopped
@@ -69,6 +70,11 @@ services:
       APP_SECRET: ${APP_SECRET:-change-me}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
       DATABASE_URL: postgresql://${POSTGRES_USER:-jobpilot}:${POSTGRES_PASSWORD:-jobpilot}@db:5432/${POSTGRES_DB:-jobpilot}?serverVersion=17&charset=utf8
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/integrations/gmail/callback}
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
+      GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR mission OR candidature OR application OR recruiter) newer_than:30d}"
       ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
       ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
       ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-fr}

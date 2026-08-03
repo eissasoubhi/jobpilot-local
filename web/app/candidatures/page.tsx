@@ -7,6 +7,10 @@ import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
+function companyName(application: Application): string {
+  return application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
+}
+
 export default function ApplicationsPage() {
   const [items, setItems] = useState<Application[] | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
@@ -50,7 +54,7 @@ export default function ApplicationsPage() {
     <>
       <PageHeader
         title="Candidatures"
-        description="Relis, ajuste puis confirme l’envoi depuis la plateforme concernée."
+        description="Vérifie l’offre concernée, relis la candidature, puis confirme l’envoi depuis la plateforme d’origine."
       />
       {error !== '' && <ErrorBox message={error} />}
 
@@ -62,16 +66,18 @@ export default function ApplicationsPage() {
         ) : (
           items.map((application) => (
             <div className="list-row" key={application.id}>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h3>{application.jobOffer.title}</h3>
                 <div className="muted small">
-                  {application.jobOffer.company || 'Entreprise non renseignée'} · Score{' '}
-                  {application.jobOffer.score} · {application.jobOffer.language.toUpperCase()}
+                  {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
+                  {application.jobOffer.contractType || 'Contrat non renseigné'}
                 </div>
                 <div className="actions" style={{ marginTop: 8 }}>
                   <Badge tone={application.status === 'SUBMITTED' ? 'good' : 'blue'}>
                     {application.status}
                   </Badge>
+                  <Badge tone="blue">Score {application.jobOffer.score}</Badge>
+                  <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
                   {application.cvDocument && <Badge>{application.cvDocument.name}</Badge>}
                   {application.compensationAnswer && (
                     <Badge tone="good">{application.compensationAnswer}</Badge>
@@ -83,7 +89,7 @@ export default function ApplicationsPage() {
                 type="button"
                 onClick={() => setSelected(application)}
               >
-                Ouvrir
+                Examiner la candidature
               </button>
             </div>
           ))
@@ -100,15 +106,84 @@ export default function ApplicationsPage() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <PageHeader
-              title={selected.jobOffer.title}
-              description={selected.jobOffer.company}
+              title="Candidature préparée"
+              description="Contrôle d’abord l’offre concernée avant de modifier ou confirmer la candidature."
               actions={
                 <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
                   Fermer
                 </button>
               }
             />
-            <div className="stack">
+
+            <section className="card" aria-labelledby="application-job-title">
+              <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div className="small muted" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    Offre concernée
+                  </div>
+                  <h2 id="application-job-title" style={{ margin: '7px 0 5px', fontSize: 21 }}>
+                    {selected.jobOffer.title}
+                  </h2>
+                  <div>
+                    <strong>{companyName(selected)}</strong>
+                    {selected.jobOffer.clientName && selected.jobOffer.clientName !== selected.jobOffer.company && (
+                      <span className="muted"> · Client final : {selected.jobOffer.clientName}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="score" aria-label={`Score ${selected.jobOffer.score}`}>
+                  {selected.jobOffer.score}
+                </div>
+              </div>
+
+              <div className="actions" style={{ marginTop: 13 }}>
+                <Badge>{selected.jobOffer.location || 'Lieu non renseigné'}</Badge>
+                <Badge>{selected.jobOffer.contractType || 'Contrat non renseigné'}</Badge>
+                <Badge>{selected.jobOffer.workMode || 'Mode de travail non renseigné'}</Badge>
+                <Badge tone="blue">Source : {selected.jobOffer.source || 'inconnue'}</Badge>
+                <Badge>{selected.jobOffer.language.toUpperCase()}</Badge>
+              </div>
+
+              <div className="actions" style={{ marginTop: 14 }}>
+                {selected.jobOffer.sourceUrl ? (
+                  <a
+                    className="btn secondary small"
+                    href={selected.jobOffer.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir l’offre originale
+                  </a>
+                ) : (
+                  <span className="small muted">Aucun lien vers l’annonce originale n’est disponible.</span>
+                )}
+                {selected.cvDocument && (
+                  <a
+                    className="btn secondary small"
+                    href={selected.cvDocument.downloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir le CV sélectionné
+                  </a>
+                )}
+              </div>
+
+              <details style={{ marginTop: 15 }}>
+                <summary className="small" style={{ cursor: 'pointer', fontWeight: 700 }}>
+                  Afficher la description complète de l’offre
+                </summary>
+                <div className="small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 12 }}>
+                  {selected.jobOffer.description || 'Description non disponible.'}
+                </div>
+              </details>
+            </section>
+
+            <div className="notice warning" style={{ marginTop: 14 }}>
+              Vérifie le poste, l’entreprise, la rémunération et le CV avant de marquer la candidature comme envoyée.
+            </div>
+
+            <div className="stack" style={{ marginTop: 16 }}>
               <label>
                 Statut
                 <select
@@ -157,7 +232,7 @@ export default function ApplicationsPage() {
                 />
               </label>
               <button className="btn" type="button" onClick={() => void save()}>
-                Enregistrer
+                Enregistrer les modifications
               </button>
             </div>
           </div>

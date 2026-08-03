@@ -23,6 +23,18 @@ export type Job = {
   score: number; scoreReasons: string[]; status: string; recommendedCv?: Cv;
 };
 
-export type Application = { id: number; jobOffer: { id:number; title:string; company:string; score:number; language:string }; channel:string; status:string; submittedAt?:string; cvDocument?:Cv; message:string; coverLetter:string; compensationAnswer?:string; confirmationRef?:string; updatedAt:string };
+export type Application = {
+  id: number;
+  jobOffer: Job;
+  channel: string;
+  status: string;
+  submittedAt?: string;
+  cvDocument?: Cv;
+  message: string;
+  coverLetter: string;
+  compensationAnswer?: string;
+  confirmationRef?: string;
+  updatedAt: string;
+};
 
 export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };

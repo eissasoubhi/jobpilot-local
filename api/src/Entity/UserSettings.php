@@ -24,6 +24,9 @@ class UserSettings
     #[ORM\Column] private bool $salaryIncludesTotalCompensation = true;
     #[ORM\Column(length: 120, nullable: true)] private ?string $cddSalaryRule = null;
     #[ORM\Column] private bool $autoPrepare = true;
+    #[ORM\Column] private bool $autoSubmitEnabled = false;
+    #[ORM\Column] private int $autoSubmitThreshold = 60;
+    #[ORM\Column] private int $autoSubmitDailyLimit = 5;
     #[ORM\Column(length: 40)] private string $finalSubmissionMode = 'ONE_CLICK';
     #[ORM\Column] private \DateTimeImmutable $updatedAt;
 
@@ -45,6 +48,9 @@ class UserSettings
     public function getMinimumCdiSalary(): int { return $this->minimumCdiSalary; }
     public function salaryIncludesTotalCompensation(): bool { return $this->salaryIncludesTotalCompensation; }
     public function isAutoPrepare(): bool { return $this->autoPrepare; }
+    public function isAutoSubmitEnabled(): bool { return $this->autoSubmitEnabled; }
+    public function getAutoSubmitThreshold(): int { return $this->autoSubmitThreshold; }
+    public function getAutoSubmitDailyLimit(): int { return $this->autoSubmitDailyLimit; }
 
     public function fill(array $data): self
     {
@@ -77,13 +83,14 @@ class UserSettings
         foreach ([
             'matchingThreshold', 'defaultIdfTjm', 'defaultOutsideIdfTjm',
             'defaultRemoteTjm', 'minimumFreelanceTjm', 'maximumTjm', 'minimumCdiSalary',
+            'autoSubmitThreshold', 'autoSubmitDailyLimit',
         ] as $field) {
             if (array_key_exists($field, $data)) {
                 $this->{$field} = max(0, (int) $data[$field]);
             }
         }
 
-        foreach (['salaryIncludesTotalCompensation', 'autoPrepare'] as $field) {
+        foreach (['salaryIncludesTotalCompensation', 'autoPrepare', 'autoSubmitEnabled'] as $field) {
             if (array_key_exists($field, $data)) {
                 $this->{$field} = (bool) $data[$field];
             }
@@ -94,6 +101,8 @@ class UserSettings
         }
 
         $this->matchingThreshold = min(100, $this->matchingThreshold);
+        $this->autoSubmitThreshold = min(100, max(1, $this->autoSubmitThreshold));
+        $this->autoSubmitDailyLimit = min(50, max(1, $this->autoSubmitDailyLimit));
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
@@ -117,6 +126,9 @@ class UserSettings
             'salaryIncludesTotalCompensation' => $this->salaryIncludesTotalCompensation,
             'cddSalaryRule' => $this->cddSalaryRule,
             'autoPrepare' => $this->autoPrepare,
+            'autoSubmitEnabled' => $this->autoSubmitEnabled,
+            'autoSubmitThreshold' => $this->autoSubmitThreshold,
+            'autoSubmitDailyLimit' => $this->autoSubmitDailyLimit,
             'finalSubmissionMode' => $this->finalSubmissionMode,
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];

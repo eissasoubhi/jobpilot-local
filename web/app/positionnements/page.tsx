@@ -234,7 +234,11 @@ export default function PositioningsPage() {
               <label>ID / objet de l’e-mail preuve<input value={form.proofEmailId} onChange={(e) => setForm({ ...form, proofEmailId: e.target.value })} /></label>
               <label>
                 Statut
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                <select
+                  aria-label="Statut"
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                >
                   <option value="MISSION_DETECTED">Mission détectée</option>
                   <option value="CONTACT_RECRUITER">Contact commercial</option>
                   <option value="AGREEMENT_REQUESTED">Accord demandé</option>

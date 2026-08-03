@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Badge, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { Settings } from '@/lib/types';
+import type { Application, Settings } from '@/lib/types';
 
 type Source = { name: string; url: string; category: string; mode: string };
 type GmailStatus = {
@@ -16,13 +16,40 @@ type GmailStatus = {
   redirectUri: string;
   startUrl: string;
 };
+type EmailPreview = {
+  applicationId: number;
+  subject: string;
+  body: string;
+  attachmentNames: string[];
+};
+type TestSendResult = EmailPreview & {
+  sent: boolean;
+  recipient: string;
+  gmailMessageId: string;
+  applicationStatusChanged: boolean;
+  dailyLimitConsumed: boolean;
+};
+
+function applicationLabel(application: Application): string {
+  const company = application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
+
+  return `${application.jobOffer.title} — ${company} — score ${application.jobOffer.score}`;
+}
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testApplicationId, setTestApplicationId] = useState('');
+  const [emailPreview, setEmailPreview] = useState<EmailPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testError, setTestError] = useState('');
+  const [testMessage, setTestMessage] = useState('');
 
   useEffect(() => {
     const parameters = new URLSearchParams(window.location.search);
@@ -49,12 +76,19 @@ export default function SettingsPage() {
       api<Settings>('/settings'),
       api<Source[]>('/settings/sources'),
       api<GmailStatus>('/integrations/gmail/status'),
+      api<Application[]>('/applications'),
     ])
-      .then(([loadedSettings, loadedSources, loadedGmailStatus]) => {
+      .then(([loadedSettings, loadedSources, loadedGmailStatus, loadedApplications]) => {
         if (!active) return;
         setSettings(loadedSettings);
         setSources(loadedSources);
         setGmailStatus(loadedGmailStatus);
+        setApplications(loadedApplications);
+        setTestApplicationId((current) => {
+          if (current !== '') return current;
+          const firstTestable = loadedApplications.find((application) => application.cvDocument != null);
+          return firstTestable ? String(firstTestable.id) : '';
+        });
       })
       .catch((caughtError: unknown) => {
         if (active) setError(getErrorMessage(caughtError));
@@ -65,9 +99,40 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (testApplicationId === '') {
+      setEmailPreview(null);
+      setTestError('');
+      return;
+    }
+
+    let active = true;
+    setPreviewLoading(true);
+    setTestError('');
+
+    void api<EmailPreview>(`/integrations/gmail/test-preview/${testApplicationId}`)
+      .then((preview) => {
+        if (active) setEmailPreview(preview);
+      })
+      .catch((caughtError: unknown) => {
+        if (!active) return;
+        setEmailPreview(null);
+        setTestError(getErrorMessage(caughtError));
+      })
+      .finally(() => {
+        if (active) setPreviewLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [testApplicationId]);
+
   if (settings === null || gmailStatus === null) {
     return error !== '' ? <ErrorBox message={error} /> : <Loading />;
   }
+
+  const testableApplications = applications.filter((application) => application.cvDocument != null);
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]): void => {
     setSettings({ ...settings, [key]: value });
@@ -94,6 +159,36 @@ export default function SettingsPage() {
       setError('');
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    }
+  };
+
+  const sendTestEmail = async (): Promise<void> => {
+    if (emailPreview === null || testRecipient.trim() === '') return;
+
+    const confirmed = window.confirm(
+      `Envoyer maintenant ce mail réel à ${testRecipient.trim()} avec le sujet « ${emailPreview.subject} » ? Le statut de la candidature ne sera pas modifié.`,
+    );
+    if (!confirmed) return;
+
+    setTestSending(true);
+    setTestError('');
+    setTestMessage('');
+
+    try {
+      const result = await api<TestSendResult>('/integrations/gmail/test-send', {
+        method: 'POST',
+        body: JSON.stringify({
+          recipient: testRecipient.trim(),
+          applicationId: emailPreview.applicationId,
+        }),
+      });
+      setTestMessage(
+        `Mail de test envoyé à ${result.recipient}. Identifiant Gmail : ${result.gmailMessageId}. La candidature et la limite quotidienne n’ont pas été modifiées.`,
+      );
+    } catch (caughtError: unknown) {
+      setTestError(getErrorMessage(caughtError));
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -225,6 +320,90 @@ export default function SettingsPage() {
               <button className="btn" type="button" disabled title="Configuration Google incomplète">Connecter Gmail</button>
             </div>
           )}
+        </Card>
+
+        <Card>
+          <h2 className="section-title">Tester l’envoi automatique</h2>
+          <p className="muted">
+            Envoie à l’adresse de ton choix une copie exacte du mail automatique d’une candidature préparée.
+          </p>
+          <div className="stack">
+            {testMessage !== '' && <div className="notice">{testMessage}</div>}
+            {testError !== '' && <ErrorBox message={testError} />}
+
+            <label>
+              Adresse e-mail de destination
+              <input
+                type="email"
+                placeholder="mon-adresse-de-test@example.com"
+                value={testRecipient}
+                onChange={(event) => setTestRecipient(event.target.value)}
+              />
+            </label>
+
+            <label>
+              Candidature à reproduire
+              <select value={testApplicationId} onChange={(event) => setTestApplicationId(event.target.value)}>
+                <option value="">Sélectionner une candidature</option>
+                {testableApplications.map((application) => (
+                  <option key={application.id} value={application.id}>
+                    {applicationLabel(application)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {testableApplications.length === 0 && (
+              <div className="notice warning">
+                Prépare d’abord une candidature avec un CV sélectionné. Elle apparaîtra ensuite dans cette liste.
+              </div>
+            )}
+
+            {previewLoading && <div className="muted small">Préparation de l’aperçu…</div>}
+
+            {emailPreview && (
+              <div className="stack">
+                <label>
+                  Sujet exact
+                  <input readOnly value={emailPreview.subject} />
+                </label>
+                <label>
+                  Corps exact reçu par le destinataire
+                  <textarea readOnly style={{ minHeight: 240 }} value={emailPreview.body} />
+                </label>
+                <div className="notice">
+                  <strong>Pièce jointe :</strong>{' '}
+                  {emailPreview.attachmentNames.length > 0
+                    ? emailPreview.attachmentNames.join(', ')
+                    : 'aucune'}
+                </div>
+              </div>
+            )}
+
+            {!gmailStatus.sendPermission && (
+              <div className="notice warning">
+                Reconnecte Gmail avec l’autorisation d’envoi avant de lancer le test.
+              </div>
+            )}
+
+            <button
+              className="btn"
+              type="button"
+              disabled={
+                testSending
+                || !gmailStatus.sendPermission
+                || emailPreview === null
+                || testRecipient.trim() === ''
+              }
+              onClick={() => void sendTestEmail()}
+            >
+              {testSending ? 'Envoi du test…' : 'Envoyer le mail de test'}
+            </button>
+
+            <div className="notice warning">
+              <strong>Ce test envoie un vrai e-mail.</strong> Il ne change pas le statut de la candidature, ne renseigne pas sa date d’envoi et ne consomme pas la limite quotidienne.
+            </div>
+          </div>
         </Card>
 
         <Card>

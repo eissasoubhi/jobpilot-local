@@ -18,6 +18,7 @@ class JobOffer
     #[ORM\Column(length: 255)] private string $title = '';
     #[ORM\Column(length: 255)] private string $company = '';
     #[ORM\Column(length: 255, nullable: true)] private ?string $clientName = null;
+    #[ORM\Column(length: 255, nullable: true)] private ?string $applicationEmail = null;
     #[ORM\Column(length: 255)] private string $location = '';
     #[ORM\Column(length: 80)] private string $contractType = '';
     #[ORM\Column(length: 80)] private string $workMode = '';
@@ -48,6 +49,7 @@ class JobOffer
     public function getTitle(): string { return $this->title; }
     public function getCompany(): string { return $this->company; }
     public function getClientName(): ?string { return $this->clientName; }
+    public function getApplicationEmail(): ?string { return $this->applicationEmail; }
     public function getLocation(): string { return $this->location; }
     public function getContractType(): string { return $this->contractType; }
     public function getWorkMode(): string { return $this->workMode; }
@@ -80,6 +82,10 @@ class JobOffer
             }
         }
 
+        if (array_key_exists('applicationEmail', $data)) {
+            $this->setApplicationEmail(trim((string) ($data['applicationEmail'] ?? '')) ?: null);
+        }
+
         foreach (['salaryMin', 'salaryMax', 'tjmFixed', 'tjmMin', 'tjmMax'] as $field) {
             if (array_key_exists($field, $data)) {
                 $this->{$field} = $data[$field] === null || $data[$field] === ''
@@ -97,6 +103,20 @@ class JobOffer
         }
 
         return $this;
+    }
+
+    public function setApplicationEmail(?string $email): void
+    {
+        if ($email === null || $email === '') {
+            $this->applicationEmail = null;
+            return;
+        }
+
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new \InvalidArgumentException('Adresse e-mail de candidature invalide.');
+        }
+
+        $this->applicationEmail = mb_strtolower($email);
     }
 
     public function setEvaluation(
@@ -138,6 +158,7 @@ class JobOffer
             'title' => $this->title,
             'company' => $this->company,
             'clientName' => $this->clientName,
+            'applicationEmail' => $this->applicationEmail,
             'location' => $this->location,
             'contractType' => $this->contractType,
             'workMode' => $this->workMode,

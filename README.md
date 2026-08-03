@@ -1,11 +1,14 @@
 # JobPilot Local
 
-Application locale en français pour centraliser, scorer, préparer et suivre les candidatures CDI, CDD et freelance.
+Application locale en français pour centraliser, rechercher, scorer, préparer et suivre les candidatures CDI, CDD et freelance.
 
 ## Fonctionnalités incluses
 
 - Profil candidat modifiable depuis l'interface.
 - Téléversement et sélection automatique des CV français/anglais.
+- Recherche automatique d'offres toutes les six heures.
+- Import immédiat depuis Arbeitnow, sans compte ni clé API.
+- Connecteur Adzuna France facultatif pour élargir les résultats.
 - Import manuel d'offres et import depuis l'extension Chrome.
 - Détection de langue et choix du CV correspondant.
 - Score de compatibilité, préparation automatique à partir de 50/100.
@@ -44,6 +47,60 @@ Ouvrir ensuite :
 
 Les ports sont liés à `127.0.0.1`, donc l'application n'est pas exposée au réseau local.
 
+## Recherche automatique d'offres
+
+Le service `scheduler` lance une recherche au démarrage, puis toutes les six heures. La page **Offres** lance également une synchronisation non forcée à son ouverture et propose le bouton **Rechercher maintenant**.
+
+### Arbeitnow
+
+Arbeitnow est actif par défaut et ne nécessite aucune clé. JobPilot consulte les offres récentes, conserve les postes distants ou situés en France, filtre les technologies selon les métiers et compétences configurés, puis applique le scoring habituel.
+
+Pour le désactiver :
+
+```dotenv
+ARBEITNOW_ENABLED=0
+```
+
+Le nombre de pages consultées est configurable :
+
+```dotenv
+ARBEITNOW_PAGES=3
+```
+
+### Adzuna France
+
+Adzuna est facultatif. Créer un compte développeur sur `developer.adzuna.com`, récupérer `app_id` et `app_key`, puis compléter le fichier `.env` :
+
+```dotenv
+ADZUNA_APP_ID=your-app-id
+ADZUNA_APP_KEY=your-app-key
+ADZUNA_COUNTRY=fr
+ADZUNA_WHERE=
+ADZUNA_RESULTS_PER_QUERY=20
+```
+
+Laisser `ADZUNA_WHERE` vide recherche dans toute la France. Une ville ou une région peut être renseignée pour limiter les résultats.
+
+Pour modifier l'intervalle, utiliser un nombre de secondes, avec un minimum de 900 secondes :
+
+```dotenv
+JOB_SYNC_INTERVAL_SECONDS=21600
+```
+
+Après modification du fichier `.env`, recréer uniquement les conteneurs :
+
+```bash
+docker compose up -d --force-recreate
+```
+
+La synchronisation peut aussi être lancée depuis le Terminal :
+
+```bash
+docker compose exec api php bin/console app:jobs:sync --force
+```
+
+Les offres sont dédupliquées par source et identifiant externe. Elles passent ensuite par les mêmes règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique que les offres ajoutées manuellement.
+
 ## Extension Chrome
 
 1. Ouvrir `chrome://extensions`.
@@ -77,7 +134,7 @@ make reset      # supprimer la base locale et recommencer
 
 ## Limites assumées
 
-Cette première version ne contourne ni CAPTCHA, ni protection anti-bot, ni conditions d'utilisation des plateformes. L'envoi final reste en mode confirmation en un clic. Les connecteurs directs plateforme par plateforme pourront être ajoutés ensuite quand une API officielle ou un flux autorisé existe.
+Cette version utilise des API et flux publics autorisés. Elle ne contourne ni CAPTCHA, ni protection anti-bot, ni conditions d'utilisation des plateformes. L'envoi final reste en mode confirmation en un clic. Les connecteurs directs vers d'autres plateformes doivent utiliser une API officielle ou un flux explicitement autorisé.
 
 ## Correctif 1.0.1
 

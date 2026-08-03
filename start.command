@@ -7,23 +7,32 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! docker info >/dev/null 2>&1; then
+  osascript -e 'display alert "Docker Desktop n’est pas démarré" message "Démarre Docker Desktop, puis relance JobPilot." as critical' 2>/dev/null || true
+  exit 1
+fi
+
 if [ ! -f .env ]; then
   cp .env.example .env
   KEY="$(openssl rand -base64 32)"
   python3 - "$KEY" <<'PY'
 from pathlib import Path
 import sys
-p = Path('.env')
-s = p.read_text()
-s = s.replace('APP_ENCRYPTION_KEY=replace-with-base64-32-byte-key', 'APP_ENCRYPTION_KEY=' + sys.argv[1])
-p.write_text(s)
+path = Path('.env')
+content = path.read_text()
+content = content.replace(
+    'APP_ENCRYPTION_KEY=replace-with-base64-32-byte-key',
+    'APP_ENCRYPTION_KEY=' + sys.argv[1],
+)
+path.write_text(content)
 PY
 fi
 
-docker compose up -d
+docker compose up -d --remove-orphans
+
 printf 'Démarrage de JobPilot'
-for _ in {1..60}; do
-  if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1 && curl -fsS http://localhost:3000 >/dev/null 2>&1; then
+for _ in {1..90}; do
+  if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
     echo
     open http://localhost:3000
     exit 0
@@ -33,5 +42,5 @@ for _ in {1..60}; do
 done
 
 echo
-echo "JobPilot prend trop de temps à démarrer. Lance: docker compose logs"
+echo "JobPilot prend trop de temps à démarrer. Lance : docker compose logs --tail=200"
 exit 1

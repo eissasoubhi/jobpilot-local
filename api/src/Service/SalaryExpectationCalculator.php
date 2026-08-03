@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\UserSettings;
@@ -11,8 +13,11 @@ final class SalaryExpectationCalculator
      */
     public function calculate(string $contractType, ?int $minimum, ?int $maximum, UserSettings $settings): array
     {
-        $contract = mb_strtolower($contractType);
-        if (!str_contains($contract, 'cdi')) {
+        if ($minimum !== null && $maximum !== null && $minimum > $maximum) {
+            throw new \InvalidArgumentException('Le salaire minimum ne peut pas dépasser le salaire maximum.');
+        }
+
+        if (!str_contains(mb_strtolower($contractType), 'cdi')) {
             return ['eligible' => true, 'proposed' => null, 'reason' => null];
         }
 
@@ -21,7 +26,10 @@ final class SalaryExpectationCalculator
             return [
                 'eligible' => false,
                 'proposed' => null,
-                'reason' => sprintf('Rémunération maximale inférieure au minimum CDI de %d €.', $settings->getMinimumCdiSalary()),
+                'reason' => sprintf(
+                    'Rémunération maximale inférieure au minimum CDI de %d €.',
+                    $settings->getMinimumCdiSalary(),
+                ),
             ];
         }
 
@@ -33,9 +41,11 @@ final class SalaryExpectationCalculator
             return ['eligible' => true, 'proposed' => $minimum, 'reason' => null];
         }
 
-        // Jusqu'à 50 k€, viser le maximum annoncé. Au-delà, rester environ 5 k€ sous le maximum,
-        // sans descendre sous le minimum de la fourchette.
-        $proposed = $maximum <= 50000 ? $maximum : max($minimum ?? 0, $maximum - 5000);
+        // Jusqu’à 50 k€ : viser le maximum annoncé.
+        // Au-dessus : rester environ 5 k€ sous le maximum sans descendre sous le minimum.
+        $proposed = $maximum <= 50_000
+            ? $maximum
+            : max($minimum ?? 0, $maximum - 5_000);
 
         return ['eligible' => true, 'proposed' => $proposed, 'reason' => null];
     }

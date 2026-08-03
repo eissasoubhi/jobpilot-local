@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -25,7 +27,11 @@ class UserSettings
     #[ORM\Column(length: 40)] private string $finalSubmissionMode = 'ONE_CLICK';
     #[ORM\Column] private \DateTimeImmutable $updatedAt;
 
-    public function __construct() { $this->updatedAt = new \DateTimeImmutable(); }
+    public function __construct()
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function getId(): ?int { return $this->id; }
     public function getTargetJobs(): array { return $this->targetJobs; }
     public function getExclusions(): array { return $this->exclusions; }
@@ -42,19 +48,54 @@ class UserSettings
 
     public function fill(array $data): self
     {
-        foreach (['interfaceLanguage','cddSalaryRule','finalSubmissionMode'] as $field) {
-            if (array_key_exists($field, $data)) { $this->{$field} = $data[$field] === null ? null : (string) $data[$field]; }
+        if (array_key_exists('interfaceLanguage', $data)) {
+            $language = strtolower(trim((string) ($data['interfaceLanguage'] ?? 'fr')));
+            $this->interfaceLanguage = in_array($language, ['fr', 'en'], true) ? $language : 'fr';
         }
-        foreach (['targetJobs','exclusions','skills'] as $field) {
-            if (array_key_exists($field, $data)) { $this->{$field} = is_array($data[$field]) ? array_values($data[$field]) : []; }
+
+        if (array_key_exists('finalSubmissionMode', $data)) {
+            $value = trim((string) ($data['finalSubmissionMode'] ?? 'ONE_CLICK'));
+            $this->finalSubmissionMode = $value === '' ? 'ONE_CLICK' : $value;
         }
-        foreach (['matchingThreshold','defaultIdfTjm','defaultOutsideIdfTjm','defaultRemoteTjm','minimumFreelanceTjm','maximumTjm','minimumCdiSalary'] as $field) {
-            if (array_key_exists($field, $data)) { $this->{$field} = max(0, (int) $data[$field]); }
+
+        if (array_key_exists('cddSalaryRule', $data)) {
+            $value = trim((string) ($data['cddSalaryRule'] ?? ''));
+            $this->cddSalaryRule = $value === '' ? null : $value;
         }
-        foreach (['salaryIncludesTotalCompensation','autoPrepare'] as $field) {
-            if (array_key_exists($field, $data)) { $this->{$field} = (bool) $data[$field]; }
+
+        foreach (['targetJobs', 'exclusions', 'skills'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = is_array($data[$field])
+                    ? array_values(array_filter(array_map(
+                        static fn (mixed $value): string => trim((string) $value),
+                        $data[$field],
+                    )))
+                    : [];
+            }
         }
+
+        foreach ([
+            'matchingThreshold', 'defaultIdfTjm', 'defaultOutsideIdfTjm',
+            'defaultRemoteTjm', 'minimumFreelanceTjm', 'maximumTjm', 'minimumCdiSalary',
+        ] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = max(0, (int) $data[$field]);
+            }
+        }
+
+        foreach (['salaryIncludesTotalCompensation', 'autoPrepare'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = (bool) $data[$field];
+            }
+        }
+
+        if ($this->minimumFreelanceTjm > $this->maximumTjm) {
+            throw new \InvalidArgumentException('Le TJM minimum ne peut pas dépasser le TJM maximum.');
+        }
+
+        $this->matchingThreshold = min(100, $this->matchingThreshold);
         $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -38,17 +40,35 @@ class Application
         $this->compensationAnswer = $compensation;
         $this->status = 'READY_TO_SUBMIT';
         $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 
     public function fill(array $data): self
     {
-        foreach (['channel','status','message','coverLetter','compensationAnswer','confirmationRef'] as $field) {
-            if (array_key_exists($field, $data)) $this->{$field} = $data[$field] === null ? null : (string) $data[$field];
+        foreach (['channel', 'status', 'message', 'coverLetter'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $this->{$field} = (string) ($data[$field] ?? '');
+            }
         }
-        if (array_key_exists('submittedAt', $data)) $this->submittedAt = empty($data['submittedAt']) ? null : new \DateTimeImmutable((string) $data['submittedAt']);
-        if ($this->status === 'SUBMITTED' && $this->submittedAt === null) $this->submittedAt = new \DateTimeImmutable();
+
+        foreach (['compensationAnswer', 'confirmationRef'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $value = trim((string) ($data[$field] ?? ''));
+                $this->{$field} = $value === '' ? null : $value;
+            }
+        }
+
+        if (array_key_exists('submittedAt', $data)) {
+            $this->submittedAt = $this->parseDate($data['submittedAt']);
+        }
+
+        if ($this->status === 'SUBMITTED' && $this->submittedAt === null) {
+            $this->submittedAt = new \DateTimeImmutable();
+        }
+
         $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 
@@ -74,5 +94,18 @@ class Application
             'createdAt' => $this->createdAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];
+    }
+
+    private function parseDate(mixed $value): ?\DateTimeImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable((string) $value);
+        } catch (\Exception) {
+            throw new \InvalidArgumentException('Date de soumission invalide.');
+        }
     }
 }

@@ -76,13 +76,7 @@ class Application
     {
         return [
             'id' => $this->id,
-            'jobOffer' => [
-                'id' => $this->jobOffer->getId(),
-                'title' => $this->jobOffer->getTitle(),
-                'company' => $this->jobOffer->getCompany(),
-                'score' => $this->jobOffer->getScore(),
-                'language' => $this->jobOffer->getLanguage(),
-            ],
+            'jobOffer' => $this->jobOffer->toArray(),
             'channel' => $this->channel,
             'status' => $this->status,
             'submittedAt' => $this->submittedAt?->format(DATE_ATOM),

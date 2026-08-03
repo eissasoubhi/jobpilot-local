@@ -1,4 +1,8 @@
 services:
+  db:
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
   api:
     entrypoint: ["sh", "./docker-entrypoint.sh"]
     volumes:
@@ -7,7 +11,7 @@ services:
       - api_cache:/app/var/cache
       - api_logs:/app/var/log
       - ./initial-data:/app/initial-data:ro
-      - jobpilot_private:/app/var/private
+      - ./data/private:/app/var/private
 
   scheduler:
     volumes:
@@ -16,7 +20,21 @@ services:
       - api_cache:/app/var/cache
       - api_logs:/app/var/log
       - ./initial-data:/app/initial-data:ro
-      - jobpilot_private:/app/var/private
+      - ./data/private:/app/var/private
+
+  private-storage-migrator:
+    image: alpine:3.20
+    profiles: ["tools"]
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /target
+        cp -a /source/. /target/
+        echo "Private files copied to ./data/private"
+    volumes:
+      - jobpilot_private:/source:ro
+      - ./data/private:/target
 
   web:
     environment:

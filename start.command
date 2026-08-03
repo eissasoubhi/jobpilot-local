@@ -28,6 +28,15 @@ path.write_text(content)
 PY
 fi
 
+mkdir -p data/private
+
+if [ ! -f data/private/.storage-migrated ]; then
+  echo "Migration des documents privés vers data/private..."
+  docker compose stop api scheduler >/dev/null 2>&1 || true
+  docker compose --profile tools run --rm private-storage-migrator
+  touch data/private/.storage-migrated
+fi
+
 docker compose up -d --remove-orphans
 
 printf 'Démarrage de JobPilot'

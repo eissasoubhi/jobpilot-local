@@ -27,6 +27,16 @@ final class ApplicationEmailFactory
             throw new \RuntimeException('Aucun CV n’est sélectionné pour cette candidature.');
         }
 
+        $cvPath = $this->cvStorage->path($cv->getStoredName());
+        if (!is_file($cvPath) || !is_readable($cvPath)) {
+            throw new \RuntimeException(
+                sprintf(
+                    'Le fichier du CV « %s » est introuvable dans le stockage privé. Téléverse de nouveau ce CV avant le test.',
+                    $cv->getOriginalName(),
+                ),
+            );
+        }
+
         $parts = [trim($application->getMessage()), trim($application->getCoverLetter())];
         $compensation = $application->getCompensationAnswer();
 
@@ -43,7 +53,7 @@ final class ApplicationEmailFactory
                 static fn (string $part): bool => $part !== '',
             ))),
             'attachments' => [[
-                'path' => $this->cvStorage->path($cv->getStoredName()),
+                'path' => $cvPath,
                 'filename' => $cv->getOriginalName(),
                 'mimeType' => $cv->getMimeType(),
             ]],

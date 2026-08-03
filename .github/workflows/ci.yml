@@ -207,22 +207,46 @@ jobs:
           php bin/console doctrine:migrations:migrate --no-interaction
           php bin/console app:bootstrap --no-interaction
 
+      - name: Configure Symfony HTTP runtime
+        run: |
+          cat > api/.env.local <<'EOF'
+          APP_ENV=dev
+          APP_DEBUG=1
+          APP_SECRET=e2e-secret
+          APP_ENCRYPTION_KEY=
+          DATABASE_URL=postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot_e2e?serverVersion=17&charset=utf8
+          ARBEITNOW_ENABLED=0
+          ADZUNA_APP_ID=
+          ADZUNA_APP_KEY=
+          EOF
+          rm -rf api/var/cache/dev
+
       - name: Start Symfony API
         run: |
           cd api
-          nohup php -S 127.0.0.1:8080 -t public public/index.php > /tmp/jobpilot-api.log 2>&1 &
+          nohup env APP_ENV=dev APP_DEBUG=1 php -S 127.0.0.1:8080 -t public public/index.php > /tmp/jobpilot-api.log 2>&1 &
           echo $! > /tmp/jobpilot-api.pid
 
-      - name: Wait for Symfony API
+      - name: Wait for Symfony API and database endpoints
         run: |
           for i in {1..90}; do
             if curl --fail --silent http://127.0.0.1:8080/api/health >/dev/null; then
-              exit 0
+              break
             fi
             sleep 2
           done
-          cat /tmp/jobpilot-api.log || true
-          exit 1
+          curl --fail --show-error --silent http://127.0.0.1:8080/api/health >/dev/null || {
+            cat /tmp/jobpilot-api.log || true
+            exit 1
+          }
+          curl --fail --show-error --silent http://127.0.0.1:8080/api/profile >/tmp/jobpilot-profile.json || {
+            cat /tmp/jobpilot-api.log || true
+            exit 1
+          }
+          curl --fail --show-error --silent http://127.0.0.1:8080/api/dashboard >/tmp/jobpilot-dashboard.json || {
+            cat /tmp/jobpilot-api.log || true
+            exit 1
+          }
 
       - name: Start Next.js production server
         working-directory: web

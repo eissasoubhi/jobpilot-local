@@ -8,3 +8,5 @@ web/node_modules/
 web/.next/
 web/next-env.d.ts
 extension/dist/
+/data/private/*
+!/data/private/README.md

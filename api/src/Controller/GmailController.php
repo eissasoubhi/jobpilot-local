@@ -28,9 +28,17 @@ final class GmailController
     #[Route('/status', methods: ['GET'])]
     public function status(): JsonResponse
     {
+        $connected = $this->store->isConnected();
+        $sendPermission = $connected && $this->gmail->hasSendPermission();
+
         return new JsonResponse([
-            'connected' => $this->store->isConnected(),
-            'sendPermission' => $this->gmail->hasSendPermission(),
+            'connected' => $connected,
+            'sendPermission' => $sendPermission,
+            'sendPermissionMessage' => match (true) {
+                !$connected => 'Gmail n’est pas connecté.',
+                !$sendPermission => 'Le droit d’envoi Gmail n’est pas détecté. Déconnecte puis reconnecte Gmail en acceptant gmail.send.',
+                default => null,
+            },
             ...$this->gmail->configuration(),
         ]);
     }
@@ -82,13 +90,21 @@ final class GmailController
     {
         $this->store->clear();
 
-        return new JsonResponse(['connected' => false, 'sendPermission' => false]);
+        return new JsonResponse([
+            'connected' => false,
+            'sendPermission' => false,
+            'sendPermissionMessage' => 'Gmail n’est pas connecté.',
+        ]);
     }
 
     #[Route('/test-preview/{id}', methods: ['GET'])]
     public function testPreview(Application $application): JsonResponse
     {
-        $email = $this->emailFactory->create($application);
+        try {
+            $email = $this->emailFactory->create($application);
+        } catch (\Throwable $error) {
+            return new JsonResponse(['error' => $error->getMessage()], 422);
+        }
 
         return new JsonResponse([
             'applicationId' => $application->getId(),
@@ -101,7 +117,12 @@ final class GmailController
     #[Route('/test-send', methods: ['POST'])]
     public function testSend(Request $request): JsonResponse
     {
-        $data = $request->toArray();
+        try {
+            $data = $request->toArray();
+        } catch (\Throwable) {
+            return new JsonResponse(['error' => 'La requête d’envoi de test est invalide.'], 400);
+        }
+
         $recipient = trim((string) ($data['recipient'] ?? ''));
         $applicationId = (int) ($data['applicationId'] ?? 0);
 
@@ -113,18 +134,37 @@ final class GmailController
             return new JsonResponse(['error' => 'Sélectionne une candidature préparée.'], 400);
         }
 
+        if (!$this->store->isConnected()) {
+            return new JsonResponse(['error' => 'Gmail n’est pas connecté. Connecte Gmail avant de lancer le test.'], 409);
+        }
+
+        if (!$this->gmail->hasSendPermission()) {
+            return new JsonResponse([
+                'error' => 'Le droit gmail.send manque. Déconnecte puis reconnecte Gmail en acceptant l’autorisation d’envoi.',
+            ], 409);
+        }
+
         $application = $this->em->getRepository(Application::class)->find($applicationId);
         if (!$application instanceof Application) {
             return new JsonResponse(['error' => 'Candidature introuvable.'], 404);
         }
 
-        $email = $this->emailFactory->create($application);
-        $result = $this->gmail->sendEmail(
-            $recipient,
-            $email['subject'],
-            $email['body'],
-            $email['attachments'],
-        );
+        try {
+            $email = $this->emailFactory->create($application);
+        } catch (\Throwable $error) {
+            return new JsonResponse(['error' => $error->getMessage()], 422);
+        }
+
+        try {
+            $result = $this->gmail->sendEmail(
+                $recipient,
+                $email['subject'],
+                $email['body'],
+                $email['attachments'],
+            );
+        } catch (\Throwable $error) {
+            return new JsonResponse(['error' => $error->getMessage()], 502);
+        }
 
         return new JsonResponse([
             'sent' => true,

@@ -19,6 +19,9 @@ class Application
     #[ORM\Column(type: 'text')] private string $coverLetter = '';
     #[ORM\Column(length: 255, nullable: true)] private ?string $compensationAnswer = null;
     #[ORM\Column(length: 255, nullable: true)] private ?string $confirmationRef = null;
+    #[ORM\Column(length: 255, nullable: true)] private ?string $gmailMessageId = null;
+    #[ORM\Column(type: 'text', nullable: true)] private ?string $submissionError = null;
+    #[ORM\Column(nullable: true)] private ?\DateTimeImmutable $submissionAttemptedAt = null;
     #[ORM\Column] private \DateTimeImmutable $createdAt;
     #[ORM\Column] private \DateTimeImmutable $updatedAt;
 
@@ -31,17 +34,51 @@ class Application
 
     public function getId(): ?int { return $this->id; }
     public function getJobOffer(): JobOffer { return $this->jobOffer; }
+    public function getStatus(): string { return $this->status; }
+    public function getCvDocument(): ?CvDocument { return $this->cvDocument; }
+    public function getMessage(): string { return $this->message; }
+    public function getCoverLetter(): string { return $this->coverLetter; }
+    public function getSubmittedAt(): ?\DateTimeImmutable { return $this->submittedAt; }
 
     public function prepare(?CvDocument $cv, string $message, string $coverLetter, ?string $compensation): self
     {
+        if ($this->status === 'SUBMITTED') {
+            return $this;
+        }
+
         $this->cvDocument = $cv;
         $this->message = $message;
         $this->coverLetter = $coverLetter;
         $this->compensationAnswer = $compensation;
         $this->status = 'READY_TO_SUBMIT';
+        $this->submissionError = null;
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function markSubmissionAttempt(): void
+    {
+        $this->submissionAttemptedAt = new \DateTimeImmutable();
+        $this->submissionError = null;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function markSubmittedAutomatically(string $gmailMessageId): void
+    {
+        $this->channel = 'Gmail automatique';
+        $this->status = 'SUBMITTED';
+        $this->submittedAt = new \DateTimeImmutable();
+        $this->gmailMessageId = $gmailMessageId;
+        $this->confirmationRef = 'gmail:'.$gmailMessageId;
+        $this->submissionError = null;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function markSubmissionFailed(string $message): void
+    {
+        $this->submissionError = mb_substr(trim($message), 0, 4000);
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function fill(array $data): self
@@ -67,6 +104,10 @@ class Application
             $this->submittedAt = new \DateTimeImmutable();
         }
 
+        if ($this->status === 'SUBMITTED') {
+            $this->submissionError = null;
+        }
+
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
@@ -85,6 +126,9 @@ class Application
             'coverLetter' => $this->coverLetter,
             'compensationAnswer' => $this->compensationAnswer,
             'confirmationRef' => $this->confirmationRef,
+            'gmailMessageId' => $this->gmailMessageId,
+            'submissionError' => $this->submissionError,
+            'submissionAttemptedAt' => $this->submissionAttemptedAt?->format(DATE_ATOM),
             'createdAt' => $this->createdAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];

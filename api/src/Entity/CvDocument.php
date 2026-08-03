@@ -32,7 +32,9 @@ class CvDocument
     }
 
     public function getId(): ?int { return $this->id; }
+    public function getOriginalName(): string { return $this->originalName; }
     public function getStoredName(): string { return $this->storedName; }
+    public function getMimeType(): string { return $this->mimeType; }
     public function getLanguage(): string { return $this->language; }
     public function getTags(): array { return $this->tags; }
     public function isActive(): bool { return $this->active; }

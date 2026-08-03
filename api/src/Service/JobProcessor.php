@@ -15,7 +15,9 @@ final class JobProcessor
         private TjmCalculator $tjmCalculator,
         private SalaryExpectationCalculator $salaryCalculator,
         private CvSelector $cvSelector,
+        private ApplicationEmailExtractor $emailExtractor,
         private ApplicationPreparationService $preparation,
+        private AutomaticSubmissionService $automaticSubmission,
         private EntityManagerInterface $em,
     ) {}
 
@@ -25,6 +27,10 @@ final class JobProcessor
         $evaluation = $this->matching->evaluate($job, $settings);
         $reasons = $evaluation['reasons'];
         $hardRejected = $evaluation['hardRejected'];
+
+        if ($job->getApplicationEmail() === null) {
+            $job->setApplicationEmail($this->emailExtractor->extract($job->getTitle().' '.$job->getDescription()));
+        }
 
         $isFreelance = preg_match('/freelance|mission|portage|sous-traitance/i', $job->getContractType()) === 1;
         $hasAdvertisedTjm = $job->getTjmFixed() !== null || ($job->getTjmMin() !== null && $job->getTjmMax() !== null);
@@ -54,7 +60,8 @@ final class JobProcessor
         $this->em->flush();
 
         if ($status === 'PREPARED') {
-            $this->preparation->prepare($job, $profile);
+            $application = $this->preparation->prepare($job, $profile);
+            $this->automaticSubmission->submitIfEligible($application, $settings);
         }
     }
 }

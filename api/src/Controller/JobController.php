@@ -3,6 +3,7 @@ namespace App\Controller;
 
 use App\Entity\JobOffer;
 use App\Service\ApplicationPreparationService;
+use App\Service\AutomaticSubmissionService;
 use App\Service\JobProcessor;
 use App\Service\LocalDataService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -18,6 +19,7 @@ final class JobController
         private LocalDataService $data,
         private JobProcessor $processor,
         private ApplicationPreparationService $preparation,
+        private AutomaticSubmissionService $automaticSubmission,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -55,7 +57,10 @@ final class JobController
     #[Route('/{id}/prepare', methods: ['POST'])]
     public function prepare(JobOffer $job): JsonResponse
     {
+        $settings = $this->data->settings();
         $application = $this->preparation->prepare($job, $this->data->profile());
+        $this->automaticSubmission->submitIfEligible($application, $settings);
+
         return new JsonResponse($application->toArray());
     }
 

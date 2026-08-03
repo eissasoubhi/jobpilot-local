@@ -10,6 +10,7 @@ import type { Settings } from '@/lib/types';
 type Source = { name: string; url: string; category: string; mode: string };
 type GmailStatus = {
   connected: boolean;
+  sendPermission: boolean;
   configured: boolean;
   missingVariables: string[];
   redirectUri: string;
@@ -29,7 +30,7 @@ export default function SettingsPage() {
     const gmailError = parameters.get('gmail_error');
 
     if (gmailResult === 'connected') {
-      setMessage('Gmail est maintenant connecté.');
+      setMessage('Gmail est maintenant connecté. Les permissions accordées sont affichées ci-dessous.');
     }
 
     if (gmailError) {
@@ -88,7 +89,7 @@ export default function SettingsPage() {
   const disconnectGmail = async (): Promise<void> => {
     try {
       await api('/integrations/gmail/disconnect', { method: 'POST' });
-      setGmailStatus({ ...gmailStatus, connected: false });
+      setGmailStatus({ ...gmailStatus, connected: false, sendPermission: false });
       setMessage('Gmail a été déconnecté.');
       setError('');
     } catch (caughtError: unknown) {
@@ -100,7 +101,7 @@ export default function SettingsPage() {
     <>
       <PageHeader
         title="Paramètres"
-        description="Règles de recherche, score, rémunération et intégrations."
+        description="Règles de recherche, score, rémunération, envoi et intégrations."
         actions={
           <button className="btn" type="button" onClick={() => void save()}>
             Enregistrer
@@ -174,19 +175,31 @@ export default function SettingsPage() {
 
         <Card>
           <h2 className="section-title">Gmail</h2>
-          <p className="muted">Connexion OAuth en lecture seule. Aucun mot de passe n’est stocké.</p>
+          <p className="muted">Connexion OAuth. Aucun mot de passe n’est stocké.</p>
 
           {gmailStatus.connected ? (
             <div className="stack">
               <div className="actions">
                 <Badge tone="good">Connecté</Badge>
+                <Badge tone={gmailStatus.sendPermission ? 'good' : 'warn'}>
+                  {gmailStatus.sendPermission ? 'Lecture + envoi autorisés' : 'Lecture seule'}
+                </Badge>
                 <button className="btn secondary" type="button" onClick={() => void disconnectGmail()}>
                   Déconnecter
                 </button>
               </div>
-              <div className="notice">
-                JobPilot peut lire les alertes d’emploi et les réponses de recruteurs selon la requête Gmail configurée.
-              </div>
+              {gmailStatus.sendPermission ? (
+                <div className="notice">
+                  JobPilot peut lire les réponses et envoyer uniquement les candidatures éligibles par e-mail lorsque l’automatisation est activée.
+                </div>
+              ) : (
+                <div className="notice warning">
+                  <strong>L’autorisation d’envoi manque.</strong> Reconnecte Gmail pour accepter le nouveau droit d’envoi avant d’activer l’automatisation.
+                  <div style={{ marginTop: 10 }}>
+                    <a className="btn" href={gmailStatus.startUrl}>Reconnecter avec l’autorisation d’envoi</a>
+                  </div>
+                </div>
+              )}
             </div>
           ) : gmailStatus.configured ? (
             <div className="stack">
@@ -197,50 +210,80 @@ export default function SettingsPage() {
                 </a>
               </div>
               <div className="notice">
-                Après le clic, Google demandera une autorisation en lecture seule, puis te renverra automatiquement vers cette page.
+                Google demandera les permissions de lecture et d’envoi. L’envoi automatique restera désactivé tant que tu ne l’actives pas ci-dessous.
               </div>
             </div>
           ) : (
             <div className="stack">
-              <div className="actions">
-                <Badge tone="warn">Configuration Google requise</Badge>
-              </div>
+              <div className="actions"><Badge tone="warn">Configuration Google requise</Badge></div>
               <div className="notice warning">
                 <strong>Le bouton Gmail est désactivé car la configuration OAuth est incomplète.</strong>
-                <div style={{ marginTop: 8 }}>
-                  Variables manquantes dans <code>.env</code> :{' '}
-                  <code>{gmailStatus.missingVariables.join(', ')}</code>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  URI de redirection à déclarer exactement dans Google Cloud :{' '}
-                  <code>{gmailStatus.redirectUri}</code>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  Après avoir renseigné les variables, recrée le conteneur API pour activer le bouton.
-                </div>
+                <div style={{ marginTop: 8 }}>Variables manquantes dans <code>.env</code> : <code>{gmailStatus.missingVariables.join(', ')}</code></div>
+                <div style={{ marginTop: 8 }}>URI de redirection à déclarer exactement dans Google Cloud : <code>{gmailStatus.redirectUri}</code></div>
+                <div style={{ marginTop: 8 }}>Après avoir renseigné les variables, recrée le conteneur API pour activer le bouton.</div>
               </div>
-              <button className="btn" type="button" disabled title="Configuration Google incomplète">
-                Connecter Gmail
-              </button>
+              <button className="btn" type="button" disabled title="Configuration Google incomplète">Connecter Gmail</button>
             </div>
           )}
         </Card>
 
         <Card>
           <h2 className="section-title">Finalisation des candidatures</h2>
-          <label>
-            Parcours de finalisation
-            <select
-              value={settings.finalSubmissionMode}
-              onChange={(event) => set('finalSubmissionMode', event.target.value)}
-            >
-              <option value="ONE_CLICK">Guidé : ouvrir la plateforme puis confirmer dans JobPilot</option>
-              <option value="PREPARE_ONLY">Préparer uniquement, sans suivi de l’envoi</option>
-              <option value="AUTOMATIC_AUTHORIZED_ONLY">Automatique uniquement lorsqu’une API officielle le permet</option>
-            </select>
-          </label>
-          <div className="notice warning" style={{ marginTop: 14 }}>
-            <strong>Fonctionnement actuel :</strong> JobPilot prépare les éléments, mais ne soumet pas les formulaires externes. L’envoi se fait sur la plateforme d’origine, puis tu le confirmes dans JobPilot. Les CAPTCHA et protections anti-bot ne sont jamais contournés.
+          <div className="stack">
+            <label>
+              Parcours de finalisation
+              <select value={settings.finalSubmissionMode} onChange={(event) => set('finalSubmissionMode', event.target.value)}>
+                <option value="ONE_CLICK">Guidé : ouvrir la plateforme puis confirmer dans JobPilot</option>
+                <option value="PREPARE_ONLY">Préparer uniquement, sans suivi de l’envoi</option>
+                <option value="AUTOMATIC_AUTHORIZED_ONLY">Automatique uniquement par canal officiel autorisé</option>
+              </select>
+            </label>
+
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={settings.autoSubmitEnabled}
+                onChange={(event) => setSettings({
+                  ...settings,
+                  autoSubmitEnabled: event.target.checked,
+                  finalSubmissionMode: event.target.checked ? 'AUTOMATIC_AUTHORIZED_ONLY' : settings.finalSubmissionMode,
+                })}
+              />
+              Envoyer automatiquement les candidatures éligibles par Gmail
+            </label>
+
+            <div className="form-grid">
+              <label>
+                Score minimum pour l’envoi
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={settings.autoSubmitThreshold}
+                  onChange={(event) => set('autoSubmitThreshold', Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Limite quotidienne d’envois
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={settings.autoSubmitDailyLimit}
+                  onChange={(event) => set('autoSubmitDailyLimit', Number(event.target.value))}
+                />
+              </label>
+            </div>
+
+            <div className="notice warning">
+              <strong>Conditions obligatoires :</strong> score au moins égal au seuil, offre non exclue, adresse e-mail de candidature identifiable, CV sélectionné, Gmail connecté avec le droit d’envoi et aucune soumission précédente. Les formulaires LinkedIn, Indeed et sites carrière ne sont jamais contournés ni validés automatiquement.
+            </div>
+
+            {settings.autoSubmitEnabled && !gmailStatus.sendPermission && (
+              <div className="notice warning">
+                L’automatisation est configurée, mais aucun e-mail ne partira tant que Gmail n’aura pas l’autorisation d’envoi.
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -257,11 +300,7 @@ export default function SettingsPage() {
                   <td><strong>{source.name}</strong></td>
                   <td><Badge>{source.category}</Badge></td>
                   <td>{source.mode}</td>
-                  <td>
-                    <a className="btn secondary small" href={source.url} target="_blank" rel="noreferrer">
-                      Ouvrir
-                    </a>
-                  </td>
+                  <td><a className="btn secondary small" href={source.url} target="_blank" rel="noreferrer">Ouvrir</a></td>
                 </tr>
               ))}
             </tbody>

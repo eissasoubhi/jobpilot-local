@@ -49,5 +49,8 @@
   "salaryIncludesTotalCompensation": true,
   "cddSalaryRule": null,
   "autoPrepare": true,
-  "finalSubmissionMode": "ONE_CLICK"
+  "autoSubmitEnabled": false,
+  "autoSubmitThreshold": 60,
+  "autoSubmitDailyLimit": 5,
+  "finalSubmissionMode": "AUTOMATIC_AUTHORIZED_ONLY"
 }

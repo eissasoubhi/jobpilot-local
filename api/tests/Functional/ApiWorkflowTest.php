@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class ApiWorkflowTest extends WebTestCase
 {
@@ -21,6 +22,27 @@ final class ApiWorkflowTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $profile = $this->decodeResponse($client);
         self::assertSame('Aissa SOUBHI', $profile['fullName']);
+
+        $temporaryCv = tempnam(sys_get_temp_dir(), 'jobpilot-cv-');
+        self::assertIsString($temporaryCv);
+        file_put_contents($temporaryCv, "%PDF-1.4\n% JobPilot functional test CV\n%%EOF\n");
+        $uploadedCv = new UploadedFile($temporaryCv, 'cv-symfony-react-fr.pdf', 'application/pdf', null, true);
+
+        $client->request('POST', '/api/cvs', [
+            'name' => 'CV Symfony React FR',
+            'language' => 'fr',
+            'category' => 'Full-Stack',
+            'tags' => 'Symfony, React, PHP',
+            'defaultForLanguage' => 'true',
+        ], [
+            'file' => $uploadedCv,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $cv = $this->decodeResponse($client);
+        self::assertSame('CV Symfony React FR', $cv['name']);
+        self::assertSame('fr', $cv['language']);
+        self::assertSame(['Symfony', 'React', 'PHP'], $cv['tags']);
+        self::assertTrue($cv['defaultForLanguage']);
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',
@@ -40,6 +62,7 @@ final class ApiWorkflowTest extends WebTestCase
         self::assertSame(520, $job['proposedTjm']);
         self::assertSame('PREPARED', $job['status']);
         self::assertGreaterThanOrEqual(50, $job['score']);
+        self::assertSame('CV Symfony React FR', $job['recommendedCv']['name']);
 
         $client->request('GET', '/api/applications');
         self::assertResponseIsSuccessful();

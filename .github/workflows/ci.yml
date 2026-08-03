@@ -196,6 +196,10 @@ jobs:
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
 
+      - name: Build Next.js for browser tests
+        working-directory: web
+        run: npm run build
+
       - name: Prepare E2E database
         run: |
           cp -R initial-data api/initial-data
@@ -220,10 +224,10 @@ jobs:
           cat /tmp/jobpilot-api.log || true
           exit 1
 
-      - name: Start Next.js
+      - name: Start Next.js production server
         working-directory: web
         run: |
-          nohup npm run dev > /tmp/jobpilot-web.log 2>&1 &
+          nohup npm run start > /tmp/jobpilot-web.log 2>&1 &
           echo $! > /tmp/jobpilot-web.pid
 
       - name: Wait for Next.js

@@ -50,9 +50,26 @@ final class GmailService
             return false;
         }
 
-        $scopes = preg_split('/\s+/', trim((string) ($token['scope'] ?? ''))) ?: [];
+        if ($this->tokenHasScope($token, self::SEND_SCOPE)) {
+            return true;
+        }
 
-        return in_array(self::SEND_SCOPE, $scopes, true);
+        if ($this->tokenScopes($token) !== []) {
+            return false;
+        }
+
+        try {
+            $scopes = $this->resolveGrantedScopes($token);
+            if ($scopes !== []) {
+                $token['scope'] = implode(' ', $scopes);
+                $token['granted_scopes'] = $scopes;
+                $this->store->saveToken($token);
+            }
+
+            return in_array(self::SEND_SCOPE, $scopes, true);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function authorizationUrl(): string
@@ -92,9 +109,19 @@ final class GmailService
                 'grant_type' => 'authorization_code',
             ],
         ]);
+        $statusCode = $response->getStatusCode();
+        $token = $response->toArray(false);
 
-        $token = $response->toArray();
+        if ($statusCode >= 400) {
+            throw new \RuntimeException($this->oauthErrorMessage($token, 'Connexion Gmail refusée par Google.'));
+        }
+
         $token['created_at'] = time();
+        $scopes = $this->resolveGrantedScopes($token);
+        if ($scopes !== []) {
+            $token['scope'] = implode(' ', $scopes);
+            $token['granted_scopes'] = $scopes;
+        }
         $this->store->saveToken($token);
     }
 
@@ -108,24 +135,44 @@ final class GmailService
             throw new \InvalidArgumentException('Adresse e-mail de candidature invalide.');
         }
 
-        if (!$this->hasSendPermission()) {
-            throw new \RuntimeException('Gmail doit être reconnecté avec l’autorisation d’envoi.');
+        $token = $this->validToken();
+        if (!$this->tokenHasScope($token, self::SEND_SCOPE)) {
+            $scopes = $this->resolveGrantedScopes($token);
+            if ($scopes !== []) {
+                $token['scope'] = implode(' ', $scopes);
+                $token['granted_scopes'] = $scopes;
+                $this->store->saveToken($token);
+            }
+
+            if (!in_array(self::SEND_SCOPE, $scopes, true)) {
+                throw new \RuntimeException('Gmail doit être reconnecté avec l’autorisation d’envoi.');
+            }
         }
 
-        $token = $this->validToken();
         $mime = $this->mimeMessage($to, $subject, $body, $attachments);
         $raw = rtrim(strtr(base64_encode($mime), '+/', '-_'), '=');
-        $response = $this->http->request('POST', 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send', [
-            'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
-            'json' => ['raw' => $raw],
-        ])->toArray();
 
-        $id = trim((string) ($response['id'] ?? ''));
+        try {
+            $response = $this->http->request('POST', 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send', [
+                'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
+                'json' => ['raw' => $raw],
+            ]);
+            $statusCode = $response->getStatusCode();
+            $data = $response->toArray(false);
+        } catch (\Throwable $error) {
+            throw new \RuntimeException('Impossible de joindre Gmail : '.$error->getMessage(), 0, $error);
+        }
+
+        if ($statusCode >= 400) {
+            throw new \RuntimeException($this->gmailErrorMessage($statusCode, $data));
+        }
+
+        $id = trim((string) ($data['id'] ?? ''));
         if ($id === '') {
             throw new \RuntimeException('Gmail n’a retourné aucun identifiant de message.');
         }
 
-        return ['id' => $id, 'threadId' => isset($response['threadId']) ? (string) $response['threadId'] : null];
+        return ['id' => $id, 'threadId' => isset($data['threadId']) ? (string) $data['threadId'] : null];
     }
 
     /**
@@ -243,18 +290,119 @@ final class GmailService
         }
 
         $this->requireConfiguration();
-        $refreshed = $this->http->request('POST', 'https://oauth2.googleapis.com/token', [
+        $response = $this->http->request('POST', 'https://oauth2.googleapis.com/token', [
             'body' => [
                 'client_id' => $this->env('GOOGLE_CLIENT_ID'),
                 'client_secret' => $this->env('GOOGLE_CLIENT_SECRET'),
                 'refresh_token' => $token['refresh_token'],
                 'grant_type' => 'refresh_token',
             ],
-        ])->toArray();
+        ]);
+        $statusCode = $response->getStatusCode();
+        $refreshed = $response->toArray(false);
+        if ($statusCode >= 400) {
+            throw new \RuntimeException($this->oauthErrorMessage($refreshed, 'Le renouvellement Gmail a échoué.'));
+        }
+
         $token = array_merge($token, $refreshed, ['created_at' => time()]);
+        $scopes = $this->tokenScopes($token);
+        if ($scopes !== []) {
+            $token['granted_scopes'] = $scopes;
+        }
         $this->store->saveToken($token);
 
         return $token;
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     * @return list<string>
+     */
+    private function resolveGrantedScopes(array $token): array
+    {
+        $scopes = $this->tokenScopes($token);
+        if ($scopes !== []) {
+            return $scopes;
+        }
+
+        $accessToken = trim((string) ($token['access_token'] ?? ''));
+        if ($accessToken === '') {
+            return [];
+        }
+
+        $response = $this->http->request('GET', 'https://oauth2.googleapis.com/tokeninfo', [
+            'query' => ['access_token' => $accessToken],
+        ]);
+        if ($response->getStatusCode() >= 400) {
+            return [];
+        }
+
+        return $this->tokenScopes($response->toArray(false));
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     * @return list<string>
+     */
+    private function tokenScopes(array $token): array
+    {
+        $rawScopes = $token['granted_scopes'] ?? $token['scope'] ?? [];
+        if (is_string($rawScopes)) {
+            $rawScopes = preg_split('/\s+/', trim($rawScopes)) ?: [];
+        }
+
+        if (!is_array($rawScopes)) {
+            return [];
+        }
+
+        $scopes = [];
+        foreach ($rawScopes as $scope) {
+            if (is_string($scope) && trim($scope) !== '') {
+                $scopes[] = trim($scope);
+            }
+        }
+
+        return array_values(array_unique($scopes));
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     */
+    private function tokenHasScope(array $token, string $scope): bool
+    {
+        return in_array($scope, $this->tokenScopes($token), true);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function gmailErrorMessage(int $statusCode, array $data): string
+    {
+        $message = trim((string) ($data['error']['message'] ?? $data['error_description'] ?? ''));
+        $reason = trim((string) ($data['error']['errors'][0]['reason'] ?? ''));
+
+        if ($statusCode === 401) {
+            return 'Gmail a refusé le jeton. Déconnecte puis reconnecte Gmail.';
+        }
+
+        if ($statusCode === 403 && (
+            str_contains(mb_strtolower($message), 'scope')
+            || str_contains(mb_strtolower($reason), 'permission')
+        )) {
+            return 'Gmail refuse l’envoi car l’autorisation gmail.send manque. Déconnecte puis reconnecte Gmail en acceptant le droit d’envoi.';
+        }
+
+        return 'Envoi Gmail impossible'.($message !== '' ? ' : '.$message : ' (HTTP '.$statusCode.').');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function oauthErrorMessage(array $data, string $fallback): string
+    {
+        $message = trim((string) ($data['error_description'] ?? $data['error']['message'] ?? ''));
+
+        return $message !== '' ? $message : $fallback;
     }
 
     /**

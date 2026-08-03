@@ -164,20 +164,20 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <h2 className="section-title">Automatisation</h2>
+          <h2 className="section-title">Finalisation des candidatures</h2>
           <label>
-            Mode d’envoi final
+            Parcours de finalisation
             <select
               value={settings.finalSubmissionMode}
               onChange={(event) => set('finalSubmissionMode', event.target.value)}
             >
-              <option value="ONE_CLICK">Confirmation en un clic</option>
-              <option value="PREPARE_ONLY">Préparer uniquement</option>
-              <option value="AUTOMATIC_AUTHORIZED_ONLY">Automatique uniquement via API autorisée</option>
+              <option value="ONE_CLICK">Guidé : ouvrir la plateforme puis confirmer dans JobPilot</option>
+              <option value="PREPARE_ONLY">Préparer uniquement, sans suivi de l’envoi</option>
+              <option value="AUTOMATIC_AUTHORIZED_ONLY">Automatique uniquement lorsqu’une API officielle le permet</option>
             </select>
           </label>
           <div className="notice warning" style={{ marginTop: 14 }}>
-            Les CAPTCHA et protections anti-bot ne sont jamais contournés.
+            <strong>Fonctionnement actuel :</strong> JobPilot prépare les éléments, mais ne soumet pas les formulaires externes. L’envoi se fait sur la plateforme d’origine, puis tu le confirmes dans JobPilot. Les CAPTCHA et protections anti-bot ne sont jamais contournés.
           </div>
         </Card>
       </div>

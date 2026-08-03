@@ -15,6 +15,8 @@ export default function ApplicationsPage() {
   const [items, setItems] = useState<Application[] | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -29,14 +31,19 @@ export default function ApplicationsPage() {
     void load();
   }, [load]);
 
-  const save = async (): Promise<void> => {
+  const save = async (
+    statusOverride?: string,
+    successMessage = 'Modifications enregistrées.',
+  ): Promise<void> => {
     if (selected === null) return;
+
+    setSaving(true);
 
     try {
       const updated = await api<Application>(`/applications/${selected.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          status: selected.status,
+          status: statusOverride ?? selected.status,
           message: selected.message,
           coverLetter: selected.coverLetter,
           compensationAnswer: selected.compensationAnswer,
@@ -44,17 +51,52 @@ export default function ApplicationsPage() {
         }),
       });
       setSelected(updated);
+      setNotice(successMessage);
+      setError('');
       await load();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const confirmSubmission = async (): Promise<void> => {
+    if (selected === null || selected.status === 'SUBMITTED') return;
+
+    const confirmed = window.confirm(
+      'Confirme uniquement après avoir réellement envoyé la candidature sur la plateforme d’origine. JobPilot va enregistrer le suivi, mais il n’envoie pas la candidature à ta place.',
+    );
+
+    if (!confirmed) return;
+
+    await save(
+      'SUBMITTED',
+      'Candidature marquée comme envoyée. La date d’envoi a été enregistrée dans JobPilot.',
+    );
+  };
+
+  const copyText = async (label: string, value: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice(`${label} copié dans le presse-papiers.`);
+      setError('');
+    } catch {
+      setError(`Impossible de copier ${label.toLowerCase()}.`);
+    }
+  };
+
+  const openApplication = (application: Application): void => {
+    setSelected(application);
+    setNotice('');
+    setError('');
   };
 
   return (
     <>
       <PageHeader
         title="Candidatures"
-        description="Vérifie l’offre concernée, relis la candidature, puis confirme l’envoi depuis la plateforme d’origine."
+        description="Vérifie, adapte et envoie chaque candidature depuis la plateforme d’origine, puis enregistre son suivi dans JobPilot."
       />
       {error !== '' && <ErrorBox message={error} />}
 
@@ -74,7 +116,7 @@ export default function ApplicationsPage() {
                 </div>
                 <div className="actions" style={{ marginTop: 8 }}>
                   <Badge tone={application.status === 'SUBMITTED' ? 'good' : 'blue'}>
-                    {application.status}
+                    {application.status === 'SUBMITTED' ? 'ENVOYÉE' : application.status}
                   </Badge>
                   <Badge tone="blue">Score {application.jobOffer.score}</Badge>
                   <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
@@ -87,9 +129,9 @@ export default function ApplicationsPage() {
               <button
                 className="btn secondary small"
                 type="button"
-                onClick={() => setSelected(application)}
+                onClick={() => openApplication(application)}
               >
-                Examiner la candidature
+                {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
               </button>
             </div>
           ))
@@ -106,14 +148,22 @@ export default function ApplicationsPage() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <PageHeader
-              title="Candidature préparée"
-              description="Contrôle d’abord l’offre concernée avant de modifier ou confirmer la candidature."
+              title={selected.status === 'SUBMITTED' ? 'Suivi de la candidature' : 'Candidature préparée'}
+              description="JobPilot prépare les éléments et suit l’avancement. L’envoi réel se fait sur la plateforme de l’annonce."
               actions={
                 <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
                   Fermer
                 </button>
               }
             />
+
+            {notice !== '' && <div className="notice" style={{ marginBottom: 14 }}>{notice}</div>}
+            {error !== '' && <ErrorBox message={error} />}
+
+            <div className="notice warning" style={{ marginBottom: 14 }}>
+              <strong>JobPilot n’envoie pas automatiquement la candidature.</strong>{' '}
+              Il prépare le CV, le message et la lettre. Tu dois ouvrir le site d’origine, compléter ou coller les informations, puis valider l’envoi sur ce site.
+            </div>
 
             <section className="card" aria-labelledby="application-job-title">
               <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -145,18 +195,6 @@ export default function ApplicationsPage() {
               </div>
 
               <div className="actions" style={{ marginTop: 14 }}>
-                {selected.jobOffer.sourceUrl ? (
-                  <a
-                    className="btn secondary small"
-                    href={selected.jobOffer.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ouvrir l’offre originale
-                  </a>
-                ) : (
-                  <span className="small muted">Aucun lien vers l’annonce originale n’est disponible.</span>
-                )}
                 {selected.cvDocument && (
                   <a
                     className="btn secondary small"
@@ -179,13 +217,66 @@ export default function ApplicationsPage() {
               </details>
             </section>
 
-            <div className="notice warning" style={{ marginTop: 14 }}>
-              Vérifie le poste, l’entreprise, la rémunération et le CV avant de marquer la candidature comme envoyée.
-            </div>
-
             <div className="stack" style={{ marginTop: 16 }}>
+              <div>
+                <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                  <strong className="small">Message</strong>
+                  <button
+                    className="btn secondary small"
+                    type="button"
+                    onClick={() => void copyText('Message', selected.message)}
+                  >
+                    Copier le message
+                  </button>
+                </div>
+                <textarea
+                  aria-label="Message"
+                  value={selected.message}
+                  onChange={(event) => setSelected({ ...selected, message: event.target.value })}
+                />
+              </div>
+
+              <div>
+                <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                  <strong className="small">Lettre de motivation</strong>
+                  <button
+                    className="btn secondary small"
+                    type="button"
+                    onClick={() => void copyText('Lettre de motivation', selected.coverLetter)}
+                  >
+                    Copier la lettre
+                  </button>
+                </div>
+                <textarea
+                  aria-label="Lettre de motivation"
+                  style={{ minHeight: 200 }}
+                  value={selected.coverLetter}
+                  onChange={(event) => setSelected({ ...selected, coverLetter: event.target.value })}
+                />
+              </div>
+
               <label>
-                Statut
+                Réponse rémunération
+                <input
+                  value={selected.compensationAnswer ?? ''}
+                  onChange={(event) =>
+                    setSelected({ ...selected, compensationAnswer: event.target.value })
+                  }
+                />
+              </label>
+
+              <label>
+                Confirmation / référence obtenue après l’envoi
+                <input
+                  value={selected.confirmationRef ?? ''}
+                  onChange={(event) =>
+                    setSelected({ ...selected, confirmationRef: event.target.value })
+                  }
+                />
+              </label>
+
+              <label>
+                Statut de suivi dans JobPilot
                 <select
                   value={selected.status}
                   onChange={(event) => setSelected({ ...selected, status: event.target.value })}
@@ -197,44 +288,64 @@ export default function ApplicationsPage() {
                   <option value="REJECTED">Refusée</option>
                   <option value="OFFER_RECEIVED">Offre reçue</option>
                 </select>
+                <span className="small muted">Ce statut sert uniquement au suivi et ne déclenche aucun envoi.</span>
               </label>
-              <label>
-                Message
-                <textarea
-                  value={selected.message}
-                  onChange={(event) => setSelected({ ...selected, message: event.target.value })}
-                />
-              </label>
-              <label>
-                Lettre de motivation
-                <textarea
-                  style={{ minHeight: 200 }}
-                  value={selected.coverLetter}
-                  onChange={(event) => setSelected({ ...selected, coverLetter: event.target.value })}
-                />
-              </label>
-              <label>
-                Réponse rémunération
-                <input
-                  value={selected.compensationAnswer ?? ''}
-                  onChange={(event) =>
-                    setSelected({ ...selected, compensationAnswer: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Confirmation / référence
-                <input
-                  value={selected.confirmationRef ?? ''}
-                  onChange={(event) =>
-                    setSelected({ ...selected, confirmationRef: event.target.value })
-                  }
-                />
-              </label>
-              <button className="btn" type="button" onClick={() => void save()}>
-                Enregistrer les modifications
-              </button>
             </div>
+
+            <section className="card" aria-labelledby="submission-steps-title" style={{ marginTop: 16 }}>
+              <h2 id="submission-steps-title" className="section-title">Finaliser la candidature</h2>
+              <div className="stack">
+                <div>
+                  <strong>1. Enregistre tes modifications</strong>
+                  <div className="small muted">Le message, la lettre, la rémunération et la référence restent sauvegardés localement.</div>
+                </div>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void save(undefined, 'Modifications enregistrées. Tu peux maintenant postuler sur la plateforme d’origine.')}
+                >
+                  {saving ? 'Enregistrement…' : 'Étape 1 — Enregistrer mes modifications'}
+                </button>
+
+                <div>
+                  <strong>2. Envoie la candidature sur le site de l’annonce</strong>
+                  <div className="small muted">Une nouvelle fenêtre s’ouvre. JobPilot ne remplit ni ne valide automatiquement le formulaire externe.</div>
+                </div>
+                {selected.jobOffer.sourceUrl ? (
+                  <a
+                    className="btn"
+                    href={selected.jobOffer.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setNotice('Plateforme ouverte dans un nouvel onglet. Reviens ici après avoir réellement validé l’envoi.')}
+                  >
+                    Étape 2 — Ouvrir la plateforme pour postuler
+                  </a>
+                ) : (
+                  <div className="notice warning">
+                    Aucun lien vers l’annonce originale n’est disponible. Recherche l’offre manuellement avec son titre et son entreprise, puis utilise les éléments préparés ci-dessus.
+                  </div>
+                )}
+
+                <div>
+                  <strong>3. Confirme le suivi après l’envoi réel</strong>
+                  <div className="small muted">Cette action ne soumet rien : elle marque simplement la candidature comme envoyée et enregistre la date.</div>
+                </div>
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={saving || selected.status === 'SUBMITTED'}
+                  onClick={() => void confirmSubmission()}
+                >
+                  {selected.status === 'SUBMITTED'
+                    ? 'Candidature déjà marquée comme envoyée'
+                    : saving
+                      ? 'Enregistrement…'
+                      : 'Étape 3 — J’ai envoyé la candidature'}
+                </button>
+              </div>
+            </section>
           </div>
         </div>
       )}

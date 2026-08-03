@@ -11,6 +11,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class GmailService
 {
     private const DEFAULT_REDIRECT_URI = 'http://localhost:8080/api/integrations/gmail/callback';
+    private const READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+    private const SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 
     public function __construct(
         private HttpClientInterface $http,
@@ -41,6 +43,18 @@ final class GmailService
         ];
     }
 
+    public function hasSendPermission(): bool
+    {
+        $token = $this->store->getToken();
+        if ($token === null) {
+            return false;
+        }
+
+        $scopes = preg_split('/\s+/', trim((string) ($token['scope'] ?? ''))) ?: [];
+
+        return in_array(self::SEND_SCOPE, $scopes, true);
+    }
+
     public function authorizationUrl(): string
     {
         $configuration = $this->requireConfiguration();
@@ -48,7 +62,7 @@ final class GmailService
             'client_id' => $this->env('GOOGLE_CLIENT_ID'),
             'redirect_uri' => $configuration['redirectUri'],
             'response_type' => 'code',
-            'scope' => 'https://www.googleapis.com/auth/gmail.readonly',
+            'scope' => self::READ_SCOPE.' '.self::SEND_SCOPE,
             'access_type' => 'offline',
             'include_granted_scopes' => 'true',
             'prompt' => 'consent',
@@ -82,6 +96,36 @@ final class GmailService
         $token = $response->toArray();
         $token['created_at'] = time();
         $this->store->saveToken($token);
+    }
+
+    /**
+     * @param list<array{path: string, filename: string, mimeType: string}> $attachments
+     * @return array{id: string, threadId: string|null}
+     */
+    public function sendEmail(string $to, string $subject, string $body, array $attachments = []): array
+    {
+        if (filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+            throw new \InvalidArgumentException('Adresse e-mail de candidature invalide.');
+        }
+
+        if (!$this->hasSendPermission()) {
+            throw new \RuntimeException('Gmail doit être reconnecté avec l’autorisation d’envoi.');
+        }
+
+        $token = $this->validToken();
+        $mime = $this->mimeMessage($to, $subject, $body, $attachments);
+        $raw = rtrim(strtr(base64_encode($mime), '+/', '-_'), '=');
+        $response = $this->http->request('POST', 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send', [
+            'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
+            'json' => ['raw' => $raw],
+        ])->toArray();
+
+        $id = trim((string) ($response['id'] ?? ''));
+        if ($id === '') {
+            throw new \RuntimeException('Gmail n’a retourné aucun identifiant de message.');
+        }
+
+        return ['id' => $id, 'threadId' => isset($response['threadId']) ? (string) $response['threadId'] : null];
     }
 
     /**
@@ -134,6 +178,52 @@ final class GmailService
     }
 
     /**
+     * @param list<array{path: string, filename: string, mimeType: string}> $attachments
+     */
+    private function mimeMessage(string $to, string $subject, string $body, array $attachments): string
+    {
+        $boundary = 'jobpilot_'.bin2hex(random_bytes(16));
+        $lines = [
+            'To: '.$to,
+            'Subject: =?UTF-8?B?'.base64_encode($subject).'?=',
+            'MIME-Version: 1.0',
+            'Content-Type: multipart/mixed; boundary="'.$boundary.'"',
+            '',
+            '--'.$boundary,
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            rtrim(chunk_split(base64_encode($body), 76, "\r\n")),
+        ];
+
+        foreach ($attachments as $attachment) {
+            $path = $attachment['path'];
+            if (!is_file($path) || !is_readable($path)) {
+                throw new \RuntimeException('Le CV sélectionné est introuvable ou illisible.');
+            }
+
+            $content = file_get_contents($path);
+            if ($content === false) {
+                throw new \RuntimeException('Impossible de lire le CV sélectionné.');
+            }
+
+            $filename = str_replace(["\r", "\n"], '', $attachment['filename']);
+            $mimeType = trim($attachment['mimeType']) !== '' ? $attachment['mimeType'] : 'application/octet-stream';
+            $lines[] = '--'.$boundary;
+            $lines[] = 'Content-Type: '.$mimeType;
+            $lines[] = "Content-Disposition: attachment; filename*=UTF-8''".rawurlencode($filename);
+            $lines[] = 'Content-Transfer-Encoding: base64';
+            $lines[] = '';
+            $lines[] = rtrim(chunk_split(base64_encode($content), 76, "\r\n"));
+        }
+
+        $lines[] = '--'.$boundary.'--';
+        $lines[] = '';
+
+        return implode("\r\n", $lines);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validToken(): array
@@ -152,7 +242,7 @@ final class GmailService
             throw new \RuntimeException('Le jeton Gmail a expiré. Reconnectez Gmail.');
         }
 
-        $configuration = $this->requireConfiguration();
+        $this->requireConfiguration();
         $refreshed = $this->http->request('POST', 'https://oauth2.googleapis.com/token', [
             'body' => [
                 'client_id' => $this->env('GOOGLE_CLIENT_ID'),

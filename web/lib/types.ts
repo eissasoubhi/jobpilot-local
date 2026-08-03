@@ -10,14 +10,15 @@ export type Settings = {
   matchingThreshold: number; defaultIdfTjm: number; defaultOutsideIdfTjm: number;
   defaultRemoteTjm: number; minimumFreelanceTjm: number; maximumTjm: number;
   minimumCdiSalary: number; salaryIncludesTotalCompensation: boolean; cddSalaryRule?: string | null;
-  autoPrepare: boolean; finalSubmissionMode: string;
+  autoPrepare: boolean; autoSubmitEnabled: boolean; autoSubmitThreshold: number;
+  autoSubmitDailyLimit: number; finalSubmissionMode: string;
 };
 
 export type Cv = { id: number; name: string; originalName: string; language: string; category: string; tags: string[]; active: boolean; defaultForLanguage: boolean; size: number; downloadUrl: string };
 
 export type Job = {
   id: number; source: string; sourceUrl?: string; title: string; company: string; clientName?: string;
-  location: string; contractType: string; workMode: string; language: string; description: string;
+  applicationEmail?: string; location: string; contractType: string; workMode: string; language: string; description: string;
   publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
   tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;
   score: number; scoreReasons: string[]; status: string; recommendedCv?: Cv;
@@ -34,6 +35,9 @@ export type Application = {
   coverLetter: string;
   compensationAnswer?: string;
   confirmationRef?: string;
+  gmailMessageId?: string;
+  submissionError?: string;
+  submissionAttemptedAt?: string;
   updatedAt: string;
 };
 

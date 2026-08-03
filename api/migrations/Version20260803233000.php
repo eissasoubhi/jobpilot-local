@@ -16,9 +16,14 @@ final class Version20260803233000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // Defaults make adding non-null columns safe for existing rows. They are
+        // removed immediately because the Doctrine mapping owns future defaults.
         $this->addSql('ALTER TABLE user_settings ADD auto_submit_enabled BOOLEAN DEFAULT FALSE NOT NULL');
         $this->addSql('ALTER TABLE user_settings ADD auto_submit_threshold INT DEFAULT 60 NOT NULL');
         $this->addSql('ALTER TABLE user_settings ADD auto_submit_daily_limit INT DEFAULT 5 NOT NULL');
+        $this->addSql('ALTER TABLE user_settings ALTER auto_submit_enabled DROP DEFAULT');
+        $this->addSql('ALTER TABLE user_settings ALTER auto_submit_threshold DROP DEFAULT');
+        $this->addSql('ALTER TABLE user_settings ALTER auto_submit_daily_limit DROP DEFAULT');
         $this->addSql('ALTER TABLE job_offer ADD application_email VARCHAR(255) DEFAULT NULL');
         $this->addSql('ALTER TABLE application ADD gmail_message_id VARCHAR(255) DEFAULT NULL');
         $this->addSql('ALTER TABLE application ADD submission_error TEXT DEFAULT NULL');

@@ -20,6 +20,9 @@ final class GmailIntegrationTest extends WebTestCase
         $status = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
 
         self::assertFalse($status['configured']);
+        self::assertFalse($status['connected']);
+        self::assertFalse($status['sendPermission']);
+        self::assertSame('Gmail n’est pas connecté.', $status['sendPermissionMessage']);
         self::assertContains('GOOGLE_CLIENT_ID', $status['missingVariables']);
         self::assertContains('GOOGLE_CLIENT_SECRET', $status['missingVariables']);
         self::assertSame(
@@ -63,5 +66,41 @@ final class GmailIntegrationTest extends WebTestCase
         self::assertIsString($content);
         $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         self::assertSame('Adresse e-mail de test invalide.', $response['error']);
+    }
+
+    public function testTestSendExplainsThatGmailMustBeConnected(): void
+    {
+        $client = static::createClient();
+
+        $client->jsonRequest('POST', '/api/integrations/gmail/test-send', [
+            'recipient' => 'destination@example.com',
+            'applicationId' => 1,
+        ]);
+
+        self::assertResponseStatusCodeSame(409);
+        $content = $client->getResponse()->getContent();
+        self::assertIsString($content);
+        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(
+            'Gmail n’est pas connecté. Connecte Gmail avant de lancer le test.',
+            $response['error'],
+        );
+    }
+
+    public function testTestSendRejectsMalformedJsonWithAJsonError(): void
+    {
+        $client = static::createClient();
+        $client->request(
+            'POST',
+            '/api/integrations/gmail/test-send',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: '{invalid-json',
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $content = $client->getResponse()->getContent();
+        self::assertIsString($content);
+        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('La requête d’envoi de test est invalide.', $response['error']);
     }
 }

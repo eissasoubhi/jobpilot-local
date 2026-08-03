@@ -11,6 +11,7 @@ type Source = { name: string; url: string; category: string; mode: string };
 type GmailStatus = {
   connected: boolean;
   sendPermission: boolean;
+  sendPermissionMessage?: string | null;
   configured: boolean;
   missingVariables: string[];
   redirectUri: string;
@@ -36,6 +37,10 @@ function applicationLabel(application: Application): string {
   return `${application.jobOffer.title} — ${company} — score ${application.jobOffer.score}`;
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
@@ -47,6 +52,7 @@ export default function SettingsPage() {
   const [testApplicationId, setTestApplicationId] = useState('');
   const [emailPreview, setEmailPreview] = useState<EmailPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [testRefreshing, setTestRefreshing] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testError, setTestError] = useState('');
   const [testMessage, setTestMessage] = useState('');
@@ -76,13 +82,20 @@ export default function SettingsPage() {
       api<Settings>('/settings'),
       api<Source[]>('/settings/sources'),
       api<GmailStatus>('/integrations/gmail/status'),
-      api<Application[]>('/applications'),
     ])
-      .then(([loadedSettings, loadedSources, loadedGmailStatus, loadedApplications]) => {
+      .then(([loadedSettings, loadedSources, loadedGmailStatus]) => {
         if (!active) return;
         setSettings(loadedSettings);
         setSources(loadedSources);
         setGmailStatus(loadedGmailStatus);
+      })
+      .catch((caughtError: unknown) => {
+        if (active) setError(getErrorMessage(caughtError));
+      });
+
+    void api<Application[]>('/applications')
+      .then((loadedApplications) => {
+        if (!active) return;
         setApplications(loadedApplications);
         setTestApplicationId((current) => {
           if (current !== '') return current;
@@ -91,7 +104,7 @@ export default function SettingsPage() {
         });
       })
       .catch((caughtError: unknown) => {
-        if (active) setError(getErrorMessage(caughtError));
+        if (active) setTestError(`Chargement des candidatures impossible : ${getErrorMessage(caughtError)}`);
       });
 
     return () => {
@@ -102,13 +115,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (testApplicationId === '') {
       setEmailPreview(null);
-      setTestError('');
       return;
     }
 
     let active = true;
     setPreviewLoading(true);
     setTestError('');
+    setTestMessage('');
 
     void api<EmailPreview>(`/integrations/gmail/test-preview/${testApplicationId}`)
       .then((preview) => {
@@ -133,6 +146,19 @@ export default function SettingsPage() {
   }
 
   const testableApplications = applications.filter((application) => application.cvDocument != null);
+  const testRecipientValid = isValidEmail(testRecipient);
+  const testBlocker = (() => {
+    if (!gmailStatus.connected) return 'Connecte Gmail avant de lancer un test.';
+    if (!gmailStatus.sendPermission) {
+      return gmailStatus.sendPermissionMessage ?? 'Reconnecte Gmail avec le droit gmail.send.';
+    }
+    if (testableApplications.length === 0) return 'Prépare une candidature avec un CV sélectionné.';
+    if (testApplicationId === '') return 'Sélectionne une candidature.';
+    if (previewLoading) return 'L’aperçu du mail est en cours de préparation.';
+    if (emailPreview === null) return 'L’aperçu du mail n’est pas disponible.';
+    if (!testRecipientValid) return 'Saisis une adresse e-mail de destination valide.';
+    return null;
+  })();
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]): void => {
     setSettings({ ...settings, [key]: value });
@@ -154,7 +180,12 @@ export default function SettingsPage() {
   const disconnectGmail = async (): Promise<void> => {
     try {
       await api('/integrations/gmail/disconnect', { method: 'POST' });
-      setGmailStatus({ ...gmailStatus, connected: false, sendPermission: false });
+      setGmailStatus({
+        ...gmailStatus,
+        connected: false,
+        sendPermission: false,
+        sendPermissionMessage: 'Gmail n’est pas connecté.',
+      });
       setMessage('Gmail a été déconnecté.');
       setError('');
     } catch (caughtError: unknown) {
@@ -162,8 +193,41 @@ export default function SettingsPage() {
     }
   };
 
+  const refreshTestData = async (): Promise<void> => {
+    setTestRefreshing(true);
+    setTestError('');
+    setTestMessage('');
+
+    try {
+      const [loadedGmailStatus, loadedApplications] = await Promise.all([
+        api<GmailStatus>('/integrations/gmail/status'),
+        api<Application[]>('/applications'),
+      ]);
+      setGmailStatus(loadedGmailStatus);
+      setApplications(loadedApplications);
+
+      const currentStillExists = loadedApplications.some(
+        (application) => String(application.id) === testApplicationId && application.cvDocument != null,
+      );
+      if (!currentStillExists) {
+        const firstTestable = loadedApplications.find((application) => application.cvDocument != null);
+        setTestApplicationId(firstTestable ? String(firstTestable.id) : '');
+        setEmailPreview(null);
+      }
+
+      setTestMessage('Diagnostic Gmail et candidatures actualisés.');
+    } catch (caughtError: unknown) {
+      setTestError(getErrorMessage(caughtError));
+    } finally {
+      setTestRefreshing(false);
+    }
+  };
+
   const sendTestEmail = async (): Promise<void> => {
-    if (emailPreview === null || testRecipient.trim() === '') return;
+    if (testBlocker !== null || emailPreview === null) {
+      setTestError(testBlocker ?? 'Le test n’est pas prêt.');
+      return;
+    }
 
     const confirmed = window.confirm(
       `Envoyer maintenant ce mail réel à ${testRecipient.trim()} avec le sujet « ${emailPreview.subject} » ? Le statut de la candidature ne sera pas modifié.`,
@@ -289,7 +353,8 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="notice warning">
-                  <strong>L’autorisation d’envoi manque.</strong> Reconnecte Gmail pour accepter le nouveau droit d’envoi avant d’activer l’automatisation.
+                  <strong>L’autorisation d’envoi manque.</strong>{' '}
+                  {gmailStatus.sendPermissionMessage ?? 'Reconnecte Gmail pour accepter le nouveau droit d’envoi.'}
                   <div style={{ marginTop: 10 }}>
                     <a className="btn" href={gmailStatus.startUrl}>Reconnecter avec l’autorisation d’envoi</a>
                   </div>
@@ -331,13 +396,29 @@ export default function SettingsPage() {
             {testMessage !== '' && <div className="notice">{testMessage}</div>}
             {testError !== '' && <ErrorBox message={testError} />}
 
+            <div className="actions">
+              <button
+                className="btn secondary small"
+                type="button"
+                disabled={testRefreshing || testSending}
+                onClick={() => void refreshTestData()}
+              >
+                {testRefreshing ? 'Actualisation…' : 'Actualiser le diagnostic'}
+              </button>
+            </div>
+
             <label>
               Adresse e-mail de destination
               <input
                 type="email"
                 placeholder="mon-adresse-de-test@example.com"
                 value={testRecipient}
-                onChange={(event) => setTestRecipient(event.target.value)}
+                aria-invalid={testRecipient !== '' && !testRecipientValid}
+                onChange={(event) => {
+                  setTestRecipient(event.target.value);
+                  setTestError('');
+                  setTestMessage('');
+                }}
               />
             </label>
 
@@ -380,21 +461,16 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {!gmailStatus.sendPermission && (
-              <div className="notice warning">
-                Reconnecte Gmail avec l’autorisation d’envoi avant de lancer le test.
+            {testBlocker !== null && !testSending && (
+              <div className="notice warning" data-testid="email-test-blocker">
+                <strong>Test non prêt :</strong> {testBlocker}
               </div>
             )}
 
             <button
               className="btn"
               type="button"
-              disabled={
-                testSending
-                || !gmailStatus.sendPermission
-                || emailPreview === null
-                || testRecipient.trim() === ''
-              }
+              disabled={testSending || testBlocker !== null}
               onClick={() => void sendTestEmail()}
             >
               {testSending ? 'Envoi du test…' : 'Envoyer le mail de test'}

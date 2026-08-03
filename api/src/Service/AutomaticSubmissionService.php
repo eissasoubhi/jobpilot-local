@@ -13,7 +13,7 @@ final class AutomaticSubmissionService
     public function __construct(
         private EntityManagerInterface $em,
         private GmailService $gmail,
-        private CvStorage $cvStorage,
+        private ApplicationEmailFactory $emailFactory,
     ) {}
 
     /**
@@ -44,8 +44,7 @@ final class AutomaticSubmissionService
             return ['status' => 'skipped', 'reason' => 'missing_application_email'];
         }
 
-        $cv = $application->getCvDocument();
-        if ($cv === null) {
+        if ($application->getCvDocument() === null) {
             return ['status' => 'skipped', 'reason' => 'missing_cv'];
         }
 
@@ -61,15 +60,12 @@ final class AutomaticSubmissionService
         $this->em->flush();
 
         try {
+            $email = $this->emailFactory->create($application);
             $result = $this->gmail->sendEmail(
                 $recipient,
-                $this->subject($application),
-                $this->body($application),
-                [[
-                    'path' => $this->cvStorage->path($cv->getStoredName()),
-                    'filename' => $cv->getOriginalName(),
-                    'mimeType' => $cv->getMimeType(),
-                ]],
+                $email['subject'],
+                $email['body'],
+                $email['attachments'],
             );
             $application->markSubmittedAutomatically($result['id']);
             $this->em->flush();
@@ -96,26 +92,5 @@ final class AutomaticSubmissionService
             ->setParameter('start', $start)
             ->getQuery()
             ->getSingleScalarResult();
-    }
-
-    private function subject(Application $application): string
-    {
-        $job = $application->getJobOffer();
-
-        return $job->getLanguage() === 'en'
-            ? 'Application – '.$job->getTitle()
-            : 'Candidature – '.$job->getTitle();
-    }
-
-    private function body(Application $application): string
-    {
-        $parts = [trim($application->getMessage()), trim($application->getCoverLetter())];
-        $compensation = $application->getCompensationAnswer();
-
-        if ($compensation !== null && trim($compensation) !== '') {
-            $parts[] = ($application->getJobOffer()->getLanguage() === 'en' ? 'Compensation: ' : 'Rémunération : ').$compensation;
-        }
-
-        return implode("\n\n---\n\n", array_values(array_filter($parts, static fn (string $part): bool => $part !== '')));
     }
 }

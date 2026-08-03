@@ -3,6 +3,8 @@
 .DS_Store
 api/vendor/
 api/var/
+api/config/reference.php
 web/node_modules/
 web/.next/
+web/next-env.d.ts
 extension/dist/

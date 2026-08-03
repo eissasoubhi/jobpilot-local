@@ -38,11 +38,15 @@ class Application
     public function getCvDocument(): ?CvDocument { return $this->cvDocument; }
     public function getMessage(): string { return $this->message; }
     public function getCoverLetter(): string { return $this->coverLetter; }
+    public function getCompensationAnswer(): ?string { return $this->compensationAnswer; }
     public function getSubmittedAt(): ?\DateTimeImmutable { return $this->submittedAt; }
+    public function getGmailMessageId(): ?string { return $this->gmailMessageId; }
+    public function getSubmissionError(): ?string { return $this->submissionError; }
+    public function getSubmissionAttemptedAt(): ?\DateTimeImmutable { return $this->submissionAttemptedAt; }
 
     public function prepare(?CvDocument $cv, string $message, string $coverLetter, ?string $compensation): self
     {
-        if ($this->status === 'SUBMITTED') {
+        if (in_array($this->status, ['SUBMITTED', 'SUBMISSION_PENDING'], true)) {
             return $this;
         }
 
@@ -59,6 +63,11 @@ class Application
 
     public function markSubmissionAttempt(): void
     {
+        if ($this->status !== 'READY_TO_SUBMIT') {
+            throw new \LogicException('La candidature n’est pas prête pour un envoi automatique.');
+        }
+
+        $this->status = 'SUBMISSION_PENDING';
         $this->submissionAttemptedAt = new \DateTimeImmutable();
         $this->submissionError = null;
         $this->updatedAt = new \DateTimeImmutable();
@@ -66,6 +75,11 @@ class Application
 
     public function markSubmittedAutomatically(string $gmailMessageId): void
     {
+        $gmailMessageId = trim($gmailMessageId);
+        if ($gmailMessageId === '') {
+            throw new \InvalidArgumentException('Identifiant Gmail manquant.');
+        }
+
         $this->channel = 'Gmail automatique';
         $this->status = 'SUBMITTED';
         $this->submittedAt = new \DateTimeImmutable();
@@ -77,6 +91,7 @@ class Application
 
     public function markSubmissionFailed(string $message): void
     {
+        $this->status = 'SUBMISSION_FAILED';
         $this->submissionError = mb_substr(trim($message), 0, 4000);
         $this->updatedAt = new \DateTimeImmutable();
     }

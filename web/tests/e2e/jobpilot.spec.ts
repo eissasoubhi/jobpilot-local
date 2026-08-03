@@ -47,6 +47,7 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }, t
   const jobTitle = `Senior Symfony React Developer ${uniqueSuffix}`;
   const positioningTitle = `Mission Symfony React ${uniqueSuffix}`;
   const tenderReference = `AO-E2E-${uniqueSuffix}`;
+  const sourceUrl = `https://example.test/jobs/${uniqueSuffix}`;
 
   await page.goto('/profil');
   await expect(page.getByLabel('Nom complet')).toHaveValue('Aissa SOUBHI');
@@ -69,6 +70,7 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }, t
   await page.goto('/offres');
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
+  await dialog.getByLabel('URL').fill(sourceUrl);
   await dialog.getByLabel('Intitulé').fill(jobTitle);
   await dialog.getByLabel('Entreprise').fill('Example Company');
   await dialog.getByLabel('Lieu').fill('Paris');
@@ -88,10 +90,20 @@ test('profile, CV, job preparation and positioning workflow', async ({ page }, t
   const applicationHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(applicationHeading).toBeVisible();
   const applicationRow = applicationHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
-  await applicationRow.getByRole('button', { name: 'Ouvrir' }).click();
-  await expect(page.getByRole('dialog', { name: `Candidature ${jobTitle}` })).toBeVisible();
-  await page.getByLabel('Confirmation / référence').fill(`CONF-${uniqueSuffix}`);
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await applicationRow.getByRole('button', { name: 'Examiner la candidature' }).click();
+
+  const applicationDialog = page.getByRole('dialog', { name: `Candidature ${jobTitle}` });
+  await expect(applicationDialog).toBeVisible();
+  await expect(applicationDialog.getByText('Offre concernée', { exact: true })).toBeVisible();
+  await expect(applicationDialog.getByRole('heading', { name: jobTitle, level: 2, exact: true })).toBeVisible();
+  await expect(applicationDialog.getByText('Example Company', { exact: true })).toBeVisible();
+  await expect(applicationDialog.getByText('Freelance', { exact: true })).toBeVisible();
+  await expect(applicationDialog.getByText('Paris', { exact: true })).toBeVisible();
+  await expect(applicationDialog.getByRole('link', { name: 'Ouvrir l’offre originale' })).toHaveAttribute('href', sourceUrl);
+  await applicationDialog.getByText('Afficher la description complète de l’offre', { exact: true }).click();
+  await expect(applicationDialog.getByText(/API Platform/)).toBeVisible();
+  await applicationDialog.getByLabel('Confirmation / référence').fill(`CONF-${uniqueSuffix}`);
+  await applicationDialog.getByRole('button', { name: 'Enregistrer les modifications' }).click();
 
   await page.goto('/positionnements');
   await page.getByRole('button', { name: 'Nouveau positionnement' }).click();

@@ -46,8 +46,10 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',
+            'sourceUrl' => 'https://example.test/jobs/senior-symfony-react',
             'title' => 'Senior Symfony React Developer',
             'company' => 'Example',
+            'clientName' => 'Example Final Client',
             'location' => 'Paris',
             'contractType' => 'Freelance',
             'workMode' => 'Hybride',
@@ -69,6 +71,14 @@ final class ApiWorkflowTest extends WebTestCase
         $applications = $this->decodeResponse($client);
         self::assertNotEmpty($applications);
         self::assertStringContainsString('Bonjour', $applications[0]['message']);
+        self::assertSame('Senior Symfony React Developer', $applications[0]['jobOffer']['title']);
+        self::assertSame('Example', $applications[0]['jobOffer']['company']);
+        self::assertSame('Example Final Client', $applications[0]['jobOffer']['clientName']);
+        self::assertSame('Paris', $applications[0]['jobOffer']['location']);
+        self::assertSame('Freelance', $applications[0]['jobOffer']['contractType']);
+        self::assertSame('Hybride', $applications[0]['jobOffer']['workMode']);
+        self::assertSame('https://example.test/jobs/senior-symfony-react', $applications[0]['jobOffer']['sourceUrl']);
+        self::assertStringContainsString('API Platform', $applications[0]['jobOffer']['description']);
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',

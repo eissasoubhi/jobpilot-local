@@ -48,4 +48,20 @@ final class GmailIntegrationTest extends WebTestCase
         self::assertStringContainsString('GOOGLE_CLIENT_ID', urldecode($location));
         self::assertStringContainsString('GOOGLE_CLIENT_SECRET', urldecode($location));
     }
+
+    public function testTestSendRejectsAnInvalidDestinationBeforeCallingGmail(): void
+    {
+        $client = static::createClient();
+
+        $client->jsonRequest('POST', '/api/integrations/gmail/test-send', [
+            'recipient' => 'adresse-invalide',
+            'applicationId' => 1,
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        $content = $client->getResponse()->getContent();
+        self::assertIsString($content);
+        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Adresse e-mail de test invalide.', $response['error']);
+    }
 }

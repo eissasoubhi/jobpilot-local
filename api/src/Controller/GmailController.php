@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Application;
 use App\Entity\InboxMessage;
+use App\Service\ApplicationEmailFactory;
 use App\Service\GmailService;
 use App\Service\GmailTokenStore;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,6 +21,7 @@ final class GmailController
     public function __construct(
         private GmailService $gmail,
         private GmailTokenStore $store,
+        private ApplicationEmailFactory $emailFactory,
         private EntityManagerInterface $em,
     ) {}
 
@@ -80,6 +83,59 @@ final class GmailController
         $this->store->clear();
 
         return new JsonResponse(['connected' => false, 'sendPermission' => false]);
+    }
+
+    #[Route('/test-preview/{id}', methods: ['GET'])]
+    public function testPreview(Application $application): JsonResponse
+    {
+        $email = $this->emailFactory->create($application);
+
+        return new JsonResponse([
+            'applicationId' => $application->getId(),
+            'subject' => $email['subject'],
+            'body' => $email['body'],
+            'attachmentNames' => $email['attachmentNames'],
+        ]);
+    }
+
+    #[Route('/test-send', methods: ['POST'])]
+    public function testSend(Request $request): JsonResponse
+    {
+        $data = $request->toArray();
+        $recipient = trim((string) ($data['recipient'] ?? ''));
+        $applicationId = (int) ($data['applicationId'] ?? 0);
+
+        if (filter_var($recipient, FILTER_VALIDATE_EMAIL) === false) {
+            return new JsonResponse(['error' => 'Adresse e-mail de test invalide.'], 400);
+        }
+
+        if ($applicationId <= 0) {
+            return new JsonResponse(['error' => 'Sélectionne une candidature préparée.'], 400);
+        }
+
+        $application = $this->em->getRepository(Application::class)->find($applicationId);
+        if (!$application instanceof Application) {
+            return new JsonResponse(['error' => 'Candidature introuvable.'], 404);
+        }
+
+        $email = $this->emailFactory->create($application);
+        $result = $this->gmail->sendEmail(
+            $recipient,
+            $email['subject'],
+            $email['body'],
+            $email['attachments'],
+        );
+
+        return new JsonResponse([
+            'sent' => true,
+            'recipient' => $recipient,
+            'gmailMessageId' => $result['id'],
+            'subject' => $email['subject'],
+            'body' => $email['body'],
+            'attachmentNames' => $email['attachmentNames'],
+            'applicationStatusChanged' => false,
+            'dailyLimitConsumed' => false,
+        ], 201);
     }
 
     #[Route('/messages', methods: ['GET'])]

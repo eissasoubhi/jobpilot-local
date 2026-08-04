@@ -28,7 +28,7 @@ final class ConnectorApiTest extends WebTestCase
         self::assertFalse($byCode['arbeitnow']['configured']);
         self::assertFalse($byCode['adzuna']['configured']);
         self::assertFalse($byCode['gmail']['configured']);
-        self::assertStringContainsString('Connecte Gmail', $byCode['gmail']['configurationMessage']);
+        self::assertStringContainsString('Configuration OAuth incomplète', $byCode['gmail']['configurationMessage']);
 
         $client->jsonRequest('PATCH', '/api/connectors/arbeitnow', ['enabled' => false]);
         self::assertResponseIsSuccessful();

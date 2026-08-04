@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Entity\Application;
+use App\Entity\InboxMessage;
+use App\Messaging\Application\GmailJobAlertExtractor;
+use App\Messaging\Application\GmailMessageClassifier;
+use App\Messaging\Infrastructure\Gmail\GmailMessageDecoder;
 use App\Service\GmailService;
 use App\Service\GmailTokenStore;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ObjectRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -57,6 +63,7 @@ final class GmailServiceTest extends TestCase
 
         $service->handleCallback('authorization-code', $state);
 
+        self::assertTrue($service->hasReadPermission());
         self::assertTrue($service->hasSendPermission());
         $savedToken = $store->getToken();
         self::assertIsArray($savedToken);
@@ -64,6 +71,66 @@ final class GmailServiceTest extends TestCase
             'https://www.googleapis.com/auth/gmail.send',
             $savedToken['granted_scopes'],
         );
+    }
+
+    public function testItReadsACompleteAlertAndExtractsAJobOffer(): void
+    {
+        $store = new GmailTokenStore($this->privateDir, 'test-encryption-key');
+        $store->saveToken([
+            'access_token' => 'access-token',
+            'refresh_token' => 'refresh-token',
+            'expires_in' => 3600,
+            'created_at' => time(),
+            'scope' => 'https://www.googleapis.com/auth/gmail.readonly',
+        ]);
+
+        $html = '<html><body><p>Une nouvelle offre pour vous</p><a href="https://www.linkedin.com/jobs/view/123?trk=email_job_alert">Senior PHP Symfony Developer chez Example</a></body></html>';
+        $http = new MockHttpClient([
+            new MockResponse(json_encode([
+                'messages' => [['id' => 'gmail-alert-1', 'threadId' => 'thread-1']],
+            ], JSON_THROW_ON_ERROR)),
+            new MockResponse(json_encode([
+                'id' => 'gmail-alert-1',
+                'threadId' => 'thread-1',
+                'internalDate' => '1785888000000',
+                'snippet' => 'Une nouvelle offre Symfony pour vous.',
+                'payload' => [
+                    'mimeType' => 'multipart/alternative',
+                    'headers' => [
+                        ['name' => 'From', 'value' => 'LinkedIn Jobs <jobs-noreply@linkedin.com>'],
+                        ['name' => 'To', 'value' => 'aissa@example.com'],
+                        ['name' => 'Subject', 'value' => 'Alerte emploi : Symfony'],
+                    ],
+                    'parts' => [[
+                        'mimeType' => 'text/html',
+                        'body' => ['data' => $this->encodeBase64Url($html)],
+                    ]],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $inboxRepository = $this->createMock(ObjectRepository::class);
+        $inboxRepository->method('findOneBy')->willReturn(null);
+        $applicationRepository = $this->createMock(ObjectRepository::class);
+        $applicationRepository->method('findBy')->willReturn([]);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('getRepository')->willReturnCallback(
+            static fn (string $class): ObjectRepository => $class === InboxMessage::class
+                ? $inboxRepository
+                : $applicationRepository,
+        );
+        $em->expects(self::once())->method('persist')->with(self::isInstanceOf(InboxMessage::class));
+
+        $service = $this->service($http, $store, $em);
+        $offers = $service->collectJobOffers();
+
+        self::assertCount(1, $offers);
+        self::assertSame('Senior PHP Symfony Developer', $offers[0]['title']);
+        self::assertSame('Example', $offers[0]['company']);
+        self::assertSame('https://www.linkedin.com/jobs/view/123', $offers[0]['sourceUrl']);
+        self::assertSame('LinkedIn', $offers[0]['rawData']['alertPlatform']);
+        self::assertSame(1, $service->lastSyncSummary()['imported']);
+        self::assertSame(1, $service->lastSyncSummary()['offersFound']);
     }
 
     public function testItSendsTheExactMimeMessageWithTheCvAttachment(): void
@@ -149,13 +216,24 @@ final class GmailServiceTest extends TestCase
         $service->sendEmail('destination@example.com', 'Sujet', 'Corps');
     }
 
-    private function service(MockHttpClient $http, GmailTokenStore $store): GmailService
-    {
+    private function service(
+        MockHttpClient $http,
+        GmailTokenStore $store,
+        ?EntityManagerInterface $em = null,
+    ): GmailService {
         return new GmailService(
             $http,
             $store,
-            $this->createMock(EntityManagerInterface::class),
+            $em ?? $this->createMock(EntityManagerInterface::class),
+            new GmailMessageDecoder(),
+            new GmailMessageClassifier(),
+            new GmailJobAlertExtractor(),
         );
+    }
+
+    private function encodeBase64Url(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
     }
 
     private function decodeBase64Url(string $value): string

@@ -54,11 +54,39 @@ class Application
         $this->message = $message;
         $this->coverLetter = $coverLetter;
         $this->compensationAnswer = $compensation;
-        $this->status = 'READY_TO_SUBMIT';
+        $this->status = $cv === null ? 'MISSING_CV' : 'READY_TO_SUBMIT';
         $this->submissionError = null;
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function attachCv(CvDocument $cv): void
+    {
+        if (in_array($this->status, ['SUBMITTED', 'SUBMISSION_PENDING'], true)) {
+            return;
+        }
+
+        $this->cvDocument = $cv;
+        $this->status = 'READY_TO_SUBMIT';
+        $this->submissionError = null;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function markMissingCv(): bool
+    {
+        if ($this->cvDocument !== null || in_array($this->status, ['SUBMITTED', 'SUBMISSION_PENDING'], true)) {
+            return false;
+        }
+
+        if ($this->status === 'MISSING_CV') {
+            return false;
+        }
+
+        $this->status = 'MISSING_CV';
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return true;
     }
 
     public function markSubmissionAttempt(): void

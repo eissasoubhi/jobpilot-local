@@ -22,8 +22,11 @@ La documentation produit, architecture, développement et exploitation se trouve
 - Suivi des candidatures et modification des messages préparés.
 - Suivi des positionnements par client, agence et commercial.
 - Détection de double positionnement par référence ou similarité.
-- Connexion Gmail OAuth en lecture et envoi.
-- Synchronisation manuelle des messages Gmail depuis les paramètres.
+- Connexion Gmail OAuth avec droits de lecture et d'envoi séparément diagnostiqués.
+- Synchronisation Gmail automatique avec les autres connecteurs et lancement manuel depuis **Messagerie** ou **Connecteurs**.
+- Inbox intelligente : alertes emploi, propositions recruteurs, confirmations, réponses, demandes d'informations, entretiens et refus.
+- Extraction d'offres depuis les alertes Gmail reconnues et passage dans le pipeline normal de scoring et de préparation.
+- Association prudente des réponses Gmail aux candidatures et mise à jour de leur statut.
 - Envoi automatique Gmail uniquement lorsque la candidature, le CV, le destinataire et les autorisations le permettent.
 - Test fonctionnel de l'e-mail automatique avec aperçu exact et envoi réel.
 - Extension Chrome Manifest V3 pour importer une offre et préremplir les formulaires.
@@ -108,9 +111,10 @@ La synchronisation peut aussi être lancée depuis le Terminal :
 docker compose exec api php bin/console app:jobs:sync
 docker compose exec api php bin/console app:jobs:sync --force
 docker compose exec api php bin/console app:jobs:sync --force --connector=arbeitnow
+docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 ```
 
-Les offres sont actuellement dédupliquées par source et identifiant externe. La déduplication canonique multi-sources est prévue dans la roadmap. Les offres importées passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
+Les offres sont actuellement dédupliquées par code de source et identifiant externe. La déduplication canonique multi-sources est prévue dans la roadmap. Les offres importées passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
 
 La documentation détaillée du contrat et de l’ajout d’une nouvelle source est disponible dans [`docs/connectors/overview.md`](docs/connectors/overview.md).
 
@@ -124,7 +128,7 @@ La documentation détaillée du contrat et de l’ajout d’une nouvelle source 
 
 L'extension importe le titre, l'URL et le texte visible vers l'API locale. Elle peut aussi préremplir les champs standards, mais ne clique jamais automatiquement sur le bouton final de soumission.
 
-## Gmail OAuth
+## Gmail OAuth et Inbox intelligente
 
 1. Créer un projet Google Cloud.
 2. Activer Gmail API.
@@ -143,7 +147,19 @@ https://www.googleapis.com/auth/gmail.send
 
 Aucun mot de passe Gmail n'est stocké. Les jetons OAuth doivent être chiffrés avec `APP_ENCRYPTION_KEY`.
 
-La synchronisation des messages existe via l'interface et importe les métadonnées correspondant à `GMAIL_SEARCH_QUERY`. Dans l'architecture actuelle, le scheduler automatise la synchronisation des offres et les candidatures autorisées, mais pas encore la synchronisation Gmail. Cette automatisation et la classification métier complète sont prévues dans la roadmap.
+Le connecteur Gmail lit uniquement les messages correspondant à la recherche configurée :
+
+```dotenv
+GMAIL_SEARCH_QUERY=(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d
+GMAIL_MAX_RESULTS=100
+GMAIL_MAX_PAGES=3
+```
+
+La synchronisation récupère le texte nécessaire à l'analyse, classe les messages, détecte les actions à traiter, associe prudemment les réponses aux candidatures et extrait les liens d'offres reconnus. Le HTML complet n'est pas conservé en base et aucun message n'est supprimé, déplacé ou marqué comme lu dans Gmail.
+
+Les plateformes actuellement reconnues dans les alertes comprennent LinkedIn, Indeed, APEC, Hellowork, Welcome to the Jungle, Free-Work, LesJeudis, Le Hibou et France Travail. Une alerte au format inconnu reste visible dans l'Inbox sans créer automatiquement une offre douteuse.
+
+Documentation complète : [`docs/connectors/gmail.md`](docs/connectors/gmail.md).
 
 ## Commandes
 
@@ -170,5 +186,6 @@ Consulter :
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - [`docs/architecture/context-map.md`](docs/architecture/context-map.md)
 - [`docs/connectors/overview.md`](docs/connectors/overview.md)
+- [`docs/connectors/gmail.md`](docs/connectors/gmail.md)
 - [`docs/development/testing.md`](docs/development/testing.md)
 - [`docs/definition-of-done.md`](docs/definition-of-done.md)

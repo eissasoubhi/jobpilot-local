@@ -39,7 +39,7 @@ test('all main pages load without browser or server errors', async ({ page }) =>
     }
 
     if (route === '/connecteurs') {
-      await expect(page.getByRole('heading', { name: 'Historique récent', level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Historique récent', level: 2 })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Arbeitnow', level: 3 })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Adzuna', level: 3 })).toBeVisible();
     }
@@ -81,7 +81,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   await page.goto('/offres');
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
-  await dialog.getByLabel('Source').fill(sourceA);
+  await dialog.getByLabel('Source', { exact: true }).fill(sourceA);
   await dialog.getByLabel('URL').fill(sourceUrl);
   await dialog.getByLabel('Intitulé').fill(jobTitle);
   await dialog.getByLabel('Entreprise').fill('Example Company');
@@ -100,7 +100,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
 
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
   const secondDialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
-  await secondDialog.getByLabel('Source').fill(sourceB);
+  await secondDialog.getByLabel('Source', { exact: true }).fill(sourceB);
   await secondDialog.getByLabel('Intitulé').fill(rejectedJobTitle);
   await secondDialog.getByLabel('Entreprise').fill('Second Company');
   await secondDialog.getByLabel('Lieu').fill('Paris');

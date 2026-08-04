@@ -17,7 +17,7 @@ export type Settings = {
 export type Cv = { id: number; name: string; originalName: string; language: string; category: string; tags: string[]; active: boolean; defaultForLanguage: boolean; size: number; downloadUrl: string };
 
 export type Job = {
-  id: number; source: string; sourceUrl?: string; title: string; company: string; clientName?: string;
+  id: number; source: string; sourceCode?: string; sourceUrl?: string; title: string; company: string; clientName?: string;
   applicationEmail?: string; location: string; contractType: string; workMode: string; language: string; description: string;
   publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
   tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;

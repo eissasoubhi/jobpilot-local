@@ -16,6 +16,7 @@ Cette documentation est la référence produit, métier, technique et opération
 ## Connecteurs
 
 - [Contrat, exploitation et ajout d’une source](connectors/overview.md)
+- [Connecteur Gmail et Inbox intelligente](connectors/gmail.md)
 
 ## Développement
 

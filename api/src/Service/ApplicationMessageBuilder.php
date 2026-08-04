@@ -42,6 +42,9 @@ final class ApplicationMessageBuilder
     private function relevantSkills(JobOffer $job): array
     {
         $text = mb_strtolower($job->getTitle().' '.$job->getDescription());
+        $hexagonalLabel = $job->getLanguage() === 'en'
+            ? 'hexagonal architecture'
+            : 'architecture hexagonale';
         $catalogue = [
             'API Platform' => '/api[ -]?platform/i',
             'Symfony' => '/\bsymfony\b/i',
@@ -60,13 +63,13 @@ final class ApplicationMessageBuilder
             'PostgreSQL' => '/\bpostgres(?:ql)?\b/i',
             'MySQL' => '/\bmysql\b/i',
             'Docker' => '/\bdocker\b/i',
-            'Kubernetes' => '/\bkubernetes|\bk8s\b/i',
+            'Kubernetes' => '/\b(?:kubernetes|k8s)\b/i',
             'GitLab CI/CD' => '/gitlab\s+ci|gitlab\s+ci\/cd/i',
             'Jenkins' => '/\bjenkins\b/i',
             'AWS' => '/\baws\b/i',
             'GCP' => '/\bgcp\b|google cloud/i',
             'DDD' => '/\bddd\b|domain[ -]driven design/i',
-            'architecture hexagonale' => '/architecture hexagonale|hexagonal architecture/i',
+            $hexagonalLabel => '/architecture hexagonale|hexagonal architecture/i',
         ];
 
         $skills = [];
@@ -85,13 +88,17 @@ final class ApplicationMessageBuilder
             return $skills;
         }
 
-        return match (true) {
-            preg_match('/front[ -]?end|frontend|interface|ui\b/i', $text) === 1
-                => ['React', 'Next.js', 'TypeScript'],
-            preg_match('/full[ -]?stack|fullstack/i', $text) === 1
-                => ['PHP/Symfony', 'React/Next.js', 'TypeScript'],
-            default => ['PHP', 'Symfony', 'développement d’API'],
-        };
+        if (preg_match('/front[ -]?end|frontend|interface|ui\b/i', $text) === 1) {
+            return ['React', 'Next.js', 'TypeScript'];
+        }
+
+        if (preg_match('/full[ -]?stack|fullstack/i', $text) === 1) {
+            return ['PHP/Symfony', 'React/Next.js', 'TypeScript'];
+        }
+
+        return $job->getLanguage() === 'en'
+            ? ['PHP', 'Symfony', 'API development']
+            : ['PHP', 'Symfony', 'développement d’API'];
     }
 
     /**
@@ -142,11 +149,19 @@ final class ApplicationMessageBuilder
 
     private function englishAvailability(string $value): string
     {
+        if ($value === '') {
+            return 'available to agree on a start date';
+        }
+
         return str_contains(mb_strtolower($value), 'imm') ? 'available immediately' : $value;
     }
 
     private function frenchAvailability(string $value): string
     {
+        if ($value === '') {
+            return 'pour convenir d’une date de démarrage';
+        }
+
         return str_contains(mb_strtolower($value), 'imm') ? 'immédiatement' : $value;
     }
 }

@@ -116,69 +116,72 @@ export default function ConnectorsPage() {
       />
 
       {error !== '' && <ErrorBox message={error} />}
-      {message !== '' && <div className="success-box">{message}</div>}
+      {message !== '' && <div className="success-box" role="status">{message}</div>}
 
       {connectors === null ? (
         <Loading />
       ) : connectors.length === 0 ? (
         <Card><Empty>Aucun connecteur n’est enregistré.</Empty></Card>
       ) : (
-        connectors.map((connector) => (
-          <Card key={connector.code}>
-            <div className="list-row" style={{ alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
-                <div className="actions" style={{ marginBottom: 8 }}>
-                  <Badge tone={statusTone(connector.status)}>{connector.status}</Badge>
-                  <Badge tone="blue">{modeLabel(connector.mode)}</Badge>
-                  <Badge tone={connector.enabled ? 'good' : 'neutral'}>
-                    {connector.enabled ? 'Activé' : 'Désactivé'}
-                  </Badge>
-                  <Badge tone={connector.configured ? 'good' : 'warn'}>
-                    {connector.configured ? 'Configuré' : 'Configuration requise'}
-                  </Badge>
-                </div>
+        <div className="stack">
+          {connectors.map((connector) => (
+            <Card key={connector.code}>
+              <div className="list-row" style={{ alignItems: 'flex-start', paddingTop: 0, paddingBottom: 0 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="actions" style={{ marginBottom: 8 }}>
+                    <Badge tone={statusTone(connector.status)}>{connector.status}</Badge>
+                    <Badge tone="blue">{modeLabel(connector.mode)}</Badge>
+                    <Badge tone={connector.enabled ? 'good' : 'neutral'}>
+                      {connector.enabled ? 'Activé' : 'Désactivé'}
+                    </Badge>
+                    <Badge tone={connector.configured ? 'good' : 'warn'}>
+                      {connector.configured ? 'Configuré' : 'Configuration requise'}
+                    </Badge>
+                  </div>
 
-                <h3>{connector.name}</h3>
-                <div className="muted small">Code : <code>{connector.code}</code></div>
+                  <h3>{connector.name}</h3>
+                  <div className="muted small">Code : <code>{connector.code}</code></div>
 
-                {connector.configurationMessage && (
-                  <p className="small" style={{ marginBottom: 0 }}>{connector.configurationMessage}</p>
-                )}
-                {connector.lastError && <ErrorBox message={connector.lastError} />}
+                  {connector.configurationMessage && (
+                    <p className="small" style={{ marginBottom: 0 }}>{connector.configurationMessage}</p>
+                  )}
+                  {connector.lastError && <ErrorBox message={connector.lastError} />}
 
-                <div className="actions" style={{ marginTop: 12 }}>
-                  <Badge>Dernière sync : {formatDate(connector.lastSyncedAt)}</Badge>
-                  <Badge>Prochaine : {connector.enabled && connector.configured ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
-                  <Badge tone="good">{connector.lastResult.imported} importée(s)</Badge>
-                  <Badge>{connector.lastResult.duplicates} doublon(s)</Badge>
-                  {connector.lastResult.failed > 0 && <Badge tone="warn">{connector.lastResult.failed} échec(s)</Badge>}
-                </div>
+                  <div className="actions" style={{ marginTop: 12 }}>
+                    <Badge>Dernière sync : {formatDate(connector.lastSyncedAt)}</Badge>
+                    <Badge>Prochaine : {connector.enabled && connector.configured ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
+                    <Badge tone="good">{connector.lastResult.imported} importée(s)</Badge>
+                    <Badge>{connector.lastResult.duplicates} doublon(s)</Badge>
+                    {connector.lastResult.failed > 0 && <Badge tone="warn">{connector.lastResult.failed} échec(s)</Badge>}
+                  </div>
 
-                <div className="actions" style={{ marginTop: 14 }}>
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={busyCode !== ''}
-                    onClick={() => void toggle(connector)}
-                  >
-                    {connector.enabled ? 'Désactiver' : 'Activer'}
-                  </button>
-                  <button
-                    className="btn small"
-                    type="button"
-                    disabled={busyCode !== '' || !connector.enabled || !connector.configured}
-                    onClick={() => void synchronize(connector)}
-                  >
-                    {busyCode === connector.code ? 'Synchronisation…' : 'Tester maintenant'}
-                  </button>
+                  <div className="actions" style={{ marginTop: 14 }}>
+                    <button
+                      className="btn secondary small"
+                      type="button"
+                      disabled={busyCode !== ''}
+                      onClick={() => void toggle(connector)}
+                    >
+                      {connector.enabled ? 'Désactiver' : 'Activer'}
+                    </button>
+                    <button
+                      className="btn small"
+                      type="button"
+                      disabled={busyCode !== '' || !connector.enabled || !connector.configured}
+                      onClick={() => void synchronize(connector)}
+                    >
+                      {busyCode === connector.code ? 'Synchronisation…' : 'Tester maintenant'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))
+            </Card>
+          ))}
+        </div>
       )}
 
-      <PageHeader title="Historique récent" description="Les vingt dernières exécutions, manuelles ou planifiées." />
+      <h2 className="section-title" style={{ marginTop: 30 }}>Historique récent</h2>
+      <p className="muted" style={{ marginTop: -6 }}>Les vingt dernières exécutions, manuelles ou planifiées.</p>
       <Card>
         {history === null ? (
           <Loading />

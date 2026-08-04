@@ -57,7 +57,7 @@ test('Gmail inbox exposes classification, association, filters and processing', 
 
   await expect(page.getByRole('heading', { name: 'Messagerie', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synchroniser Gmail' })).toBeVisible();
-  await expect(page.getByText('Entretien', { exact: true })).toBeVisible();
+  await expect(page.locator('span.badge').filter({ hasText: /^Entretien$/ })).toBeVisible();
   await expect(page.getByText('LinkedIn', { exact: true })).toBeVisible();
   await expect(page.getByText('Action requise', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: interviewMessage.subject, level: 3 })).toBeVisible();

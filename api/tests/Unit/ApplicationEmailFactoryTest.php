@@ -29,7 +29,7 @@ final class ApplicationEmailFactoryTest extends TestCase
         @rmdir($this->uploadDir);
     }
 
-    public function testItBuildsTheExactAutomaticEmailPayload(): void
+    public function testItBuildsOneConciseEmailWithoutConcatenatingTheCoverLetter(): void
     {
         file_put_contents($this->uploadDir.'/stored-cv.pdf', '%PDF-test-content');
         $cv = $this->cv();
@@ -40,13 +40,41 @@ final class ApplicationEmailFactoryTest extends TestCase
 
         self::assertSame('Candidature – Développeur Symfony Senior', $email['subject']);
         self::assertSame(
-            "Bonjour,\n\nJe suis intéressé par cette mission.\n\n---\n\nMadame, Monsieur,\n\nVoici ma lettre de motivation.\n\n---\n\nRémunération : 500 € HT/jour",
+            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nConcernant la rémunération, ma proposition est de 500 € HT/jour.\n\nBien cordialement,\nAissa SOUBHI",
             $email['body'],
         );
+        self::assertStringNotContainsString('---', $email['body']);
+        self::assertStringNotContainsString('Voici ma lettre de motivation', $email['body']);
+        self::assertSame(1, substr_count($email['body'], 'Bien cordialement'));
         self::assertSame(['CV_Aissa_Symfony.pdf'], $email['attachmentNames']);
         self::assertSame($this->uploadDir.'/stored-cv.pdf', $email['attachments'][0]['path']);
         self::assertSame('CV_Aissa_Symfony.pdf', $email['attachments'][0]['filename']);
         self::assertSame('application/pdf', $email['attachments'][0]['mimeType']);
+    }
+
+    public function testItLeavesTheMessageUnchangedWhenCompensationIsNotProvided(): void
+    {
+        file_put_contents($this->uploadDir.'/stored-cv.pdf', '%PDF-test-content');
+        $cv = $this->cv();
+        $job = (new JobOffer())->fill([
+            'title' => 'Backend Developer',
+            'description' => 'Backend role.',
+        ]);
+        $application = (new Application($job))->prepare(
+            $cv,
+            "Hello,\n\nMy CV is attached.\n\nBest regards,\nAissa Soubhi",
+            'This separate cover letter must not be sent.',
+            null,
+        );
+        $factory = new ApplicationEmailFactory(new CvStorage($this->uploadDir));
+
+        $email = $factory->create($application);
+
+        self::assertSame(
+            "Hello,\n\nMy CV is attached.\n\nBest regards,\nAissa Soubhi",
+            $email['body'],
+        );
+        self::assertStringNotContainsString('separate cover letter', $email['body']);
     }
 
     public function testItRefusesAnApplicationWithoutACv(): void
@@ -100,7 +128,7 @@ final class ApplicationEmailFactoryTest extends TestCase
 
         return (new Application($job))->prepare(
             $cv,
-            "Bonjour,\n\nJe suis intéressé par cette mission.",
+            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nBien cordialement,\nAissa SOUBHI",
             "Madame, Monsieur,\n\nVoici ma lettre de motivation.",
             '500 € HT/jour',
         );

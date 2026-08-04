@@ -7,7 +7,8 @@ Un connecteur transforme une source externe en offres normalisées comprises par
 Les connecteurs livrés dans cette version sont :
 
 - `arbeitnow` — API, active par défaut ;
-- `adzuna` — API, active lorsque les identifiants sont renseignés.
+- `adzuna` — API, active lorsque les identifiants sont renseignés ;
+- `gmail` — lecture des alertes et échanges de recrutement lorsque Gmail est connecté avec `gmail.readonly`.
 
 ## Contrat
 
@@ -64,6 +65,8 @@ Chaque exécution crée une ligne `connector_sync_run` avec :
 
 Une exécution désactivée ou non configurée est ignorée et ne crée pas de faux historique.
 
+Pour Gmail, les compteurs du registre concernent les offres extraites. La page **Messagerie** expose en complément les volumes de messages lus, associés et nécessitant une action.
+
 ## Interface
 
 La page **Connecteurs** permet de :
@@ -73,7 +76,7 @@ La page **Connecteurs** permet de :
 - lancer un test manuel ;
 - consulter les vingt dernières exécutions.
 
-La page **Offres** permet de filtrer les offres par source.
+La page **Offres** permet de filtrer les offres par source. La page **Messagerie** permet d’exploiter les messages Gmail classés.
 
 ## Commandes
 
@@ -93,6 +96,7 @@ Forcer une seule source :
 
 ```bash
 docker compose exec api php bin/console app:jobs:sync --force --connector=arbeitnow
+docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 ```
 
 ## Ajouter un connecteur
@@ -112,8 +116,10 @@ L’autoconfiguration Symfony ajoute automatiquement l’implémentation au regi
 La déduplication reste fondée sur le couple :
 
 ```text
-source + externalId
+sourceCode + externalId
 ```
+
+Pour Gmail, l’identifiant externe est dérivé de l’URL normalisée de l’offre afin qu’une même alerte reçue plusieurs fois ne crée pas de doublon.
 
 La fusion canonique d’une même offre présente sur plusieurs plateformes est un chantier ultérieur.
 
@@ -126,3 +132,5 @@ Un connecteur ne doit pas :
 - masquer l’automatisation ;
 - contourner un quota ou une interdiction ;
 - journaliser des secrets ou des données personnelles inutiles.
+
+Le connecteur Gmail utilise des scopes minimaux, ne modifie aucun message dans Gmail et limite le nombre de résultats et de pages lus par synchronisation.

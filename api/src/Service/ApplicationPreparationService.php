@@ -11,7 +11,10 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class ApplicationPreparationService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+        private ApplicationCvRepairService $cvRepair,
+    ) {}
 
     public function prepare(JobOffer $job, CandidateProfile $profile): Application
     {
@@ -39,7 +42,8 @@ final class ApplicationPreparationService
             $compensation = number_format($job->getProposedSalary(), 0, ',', ' ').' € brut annuel (rémunération globale)';
         }
 
-        $application->prepare($job->getRecommendedCv(), $message, $cover, $compensation);
+        $cv = $this->cvRepair->resolveForJob($job);
+        $application->prepare($cv, $message, $cover, $compensation);
         $job->markPrepared();
         $this->em->persist($application);
         $this->em->flush();

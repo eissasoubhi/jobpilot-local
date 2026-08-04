@@ -9,6 +9,7 @@ use App\Entity\InboxMessage;
 use App\Service\ApplicationEmailFactory;
 use App\Service\GmailService;
 use App\Service\GmailTokenStore;
+use App\Service\JobSearchSyncService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -22,6 +23,7 @@ final class GmailController
         private GmailService $gmail,
         private GmailTokenStore $store,
         private ApplicationEmailFactory $emailFactory,
+        private JobSearchSyncService $jobSync,
         private EntityManagerInterface $em,
     ) {}
 
@@ -29,16 +31,24 @@ final class GmailController
     public function status(): JsonResponse
     {
         $connected = $this->store->isConnected();
+        $readPermission = $connected && $this->gmail->hasReadPermission();
         $sendPermission = $connected && $this->gmail->hasSendPermission();
 
         return new JsonResponse([
             'connected' => $connected,
+            'readPermission' => $readPermission,
+            'readPermissionMessage' => match (true) {
+                !$connected => 'Gmail n’est pas connecté.',
+                !$readPermission => 'Le droit de lecture Gmail n’est pas détecté. Déconnecte puis reconnecte Gmail en acceptant gmail.readonly.',
+                default => null,
+            },
             'sendPermission' => $sendPermission,
             'sendPermissionMessage' => match (true) {
                 !$connected => 'Gmail n’est pas connecté.',
                 !$sendPermission => 'Le droit d’envoi Gmail n’est pas détecté. Déconnecte puis reconnecte Gmail en acceptant gmail.send.',
                 default => null,
             },
+            'lastSync' => $this->gmail->lastSyncSummary(),
             ...$this->gmail->configuration(),
         ]);
     }
@@ -82,7 +92,28 @@ final class GmailController
     #[Route('/sync', methods: ['POST'])]
     public function sync(): JsonResponse
     {
-        return new JsonResponse($this->gmail->sync());
+        if (!$this->store->isConnected()) {
+            return new JsonResponse(['error' => 'Gmail n’est pas connecté.'], 409);
+        }
+        if (!$this->gmail->hasReadPermission()) {
+            return new JsonResponse([
+                'error' => 'Le droit gmail.readonly manque. Déconnecte puis reconnecte Gmail.',
+            ], 409);
+        }
+
+        try {
+            $result = $this->jobSync->sync(true, 'gmail', 'manual');
+        } catch (\Throwable $error) {
+            return new JsonResponse(['error' => $error->getMessage()], 502);
+        }
+
+        return new JsonResponse([
+            ...$this->gmail->lastSyncSummary(),
+            'offersImported' => (int) ($result['imported'] ?? 0),
+            'offerDuplicates' => (int) ($result['duplicates'] ?? 0),
+            'message' => (string) ($result['message'] ?? 'Synchronisation Gmail terminée.'),
+            'skipped' => (bool) ($result['skipped'] ?? false),
+        ]);
     }
 
     #[Route('/disconnect', methods: ['POST'])]
@@ -92,6 +123,8 @@ final class GmailController
 
         return new JsonResponse([
             'connected' => false,
+            'readPermission' => false,
+            'readPermissionMessage' => 'Gmail n’est pas connecté.',
             'sendPermission' => false,
             'sendPermissionMessage' => 'Gmail n’est pas connecté.',
         ]);
@@ -129,15 +162,12 @@ final class GmailController
         if (filter_var($recipient, FILTER_VALIDATE_EMAIL) === false) {
             return new JsonResponse(['error' => 'Adresse e-mail de test invalide.'], 400);
         }
-
         if ($applicationId <= 0) {
             return new JsonResponse(['error' => 'Sélectionne une candidature préparée.'], 400);
         }
-
         if (!$this->store->isConnected()) {
             return new JsonResponse(['error' => 'Gmail n’est pas connecté. Connecte Gmail avant de lancer le test.'], 409);
         }
-
         if (!$this->gmail->hasSendPermission()) {
             return new JsonResponse([
                 'error' => 'Le droit gmail.send manque. Déconnecte puis reconnecte Gmail en acceptant l’autorisation d’envoi.',
@@ -179,14 +209,49 @@ final class GmailController
     }
 
     #[Route('/messages', methods: ['GET'])]
-    public function messages(): JsonResponse
+    public function messages(Request $request): JsonResponse
     {
-        $items = $this->em->getRepository(InboxMessage::class)->findBy([], ['receivedAt' => 'DESC'], 100);
+        $criteria = [];
+        $category = trim((string) $request->query->get('category'));
+        if ($category !== '' && $category !== 'ALL') {
+            $criteria['category'] = $category;
+        }
+        if ($request->query->has('actionRequired')) {
+            $criteria['actionRequired'] = filter_var(
+                $request->query->get('actionRequired'),
+                FILTER_VALIDATE_BOOL,
+                FILTER_NULL_ON_FAILURE,
+            ) ?? false;
+        }
+        if ($request->query->has('processed')) {
+            $criteria['processed'] = filter_var(
+                $request->query->get('processed'),
+                FILTER_VALIDATE_BOOL,
+                FILTER_NULL_ON_FAILURE,
+            ) ?? false;
+        }
+        $limit = max(1, min(250, (int) $request->query->get('limit', 100)));
+        $items = $this->em->getRepository(InboxMessage::class)->findBy($criteria, ['receivedAt' => 'DESC'], $limit);
 
         return new JsonResponse(array_map(
             static fn (InboxMessage $message): array => $message->toArray(),
             $items,
         ));
+    }
+
+    #[Route('/messages/{id}/processed', methods: ['PATCH'])]
+    public function markProcessed(InboxMessage $message, Request $request): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+        } catch (\Throwable) {
+            $data = [];
+        }
+        $processed = array_key_exists('processed', $data) ? (bool) $data['processed'] : true;
+        $message->markProcessed($processed);
+        $this->em->flush();
+
+        return new JsonResponse($message->toArray());
     }
 
     /**

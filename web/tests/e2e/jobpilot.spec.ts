@@ -5,7 +5,7 @@ function watchForBrowserFailures(page: Page): string[] {
 
   page.on('pageerror', (error) => failures.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
   });
   page.on('response', (response) => {
     if (response.status() >= 500) failures.push(`http ${response.status()}: ${response.url()}`);

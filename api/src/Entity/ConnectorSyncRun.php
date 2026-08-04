@@ -89,7 +89,7 @@ final class ConnectorSyncRun
             'id' => $this->id,
             'connector' => [
                 'code' => $this->connector->getCode(),
-                'name' => $this->connector->toArray(900)['name'],
+                'name' => $this->connector->getName(),
             ],
             'trigger' => $this->trigger,
             'status' => $this->status,

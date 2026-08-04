@@ -31,7 +31,11 @@ final class GmailJobProvider implements JobSourceConnector
 
     public function isConfigured(): bool
     {
-        return $this->tokenStore->isConnected() && $this->gmail->hasReadPermission();
+        $configuration = $this->gmail->configuration();
+
+        return $configuration['configured']
+            && $this->tokenStore->isConnected()
+            && $this->gmail->hasReadPermission();
     }
 
     public function configurationMessage(): ?string

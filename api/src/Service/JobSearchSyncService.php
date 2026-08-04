@@ -8,7 +8,6 @@ use App\Entity\ConnectorSyncRun;
 use App\Entity\JobOffer;
 use App\Entity\SourceConnector;
 use App\JobDiscovery\Application\ConnectorRegistry;
-use App\JobDiscovery\Domain\Connector\JobSourceConnector;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class JobSearchSyncService
@@ -126,7 +125,8 @@ final class JobSearchSyncService
             $eligible = [];
 
             foreach ($connectors as $connector) {
-                $state = $states[strtolower($connector->code())] ?? null;
+                $sourceCode = strtolower($connector->code());
+                $state = $states[$sourceCode] ?? null;
                 if (!$state instanceof SourceConnector || !$state->isEnabled() || !$state->isConfigured()) {
                     continue;
                 }
@@ -155,7 +155,8 @@ final class JobSearchSyncService
             $errors = [];
 
             foreach ($eligible as $connector) {
-                $state = $states[strtolower($connector->code())];
+                $sourceCode = strtolower($connector->code());
+                $state = $states[$sourceCode];
                 $state->markRunning();
                 $run = new ConnectorSyncRun($state, $trigger);
                 $this->em->persist($run);
@@ -183,7 +184,7 @@ final class JobSearchSyncService
                         }
 
                         $existing = $this->em->getRepository(JobOffer::class)->findOneBy([
-                            'source' => $connector->name(),
+                            'sourceCode' => $sourceCode,
                             'externalId' => $externalId,
                         ]);
                         if ($existing !== null) {
@@ -194,9 +195,10 @@ final class JobSearchSyncService
 
                         try {
                             $payload['source'] = $connector->name();
+                            $payload['sourceCode'] = $sourceCode;
                             $payload['rawData'] = [
                                 'connector' => [
-                                    'code' => $connector->code(),
+                                    'code' => $sourceCode,
                                     'mode' => $connector->mode()->value,
                                 ],
                                 'payload' => is_array($payload['rawData'] ?? null) ? $payload['rawData'] : [],
@@ -244,7 +246,7 @@ final class JobSearchSyncService
                 $this->em->flush();
 
                 $connectorResults[] = [
-                    'code' => $connector->code(),
+                    'code' => $sourceCode,
                     'name' => $connector->name(),
                     'mode' => $connector->mode()->value,
                     'received' => $connectorReceived,

@@ -2,6 +2,8 @@
 
 Application locale en français pour centraliser, rechercher, scorer, préparer et suivre les candidatures CDI, CDD et freelance.
 
+La documentation produit, architecture, développement et exploitation se trouve dans [`docs/`](docs/README.md).
+
 ## Fonctionnalités incluses
 
 - Profil candidat modifiable depuis l'interface.
@@ -17,7 +19,10 @@ Application locale en français pour centraliser, rechercher, scorer, préparer 
 - Suivi des candidatures et modification des messages préparés.
 - Suivi des positionnements par client, agence et commercial.
 - Détection de double positionnement par référence ou similarité.
-- Connexion Gmail OAuth en lecture seule et synchronisation des alertes/réponses.
+- Connexion Gmail OAuth en lecture et envoi.
+- Synchronisation manuelle des messages Gmail depuis les paramètres.
+- Envoi automatique Gmail uniquement lorsque la candidature, le CV, le destinataire et les autorisations le permettent.
+- Test fonctionnel de l'e-mail automatique avec aperçu exact et envoi réel.
 - Registre des plateformes de recherche.
 - Extension Chrome Manifest V3 pour importer une offre et préremplir les formulaires.
 
@@ -87,10 +92,10 @@ Pour modifier l'intervalle, utiliser un nombre de secondes, avec un minimum de 9
 JOB_SYNC_INTERVAL_SECONDS=21600
 ```
 
-Après modification du fichier `.env`, recréer uniquement les conteneurs :
+Après modification du fichier `.env`, recréer uniquement les conteneurs concernés :
 
 ```bash
-docker compose up -d --force-recreate
+docker compose up -d --force-recreate api scheduler web
 ```
 
 La synchronisation peut aussi être lancée depuis le Terminal :
@@ -99,7 +104,7 @@ La synchronisation peut aussi être lancée depuis le Terminal :
 docker compose exec api php bin/console app:jobs:sync --force
 ```
 
-Les offres sont dédupliquées par source et identifiant externe. Elles passent ensuite par les mêmes règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique que les offres ajoutées manuellement.
+Les offres sont actuellement dédupliquées par source et identifiant externe. La déduplication canonique multi-sources est prévue dans la roadmap. Les offres importées passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
 
 ## Extension Chrome
 
@@ -116,11 +121,21 @@ L'extension importe le titre, l'URL et le texte visible vers l'API locale. Elle 
 1. Créer un projet Google Cloud.
 2. Activer Gmail API.
 3. Créer un client OAuth de type application Web.
-4. Ajouter l'URI de redirection : `http://localhost:8080/api/integrations/gmail/callback`.
+4. Ajouter exactement l'URI de redirection : `http://localhost:8080/api/integrations/gmail/callback`.
 5. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`.
-6. Dans **Paramètres**, cliquer sur **Connecter Gmail**.
+6. Ajouter le compte Gmail dans les utilisateurs de test lorsque l'application OAuth est en mode Testing.
+7. Dans **Paramètres**, cliquer sur **Connecter Gmail**.
 
-Le scope utilisé est `gmail.readonly`. Aucun mot de passe Gmail n'est stocké.
+JobPilot demande les scopes suivants :
+
+```text
+https://www.googleapis.com/auth/gmail.readonly
+https://www.googleapis.com/auth/gmail.send
+```
+
+Aucun mot de passe Gmail n'est stocké. Les jetons OAuth doivent être chiffrés avec `APP_ENCRYPTION_KEY`.
+
+La synchronisation des messages existe via l'interface et importe les métadonnées correspondant à `GMAIL_SEARCH_QUERY`. Dans l'architecture actuelle, le scheduler automatise la synchronisation des offres et les candidatures autorisées, mais pas encore la synchronisation Gmail. Cette automatisation et la classification métier complète sont prévues dans la roadmap.
 
 ## Commandes
 
@@ -134,13 +149,17 @@ make reset      # supprimer la base locale et recommencer
 
 ## Limites assumées
 
-Cette version utilise des API et flux publics autorisés. Elle ne contourne ni CAPTCHA, ni protection anti-bot, ni conditions d'utilisation des plateformes. L'envoi final reste en mode confirmation en un clic. Les connecteurs directs vers d'autres plateformes doivent utiliser une API officielle ou un flux explicitement autorisé.
+JobPilot ne contourne pas les CAPTCHA, authentifications, contrôles d'accès ou limitations de plateformes. Les futurs connecteurs pourront utiliser une API, un flux public, le scraping contrôlé de pages librement accessibles, Gmail ou l'extension selon les possibilités de chaque source.
 
-## Correctif 1.0.1
+Les actions automatiques sensibles doivent être explicitement autorisées, idempotentes, traçables et limitées. Une lettre de motivation reste séparée du corps de l'e-mail et ne doit être envoyée que lorsqu'elle est demandée.
 
-- Correction de la dépendance Composer `symfony/test-pack` de `^2.0` vers `^1.2`.
+## Architecture et qualité
 
-## Compatibility fix (DoctrineBundle 3)
+Les décisions structurantes sont documentées dans les ADR. La cible est un modular monolith Symfony avec DDD pragmatique, architecture hexagonale, CQS et traitements event-driven lorsque le besoin le justifie.
 
-The Doctrine configuration intentionally omits legacy ORM options removed from DoctrineBundle 3:
-`auto_generate_proxy_classes`, `enable_lazy_ghost_objects`, and `report_fields_where_declared`.
+Consulter :
+
+- [`docs/architecture/overview.md`](docs/architecture/overview.md)
+- [`docs/architecture/context-map.md`](docs/architecture/context-map.md)
+- [`docs/development/testing.md`](docs/development/testing.md)
+- [`docs/definition-of-done.md`](docs/definition-of-done.md)

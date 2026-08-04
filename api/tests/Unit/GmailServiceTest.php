@@ -12,7 +12,7 @@ use App\Messaging\Infrastructure\Gmail\GmailMessageDecoder;
 use App\Service\GmailService;
 use App\Service\GmailTokenStore;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ObjectRepository;
+use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -109,13 +109,13 @@ final class GmailServiceTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $inboxRepository = $this->createMock(ObjectRepository::class);
+        $inboxRepository = $this->createMock(EntityRepository::class);
         $inboxRepository->method('findOneBy')->willReturn(null);
-        $applicationRepository = $this->createMock(ObjectRepository::class);
+        $applicationRepository = $this->createMock(EntityRepository::class);
         $applicationRepository->method('findBy')->willReturn([]);
         $em = $this->createMock(EntityManagerInterface::class);
         $em->method('getRepository')->willReturnCallback(
-            static fn (string $class): ObjectRepository => $class === InboxMessage::class
+            static fn (string $class): EntityRepository => $class === InboxMessage::class
                 ? $inboxRepository
                 : $applicationRepository,
         );

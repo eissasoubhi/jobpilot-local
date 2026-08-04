@@ -85,6 +85,11 @@ final class SourceConnector
         return $this->code;
     }
 
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
     public function isEnabled(): bool
     {
         return $this->enabled;
@@ -98,6 +103,17 @@ final class SourceConnector
     public function getLastSyncedAt(): ?\DateTimeImmutable
     {
         return $this->lastSyncedAt;
+    }
+
+    public function isDue(int $intervalSeconds): bool
+    {
+        if (!$this->enabled || !$this->configured) {
+            return false;
+        }
+
+        $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', max(900, $intervalSeconds)));
+
+        return $nextSyncAt === null || $nextSyncAt <= new \DateTimeImmutable();
     }
 
     public function refreshDefinition(JobSourceConnector $connector): void
@@ -167,9 +183,6 @@ final class SourceConnector
     public function toArray(int $intervalSeconds): array
     {
         $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', max(900, $intervalSeconds)));
-        $due = $this->enabled
-            && $this->configured
-            && ($nextSyncAt === null || $nextSyncAt <= new \DateTimeImmutable());
 
         return [
             'id' => $this->id,
@@ -183,7 +196,7 @@ final class SourceConnector
             'lastSyncedAt' => $this->lastSyncedAt?->format(DATE_ATOM),
             'lastSuccessfulAt' => $this->lastSuccessfulAt?->format(DATE_ATOM),
             'nextSyncAt' => $nextSyncAt?->format(DATE_ATOM),
-            'due' => $due,
+            'due' => $this->isDue($intervalSeconds),
             'lastResult' => [
                 'received' => $this->lastReceived,
                 'imported' => $this->lastImported,

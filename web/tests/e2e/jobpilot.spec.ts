@@ -5,7 +5,7 @@ function watchForBrowserFailures(page: Page): string[] {
 
   page.on('pageerror', (error) => failures.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('response', (response) => {
     if (response.status() >= 500) failures.push(`http ${response.status()}: ${response.url()}`);
@@ -102,9 +102,9 @@ test('profile, CV, job preparation, guided submission and positioning workflow',
   await expect(applicationDialog.getByText('Paris', { exact: true })).toBeVisible();
   await expect(applicationDialog.getByRole('link', { name: 'Étape 2 — Ouvrir la plateforme pour postuler' })).toHaveAttribute('href', sourceUrl);
   const descriptionDetails = applicationDialog.locator('details').filter({
-    has: applicationDialog.getByText('Afficher la description complète de l’offre', { exact: true }),
+    hasText: 'Afficher la description complète de l’offre',
   });
-  await descriptionDetails.getByText('Afficher la description complète de l’offre', { exact: true }).click();
+  await descriptionDetails.locator('summary').click();
   await expect(descriptionDetails.locator('div.small')).toContainText('API Platform');
 
   await applicationDialog.getByLabel('Confirmation / référence obtenue après l’envoi').fill(`CONF-${uniqueSuffix}`);

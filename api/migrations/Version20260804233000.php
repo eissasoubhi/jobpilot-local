@@ -11,11 +11,16 @@ final class Version20260804233000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Create the source connector registry and synchronization history.';
+        return 'Create the source connector registry, stable offer source codes and synchronization history.';
     }
 
     public function up(Schema $schema): void
     {
+        $this->addSql('ALTER TABLE job_offer ADD source_code VARCHAR(64) DEFAULT NULL');
+        $this->addSql("UPDATE job_offer SET source_code = 'arbeitnow' WHERE LOWER(source) = 'arbeitnow'");
+        $this->addSql("UPDATE job_offer SET source_code = 'adzuna' WHERE LOWER(source) = 'adzuna'");
+        $this->addSql('CREATE UNIQUE INDEX uniq_job_source_external ON job_offer (source_code, external_id)');
+
         $this->addSql('CREATE TABLE source_connector (id SERIAL NOT NULL, code VARCHAR(64) NOT NULL, name VARCHAR(120) NOT NULL, mode VARCHAR(32) NOT NULL, enabled BOOLEAN NOT NULL, configured BOOLEAN NOT NULL, configuration_message TEXT DEFAULT NULL, status VARCHAR(32) NOT NULL, last_synced_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, last_successful_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, last_received INT NOT NULL, last_imported INT NOT NULL, last_duplicates INT NOT NULL, last_failed INT NOT NULL, last_error TEXT DEFAULT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, updated_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX uniq_source_connector_code ON source_connector (code)');
         $this->addSql('CREATE INDEX idx_source_connector_status ON source_connector (status)');
@@ -32,5 +37,7 @@ final class Version20260804233000 extends AbstractMigration
         $this->addSql('ALTER TABLE connector_sync_run DROP CONSTRAINT FK_E2D5CEA74D085745');
         $this->addSql('DROP TABLE connector_sync_run');
         $this->addSql('DROP TABLE source_connector');
+        $this->addSql('DROP INDEX uniq_job_source_external');
+        $this->addSql('ALTER TABLE job_offer DROP source_code');
     }
 }

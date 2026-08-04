@@ -101,8 +101,11 @@ test('profile, CV, job preparation, guided submission and positioning workflow',
   await expect(applicationDialog.getByText('Freelance', { exact: true })).toBeVisible();
   await expect(applicationDialog.getByText('Paris', { exact: true })).toBeVisible();
   await expect(applicationDialog.getByRole('link', { name: 'Étape 2 — Ouvrir la plateforme pour postuler' })).toHaveAttribute('href', sourceUrl);
-  await applicationDialog.getByText('Afficher la description complète de l’offre', { exact: true }).click();
-  await expect(applicationDialog.getByText(/API Platform/)).toBeVisible();
+  const descriptionDetails = applicationDialog.locator('details').filter({
+    hasText: 'Afficher la description complète de l’offre',
+  });
+  await descriptionDetails.locator('summary').click();
+  await expect(descriptionDetails.locator('div.small')).toContainText('API Platform');
 
   await applicationDialog.getByLabel('Confirmation / référence obtenue après l’envoi').fill(`CONF-${uniqueSuffix}`);
   await applicationDialog.getByRole('button', { name: 'Étape 1 — Enregistrer mes modifications' }).click();

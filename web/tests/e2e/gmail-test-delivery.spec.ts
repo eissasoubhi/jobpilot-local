@@ -51,8 +51,8 @@ const application = {
     size: 1234,
     downloadUrl: '/api/cvs/3/download',
   },
-  message: 'Bonjour, je suis intéressé par cette mission.',
-  coverLetter: 'Voici ma lettre de motivation.',
+  message: 'Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nBien cordialement,\nAissa Soubhi',
+  coverLetter: 'Madame, Monsieur,\n\nCette lettre reste séparée.',
   compensationAnswer: '500 € HT/jour',
   updatedAt: '2026-08-04T00:00:00+00:00',
 };
@@ -60,7 +60,7 @@ const application = {
 const preview = {
   applicationId: 42,
   subject: 'Candidature – Développeur Symfony Senior',
-  body: 'Bonjour, je suis intéressé par cette mission.\n\n---\n\nVoici ma lettre de motivation.\n\n---\n\nRémunération : 500 € HT/jour',
+  body: 'Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nConcernant la rémunération, ma proposition est de 500 € HT/jour.\n\nBien cordialement,\nAissa Soubhi',
   attachmentNames: ['CV_Aissa_Symfony.pdf'],
 };
 
@@ -130,7 +130,7 @@ async function mockSettingsApis(
   });
 }
 
-test('sends the exact automatic email test without changing the application', async ({ page }) => {
+test('sends one concise automatic email without concatenating the cover letter', async ({ page }) => {
   let submittedPayload: unknown = null;
   await mockSettingsApis(page, {
     sendPermission: true,
@@ -148,6 +148,8 @@ test('sends the exact automatic email test without changing the application', as
   await expect(page.getByRole('heading', { name: 'Tester l’envoi automatique' })).toBeVisible();
   await expect(page.getByLabel('Sujet exact')).toHaveValue(preview.subject);
   await expect(page.getByLabel('Corps exact reçu par le destinataire')).toHaveValue(preview.body);
+  await expect(page.getByLabel('Corps exact reçu par le destinataire')).not.toHaveValue(/---/);
+  await expect(page.getByLabel('Corps exact reçu par le destinataire')).not.toHaveValue(/Cette lettre reste séparée/);
   await expect(page.getByText('CV_Aissa_Symfony.pdf')).toBeVisible();
 
   await page.getByLabel('Adresse e-mail de destination').fill('destination@example.com');

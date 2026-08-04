@@ -3,6 +3,7 @@ namespace App\Controller;
 
 use App\Entity\Application;
 use App\Service\ApplicationCvRepairService;
+use App\Service\ApplicationMessageUpgradeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +15,7 @@ final class ApplicationController
     public function __construct(
         private EntityManagerInterface $em,
         private ApplicationCvRepairService $cvRepair,
+        private ApplicationMessageUpgradeService $messageUpgrade,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -21,6 +23,7 @@ final class ApplicationController
     {
         $items = $this->em->getRepository(Application::class)->findBy([], ['updatedAt' => 'DESC']);
         $this->cvRepair->repairAll($items);
+        $this->messageUpgrade->upgradeLegacyMessages($items);
 
         return new JsonResponse(array_map(static fn (Application $application) => $application->toArray(), $items));
     }

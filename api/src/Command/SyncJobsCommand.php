@@ -21,13 +21,20 @@ final class SyncJobsCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption('force', null, InputOption::VALUE_NONE, 'Ignore l’intervalle entre deux synchronisations.');
+        $this
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Ignore l’intervalle entre deux synchronisations.')
+            ->addOption('connector', null, InputOption::VALUE_REQUIRED, 'Limite la synchronisation à un code de connecteur.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
-            $result = $this->syncService->sync((bool) $input->getOption('force'));
+            $connector = trim((string) $input->getOption('connector'));
+            $result = $this->syncService->sync(
+                (bool) $input->getOption('force'),
+                $connector !== '' ? $connector : null,
+                'cli',
+            );
             $output->writeln((string) ($result['message'] ?? 'Synchronisation terminée.'));
             $output->writeln(sprintf(
                 'Reçues : %d, importées : %d, doublons : %d, échecs : %d',
@@ -37,7 +44,7 @@ final class SyncJobsCommand extends Command
                 (int) ($result['failed'] ?? 0),
             ));
 
-            foreach ($result['providers'] ?? [] as $provider) {
+            foreach ($result['connectorResults'] ?? $result['providers'] ?? [] as $provider) {
                 if (!is_array($provider) || !isset($provider['name'])) {
                     continue;
                 }

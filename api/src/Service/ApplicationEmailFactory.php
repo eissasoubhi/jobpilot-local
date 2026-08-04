@@ -37,21 +37,22 @@ final class ApplicationEmailFactory
             );
         }
 
-        $parts = [trim($application->getMessage()), trim($application->getCoverLetter())];
-        $compensation = $application->getCompensationAnswer();
-
-        if ($compensation !== null && trim($compensation) !== '') {
-            $parts[] = ($job->getLanguage() === 'en' ? 'Compensation: ' : 'Rémunération : ').$compensation;
+        $message = trim($application->getMessage());
+        if ($message === '') {
+            throw new \RuntimeException('Le message de candidature est vide. Prépare de nouveau la candidature.');
         }
 
         return [
             'subject' => $job->getLanguage() === 'en'
                 ? 'Application – '.$job->getTitle()
                 : 'Candidature – '.$job->getTitle(),
-            'body' => implode("\n\n---\n\n", array_values(array_filter(
-                $parts,
-                static fn (string $part): bool => $part !== '',
-            ))),
+            // The cover letter remains stored on the application for optional manual use.
+            // It is deliberately not concatenated with the email body.
+            'body' => $this->withCompensation(
+                $message,
+                $application->getCompensationAnswer(),
+                $job->getLanguage(),
+            ),
             'attachments' => [[
                 'path' => $cvPath,
                 'filename' => $cv->getOriginalName(),
@@ -59,5 +60,34 @@ final class ApplicationEmailFactory
             ]],
             'attachmentNames' => [$cv->getOriginalName()],
         ];
+    }
+
+    private function withCompensation(string $message, ?string $compensation, string $language): string
+    {
+        $compensation = trim((string) $compensation);
+        if ($compensation === '') {
+            return $message;
+        }
+
+        $compensation = rtrim($compensation, " .\t\n\r\0\x0B");
+        $paragraph = $language === 'en'
+            ? 'Regarding compensation, my expectation is '.$compensation.'.'
+            : 'Concernant la rémunération, ma proposition est de '.$compensation.'.';
+        $closings = $language === 'en'
+            ? ["\n\nBest regards,", "\n\nKind regards,"]
+            : ["\n\nBien cordialement,", "\n\nCordialement,"];
+
+        foreach ($closings as $closing) {
+            $position = strrpos($message, $closing);
+            if ($position === false) {
+                continue;
+            }
+
+            return substr($message, 0, $position)
+                ."\n\n".$paragraph
+                .substr($message, $position);
+        }
+
+        return $message."\n\n".$paragraph;
     }
 }

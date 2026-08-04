@@ -41,4 +41,45 @@ export type Application = {
   updatedAt: string;
 };
 
+export type ConnectorResult = {
+  received: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+};
+
+export type SourceConnector = {
+  id: number;
+  code: string;
+  name: string;
+  mode: 'API' | 'RSS' | 'SCRAPING_HTTP' | 'SCRAPING_BROWSER' | 'GMAIL' | 'EXTENSION' | 'MANUAL';
+  enabled: boolean;
+  configured: boolean;
+  configurationMessage?: string | null;
+  status: string;
+  lastSyncedAt?: string | null;
+  lastSuccessfulAt?: string | null;
+  nextSyncAt?: string | null;
+  due: boolean;
+  lastResult: ConnectorResult;
+  lastError?: string | null;
+  updatedAt: string;
+};
+
+export type ConnectorSyncRun = {
+  id: number;
+  connector: { code: string; name: string };
+  trigger: string;
+  status: string;
+  startedAt: string;
+  finishedAt?: string | null;
+  durationMs?: number | null;
+  received: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  error?: string | null;
+  details: { errors?: string[] };
+};
+
 export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };

@@ -11,6 +11,9 @@ La documentation produit, architecture, développement et exploitation se trouve
 - Recherche automatique d'offres toutes les six heures.
 - Import immédiat depuis Arbeitnow, sans compte ni clé API.
 - Connecteur Adzuna France facultatif pour élargir les résultats.
+- Registre persistant des connecteurs, activation indépendante et historique des synchronisations.
+- Page **Connecteurs** avec diagnostic, test manuel, compteurs et erreurs par source.
+- Filtre par source dans la page **Offres**.
 - Import manuel d'offres et import depuis l'extension Chrome.
 - Détection de langue et choix du CV correspondant.
 - Score de compatibilité, préparation automatique à partir de 50/100.
@@ -23,7 +26,6 @@ La documentation produit, architecture, développement et exploitation se trouve
 - Synchronisation manuelle des messages Gmail depuis les paramètres.
 - Envoi automatique Gmail uniquement lorsque la candidature, le CV, le destinataire et les autorisations le permettent.
 - Test fonctionnel de l'e-mail automatique avec aperçu exact et envoi réel.
-- Registre des plateformes de recherche.
 - Extension Chrome Manifest V3 pour importer une offre et préremplir les formulaires.
 
 ## Démarrage sur macOS
@@ -56,11 +58,13 @@ Les ports sont liés à `127.0.0.1`, donc l'application n'est pas exposée au r�
 
 Le service `scheduler` lance une recherche au démarrage, puis toutes les six heures. La page **Offres** lance également une synchronisation non forcée à son ouverture et propose le bouton **Rechercher maintenant**.
 
+Les connecteurs disponibles sont enregistrés dans PostgreSQL avec leur état, leur dernière erreur et leurs compteurs. La page **Connecteurs** permet de les activer, les désactiver et les tester individuellement. Chaque exécution est conservée dans un historique.
+
 ### Arbeitnow
 
 Arbeitnow est actif par défaut et ne nécessite aucune clé. JobPilot consulte les offres récentes, conserve les postes distants ou situés en France, filtre les technologies selon les métiers et compétences configurés, puis applique le scoring habituel.
 
-Pour le désactiver :
+Pour le désactiver au niveau de l’environnement :
 
 ```dotenv
 ARBEITNOW_ENABLED=0
@@ -101,10 +105,14 @@ docker compose up -d --force-recreate api scheduler web
 La synchronisation peut aussi être lancée depuis le Terminal :
 
 ```bash
+docker compose exec api php bin/console app:jobs:sync
 docker compose exec api php bin/console app:jobs:sync --force
+docker compose exec api php bin/console app:jobs:sync --force --connector=arbeitnow
 ```
 
 Les offres sont actuellement dédupliquées par source et identifiant externe. La déduplication canonique multi-sources est prévue dans la roadmap. Les offres importées passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
+
+La documentation détaillée du contrat et de l’ajout d’une nouvelle source est disponible dans [`docs/connectors/overview.md`](docs/connectors/overview.md).
 
 ## Extension Chrome
 
@@ -161,5 +169,6 @@ Consulter :
 
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - [`docs/architecture/context-map.md`](docs/architecture/context-map.md)
+- [`docs/connectors/overview.md`](docs/connectors/overview.md)
 - [`docs/development/testing.md`](docs/development/testing.md)
 - [`docs/definition-of-done.md`](docs/definition-of-done.md)

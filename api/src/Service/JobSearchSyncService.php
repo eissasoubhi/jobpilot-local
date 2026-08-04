@@ -4,55 +4,103 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\ConnectorSyncRun;
 use App\Entity\JobOffer;
+use App\Entity\SourceConnector;
+use App\JobDiscovery\Application\ConnectorRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class JobSearchSyncService
 {
-    /** @var list<JobProviderInterface> */
-    private array $providers;
-
-    /** @param iterable<JobProviderInterface> $providers */
     public function __construct(
-        iterable $providers,
+        private ConnectorRegistry $registry,
         private EntityManagerInterface $em,
         private LocalDataService $data,
         private JobProcessor $processor,
         private string $privateDir,
         private int $intervalSeconds = 21600,
     ) {
-        $this->providers = is_array($providers) ? array_values($providers) : iterator_to_array($providers, false);
         $this->intervalSeconds = max(900, $this->intervalSeconds);
     }
 
     /** @return array<string, mixed> */
     public function status(): array
     {
-        $state = $this->readState();
-        $lastSyncedAt = isset($state['lastSyncedAt']) ? (string) $state['lastSyncedAt'] : null;
-        $lastTimestamp = $lastSyncedAt !== null ? strtotime($lastSyncedAt) : false;
-        $nextTimestamp = $lastTimestamp === false ? null : $lastTimestamp + $this->intervalSeconds;
+        $states = array_values($this->synchronizeDefinitions());
+        usort($states, static fn (SourceConnector $a, SourceConnector $b): int => $a->getName() <=> $b->getName());
+        $connectors = array_map(
+            fn (SourceConnector $connector): array => $connector->toArray($this->intervalSeconds),
+            $states,
+        );
+
+        $lastSyncedAt = null;
+        foreach ($states as $state) {
+            $candidate = $state->getLastSyncedAt();
+            if ($candidate !== null && ($lastSyncedAt === null || $candidate > $lastSyncedAt)) {
+                $lastSyncedAt = $candidate;
+            }
+        }
+        $nextSyncAt = $lastSyncedAt?->modify(sprintf('+%d seconds', $this->intervalSeconds));
+        $aggregate = $this->aggregateLastResults($connectors);
 
         return [
-            'configured' => $this->configuredProviders() !== [],
-            'providers' => array_map(
-                static fn (JobProviderInterface $provider): array => [
-                    'name' => $provider->name(),
-                    'configured' => $provider->isConfigured(),
-                ],
-                $this->providers,
+            'configured' => array_any(
+                $states,
+                static fn (SourceConnector $connector): bool => $connector->isEnabled() && $connector->isConfigured(),
             ),
-            'lastSyncedAt' => $lastSyncedAt,
-            'nextSyncAt' => $nextTimestamp === null ? null : date(DATE_ATOM, $nextTimestamp),
-            'due' => $nextTimestamp === null || time() >= $nextTimestamp,
+            'providers' => $connectors,
+            'connectors' => $connectors,
+            'lastSyncedAt' => $lastSyncedAt?->format(DATE_ATOM),
+            'nextSyncAt' => $nextSyncAt?->format(DATE_ATOM),
+            'due' => array_any($states, fn (SourceConnector $connector): bool => $connector->isDue($this->intervalSeconds)),
             'intervalSeconds' => $this->intervalSeconds,
-            'lastResult' => $state['lastResult'] ?? null,
+            'lastResult' => $aggregate,
+            ...$aggregate,
         ];
     }
 
-    /** @return array<string, mixed> */
-    public function sync(bool $force = false): array
+    /** @return list<array<string, mixed>> */
+    public function connectors(): array
     {
+        /** @var list<array<string, mixed>> $connectors */
+        $connectors = $this->status()['connectors'];
+
+        return $connectors;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function history(int $limit = 30): array
+    {
+        $limit = max(1, min(100, $limit));
+        $runs = $this->em->getRepository(ConnectorSyncRun::class)->findBy([], ['startedAt' => 'DESC'], $limit);
+
+        return array_map(
+            static fn (ConnectorSyncRun $run): array => $run->toArray(),
+            $runs,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    public function setEnabled(string $code, bool $enabled): array
+    {
+        $states = $this->synchronizeDefinitions();
+        $normalized = strtolower(trim($code));
+        if (!isset($states[$normalized])) {
+            throw new \InvalidArgumentException(sprintf('Connecteur inconnu : %s.', $code));
+        }
+
+        $states[$normalized]->setEnabled($enabled);
+        $this->em->flush();
+
+        return $states[$normalized]->toArray($this->intervalSeconds);
+    }
+
+    /** @return array<string, mixed> */
+    public function sync(
+        bool $force = false,
+        ?string $connectorCode = null,
+        string $trigger = 'scheduled',
+    ): array {
         $this->ensurePrivateDirectory();
         $lock = fopen($this->privateDir.'/job-search-sync.lock', 'c+');
         if ($lock === false) {
@@ -70,21 +118,30 @@ final class JobSearchSyncService
         }
 
         try {
-            $status = $this->status();
-            if (!$force && !$status['due']) {
-                return array_merge($status, [
-                    'busy' => false,
-                    'skipped' => true,
-                    'message' => 'La dernière recherche est encore récente.',
-                ]);
+            $states = $this->synchronizeDefinitions();
+            $connectors = $connectorCode === null
+                ? $this->registry->all()
+                : [$this->registry->get($connectorCode)];
+            $eligible = [];
+
+            foreach ($connectors as $connector) {
+                $sourceCode = strtolower($connector->code());
+                $state = $states[$sourceCode] ?? null;
+                if (!$state instanceof SourceConnector || !$state->isEnabled() || !$state->isConfigured()) {
+                    continue;
+                }
+                if ($force || $state->isDue($this->intervalSeconds)) {
+                    $eligible[] = $connector;
+                }
             }
 
-            $providers = $this->configuredProviders();
-            if ($providers === []) {
-                return array_merge($status, [
+            if ($eligible === []) {
+                return array_merge($this->status(), [
                     'busy' => false,
                     'skipped' => true,
-                    'message' => 'Aucune source d’offres n’est configurée.',
+                    'message' => $connectorCode === null
+                        ? 'Aucun connecteur actif n’est arrivé à échéance.'
+                        : 'Ce connecteur est désactivé, incomplet ou sa dernière synchronisation est encore récente.',
                 ]);
             }
 
@@ -94,92 +151,120 @@ final class JobSearchSyncService
             $duplicates = 0;
             $failed = 0;
             $received = 0;
-            $providerResults = [];
+            $connectorResults = [];
             $errors = [];
 
-            foreach ($providers as $provider) {
-                $providerImported = 0;
-                $providerDuplicates = 0;
-                $providerFailed = 0;
+            foreach ($eligible as $connector) {
+                $sourceCode = strtolower($connector->code());
+                $state = $states[$sourceCode];
+                $state->markRunning();
+                $run = new ConnectorSyncRun($state, $trigger);
+                $this->em->persist($run);
+                $this->em->flush();
+
+                $connectorImported = 0;
+                $connectorDuplicates = 0;
+                $connectorFailed = 0;
+                $connectorReceived = 0;
+                $connectorError = null;
+                $connectorErrors = [];
 
                 try {
-                    $offers = $provider->search($settings->getTargetJobs(), $settings->getSkills());
-                    $received += count($offers);
+                    $offers = $connector->search($settings->getTargetJobs(), $settings->getSkills());
+                    $connectorReceived = count($offers);
+                    $received += $connectorReceived;
 
                     foreach ($offers as $payload) {
                         $externalId = trim((string) ($payload['externalId'] ?? ''));
                         if ($externalId === '') {
                             ++$failed;
-                            ++$providerFailed;
+                            ++$connectorFailed;
+                            $connectorErrors[] = 'Offre ignorée car son identifiant externe est vide.';
                             continue;
                         }
 
                         $existing = $this->em->getRepository(JobOffer::class)->findOneBy([
-                            'source' => $provider->name(),
+                            'sourceCode' => $sourceCode,
                             'externalId' => $externalId,
                         ]);
                         if ($existing !== null) {
                             ++$duplicates;
-                            ++$providerDuplicates;
+                            ++$connectorDuplicates;
                             continue;
                         }
 
                         try {
+                            $payload['source'] = $connector->name();
+                            $payload['sourceCode'] = $sourceCode;
+                            $payload['rawData'] = [
+                                'connector' => [
+                                    'code' => $sourceCode,
+                                    'mode' => $connector->mode()->value,
+                                ],
+                                'payload' => is_array($payload['rawData'] ?? null) ? $payload['rawData'] : [],
+                            ];
                             $job = (new JobOffer())->fill($payload);
                             if ($job->getTitle() === '' || $job->getDescription() === '') {
                                 throw new \InvalidArgumentException('Offre sans titre ou description.');
                             }
                             $this->processor->process($job, $settings, $profile);
                             ++$imported;
-                            ++$providerImported;
+                            ++$connectorImported;
                         } catch (\Throwable $exception) {
                             ++$failed;
-                            ++$providerFailed;
-                            if (count($errors) < 5) {
-                                $errors[] = sprintf('%s : %s', $provider->name(), $exception->getMessage());
+                            ++$connectorFailed;
+                            if (count($connectorErrors) < 5) {
+                                $connectorErrors[] = $exception->getMessage();
                             }
                         }
                     }
-
-                    $providerResults[] = [
-                        'name' => $provider->name(),
-                        'received' => count($offers),
-                        'imported' => $providerImported,
-                        'duplicates' => $providerDuplicates,
-                        'failed' => $providerFailed,
-                        'error' => null,
-                    ];
                 } catch (\Throwable $exception) {
                     ++$failed;
-                    $providerResults[] = [
-                        'name' => $provider->name(),
-                        'received' => 0,
-                        'imported' => 0,
-                        'duplicates' => 0,
-                        'failed' => 1,
-                        'error' => $exception->getMessage(),
-                    ];
+                    ++$connectorFailed;
+                    $connectorError = $exception->getMessage();
+                    $connectorErrors[] = $connectorError;
                     if (count($errors) < 5) {
-                        $errors[] = sprintf('%s : %s', $provider->name(), $exception->getMessage());
+                        $errors[] = sprintf('%s : %s', $connector->name(), $connectorError);
                     }
                 }
+
+                $state->complete(
+                    $connectorReceived,
+                    $connectorImported,
+                    $connectorDuplicates,
+                    $connectorFailed,
+                    $connectorError,
+                );
+                $run->complete(
+                    $connectorReceived,
+                    $connectorImported,
+                    $connectorDuplicates,
+                    $connectorFailed,
+                    $connectorError,
+                    ['errors' => array_slice($connectorErrors, 0, 5)],
+                );
+                $this->em->flush();
+
+                $connectorResults[] = [
+                    'code' => $sourceCode,
+                    'name' => $connector->name(),
+                    'mode' => $connector->mode()->value,
+                    'received' => $connectorReceived,
+                    'imported' => $connectorImported,
+                    'duplicates' => $connectorDuplicates,
+                    'failed' => $connectorFailed,
+                    'error' => $connectorError,
+                ];
             }
 
-            $now = new \DateTimeImmutable();
-            $result = [
+            return array_merge($this->status(), [
                 'received' => $received,
                 'imported' => $imported,
                 'duplicates' => $duplicates,
                 'failed' => $failed,
-                'providers' => $providerResults,
+                'providers' => $connectorResults,
+                'connectorResults' => $connectorResults,
                 'errors' => $errors,
-            ];
-            $this->writeState([
-                'lastSyncedAt' => $now->format(DATE_ATOM),
-                'lastResult' => $result,
-            ]);
-
-            return array_merge($this->status(), $result, [
                 'busy' => false,
                 'skipped' => false,
                 'message' => sprintf('%d nouvelle(s) offre(s) importée(s).', $imported),
@@ -190,41 +275,44 @@ final class JobSearchSyncService
         }
     }
 
-    /** @return list<JobProviderInterface> */
-    private function configuredProviders(): array
+    /** @return array<string, SourceConnector> */
+    private function synchronizeDefinitions(): array
     {
-        return array_values(array_filter(
-            $this->providers,
-            static fn (JobProviderInterface $provider): bool => $provider->isConfigured(),
-        ));
+        $repository = $this->em->getRepository(SourceConnector::class);
+        $states = [];
+
+        foreach ($this->registry->all() as $connector) {
+            $code = strtolower($connector->code());
+            $state = $repository->findOneBy(['code' => $code]);
+            if (!$state instanceof SourceConnector) {
+                $state = new SourceConnector($connector);
+                $this->em->persist($state);
+            } else {
+                $state->refreshDefinition($connector);
+            }
+            $states[$code] = $state;
+        }
+
+        $this->em->flush();
+
+        return $states;
     }
 
-    /** @return array<string, mixed> */
-    private function readState(): array
+    /**
+     * @param list<array<string, mixed>> $connectors
+     * @return array{received: int, imported: int, duplicates: int, failed: int}
+     */
+    private function aggregateLastResults(array $connectors): array
     {
-        $path = $this->privateDir.'/job-search-sync.json';
-        if (!is_file($path)) {
-            return [];
+        $result = ['received' => 0, 'imported' => 0, 'duplicates' => 0, 'failed' => 0];
+        foreach ($connectors as $connector) {
+            $lastResult = is_array($connector['lastResult'] ?? null) ? $connector['lastResult'] : [];
+            foreach (array_keys($result) as $key) {
+                $result[$key] += max(0, (int) ($lastResult[$key] ?? 0));
+            }
         }
 
-        $decoded = json_decode((string) file_get_contents($path), true);
-
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    /** @param array<string, mixed> $state */
-    private function writeState(array $state): void
-    {
-        $this->ensurePrivateDirectory();
-        $json = json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-        $temporary = $this->privateDir.'/job-search-sync.json.tmp';
-        if (file_put_contents($temporary, $json, LOCK_EX) === false) {
-            throw new \RuntimeException('Impossible d’enregistrer l’état de synchronisation.');
-        }
-        if (!rename($temporary, $this->privateDir.'/job-search-sync.json')) {
-            @unlink($temporary);
-            throw new \RuntimeException('Impossible de finaliser l’état de synchronisation.');
-        }
+        return $result;
     }
 
     private function ensurePrivateDirectory(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class AdzunaJobProvider implements JobProviderInterface
@@ -18,14 +19,31 @@ final class AdzunaJobProvider implements JobProviderInterface
     ) {
     }
 
+    public function code(): string
+    {
+        return 'adzuna';
+    }
+
     public function name(): string
     {
         return 'Adzuna';
     }
 
+    public function mode(): ConnectorMode
+    {
+        return ConnectorMode::API;
+    }
+
     public function isConfigured(): bool
     {
         return trim($this->appId) !== '' && trim($this->appKey) !== '';
+    }
+
+    public function configurationMessage(): ?string
+    {
+        return $this->isConfigured()
+            ? null
+            : 'Renseigne ADZUNA_APP_ID et ADZUNA_APP_KEY dans le fichier .env.';
     }
 
     public function search(array $targetJobs, array $skills): array
@@ -133,7 +151,7 @@ final class AdzunaJobProvider implements JobProviderInterface
         $combined = $title.' '.$description;
 
         return [
-            'source' => 'Adzuna',
+            'source' => $this->name(),
             'sourceUrl' => $url !== '' ? $url : null,
             'externalId' => $externalId,
             'title' => $title,

@@ -7,12 +7,14 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
+#[ORM\UniqueConstraint(name: 'uniq_job_source_external', columns: ['source_code', 'external_id'])]
 #[ORM\Index(columns: ['published_at'], name: 'idx_job_published')]
 #[ORM\Index(columns: ['score'], name: 'idx_job_score')]
 class JobOffer
 {
     #[ORM\Id, ORM\GeneratedValue, ORM\Column] private ?int $id = null;
     #[ORM\Column(length: 100)] private string $source = 'Manuel';
+    #[ORM\Column(length: 64, nullable: true)] private ?string $sourceCode = null;
     #[ORM\Column(length: 500, nullable: true)] private ?string $sourceUrl = null;
     #[ORM\Column(length: 180, nullable: true)] private ?string $externalId = null;
     #[ORM\Column(length: 255)] private string $title = '';
@@ -46,6 +48,9 @@ class JobOffer
     }
 
     public function getId(): ?int { return $this->id; }
+    public function getSource(): string { return $this->source; }
+    public function getSourceCode(): ?string { return $this->sourceCode; }
+    public function getExternalId(): ?string { return $this->externalId; }
     public function getTitle(): string { return $this->title; }
     public function getCompany(): string { return $this->company; }
     public function getClientName(): ?string { return $this->clientName; }
@@ -75,11 +80,15 @@ class JobOffer
             }
         }
 
-        foreach (['sourceUrl', 'externalId', 'clientName'] as $field) {
+        foreach (['sourceCode', 'sourceUrl', 'externalId', 'clientName'] as $field) {
             if (array_key_exists($field, $data)) {
                 $value = trim((string) ($data[$field] ?? ''));
                 $this->{$field} = $value === '' ? null : $value;
             }
+        }
+
+        if ($this->sourceCode !== null) {
+            $this->sourceCode = strtolower($this->sourceCode);
         }
 
         if (array_key_exists('applicationEmail', $data)) {
@@ -153,6 +162,7 @@ class JobOffer
         return [
             'id' => $this->id,
             'source' => $this->source,
+            'sourceCode' => $this->sourceCode,
             'sourceUrl' => $this->sourceUrl,
             'externalId' => $this->externalId,
             'title' => $this->title,

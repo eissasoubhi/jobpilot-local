@@ -27,6 +27,10 @@ final class JobSearchController
     {
         $force = filter_var($request->query->get('force', '0'), FILTER_VALIDATE_BOOL);
 
-        return new JsonResponse($this->syncService->sync($force));
+        return new JsonResponse($this->syncService->sync(
+            $force,
+            null,
+            $force ? 'manual' : 'page-load',
+        ));
     }
 }

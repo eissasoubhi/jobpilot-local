@@ -17,7 +17,7 @@ export type Settings = {
 export type Cv = { id: number; name: string; originalName: string; language: string; category: string; tags: string[]; active: boolean; defaultForLanguage: boolean; size: number; downloadUrl: string };
 
 export type Job = {
-  id: number; source: string; sourceUrl?: string; title: string; company: string; clientName?: string;
+  id: number; source: string; sourceCode?: string; sourceUrl?: string; title: string; company: string; clientName?: string;
   applicationEmail?: string; location: string; contractType: string; workMode: string; language: string; description: string;
   publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
   tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;
@@ -39,6 +39,47 @@ export type Application = {
   submissionError?: string;
   submissionAttemptedAt?: string;
   updatedAt: string;
+};
+
+export type ConnectorResult = {
+  received: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+};
+
+export type SourceConnector = {
+  id: number;
+  code: string;
+  name: string;
+  mode: 'API' | 'RSS' | 'SCRAPING_HTTP' | 'SCRAPING_BROWSER' | 'GMAIL' | 'EXTENSION' | 'MANUAL';
+  enabled: boolean;
+  configured: boolean;
+  configurationMessage?: string | null;
+  status: string;
+  lastSyncedAt?: string | null;
+  lastSuccessfulAt?: string | null;
+  nextSyncAt?: string | null;
+  due: boolean;
+  lastResult: ConnectorResult;
+  lastError?: string | null;
+  updatedAt: string;
+};
+
+export type ConnectorSyncRun = {
+  id: number;
+  connector: { code: string; name: string };
+  trigger: string;
+  status: string;
+  startedAt: string;
+  finishedAt?: string | null;
+  durationMs?: number | null;
+  received: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  error?: string | null;
+  details: { errors?: string[] };
 };
 
 export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };

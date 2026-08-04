@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
@@ -26,8 +27,11 @@ type JobForm = {
 };
 
 type ProviderSync = {
+  code?: string;
   name: string;
+  mode?: string;
   configured?: boolean;
+  enabled?: boolean;
   received?: number;
   imported?: number;
   duplicates?: number;
@@ -101,6 +105,7 @@ export default function JobsPage() {
   const [error, setError] = useState('');
   const [show, setShow] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [syncing, setSyncing] = useState(false);
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
 
@@ -168,13 +173,21 @@ export default function JobsPage() {
     }
   };
 
+  const sources = useMemo(
+    () => Array.from(new Set((jobs ?? []).map((job) => job.source).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'fr')),
+    [jobs],
+  );
+
   const displayed = useMemo(
-    () => jobs?.filter((job) => filter === 'all' || job.status === filter) ?? [],
-    [jobs, filter],
+    () => jobs?.filter((job) => (
+      (filter === 'all' || job.status === filter)
+      && (sourceFilter === 'all' || job.source === sourceFilter)
+    )) ?? [],
+    [jobs, filter, sourceFilter],
   );
 
   const providerNames = syncInfo?.providers
-    .filter((provider) => provider.configured !== false)
+    .filter((provider) => provider.configured !== false && provider.enabled !== false)
     .map((provider) => provider.name)
     .join(', ');
 
@@ -185,6 +198,7 @@ export default function JobsPage() {
         description="Recherche automatique, classement par fraîcheur, puis par score de compatibilité."
         actions={
           <div className="actions">
+            <Link className="btn secondary" href="/connecteurs">Gérer les connecteurs</Link>
             <button
               className="btn secondary"
               type="button"
@@ -207,7 +221,7 @@ export default function JobsPage() {
             <strong>Recherche automatique</strong>
             <div className="muted small" style={{ marginTop: 5 }}>
               {syncing
-                ? 'JobPilot consulte les sources et analyse les nouvelles offres.'
+                ? 'JobPilot consulte les connecteurs actifs et analyse les nouvelles offres.'
                 : syncInfo?.message ?? 'Initialisation de la recherche automatique…'}
             </div>
           </div>
@@ -235,8 +249,22 @@ export default function JobsPage() {
         )}
 
         <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
-          Arbeitnow fonctionne sans compte. Pour davantage d’offres françaises, ajoute les identifiants Adzuna dans le fichier <code>.env</code>.
+          Les API, futurs scrapers, alertes Gmail et imports assistés utiliseront tous le même registre de connecteurs.
         </p>
+      </Card>
+
+      <Card>
+        <label style={{ maxWidth: 360 }}>
+          Filtrer par source
+          <select
+            aria-label="Filtrer par source"
+            value={sourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value)}
+          >
+            <option value="all">Toutes les sources</option>
+            {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+          </select>
+        </label>
       </Card>
 
       <div className="tabs" aria-label="Filtres des offres">
@@ -261,7 +289,7 @@ export default function JobsPage() {
         {jobs === null || (syncing && jobs.length === 0) ? (
           <Loading />
         ) : displayed.length === 0 ? (
-          <Empty>Aucune offre correspondante pour le moment. La prochaine recherche sera automatique.</Empty>
+          <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>
         ) : (
           displayed.map((job) => (
             <div className="list-row" key={job.id}>

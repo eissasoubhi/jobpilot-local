@@ -17,8 +17,8 @@ services:
     autoconfigure: true
 
   _instanceof:
-    App\Service\JobProviderInterface:
-      tags: ['app.job_provider']
+    App\JobDiscovery\Domain\Connector\JobSourceConnector:
+      tags: ['app.job_source_connector']
 
   App\:
     resource: '../src/'
@@ -49,9 +49,12 @@ services:
       $where: '%env(ADZUNA_WHERE)%'
       $resultsPerQuery: '%env(int:ADZUNA_RESULTS_PER_QUERY)%'
 
+  App\JobDiscovery\Application\ConnectorRegistry:
+    arguments:
+      $connectors: !tagged_iterator app.job_source_connector
+
   App\Service\JobSearchSyncService:
     arguments:
-      $providers: !tagged_iterator app.job_provider
       $privateDir: '%private_dir%'
       $intervalSeconds: '%env(int:JOB_SYNC_INTERVAL_SECONDS)%'
 

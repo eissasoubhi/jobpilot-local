@@ -13,6 +13,10 @@ Cette documentation est la référence produit, métier, technique et opération
 - [Context map](architecture/context-map.md)
 - [ADR](architecture/adr/)
 
+## Connecteurs
+
+- [Contrat, exploitation et ajout d’une source](connectors/overview.md)
+
 ## Développement
 
 - [Conventions](development/conventions.md)

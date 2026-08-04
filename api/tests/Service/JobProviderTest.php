@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\Service\AdzunaJobProvider;
 use App\Service\ArbeitnowJobProvider;
 use PHPUnit\Framework\TestCase;
@@ -48,6 +49,12 @@ final class JobProviderTest extends TestCase
         ]));
 
         $provider = new ArbeitnowJobProvider($client, true, 1);
+        self::assertSame('arbeitnow', $provider->code());
+        self::assertSame('Arbeitnow', $provider->name());
+        self::assertSame(ConnectorMode::API, $provider->mode());
+        self::assertTrue($provider->isConfigured());
+        self::assertNull($provider->configurationMessage());
+
         $offers = $provider->search(['Senior Symfony Developer'], ['PHP', 'Symfony', 'React']);
 
         self::assertCount(1, $offers);
@@ -69,6 +76,7 @@ final class JobProviderTest extends TestCase
         $provider = new ArbeitnowJobProvider($client, false, 1);
 
         self::assertFalse($provider->isConfigured());
+        self::assertStringContainsString('ARBEITNOW_ENABLED', (string) $provider->configurationMessage());
         self::assertSame([], $provider->search(['Symfony'], ['PHP']));
     }
 
@@ -93,6 +101,12 @@ final class JobProviderTest extends TestCase
         ]));
 
         $provider = new AdzunaJobProvider($client, 'app-id', 'app-key', 'fr', '', 20);
+        self::assertSame('adzuna', $provider->code());
+        self::assertSame('Adzuna', $provider->name());
+        self::assertSame(ConnectorMode::API, $provider->mode());
+        self::assertTrue($provider->isConfigured());
+        self::assertNull($provider->configurationMessage());
+
         $offers = $provider->search(['Senior Symfony Developer'], ['PHP', 'Symfony']);
 
         self::assertCount(1, $offers);
@@ -103,5 +117,13 @@ final class JobProviderTest extends TestCase
         self::assertSame(50000, $offers[0]['salaryMin']);
         self::assertSame(60000, $offers[0]['salaryMax']);
         self::assertSame('CDI', $offers[0]['contractType']);
+    }
+
+    public function testAdzunaExplainsMissingCredentials(): void
+    {
+        $provider = new AdzunaJobProvider(new MockHttpClient(), '', '');
+
+        self::assertFalse($provider->isConfigured());
+        self::assertStringContainsString('ADZUNA_APP_ID', (string) $provider->configurationMessage());
     }
 }

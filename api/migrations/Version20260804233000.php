@@ -21,15 +21,15 @@ final class Version20260804233000 extends AbstractMigration
         $this->addSql('CREATE INDEX idx_source_connector_status ON source_connector (status)');
 
         $this->addSql('CREATE TABLE connector_sync_run (id SERIAL NOT NULL, connector_id INT NOT NULL, trigger VARCHAR(24) NOT NULL, status VARCHAR(24) NOT NULL, started_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, finished_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, received INT NOT NULL, imported INT NOT NULL, duplicates INT NOT NULL, failed INT NOT NULL, error TEXT DEFAULT NULL, details JSON NOT NULL, PRIMARY KEY(id))');
-        $this->addSql('CREATE INDEX IDX_CONNECTOR_SYNC_RUN_CONNECTOR ON connector_sync_run (connector_id)');
+        $this->addSql('CREATE INDEX IDX_E2D5CEA74D085745 ON connector_sync_run (connector_id)');
         $this->addSql('CREATE INDEX idx_connector_sync_started ON connector_sync_run (started_at)');
         $this->addSql('CREATE INDEX idx_connector_sync_status ON connector_sync_run (status)');
-        $this->addSql('ALTER TABLE connector_sync_run ADD CONSTRAINT FK_CONNECTOR_SYNC_RUN_CONNECTOR FOREIGN KEY (connector_id) REFERENCES source_connector (id) ON DELETE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE connector_sync_run ADD CONSTRAINT FK_E2D5CEA74D085745 FOREIGN KEY (connector_id) REFERENCES source_connector (id) ON DELETE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE connector_sync_run DROP CONSTRAINT FK_CONNECTOR_SYNC_RUN_CONNECTOR');
+        $this->addSql('ALTER TABLE connector_sync_run DROP CONSTRAINT FK_E2D5CEA74D085745');
         $this->addSql('DROP TABLE connector_sync_run');
         $this->addSql('DROP TABLE source_connector');
     }

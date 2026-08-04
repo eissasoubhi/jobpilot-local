@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class ArbeitnowJobProvider implements JobProviderInterface
@@ -17,14 +18,29 @@ final class ArbeitnowJobProvider implements JobProviderInterface
     ) {
     }
 
+    public function code(): string
+    {
+        return 'arbeitnow';
+    }
+
     public function name(): string
     {
         return 'Arbeitnow';
     }
 
+    public function mode(): ConnectorMode
+    {
+        return ConnectorMode::API;
+    }
+
     public function isConfigured(): bool
     {
         return $this->enabled;
+    }
+
+    public function configurationMessage(): ?string
+    {
+        return $this->enabled ? null : 'Le connecteur est désactivé par ARBEITNOW_ENABLED.';
     }
 
     public function search(array $targetJobs, array $skills): array
@@ -150,7 +166,7 @@ final class ArbeitnowJobProvider implements JobProviderInterface
         $combined = $title.' '.$description;
 
         return [
-            'source' => 'Arbeitnow',
+            'source' => $this->name(),
             'sourceUrl' => $url !== '' ? $url : null,
             'externalId' => $externalId,
             'title' => $title,

@@ -15,7 +15,7 @@ final class ConnectorApiTest extends WebTestCase
         $client->request('GET', '/api/connectors');
         self::assertResponseIsSuccessful();
         $connectors = $this->decode($client->getResponse()->getContent());
-        self::assertCount(2, $connectors);
+        self::assertCount(3, $connectors);
 
         $byCode = [];
         foreach ($connectors as $connector) {
@@ -24,8 +24,11 @@ final class ConnectorApiTest extends WebTestCase
 
         self::assertSame('API', $byCode['arbeitnow']['mode']);
         self::assertSame('API', $byCode['adzuna']['mode']);
+        self::assertSame('GMAIL', $byCode['gmail']['mode']);
         self::assertFalse($byCode['arbeitnow']['configured']);
         self::assertFalse($byCode['adzuna']['configured']);
+        self::assertFalse($byCode['gmail']['configured']);
+        self::assertStringContainsString('Connecte Gmail', $byCode['gmail']['configurationMessage']);
 
         $client->jsonRequest('PATCH', '/api/connectors/arbeitnow', ['enabled' => false]);
         self::assertResponseIsSuccessful();

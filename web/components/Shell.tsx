@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/candidatures', 'Candidatures', '✓'],
-  ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'], ['/cv', 'Mes CV', '▤'],
-  ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
+  ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/connecteurs', 'Connecteurs', '⛓'],
+  ['/candidatures', 'Candidatures', '✓'], ['/positionnements', 'Positionnements', '⇄'],
+  ['/messages', 'Messagerie', '✉'], ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'],
+  ['/parametres', 'Paramètres', '⚙'],
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

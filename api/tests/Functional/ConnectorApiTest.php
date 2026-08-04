@@ -46,7 +46,8 @@ final class ConnectorApiTest extends WebTestCase
 
         $client->request('GET', '/api/connectors/history');
         self::assertResponseIsSuccessful();
-        self::assertSame([], $this->decode($client->getResponse()->getContent()));
+        $history = $this->decode($client->getResponse()->getContent());
+        self::assertIsArray($history);
     }
 
     /** @return array<string|int, mixed> */

@@ -5,7 +5,7 @@ function watchForBrowserFailures(page: Page): string[] {
 
   page.on('pageerror', (error) => failures.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('response', (response) => {
     if (response.status() >= 500) failures.push(`http ${response.status()}: ${response.url()}`);
@@ -19,6 +19,7 @@ test('all main pages load without browser or server errors', async ({ page }) =>
   const routes = [
     ['/', 'Tableau de bord'],
     ['/offres', 'Offres'],
+    ['/connecteurs', 'Connecteurs'],
     ['/candidatures', 'Candidatures'],
     ['/positionnements', 'Positionnements'],
     ['/messages', 'Messagerie'],
@@ -34,17 +35,27 @@ test('all main pages load without browser or server errors', async ({ page }) =>
     if (route === '/offres') {
       await expect(page.getByRole('button', { name: 'Rechercher maintenant' })).toBeVisible();
       await expect(page.getByText('Recherche automatique', { exact: true })).toBeVisible();
+      await expect(page.getByLabel('Filtrer par source')).toBeVisible();
+    }
+
+    if (route === '/connecteurs') {
+      await expect(page.getByRole('heading', { name: 'Historique récent', level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Arbeitnow', level: 3 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Adzuna', level: 3 })).toBeVisible();
     }
   }
 
   expect(failures).toEqual([]);
 });
 
-test('profile, CV, job preparation, guided submission and positioning workflow', async ({ page }, testInfo) => {
+test('profile, CV, job preparation, source filtering, guided submission and positioning workflow', async ({ page }, testInfo) => {
   const failures = watchForBrowserFailures(page);
   const uniqueSuffix = `${testInfo.workerIndex}-${Date.now()}-${testInfo.retry}`;
   const cvName = `CV Symfony React FR ${uniqueSuffix}`;
   const jobTitle = `Senior Symfony React Developer ${uniqueSuffix}`;
+  const rejectedJobTitle = `Stage PHP ${uniqueSuffix}`;
+  const sourceA = `Source A ${uniqueSuffix}`;
+  const sourceB = `Source B ${uniqueSuffix}`;
   const positioningTitle = `Mission Symfony React ${uniqueSuffix}`;
   const tenderReference = `AO-E2E-${uniqueSuffix}`;
   const sourceUrl = `https://example.test/jobs/${uniqueSuffix}`;
@@ -70,6 +81,7 @@ test('profile, CV, job preparation, guided submission and positioning workflow',
   await page.goto('/offres');
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
+  await dialog.getByLabel('Source').fill(sourceA);
   await dialog.getByLabel('URL').fill(sourceUrl);
   await dialog.getByLabel('Intitulé').fill(jobTitle);
   await dialog.getByLabel('Entreprise').fill('Example Company');
@@ -85,6 +97,29 @@ test('profile, CV, job preparation, guided submission and positioning workflow',
   const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
   await expect(jobRow.getByText('TJM proposé : 520 €')).toBeVisible();
   await expect(jobRow.getByText('PREPARED')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Ajouter une offre' }).click();
+  const secondDialog = page.getByRole('dialog', { name: 'Ajouter une offre' });
+  await secondDialog.getByLabel('Source').fill(sourceB);
+  await secondDialog.getByLabel('Intitulé').fill(rejectedJobTitle);
+  await secondDialog.getByLabel('Entreprise').fill('Second Company');
+  await secondDialog.getByLabel('Lieu').fill('Paris');
+  await secondDialog.getByLabel('Contrat').selectOption({ label: 'CDD' });
+  await secondDialog.getByLabel('Description').fill('Stage junior PHP Symfony.');
+  await secondDialog.getByRole('button', { name: 'Analyser et enregistrer' }).click();
+
+  const rejectedHeading = page.getByRole('heading', { name: rejectedJobTitle, level: 3, exact: true });
+  await expect(rejectedHeading).toBeVisible();
+
+  const sourceFilter = page.getByLabel('Filtrer par source');
+  await sourceFilter.selectOption({ label: sourceA });
+  await expect(jobHeading).toBeVisible();
+  await expect(rejectedHeading).toBeHidden();
+  await sourceFilter.selectOption({ label: sourceB });
+  await expect(jobHeading).toBeHidden();
+  await expect(rejectedHeading).toBeVisible();
+  await sourceFilter.selectOption('all');
+  await expect(jobHeading).toBeVisible();
 
   await page.goto('/candidatures');
   const applicationHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });

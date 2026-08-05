@@ -14,6 +14,7 @@ use App\Entity\JobOffer;
 use App\Entity\Positioning;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -100,8 +101,12 @@ final class CrmControllerAnnotationTest extends TestCase
         self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
     }
 
-    private function repository(): EntityRepository
+    /** @return EntityRepository<object>&MockObject */
+    private function repository(): EntityRepository&MockObject
     {
-        return $this->createMock(EntityRepository::class);
+        return $this->getMockBuilder(EntityRepository::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['findBy', 'findOneBy', 'findAll'])
+            ->getMock();
     }
 }

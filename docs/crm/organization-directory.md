@@ -4,7 +4,7 @@ The CRM directory consolidates organizations and contacts already present in Job
 
 ## Data sources
 
-The read-only directory combines:
+The directory combines:
 
 - application companies, final clients, application addresses and outcomes;
 - positioning agencies, final clients, recruiter names, emails and phone numbers;
@@ -12,7 +12,7 @@ The read-only directory combines:
 
 Organizations with the same normalized name are merged. Their roles remain explicit: company, agency or final client.
 
-## Endpoint
+## Directory endpoint
 
 ```text
 GET /api/crm/organizations
@@ -25,7 +25,34 @@ The response contains global organization/contact counts and one entry per organ
 - application and positioning status distributions;
 - last known activity;
 - detected contacts and their origins;
-- up to five recent related offers.
+- up to five recent related offers;
+- the original generated `sourceName`;
+- an optional manual `annotation` containing a display-name correction, note and update date.
+
+A display-name correction changes only the returned `name`. The stable organization `key` and `sourceName` remain unchanged.
+
+## Manual annotation endpoint
+
+```text
+PUT /api/crm/organizations/{organizationKey}/annotation
+```
+
+The organization key must identify an organization currently derived from JobPilot data. URL-encode spaces and non-ASCII characters when calling the endpoint.
+
+Example payload:
+
+```json
+{
+  "displayName": "ACME Consulting France",
+  "note": "Contact prioritaire pour les missions Symfony. Relancer dans une semaine."
+}
+```
+
+Both fields are optional. Empty values clear the corresponding field. Sending both fields empty removes an existing annotation instead of keeping an empty database row.
+
+The display name is limited to one line and 255 characters. The note is limited to 5,000 characters. Unknown organization keys return `404`; invalid annotation content returns `422`.
+
+Annotations are stored in `crm_organization_annotation`, separately from offers, applications, positionings and Gmail metadata. They never rewrite source records or alter organization grouping.
 
 ## Interface
 
@@ -41,7 +68,7 @@ The page provides:
 - application and positioning status summaries;
 - links back to recent original offers when their URL is available.
 
-The interface is deliberately read-only. It displays the generated directory without silently changing the underlying application, positioning or Gmail records.
+The current interface displays the generated directory. Editing the new annotations from the CRM page is a separate UI delivery.
 
 ## Contact rules
 
@@ -51,8 +78,8 @@ An application address remains labeled as an application address. A Gmail header
 
 ## Privacy
 
-The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. It only uses contact metadata and aggregate workflow counts already stored locally.
+The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. Manual notes are local application data and are returned only through the local CRM endpoint.
 
 ## Current limits
 
-The current directory is derived and read-only. Notes, manual contact editing, organization merging overrides and follow-up tasks are separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response.
+Manual contact corrections, organization merge overrides and follow-up tasks remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while annotations stay attached to the stable organization key.

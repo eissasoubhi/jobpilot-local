@@ -40,6 +40,14 @@ final class ConnectorHealthAnalyzer
         $lastExtractionRate = $latestReceived > 0
             ? round(max(0, $latestReceived - $latestFailed) * 100 / $latestReceived, 1)
             : null;
+        $latestDetails = is_array($latest['details'] ?? null) ? $latest['details'] : [];
+        $fieldQuality = is_array($latestDetails['fieldQuality'] ?? null) ? $latestDetails['fieldQuality'] : [];
+        $requiredCompleteness = is_numeric($fieldQuality['requiredCompleteness'] ?? null)
+            ? (float) $fieldQuality['requiredCompleteness']
+            : null;
+        $recommendedCompleteness = is_numeric($fieldQuality['recommendedCompleteness'] ?? null)
+            ? (float) $fieldQuality['recommendedCompleteness']
+            : null;
 
         $consecutiveZeroRuns = 0;
         foreach ($completed as $run) {
@@ -68,6 +76,12 @@ final class ConnectorHealthAnalyzer
             ]);
         }
 
+        if ($latestReceived > 0 && $requiredCompleteness !== null && $requiredCompleteness < 80.0) {
+            return $this->result('BROKEN', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
+                sprintf('La complétude des champs obligatoires est tombée à %.1f %%.', $requiredCompleteness),
+            ]);
+        }
+
         if ($latestReceived > 0 && $lastExtractionRate !== null && $lastExtractionRate < 50.0) {
             return $this->result('BROKEN', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
                 sprintf('Seulement %.1f %% des enregistrements reçus ont été normalisés sans échec.', $lastExtractionRate),
@@ -80,6 +94,12 @@ final class ConnectorHealthAnalyzer
             ]);
         }
 
+        if ($latestReceived > 0 && $requiredCompleteness !== null && $requiredCompleteness < 100.0) {
+            return $this->result('DEGRADED', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
+                sprintf('Des offres ont des champs obligatoires manquants : complétude %.1f %%.', $requiredCompleteness),
+            ]);
+        }
+
         if ($latestReceived > 0 && $lastExtractionRate !== null && $lastExtractionRate < 90.0) {
             return $this->result('DEGRADED', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
                 sprintf('Le taux de normalisation de la dernière synchronisation est tombé à %.1f %%.', $lastExtractionRate),
@@ -89,6 +109,12 @@ final class ConnectorHealthAnalyzer
         if ($consecutiveZeroRuns >= 2 && $positiveRuns !== []) {
             return $this->result('DEGRADED', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
                 sprintf('%d synchronisations consécutives ne retournent aucune offre.', $consecutiveZeroRuns),
+            ]);
+        }
+
+        if ($latestReceived > 0 && $recommendedCompleteness !== null && $recommendedCompleteness < 50.0) {
+            return $this->result('WATCH', count($completed), $consecutiveZeroRuns, $lastExtractionRate, $baselineAverageReceived, [
+                sprintf('La source reste exploitable, mais seulement %.1f %% des champs recommandés sont renseignés.', $recommendedCompleteness),
             ]);
         }
 

@@ -33,12 +33,24 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Compteurs distincts pour import, fusion et occurrence connue.
 - Badges, liens et filtre multi-sources dans l’interface.
 
-## Phase 4 — Collecte multi-mode
+## Phase 4 — Collecte multi-mode — en cours
 
-- Scraping HTTP contrôlé.
-- Premier scraper pilote avec fixtures HTML.
+### Fondation HTTP — livrée
+
+- Client HTTP commun soumis à la politique de conformité.
+- User-Agent, timeouts, taille maximale et redirections contrôlées.
+- Quotas par synchronisation et par jour.
+- Délai minimal, retries, backoff et `Retry-After`.
+- Circuit breaker et arrêt après refus d’accès.
+- Cache conditionnel `ETag` / `Last-Modified`.
+- Vérification de `robots.txt` selon la politique.
+- Tests entièrement locaux avec `MockHttpClient`.
+
+### Prochaines livraisons
+
+- Premier scraper pilote autorisé avec fixtures HTML.
+- Détection de rupture de parseur et métriques d’extraction.
 - Worker navigateur Playwright isolé lorsque nécessaire.
-- Quotas, backoff, circuit breaker et détection de rupture.
 - Ajout progressif des plateformes disposant d’un canal autorisé.
 
 ## Phase 5 — Candidature et CRM

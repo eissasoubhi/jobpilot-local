@@ -39,6 +39,9 @@ services:
       ARBEITNOW_PAGES: ${ARBEITNOW_PAGES:-3}
       SYMFONY_JOBS_RSS_ENABLED: ${SYMFONY_JOBS_RSS_ENABLED:-1}
       JOB_SYNC_INTERVAL_SECONDS: ${JOB_SYNC_INTERVAL_SECONDS:-21600}
+      CONNECTOR_ALERT_WEBHOOK_URL: ${CONNECTOR_ALERT_WEBHOOK_URL:-}
+      CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST: ${CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST:-}
+      CONNECTOR_ALERT_WEBHOOK_SECRET: ${CONNECTOR_ALERT_WEBHOOK_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +67,7 @@ services:
         while true; do
           php bin/console app:jobs:sync || true
           php bin/console app:applications:auto-submit || true
+          php bin/console app:connectors:notify-freshness --interval="$${JOB_SYNC_INTERVAL_SECONDS:-21600}" || true
           sleep "$${JOB_SYNC_INTERVAL_SECONDS:-21600}"
         done
     restart: unless-stopped
@@ -89,6 +93,9 @@ services:
       ARBEITNOW_PAGES: ${ARBEITNOW_PAGES:-3}
       SYMFONY_JOBS_RSS_ENABLED: ${SYMFONY_JOBS_RSS_ENABLED:-1}
       JOB_SYNC_INTERVAL_SECONDS: ${JOB_SYNC_INTERVAL_SECONDS:-21600}
+      CONNECTOR_ALERT_WEBHOOK_URL: ${CONNECTOR_ALERT_WEBHOOK_URL:-}
+      CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST: ${CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST:-}
+      CONNECTOR_ALERT_WEBHOOK_SECRET: ${CONNECTOR_ALERT_WEBHOOK_SECRET:-}
     depends_on:
       api:
         condition: service_healthy

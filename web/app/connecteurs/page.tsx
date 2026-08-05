@@ -150,8 +150,9 @@ export default function ConnectorsPage() {
                   <div className="actions" style={{ marginTop: 12 }}>
                     <Badge>Dernière sync : {formatDate(connector.lastSyncedAt)}</Badge>
                     <Badge>Prochaine : {connector.enabled && connector.configured ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
-                    <Badge tone="good">{connector.lastResult.imported} importée(s)</Badge>
-                    <Badge>{connector.lastResult.duplicates} doublon(s)</Badge>
+                    <Badge tone="good">{connector.lastResult.imported} nouvelle(s)</Badge>
+                    <Badge tone="blue">{connector.lastResult.merged} source(s) fusionnée(s)</Badge>
+                    <Badge>{connector.lastResult.duplicates} occurrence(s) connue(s)</Badge>
                     {connector.lastResult.failed > 0 && <Badge tone="warn">{connector.lastResult.failed} échec(s)</Badge>}
                   </div>
 
@@ -200,8 +201,9 @@ export default function ConnectorsPage() {
                 <div className="muted small">{formatDate(run.startedAt)}</div>
                 <div className="actions" style={{ marginTop: 9 }}>
                   <Badge>{run.received} reçue(s)</Badge>
-                  <Badge tone="good">{run.imported} importée(s)</Badge>
-                  <Badge>{run.duplicates} doublon(s)</Badge>
+                  <Badge tone="good">{run.imported} nouvelle(s)</Badge>
+                  <Badge tone="blue">{run.merged} source(s) fusionnée(s)</Badge>
+                  <Badge>{run.duplicates} occurrence(s) connue(s)</Badge>
                   {run.failed > 0 && <Badge tone="warn">{run.failed} échec(s)</Badge>}
                 </div>
                 {run.error && <p className="small" style={{ marginBottom: 0 }}>{run.error}</p>}

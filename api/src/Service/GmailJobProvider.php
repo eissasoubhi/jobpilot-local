@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
-use App\JobDiscovery\Domain\Connector\JobSourceConnector;
+use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
+use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 
-final class GmailJobProvider implements JobSourceConnector
+final class GmailJobProvider implements GovernedJobSourceConnector
 {
     public function __construct(
         private GmailService $gmail,
@@ -27,6 +29,15 @@ final class GmailJobProvider implements JobSourceConnector
     public function mode(): ConnectorMode
     {
         return ConnectorMode::GMAIL;
+    }
+
+    public function policy(): ConnectorPolicy
+    {
+        return new ConnectorPolicy(
+            ConnectorComplianceStatus::AUTHORIZED_ONLY,
+            new \DateTimeImmutable('2026-08-05'),
+            'Accès limité au compte connecté par OAuth avec consentement explicite de l’utilisateur et scopes minimaux.',
+        );
     }
 
     public function isConfigured(): bool

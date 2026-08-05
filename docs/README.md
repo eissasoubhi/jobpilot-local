@@ -13,6 +13,10 @@ Cette documentation est la référence produit, métier, technique et opération
 - [Context map](architecture/context-map.md)
 - [ADR](architecture/adr/)
 
+## Catalogue d’offres
+
+- [Offres canoniques et occurrences de sources](job-catalog/canonical-offers.md)
+
 ## Connecteurs
 
 - [Contrat, exploitation et ajout d’une source](connectors/overview.md)

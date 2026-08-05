@@ -23,11 +23,17 @@ final class ExtensionController
     {
         $data = $request->toArray();
         $url = trim((string) ($data['url'] ?? ''));
-        if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if (
+            $url === ''
+            || filter_var($url, FILTER_VALIDATE_URL) === false
+            || !in_array($scheme, ['http', 'https'], true)
+            || $host === ''
+        ) {
             throw new \InvalidArgumentException('L’URL de l’offre est invalide.');
         }
 
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $sourceCode = $this->sourceCode((string) ($data['sourceCode'] ?? ''), $host);
         $sourceName = trim((string) ($data['source'] ?? '')) ?: $this->sourceName($sourceCode, $host);
         $description = trim((string) ($data['description'] ?? $data['text'] ?? ''));
@@ -41,7 +47,7 @@ final class ExtensionController
             'source' => $sourceName,
             'sourceCode' => $sourceCode,
             'sourceUrl' => $url,
-            'externalId' => $this->externalId($data, $sourceCode, $url),
+            'externalId' => $this->externalId($data),
             'title' => $title,
             'company' => trim((string) ($data['company'] ?? '')),
             'location' => trim((string) ($data['location'] ?? '')),
@@ -78,14 +84,11 @@ final class ExtensionController
     }
 
     /** @param array<string, mixed> $data */
-    private function externalId(array $data, string $sourceCode, string $url): string
+    private function externalId(array $data): ?string
     {
         $externalId = trim((string) ($data['externalId'] ?? ''));
-        if ($externalId !== '') {
-            return mb_substr($externalId, 0, 180);
-        }
 
-        return mb_substr('extension-'.hash('sha256', $sourceCode.'|'.$url), 0, 180);
+        return $externalId === '' ? null : mb_substr($externalId, 0, 180);
     }
 
     private function sourceCode(string $candidate, string $host): string

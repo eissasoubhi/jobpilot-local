@@ -1,5 +1,7 @@
-// @vitest-environment jsdom
-// @vitest-environment-options {"url":"https://www.free-work.com/fr/tech-it/job-mission/developpeur-php/test-offer"}
+/**
+ * @vitest-environment jsdom
+ * @vitest-environment-options {"url":"https://www.free-work.com/fr/tech-it/job-mission/developpeur-php/test-offer"}
+ */
 
 import { readFileSync } from 'node:fs';
 
@@ -32,6 +34,15 @@ describe('JobPilot extension offer extraction', () => {
   let listener: ExtensionListener;
 
   beforeAll(() => {
+    if (!Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerText')?.get) {
+      Object.defineProperty(HTMLElement.prototype, 'innerText', {
+        configurable: true,
+        get() {
+          return this.textContent || '';
+        },
+      });
+    }
+
     const addListener = vi.fn((registered: ExtensionListener) => {
       listener = registered;
     });

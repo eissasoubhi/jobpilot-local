@@ -1,5 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { CrmOrganizationCard } from '@/components/CrmOrganizationCard';
 import type { CrmOrganization } from '@/lib/types';
@@ -7,6 +7,8 @@ import type { CrmOrganization } from '@/lib/types';
 const organization: CrmOrganization = {
   key: 'acme consulting',
   name: 'Acme Consulting',
+  sourceName: 'Acme Consulting',
+  annotation: null,
   roles: ['AGENCY', 'COMPANY'],
   offerCount: 2,
   applicationCount: 1,
@@ -59,6 +61,45 @@ describe('CrmOrganizationCard', () => {
     expect(screen.getByText('Score 88')).toBeInTheDocument();
   });
 
+  it('shows corrected names and notes while preserving the source name', () => {
+    const onEdit = vi.fn();
+    const annotatedOrganization: CrmOrganization = {
+      ...organization,
+      name: 'ACME Consulting France',
+      sourceName: 'Acme Consulting',
+      annotation: {
+        displayName: 'ACME Consulting France',
+        note: 'Contact prioritaire pour les missions Symfony.',
+        updatedAt: '2026-08-05T12:00:00+00:00',
+      },
+    };
+
+    render(
+      <CrmOrganizationCard
+        organization={annotatedOrganization}
+        onEditAnnotation={onEdit}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'ACME Consulting France' })).toBeInTheDocument();
+    expect(screen.getByText('Nom source : Acme Consulting')).toBeInTheDocument();
+    expect(screen.getByText('Nom corrigé')).toBeInTheDocument();
+    expect(screen.getAllByText('Note CRM')).toHaveLength(2);
+    expect(screen.getByText('Contact prioritaire pour les missions Symfony.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier la fiche CRM' }));
+    expect(onEdit).toHaveBeenCalledWith(annotatedOrganization);
+  });
+
+  it('offers a note action without pretending a source correction already exists', () => {
+    const onEdit = vi.fn();
+    render(<CrmOrganizationCard organization={organization} onEditAnnotation={onEdit} />);
+
+    expect(screen.queryByText('Nom corrigé')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter une note CRM' }));
+    expect(onEdit).toHaveBeenCalledWith(organization);
+  });
+
   it('states clearly when an organization has no validated contact', () => {
     render(
       <CrmOrganizationCard
@@ -66,6 +107,7 @@ describe('CrmOrganizationCard', () => {
           ...organization,
           key: 'final client',
           name: 'Final Client',
+          sourceName: 'Final Client',
           roles: ['CLIENT'],
           contactCount: 0,
           contacts: [],

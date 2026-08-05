@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Présentation publique de JobPilot, une application personnelle de recherche, centralisation et suivi d'offres d'emploi.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:title" content="JobPilot — Recherche et suivi d'emploi">
+  <meta property="og:description" content="Une application personnelle qui centralise les offres, facilite leur analyse et aide au suivi des candidatures.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#172554">
+  <title>JobPilot — Recherche et suivi d'emploi</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Accueil JobPilot">
+      <span class="brand-mark" aria-hidden="true">JP</span>
+      <span>JobPilot</span>
+    </a>
+    <nav aria-label="Navigation principale">
+      <a href="#fonctionnement">Fonctionnement</a>
+      <a href="#donnees">Données</a>
+      <a href="/confidentialite.html">Confidentialité</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Projet personnel · Application locale</p>
+        <h1>Centraliser les offres et mieux suivre sa recherche d'emploi</h1>
+        <p class="lead">
+          JobPilot aide son utilisateur à rechercher, filtrer, dédupliquer et organiser des offres d'emploi,
+          puis à préparer et suivre ses candidatures depuis une interface locale.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#fonctionnement">Découvrir le fonctionnement</a>
+          <a class="button secondary" href="/confidentialite.html">Lire la politique de confidentialité</a>
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="Principes du projet">
+        <div class="status-row"><span class="status-dot" aria-hidden="true"></span> Données privées conservées localement</div>
+        <ul>
+          <li>Recherche multi-sources encadrée</li>
+          <li>Déduplication des annonces</li>
+          <li>Classement selon le profil utilisateur</li>
+          <li>Suivi des candidatures et échanges</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="section" id="fonctionnement">
+      <div class="section-heading">
+        <p class="eyebrow">Fonctionnement</p>
+        <h2>Une aide à la recherche, pas une candidature autonome</h2>
+        <p>
+          JobPilot rassemble les informations utiles et prépare les éléments de candidature. Les actions sensibles
+          restent contrôlées par l'utilisateur et les règles de chaque plateforme sont respectées.
+        </p>
+      </div>
+
+      <div class="cards">
+        <article class="card">
+          <span class="card-number">01</span>
+          <h3>Collecter</h3>
+          <p>Importer des offres depuis des API officielles, des flux autorisés, des alertes e-mail ou une extension déclenchée par l'utilisateur.</p>
+        </article>
+        <article class="card">
+          <span class="card-number">02</span>
+          <h3>Organiser</h3>
+          <p>Regrouper les doublons, conserver les sources et présenter les informations importantes dans un catalogue unique.</p>
+        </article>
+        <article class="card">
+          <span class="card-number">03</span>
+          <h3>Suivre</h3>
+          <p>Préparer les messages, sélectionner un CV approuvé et suivre les candidatures, réponses et entretiens.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section data-section" id="donnees">
+      <div class="section-heading">
+        <p class="eyebrow">Utilisation des données</p>
+        <h2>API Offres d'emploi de France Travail</h2>
+      </div>
+
+      <div class="data-grid">
+        <div>
+          <p>
+            JobPilot prévoit d'utiliser l'API officielle Offres d'emploi de France Travail afin de rechercher
+            et présenter des annonces correspondant aux critères configurés par l'utilisateur.
+          </p>
+          <p>
+            Les données récupérées servent uniquement à la recherche, au filtrage, à la déduplication et au suivi
+            personnel des offres. Elles ne sont ni revendues ni utilisées pour constituer un service public de rediffusion massive.
+          </p>
+        </div>
+        <div class="principles">
+          <h3>Principes appliqués</h3>
+          <ul>
+            <li>Accès par API officielle et identifiants autorisés</li>
+            <li>Respect des quotas et conditions d'utilisation</li>
+            <li>Aucune collecte de mot de passe ou donnée d'authentification des plateformes</li>
+            <li>Stockage local des données personnelles de l'utilisateur</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="disclaimer">
+        JobPilot est un projet indépendant. Il n'est ni édité, ni sponsorisé, ni approuvé par France Travail.
+      </p>
+    </section>
+
+    <section class="section compact-section">
+      <div>
+        <p class="eyebrow">Périmètre public</p>
+        <h2>Cette page ne contient aucune donnée de candidature</h2>
+      </div>
+      <p>
+        Le site public sert uniquement à présenter le projet. L'application complète, les CV, les offres enregistrées,
+        les messages et les identifiants API restent dans l'environnement privé de l'utilisateur.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <strong>JobPilot</strong>
+      <p>Application personnelle de recherche et de suivi d'emploi.</p>
+    </div>
+    <div class="footer-links">
+      <a href="/confidentialite.html">Confidentialité</a>
+      <a href="#donnees">Utilisation des données</a>
+    </div>
+    <p class="copyright">© <span id="year">2026</span> JobPilot</p>
+  </footer>
+</body>
+</html>

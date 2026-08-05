@@ -46,9 +46,18 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Vérification de `robots.txt` selon la politique.
 - Tests entièrement locaux avec `MockHttpClient`.
 
+### Premier canal syndiqué autorisé — livré
+
+- Connecteur `symfony-jobs` fondé sur le lien RSS officiel du job board Symfony.
+- Parseur commun RSS 2.0 et Atom.
+- Extraction du contrat, du mode de travail, du lieu, de la langue, du salaire et du TJM.
+- Identité idempotente par `guid` ou identifiant Atom.
+- Quotas, retries, cache et circuit breaker fournis par le transport HTTP contrôlé.
+- Fixtures locales ; aucun appel au site réel dans la CI.
+
 ### Prochaines livraisons
 
-- Premier scraper pilote autorisé avec fixtures HTML.
+- Premier scraper HTML pilote uniquement après identification d’une source qui autorise explicitement ce mode de collecte.
 - Détection de rupture de parseur et métriques d’extraction.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Ajout progressif des plateformes disposant d’un canal autorisé.

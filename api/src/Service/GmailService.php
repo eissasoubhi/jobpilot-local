@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Application;
 use App\Entity\InboxMessage;
+use App\Messaging\Application\GmailJobAlertExtractor;
+use App\Messaging\Application\GmailMessageClassifier;
+use App\Messaging\Infrastructure\Gmail\GmailMessageDecoder;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -14,10 +18,24 @@ final class GmailService
     private const READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
     private const SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 
+    /** @var array{found: int, imported: int, duplicates: int, failed: int, offersFound: int, associated: int, actionRequired: int} */
+    private array $lastSyncSummary = [
+        'found' => 0,
+        'imported' => 0,
+        'duplicates' => 0,
+        'failed' => 0,
+        'offersFound' => 0,
+        'associated' => 0,
+        'actionRequired' => 0,
+    ];
+
     public function __construct(
         private HttpClientInterface $http,
         private GmailTokenStore $store,
         private EntityManagerInterface $em,
+        private GmailMessageDecoder $decoder,
+        private GmailMessageClassifier $classifier,
+        private GmailJobAlertExtractor $jobExtractor,
     ) {}
 
     /**
@@ -26,11 +44,9 @@ final class GmailService
     public function configuration(): array
     {
         $missing = [];
-
         if ($this->env('GOOGLE_CLIENT_ID') === '') {
             $missing[] = 'GOOGLE_CLIENT_ID';
         }
-
         if ($this->env('GOOGLE_CLIENT_SECRET') === '') {
             $missing[] = 'GOOGLE_CLIENT_SECRET';
         }
@@ -43,33 +59,14 @@ final class GmailService
         ];
     }
 
+    public function hasReadPermission(): bool
+    {
+        return $this->hasPermission(self::READ_SCOPE);
+    }
+
     public function hasSendPermission(): bool
     {
-        $token = $this->store->getToken();
-        if ($token === null) {
-            return false;
-        }
-
-        if ($this->tokenHasScope($token, self::SEND_SCOPE)) {
-            return true;
-        }
-
-        if ($this->tokenScopes($token) !== []) {
-            return false;
-        }
-
-        try {
-            $scopes = $this->resolveGrantedScopes($token);
-            if ($scopes !== []) {
-                $token['scope'] = implode(' ', $scopes);
-                $token['granted_scopes'] = $scopes;
-                $this->store->saveToken($token);
-            }
-
-            return in_array(self::SEND_SCOPE, $scopes, true);
-        } catch (\Throwable) {
-            return false;
-        }
+        return $this->hasPermission(self::SEND_SCOPE);
     }
 
     public function authorizationUrl(): string
@@ -91,11 +88,10 @@ final class GmailService
 
     public function handleCallback(string $code, string $state): void
     {
-        if ($code === '') {
+        if (trim($code) === '') {
             throw new \RuntimeException('Google n’a retourné aucun code d’autorisation.');
         }
-
-        if ($state === '' || !$this->store->consumeState($state)) {
+        if (trim($state) === '' || !$this->store->consumeState($state)) {
             throw new \RuntimeException('État OAuth invalide ou expiré. Relancez la connexion Gmail.');
         }
 
@@ -111,7 +107,6 @@ final class GmailService
         ]);
         $statusCode = $response->getStatusCode();
         $token = $response->toArray(false);
-
         if ($statusCode >= 400) {
             throw new \RuntimeException($this->oauthErrorMessage($token, 'Connexion Gmail refusée par Google.'));
         }
@@ -136,19 +131,7 @@ final class GmailService
         }
 
         $token = $this->validToken();
-        if (!$this->tokenHasScope($token, self::SEND_SCOPE)) {
-            $scopes = $this->resolveGrantedScopes($token);
-            if ($scopes !== []) {
-                $token['scope'] = implode(' ', $scopes);
-                $token['granted_scopes'] = $scopes;
-                $this->store->saveToken($token);
-            }
-
-            if (!in_array(self::SEND_SCOPE, $scopes, true)) {
-                throw new \RuntimeException('Gmail doit être reconnecté avec l’autorisation d’envoi.');
-            }
-        }
-
+        $this->requireScope($token, self::SEND_SCOPE, 'Gmail doit être reconnecté avec l’autorisation d’envoi.');
         $mime = $this->mimeMessage($to, $subject, $body, $attachments);
         $raw = rtrim(strtr(base64_encode($mime), '+/', '-_'), '=');
 
@@ -176,52 +159,290 @@ final class GmailService
     }
 
     /**
-     * @return array{imported: int, found: int}
+     * Synchronisation directe utilisée par les tests et les appels internes hors registre.
+     *
+     * @return array{found: int, imported: int, duplicates: int, failed: int, offersFound: int, associated: int, actionRequired: int}
      */
     public function sync(): array
     {
-        $token = $this->validToken();
-        $query = $this->env('GMAIL_SEARCH_QUERY', '(job OR mission OR candidature OR application) newer_than:30d');
-        $list = $this->http->request('GET', 'https://gmail.googleapis.com/gmail/v1/users/me/messages', [
-            'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
-            'query' => ['q' => $query, 'maxResults' => 50],
-        ])->toArray(false);
+        $this->collect(true);
 
-        $imported = 0;
-        foreach ($list['messages'] ?? [] as $item) {
-            $gmailId = (string) ($item['id'] ?? '');
-            if ($gmailId === '' || $this->em->getRepository(InboxMessage::class)->findOneBy(['gmailMessageId' => $gmailId])) {
+        return $this->lastSyncSummary;
+    }
+
+    /**
+     * Point d’entrée du connecteur JobDiscovery. Les entités InboxMessage restent dans
+     * la même unité de travail Doctrine que les offres, puis sont validées par le service
+     * de synchronisation des connecteurs.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function collectJobOffers(): array
+    {
+        return $this->collect(false);
+    }
+
+    /**
+     * @return array{found: int, imported: int, duplicates: int, failed: int, offersFound: int, associated: int, actionRequired: int}
+     */
+    public function lastSyncSummary(): array
+    {
+        return $this->lastSyncSummary;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function collect(bool $flush): array
+    {
+        $token = $this->validToken();
+        $this->requireScope($token, self::READ_SCOPE, 'Gmail doit être reconnecté avec l’autorisation de lecture.');
+
+        $summary = [
+            'found' => 0,
+            'imported' => 0,
+            'duplicates' => 0,
+            'failed' => 0,
+            'offersFound' => 0,
+            'associated' => 0,
+            'actionRequired' => 0,
+        ];
+        $offers = [];
+        $offerIds = [];
+        $messageIds = $this->listMessageIds($token);
+        $summary['found'] = count($messageIds);
+        $inboxRepository = $this->em->getRepository(InboxMessage::class);
+
+        foreach ($messageIds as $gmailId) {
+            if ($inboxRepository->findOneBy(['gmailMessageId' => $gmailId]) instanceof InboxMessage) {
+                ++$summary['duplicates'];
                 continue;
             }
 
-            $data = $this->http->request('GET', 'https://gmail.googleapis.com/gmail/v1/users/me/messages/'.$gmailId, [
-                'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
-                'query' => ['format' => 'metadata'],
-            ])->toArray(false);
-            $headers = [];
-            foreach ($data['payload']['headers'] ?? [] as $header) {
-                $headers[strtolower((string) $header['name'])] = (string) $header['value'];
-            }
+            try {
+                $data = $this->fetchMessage($token, $gmailId);
+                $decoded = $this->decoder->decode($data);
+                $classification = $this->classifier->classify(
+                    $decoded['subject'],
+                    $decoded['sender'],
+                    $decoded['plainBody'] !== '' ? $decoded['plainBody'] : $decoded['snippet'],
+                );
+                $sourcePlatform = $this->detectSourcePlatform(
+                    $decoded['sender'].' '.$decoded['subject'].' '.$decoded['plainBody'].' '.$decoded['htmlBody'],
+                );
 
-            $receivedAt = isset($data['internalDate'])
-                ? (new \DateTimeImmutable())->setTimestamp((int) ((int) $data['internalDate'] / 1000))
-                : new \DateTimeImmutable();
-            $subject = $headers['subject'] ?? '';
-            $snippet = (string) ($data['snippet'] ?? '');
-            $message = (new InboxMessage($gmailId, (string) ($data['threadId'] ?? '')))->fill(
-                $headers['from'] ?? '',
-                $subject,
-                $snippet,
-                $receivedAt,
-                $this->classify($subject.' '.$snippet),
-            );
-            $this->em->persist($message);
-            ++$imported;
+                $message = (new InboxMessage($decoded['gmailMessageId'], $decoded['threadId']))->fill(
+                    $decoded['sender'],
+                    $decoded['subject'],
+                    $decoded['snippet'],
+                    $decoded['receivedAt'],
+                    $classification['category'],
+                    $decoded['recipient'],
+                    $decoded['replyTo'],
+                    $decoded['plainBody'],
+                    $classification['actionRequired'],
+                    $classification['reason'],
+                    $sourcePlatform,
+                );
+
+                $application = $this->matchApplication(
+                    $classification['category'],
+                    $decoded['subject'].' '.$decoded['plainBody'].' '.$decoded['snippet'],
+                );
+                if ($application !== null) {
+                    $application->applyInboxCategory($classification['category']);
+                    $message->associate($application);
+                    ++$summary['associated'];
+                }
+                if ($classification['actionRequired']) {
+                    ++$summary['actionRequired'];
+                }
+
+                $this->em->persist($message);
+                ++$summary['imported'];
+
+                foreach ($this->jobExtractor->extract(
+                    $decoded['gmailMessageId'],
+                    $classification['category'],
+                    $decoded['subject'],
+                    $decoded['sender'],
+                    $decoded['plainBody'],
+                    $decoded['htmlBody'],
+                    $decoded['receivedAt'],
+                ) as $offer) {
+                    $externalId = (string) ($offer['externalId'] ?? '');
+                    if ($externalId === '' || isset($offerIds[$externalId])) {
+                        continue;
+                    }
+                    $offerIds[$externalId] = true;
+                    $offers[] = $offer;
+                }
+            } catch (\Throwable) {
+                ++$summary['failed'];
+            }
         }
 
-        $this->em->flush();
+        $summary['offersFound'] = count($offers);
+        $this->lastSyncSummary = $summary;
+        if ($flush) {
+            $this->em->flush();
+        }
 
-        return ['imported' => $imported, 'found' => count($list['messages'] ?? [])];
+        return $offers;
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     * @return list<string>
+     */
+    private function listMessageIds(array $token): array
+    {
+        $query = $this->env(
+            'GMAIL_SEARCH_QUERY',
+            '(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d',
+        );
+        $maxResults = max(10, min(500, (int) $this->env('GMAIL_MAX_RESULTS', '100')));
+        $maxPages = max(1, min(10, (int) $this->env('GMAIL_MAX_PAGES', '3')));
+        $ids = [];
+        $pageToken = null;
+
+        for ($page = 0; $page < $maxPages && count($ids) < $maxResults; ++$page) {
+            $queryParameters = [
+                'q' => $query,
+                'maxResults' => min(100, $maxResults - count($ids)),
+            ];
+            if ($pageToken !== null) {
+                $queryParameters['pageToken'] = $pageToken;
+            }
+
+            $response = $this->http->request('GET', 'https://gmail.googleapis.com/gmail/v1/users/me/messages', [
+                'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
+                'query' => $queryParameters,
+            ]);
+            $statusCode = $response->getStatusCode();
+            $data = $response->toArray(false);
+            if ($statusCode >= 400) {
+                throw new \RuntimeException($this->gmailReadErrorMessage($statusCode, $data));
+            }
+
+            foreach ($data['messages'] ?? [] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $id = trim((string) ($item['id'] ?? ''));
+                if ($id !== '') {
+                    $ids[$id] = true;
+                }
+            }
+
+            $pageToken = isset($data['nextPageToken']) && trim((string) $data['nextPageToken']) !== ''
+                ? trim((string) $data['nextPageToken'])
+                : null;
+            if ($pageToken === null) {
+                break;
+            }
+        }
+
+        return array_slice(array_keys($ids), 0, $maxResults);
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     * @return array<string, mixed>
+     */
+    private function fetchMessage(array $token, string $gmailId): array
+    {
+        $response = $this->http->request(
+            'GET',
+            'https://gmail.googleapis.com/gmail/v1/users/me/messages/'.rawurlencode($gmailId),
+            [
+                'headers' => ['Authorization' => 'Bearer '.$token['access_token']],
+                'query' => ['format' => 'full'],
+            ],
+        );
+        $statusCode = $response->getStatusCode();
+        $data = $response->toArray(false);
+        if ($statusCode >= 400) {
+            throw new \RuntimeException($this->gmailReadErrorMessage($statusCode, $data));
+        }
+
+        return $data;
+    }
+
+    private function matchApplication(string $category, string $text): ?Application
+    {
+        if (!in_array($category, [
+            'APPLICATION_CONFIRMATION', 'APPLICATION_REPLY', 'INTERVIEW_REQUEST',
+            'REJECTION', 'INFORMATION_REQUEST',
+        ], true)) {
+            return null;
+        }
+
+        $normalizedText = $this->normalize($text);
+        if ($normalizedText === '') {
+            return null;
+        }
+
+        $applications = $this->em->getRepository(Application::class)->findBy([], ['createdAt' => 'DESC'], 150);
+        $best = null;
+        $bestScore = 0;
+        foreach ($applications as $application) {
+            if (!$application instanceof Application) {
+                continue;
+            }
+            $job = $application->getJobOffer();
+            $title = $this->normalize($job->getTitle());
+            $company = $this->normalize($job->getCompany());
+            $score = 0;
+            if (mb_strlen($title) >= 6 && str_contains($normalizedText, $title)) {
+                $score += 6;
+            } else {
+                foreach ($this->significantWords($title) as $word) {
+                    if (str_contains($normalizedText, $word)) {
+                        ++$score;
+                    }
+                }
+            }
+            if (mb_strlen($company) >= 3 && str_contains($normalizedText, $company)) {
+                $score += 4;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $application;
+            }
+        }
+
+        return $bestScore >= 4 && $best instanceof Application ? $best : null;
+    }
+
+    /** @return list<string> */
+    private function significantWords(string $value): array
+    {
+        $words = preg_split('/[^a-z0-9+#.]+/u', $value) ?: [];
+        $ignored = ['senior', 'junior', 'developpeur', 'developer', 'engineer', 'full', 'stack', 'backend', 'frontend'];
+
+        return array_values(array_filter(
+            array_unique($words),
+            static fn (string $word): bool => mb_strlen($word) >= 4 && !in_array($word, $ignored, true),
+        ));
+    }
+
+    private function detectSourcePlatform(string $text): ?string
+    {
+        $value = $this->normalize($text);
+
+        return match (true) {
+            str_contains($value, 'linkedin') => 'LinkedIn',
+            str_contains($value, 'indeed') => 'Indeed',
+            str_contains($value, 'apec') => 'APEC',
+            str_contains($value, 'hellowork') => 'Hellowork',
+            str_contains($value, 'welcome to the jungle'), str_contains($value, 'welcometothejungle') => 'Welcome to the Jungle',
+            str_contains($value, 'free-work'), str_contains($value, 'free work') => 'Free-Work',
+            str_contains($value, 'lesjeudis') => 'LesJeudis',
+            str_contains($value, 'le hibou'), str_contains($value, 'lehibou') => 'Le Hibou',
+            str_contains($value, 'france travail') => 'France Travail',
+            default => null,
+        };
     }
 
     /**
@@ -248,7 +469,6 @@ final class GmailService
             if (!is_file($path) || !is_readable($path)) {
                 throw new \RuntimeException('Le CV sélectionné est introuvable ou illisible.');
             }
-
             $content = file_get_contents($path);
             if ($content === false) {
                 throw new \RuntimeException('Impossible de lire le CV sélectionné.');
@@ -270,9 +490,7 @@ final class GmailService
         return implode("\r\n", $lines);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function validToken(): array
     {
         $token = $this->store->getToken();
@@ -284,7 +502,6 @@ final class GmailService
         if (time() < $expiresAt) {
             return $token;
         }
-
         if (empty($token['refresh_token'])) {
             throw new \RuntimeException('Le jeton Gmail a expiré. Reconnectez Gmail.');
         }
@@ -314,6 +531,50 @@ final class GmailService
         return $token;
     }
 
+    private function hasPermission(string $scope): bool
+    {
+        $token = $this->store->getToken();
+        if ($token === null) {
+            return false;
+        }
+        if ($this->tokenHasScope($token, $scope)) {
+            return true;
+        }
+        if ($this->tokenScopes($token) !== []) {
+            return false;
+        }
+
+        try {
+            $scopes = $this->resolveGrantedScopes($token);
+            if ($scopes !== []) {
+                $token['scope'] = implode(' ', $scopes);
+                $token['granted_scopes'] = $scopes;
+                $this->store->saveToken($token);
+            }
+
+            return in_array($scope, $scopes, true);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /** @param array<string, mixed> $token */
+    private function requireScope(array &$token, string $scope, string $message): void
+    {
+        if ($this->tokenHasScope($token, $scope)) {
+            return;
+        }
+        $scopes = $this->resolveGrantedScopes($token);
+        if ($scopes !== []) {
+            $token['scope'] = implode(' ', $scopes);
+            $token['granted_scopes'] = $scopes;
+            $this->store->saveToken($token);
+        }
+        if (!in_array($scope, $scopes, true)) {
+            throw new \RuntimeException($message);
+        }
+    }
+
     /**
      * @param array<string, mixed> $token
      * @return list<string>
@@ -324,7 +585,6 @@ final class GmailService
         if ($scopes !== []) {
             return $scopes;
         }
-
         $accessToken = trim((string) ($token['access_token'] ?? ''));
         if ($accessToken === '') {
             return [];
@@ -350,7 +610,6 @@ final class GmailService
         if (is_string($rawScopes)) {
             $rawScopes = preg_split('/\s+/', trim($rawScopes)) ?: [];
         }
-
         if (!is_array($rawScopes)) {
             return [];
         }
@@ -365,26 +624,20 @@ final class GmailService
         return array_values(array_unique($scopes));
     }
 
-    /**
-     * @param array<string, mixed> $token
-     */
+    /** @param array<string, mixed> $token */
     private function tokenHasScope(array $token, string $scope): bool
     {
         return in_array($scope, $this->tokenScopes($token), true);
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
     private function gmailErrorMessage(int $statusCode, array $data): string
     {
         $message = trim((string) ($data['error']['message'] ?? $data['error_description'] ?? ''));
         $reason = trim((string) ($data['error']['errors'][0]['reason'] ?? ''));
-
         if ($statusCode === 401) {
             return 'Gmail a refusé le jeton. Déconnecte puis reconnecte Gmail.';
         }
-
         if ($statusCode === 403 && (
             str_contains(mb_strtolower($message), 'scope')
             || str_contains(mb_strtolower($reason), 'permission')
@@ -395,9 +648,21 @@ final class GmailService
         return 'Envoi Gmail impossible'.($message !== '' ? ' : '.$message : ' (HTTP '.$statusCode.').');
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
+    private function gmailReadErrorMessage(int $statusCode, array $data): string
+    {
+        $message = trim((string) ($data['error']['message'] ?? $data['error_description'] ?? ''));
+        if ($statusCode === 401) {
+            return 'Gmail a refusé le jeton de lecture. Déconnecte puis reconnecte Gmail.';
+        }
+        if ($statusCode === 403) {
+            return 'Gmail refuse la lecture. Reconnecte Gmail en acceptant gmail.readonly.';
+        }
+
+        return 'Lecture Gmail impossible'.($message !== '' ? ' : '.$message : ' (HTTP '.$statusCode.').');
+    }
+
+    /** @param array<string, mixed> $data */
     private function oauthErrorMessage(array $data, string $fallback): string
     {
         $message = trim((string) ($data['error_description'] ?? $data['error']['message'] ?? ''));
@@ -412,9 +677,7 @@ final class GmailService
     {
         $configuration = $this->configuration();
         if (!$configuration['configured']) {
-            throw new \RuntimeException(
-                'Configuration Gmail incomplète : '.implode(', ', $configuration['missingVariables']).'.',
-            );
+            throw new \RuntimeException('Configuration Gmail incomplète : '.implode(', ', $configuration['missingVariables']).'.');
         }
 
         /** @var array{configured: true, missingVariables: list<string>, redirectUri: string, startUrl: string} $configuration */
@@ -443,17 +706,17 @@ final class GmailService
         return is_string($value) && $value !== '' ? $value : $default;
     }
 
-    private function classify(string $text): string
+    private function normalize(string $value): string
     {
-        $value = mb_strtolower($text);
+        $value = mb_strtolower($value);
+        $value = strtr($value, [
+            'à' => 'a', 'â' => 'a', 'ä' => 'a', 'ç' => 'c',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'î' => 'i', 'ï' => 'i', 'ô' => 'o', 'ö' => 'o',
+            'ù' => 'u', 'û' => 'u', 'ü' => 'u', '’' => "'",
+        ]);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
 
-        return match (true) {
-            str_contains($value, 'entretien'), str_contains($value, 'interview') => 'INTERVIEW_REQUEST',
-            str_contains($value, 'malheureusement'), str_contains($value, 'not retained'), str_contains($value, 'rejet') => 'REJECTION',
-            str_contains($value, 'candidature reçue'), str_contains($value, 'application received') => 'APPLICATION_CONFIRMATION',
-            str_contains($value, 'alerte'), str_contains($value, 'new jobs'), str_contains($value, 'offres pour vous') => 'JOB_ALERT',
-            str_contains($value, 'tjm'), str_contains($value, 'disponibilité'), str_contains($value, 'recruiter') => 'RECRUITER_REPLY',
-            default => 'UNKNOWN',
-        };
+        return trim($value);
     }
 }

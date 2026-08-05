@@ -124,6 +124,35 @@ class Application
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    public function applyInboxCategory(string $category): bool
+    {
+        $nextStatus = match ($category) {
+            'INTERVIEW_REQUEST' => 'INTERVIEW',
+            'REJECTION' => 'REJECTED',
+            'INFORMATION_REQUEST' => 'INFORMATION_REQUESTED',
+            'APPLICATION_REPLY' => 'RESPONSE_RECEIVED',
+            'APPLICATION_CONFIRMATION' => 'APPLICATION_CONFIRMED',
+            default => null,
+        };
+
+        if ($nextStatus === null || $this->status === $nextStatus) {
+            return false;
+        }
+
+        if ($category === 'APPLICATION_CONFIRMATION' && in_array($this->status, ['INTERVIEW', 'REJECTED'], true)) {
+            return false;
+        }
+
+        $this->status = $nextStatus;
+        if ($this->submittedAt === null && in_array($category, ['APPLICATION_CONFIRMATION', 'APPLICATION_REPLY', 'INTERVIEW_REQUEST', 'REJECTION'], true)) {
+            $this->submittedAt = new \DateTimeImmutable();
+        }
+        $this->submissionError = null;
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return true;
+    }
+
     public function fill(array $data): self
     {
         foreach (['channel', 'status', 'message', 'coverLetter'] as $field) {

@@ -21,6 +21,8 @@ final class GmailIntegrationTest extends WebTestCase
 
         self::assertFalse($status['configured']);
         self::assertFalse($status['connected']);
+        self::assertFalse($status['readPermission']);
+        self::assertSame('Gmail n’est pas connecté.', $status['readPermissionMessage']);
         self::assertFalse($status['sendPermission']);
         self::assertSame('Gmail n’est pas connecté.', $status['sendPermissionMessage']);
         self::assertContains('GOOGLE_CLIENT_ID', $status['missingVariables']);
@@ -33,6 +35,7 @@ final class GmailIntegrationTest extends WebTestCase
             'http://localhost:8080/api/integrations/gmail/start',
             $status['startUrl'],
         );
+        self::assertSame(0, $status['lastSync']['found']);
     }
 
     public function testStartReturnsToSettingsInsteadOfA500WhenConfigurationIsMissing(): void
@@ -52,6 +55,27 @@ final class GmailIntegrationTest extends WebTestCase
         self::assertStringContainsString('GOOGLE_CLIENT_SECRET', urldecode($location));
     }
 
+    public function testSyncExplainsThatGmailMustBeConnected(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/integrations/gmail/sync');
+
+        self::assertResponseStatusCodeSame(409);
+        $response = $this->decode($client->getResponse()->getContent());
+        self::assertSame('Gmail n’est pas connecté.', $response['error']);
+    }
+
+    public function testMessageFiltersReturnAJsonList(): void
+    {
+        $client = static::createClient();
+
+        $client->request('GET', '/api/integrations/gmail/messages?category=INTERVIEW_REQUEST&actionRequired=true&processed=false');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->decode($client->getResponse()->getContent()));
+    }
+
     public function testTestSendRejectsAnInvalidDestinationBeforeCallingGmail(): void
     {
         $client = static::createClient();
@@ -62,9 +86,7 @@ final class GmailIntegrationTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(400);
-        $content = $client->getResponse()->getContent();
-        self::assertIsString($content);
-        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        $response = $this->decode($client->getResponse()->getContent());
         self::assertSame('Adresse e-mail de test invalide.', $response['error']);
     }
 
@@ -78,9 +100,7 @@ final class GmailIntegrationTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(409);
-        $content = $client->getResponse()->getContent();
-        self::assertIsString($content);
-        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        $response = $this->decode($client->getResponse()->getContent());
         self::assertSame(
             'Gmail n’est pas connecté. Connecte Gmail avant de lancer le test.',
             $response['error'],
@@ -98,9 +118,15 @@ final class GmailIntegrationTest extends WebTestCase
         );
 
         self::assertResponseStatusCodeSame(400);
-        $content = $client->getResponse()->getContent();
-        self::assertIsString($content);
-        $response = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        $response = $this->decode($client->getResponse()->getContent());
         self::assertSame('La requête d’envoi de test est invalide.', $response['error']);
+    }
+
+    /** @return array<string|int, mixed> */
+    private function decode(string|false $content): array
+    {
+        self::assertIsString($content);
+
+        return json_decode($content, true, 512, JSON_THROW_ON_ERROR);
     }
 }

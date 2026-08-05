@@ -16,8 +16,23 @@ export type Settings = {
 
 export type Cv = { id: number; name: string; originalName: string; language: string; category: string; tags: string[]; active: boolean; defaultForLanguage: boolean; size: number; downloadUrl: string };
 
+export type JobSourceOccurrence = {
+  id?: number | null;
+  sourceCode: string;
+  sourceName: string;
+  externalId?: string | null;
+  sourceUrl?: string | null;
+  matchType: 'PRIMARY' | 'EXACT_SOURCE_ID' | 'EXACT_URL' | 'EXACT_FINGERPRINT' | 'SIMILARITY' | 'LEGACY' | string;
+  matchScore: number;
+  matchReasons: string[];
+  publishedAt?: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+};
+
 export type Job = {
   id: number; source: string; sourceCode?: string; sourceUrl?: string; title: string; company: string; clientName?: string;
+  sources: JobSourceOccurrence[]; sourceCount: number;
   applicationEmail?: string; location: string; contractType: string; workMode: string; language: string; description: string;
   publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
   tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;
@@ -44,6 +59,7 @@ export type Application = {
 export type ConnectorResult = {
   received: number;
   imported: number;
+  merged: number;
   duplicates: number;
   failed: number;
 };
@@ -76,6 +92,7 @@ export type ConnectorSyncRun = {
   durationMs?: number | null;
   received: number;
   imported: number;
+  merged: number;
   duplicates: number;
   failed: number;
   error?: string | null;

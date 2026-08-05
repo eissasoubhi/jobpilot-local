@@ -25,13 +25,14 @@ final class SourceConnectorStateTest extends TestCase
         $connector->markRunning();
         self::assertSame('RUNNING', $connector->toArray(900)['status']);
 
-        $connector->complete(12, 5, 6, 1);
+        $connector->complete(12, 5, 2, 4, 1);
         $completed = $connector->toArray(900);
         self::assertSame('PARTIAL', $completed['status']);
         self::assertSame([
             'received' => 12,
             'imported' => 5,
-            'duplicates' => 6,
+            'merged' => 2,
+            'duplicates' => 4,
             'failed' => 1,
         ], $completed['lastResult']);
         self::assertFalse($completed['due']);
@@ -54,7 +55,7 @@ final class SourceConnectorStateTest extends TestCase
     {
         $connector = new SourceConnector($this->connector(true));
         $run = new ConnectorSyncRun($connector, 'manual');
-        $run->complete(4, 2, 1, 1, 'Une offre est invalide.', [
+        $run->complete(4, 2, 1, 0, 1, 'Une offre est invalide.', [
             'errors' => ['Description absente.'],
         ]);
 
@@ -64,6 +65,7 @@ final class SourceConnectorStateTest extends TestCase
         self::assertSame('test-source', $payload['connector']['code']);
         self::assertSame(4, $payload['received']);
         self::assertSame(2, $payload['imported']);
+        self::assertSame(1, $payload['merged']);
         self::assertSame(['errors' => ['Description absente.']], $payload['details']);
         self::assertIsInt($payload['durationMs']);
     }

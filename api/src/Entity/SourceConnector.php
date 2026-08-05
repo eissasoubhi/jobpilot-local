@@ -167,14 +167,14 @@ final class SourceConnector
                 : ConnectorPolicy::underReview(),
         );
 
-        $this->status = $this->resolvedIdleStatus();
+        $this->status = $this->resolvedStatus();
         $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function setEnabled(bool $enabled): void
     {
         $this->enabled = $enabled;
-        $this->status = $this->resolvedIdleStatus();
+        $this->status = $this->resolvedStatus(true);
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -269,14 +269,22 @@ final class SourceConnector
         $this->respectsRobotsTxt = $policy->respectsRobotsTxt;
     }
 
-    private function resolvedIdleStatus(): string
+    private function resolvedStatus(bool $forceIdle = false): string
     {
-        return match (true) {
-            !$this->enabled => 'DISABLED',
-            !$this->configured => 'MISCONFIGURED',
-            !$this->isCollectionAllowed() => 'COMPLIANCE_BLOCKED',
-            $this->lastSyncedAt === null => 'NEVER_SYNCED',
-            default => 'READY',
-        };
+        if (!$this->enabled) {
+            return 'DISABLED';
+        }
+        if (!$this->configured) {
+            return 'MISCONFIGURED';
+        }
+        if (!$this->isCollectionAllowed()) {
+            return 'COMPLIANCE_BLOCKED';
+        }
+
+        if ($forceIdle || in_array($this->status, ['DISABLED', 'MISCONFIGURED', 'COMPLIANCE_BLOCKED'], true)) {
+            return $this->lastSyncedAt === null ? 'NEVER_SYNCED' : 'READY';
+        }
+
+        return $this->status;
     }
 }

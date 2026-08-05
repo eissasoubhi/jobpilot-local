@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\SourceConnector;
 use App\JobDiscovery\Application\ConnectorFreshnessAnalyzer;
+use App\JobDiscovery\Application\ConnectorFreshnessReportFormatter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -23,35 +24,43 @@ final class AuditConnectorFreshnessCommand extends Command
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ConnectorFreshnessAnalyzer $freshnessAnalyzer,
+        private ConnectorFreshnessReportFormatter $reportFormatter,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addOption(
-            'interval',
-            null,
-            InputOption::VALUE_REQUIRED,
-            'Expected synchronization interval in seconds.',
-            '21600',
-        );
+        $this
+            ->addOption(
+                'interval',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Expected synchronization interval in seconds.',
+                '21600',
+            )
+            ->addOption(
+                'format',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Output format: table or json.',
+                'table',
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $interval = max(900, (int) $input->getOption('interval'));
-        $connectors = $this->entityManager->getRepository(SourceConnector::class)->findBy([], ['name' => 'ASC']);
+        $format = strtolower(trim((string) $input->getOption('format')));
+        if (!in_array($format, ['table', 'json'], true)) {
+            $io->error('The output format must be table or json.');
 
-        if ($connectors === []) {
-            $io->note('No connector definition is registered yet.');
-
-            return Command::SUCCESS;
+            return Command::INVALID;
         }
 
-        $rows = [];
-        $alerts = 0;
+        $connectors = $this->entityManager->getRepository(SourceConnector::class)->findBy([], ['name' => 'ASC']);
+        $reports = [];
 
         foreach ($connectors as $connector) {
             if (!$connector instanceof SourceConnector) {
@@ -63,19 +72,41 @@ final class AuditConnectorFreshnessCommand extends Command
                 $connector->canSynchronize(),
                 $interval,
             );
-            if ($freshness['alert']) {
-                ++$alerts;
-            }
-
-            $rows[] = [
-                $connector->getCode(),
-                $connector->getName(),
-                $freshness['status'],
-                $freshness['lastSyncedAt'] ?? '—',
-                $freshness['nextExpectedAt'] ?? '—',
-                (string) $freshness['overdueBySeconds'],
+            $reports[] = [
+                'code' => $connector->getCode(),
+                'name' => $connector->getName(),
+                ...$freshness,
             ];
         }
+
+        $alerts = count(array_filter(
+            $reports,
+            static fn (array $report): bool => (bool) $report['alert'],
+        ));
+
+        if ($format === 'json') {
+            $output->writeln($this->reportFormatter->toJson($reports, $interval));
+
+            return $alerts > 0 ? Command::FAILURE : Command::SUCCESS;
+        }
+
+        if ($reports === []) {
+            $io->note('No connector definition is registered yet.');
+
+            return Command::SUCCESS;
+        }
+
+        $rows = array_map(
+            static fn (array $report): array => [
+                $report['code'],
+                $report['name'],
+                $report['status'],
+                $report['lastSyncedAt'] ?? '—',
+                $report['nextExpectedAt'] ?? '—',
+                (string) $report['overdueBySeconds'],
+            ],
+            $reports,
+        );
 
         $io->table(
             ['Code', 'Connector', 'Freshness', 'Last sync', 'Expected by', 'Overdue (s)'],

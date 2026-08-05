@@ -8,7 +8,6 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'crm_organization_annotation')]
-#[ORM\UniqueConstraint(name: 'uniq_crm_organization_annotation_key', columns: ['organization_key'])]
 final class CrmOrganizationAnnotation
 {
     #[ORM\Id]

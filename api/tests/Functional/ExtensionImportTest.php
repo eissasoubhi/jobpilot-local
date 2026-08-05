@@ -71,7 +71,7 @@ final class ExtensionImportTest extends WebTestCase
             'description' => 'Cette offre ne doit pas être importée.',
         ]);
 
-        self::assertResponseStatusCodeSame(400);
+        self::assertResponseStatusCodeSame(422);
     }
 
     /** @return array<string|int, mixed> */

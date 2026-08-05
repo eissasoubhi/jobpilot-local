@@ -47,9 +47,10 @@ final class ControlledHttpScrapingClientTest extends TestCase
 
     public function testRetriesThenReusesConditionalHttpCache(): void
     {
+        $fixture = $this->fixture('catalog.html');
         $http = new MockHttpClient([
             new MockResponse('temporary', ['http_code' => 503]),
-            new MockResponse('<html>offre</html>', [
+            new MockResponse($fixture, [
                 'http_code' => 200,
                 'response_headers' => [
                     'content-type: text/html; charset=UTF-8',
@@ -70,13 +71,13 @@ final class ControlledHttpScrapingClientTest extends TestCase
 
         $first = $client->fetch($request);
         self::assertSame(200, $first->statusCode);
-        self::assertSame('<html>offre</html>', $first->body);
+        self::assertSame($fixture, $first->body);
         self::assertSame(2, $first->attempts);
         self::assertFalse($first->fromCache);
 
         $second = $client->fetch($request);
         self::assertSame(200, $second->statusCode);
-        self::assertSame('<html>offre</html>', $second->body);
+        self::assertSame($fixture, $second->body);
         self::assertSame(1, $second->attempts);
         self::assertTrue($second->fromCache);
     }
@@ -139,7 +140,7 @@ final class ControlledHttpScrapingClientTest extends TestCase
 
     public function testRobotsTxtCanBlockAPath(): void
     {
-        $http = new MockHttpClient(new MockResponse("User-agent: *\nDisallow: /offers/private\n", [
+        $http = new MockHttpClient(new MockResponse($this->fixture('robots-disallow.txt'), [
             'http_code' => 200,
             'response_headers' => ['content-type: text/plain'],
         ]));
@@ -153,6 +154,28 @@ final class ControlledHttpScrapingClientTest extends TestCase
             $this->allowedPolicy(respectsRobotsTxt: true),
             maxRetries: 0,
         ));
+    }
+
+    public function testRobotsTxtMostSpecificAllowRuleWins(): void
+    {
+        $fixture = $this->fixture('catalog.html');
+        $http = new MockHttpClient([
+            new MockResponse($this->fixture('robots-disallow.txt'), [
+                'http_code' => 200,
+                'response_headers' => ['content-type: text/plain'],
+            ]),
+            new MockResponse($fixture, ['http_code' => 200]),
+        ]);
+        $client = $this->client($http);
+
+        $result = $client->fetch(new HttpScrapingRequest(
+            'robots-allow-source',
+            'https://jobs.example.test/offers/private/public-preview/123',
+            $this->allowedPolicy(respectsRobotsTxt: true),
+            maxRetries: 0,
+        ));
+
+        self::assertSame($fixture, $result->body);
     }
 
     public function testRedirectToPrivateAddressIsRejected(): void
@@ -196,6 +219,14 @@ final class ControlledHttpScrapingClientTest extends TestCase
             0,
             $respectsRobotsTxt,
         );
+    }
+
+    private function fixture(string $name): string
+    {
+        $content = file_get_contents(dirname(__DIR__).'/Fixtures/http-scraping/'.$name);
+        self::assertIsString($content);
+
+        return $content;
     }
 
     private function removeDirectory(string $directory): void

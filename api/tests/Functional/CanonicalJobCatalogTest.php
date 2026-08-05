@@ -118,6 +118,63 @@ final class CanonicalJobCatalogTest extends WebTestCase
         self::assertSame(1, $second['sourceCount']);
     }
 
+    public function testAnySingleStrongConflictPreventsApproximateMerge(): void
+    {
+        $client = static::createClient();
+        $scenarios = [
+            'contract' => [
+                'first' => ['contractType' => 'CDI', 'location' => 'Paris', 'publishedAt' => '-2 days'],
+                'second' => ['contractType' => 'Freelance', 'location' => 'Paris', 'publishedAt' => '-1 day'],
+            ],
+            'location' => [
+                'first' => ['contractType' => 'CDI', 'location' => 'Paris', 'publishedAt' => '-2 days'],
+                'second' => ['contractType' => 'CDI', 'location' => 'Lyon', 'publishedAt' => '-1 day'],
+            ],
+            'date' => [
+                'first' => ['contractType' => 'CDI', 'location' => 'Paris', 'publishedAt' => '-70 days'],
+                'second' => ['contractType' => 'CDI', 'location' => 'Paris', 'publishedAt' => '-1 day'],
+            ],
+        ];
+
+        foreach ($scenarios as $name => $scenario) {
+            $suffix = $name.'-'.bin2hex(random_bytes(5));
+            $company = 'Strong Conflict Company '.$suffix;
+            $title = 'Développeur PHP Symfony '.$suffix;
+
+            $client->jsonRequest('POST', '/api/jobs', [
+                'source' => 'Source First',
+                'sourceCode' => 'source-first-'.$suffix,
+                'sourceUrl' => 'https://first.example/jobs/'.$suffix,
+                'title' => $title,
+                'company' => $company,
+                'location' => $scenario['first']['location'],
+                'contractType' => $scenario['first']['contractType'],
+                'description' => 'Première offre pour vérifier un conflit métier fort.',
+                'publishedAt' => (new \DateTimeImmutable($scenario['first']['publishedAt']))->format(DATE_ATOM),
+            ]);
+            self::assertResponseStatusCodeSame(201);
+            $first = $this->decode($client->getResponse()->getContent());
+
+            $client->jsonRequest('POST', '/api/jobs', [
+                'source' => 'Source Second',
+                'sourceCode' => 'source-second-'.$suffix,
+                'sourceUrl' => 'https://second.example/jobs/'.$suffix,
+                'title' => $title,
+                'company' => $company,
+                'location' => $scenario['second']['location'],
+                'contractType' => $scenario['second']['contractType'],
+                'description' => 'Deuxième offre qui doit rester distincte à cause d’un seul conflit métier.',
+                'publishedAt' => (new \DateTimeImmutable($scenario['second']['publishedAt']))->format(DATE_ATOM),
+            ]);
+            self::assertResponseStatusCodeSame(201, sprintf('Le conflit %s doit empêcher la fusion.', $name));
+            $second = $this->decode($client->getResponse()->getContent());
+
+            self::assertNotSame($first['id'], $second['id'], sprintf('Le conflit %s a fusionné deux offres distinctes.', $name));
+            self::assertSame(1, $first['sourceCount']);
+            self::assertSame(1, $second['sourceCount']);
+        }
+    }
+
     /** @return array<string|int, mixed> */
     private function decode(string|false $content): array
     {

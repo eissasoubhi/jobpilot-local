@@ -97,10 +97,14 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Endpoint `GET /api/crm/organizations` documenté et testé.
 - Interface CRM recherchable avec filtre par rôle, contacts validés, statuts et offres récentes.
 - Liens directs vers les adresses e-mail, téléphones et annonces originales disponibles.
+- Notes et corrections de nom persistées séparément des données sources.
+- Clé et nom généré d’origine toujours conservés dans la réponse CRM.
+- Endpoint d’annotation validé, effaçable et limité aux organisations réellement présentes.
 
 ### Prochaines livraisons
 
-- Notes et corrections manuelles sans écraser les données sources.
+- Édition des notes et corrections depuis l’interface CRM.
+- Corrections manuelles de contacts sans modifier les messages ou positionnements sources.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.
 

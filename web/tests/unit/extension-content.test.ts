@@ -4,6 +4,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface ExtractedOffer {
   url: string;
@@ -37,7 +38,7 @@ describe('JobPilot extension offer extraction', () => {
     if (!Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerText')?.get) {
       Object.defineProperty(HTMLElement.prototype, 'innerText', {
         configurable: true,
-        get() {
+        get(this: HTMLElement) {
           return this.textContent || '';
         },
       });

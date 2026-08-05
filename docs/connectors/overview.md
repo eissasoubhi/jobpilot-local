@@ -21,7 +21,7 @@ Chaque connecteur implémente `JobSourceConnector` et fournit :
 - un message expliquant une configuration manquante ;
 - une opération de recherche retournant des payloads normalisés.
 
-Le code stable ne doit jamais être dérivé d’un libellé traduit. Il sert aux commandes, aux URL et à l’historique.
+Le code stable ne doit jamais être dérivé d’un libellé traduit. Il sert aux commandes, aux URL, à l’identité des occurrences et à l’historique.
 
 ## Modes disponibles
 
@@ -46,7 +46,7 @@ La table `source_connector` contient l’état opérationnel de chaque connecteu
 - dernière synchronisation ;
 - dernière réussite ;
 - prochain lancement estimé ;
-- volumes reçus, importés, dupliqués et échoués ;
+- volumes reçus, importés, fusionnés, déjà connus et échoués ;
 - dernière erreur.
 
 Les définitions techniques sont resynchronisées depuis le code. Le choix utilisateur `enabled` reste conservé en base.
@@ -67,6 +67,33 @@ Une exécution désactivée ou non configurée est ignorée et ne crée pas de f
 
 Pour Gmail, les compteurs du registre concernent les offres extraites. La page **Messagerie** expose en complément les volumes de messages lus, associés et nécessitant une action.
 
+## Catalogue canonique
+
+Le payload d’un connecteur n’est plus enregistré directement comme une carte indépendante. Il devient une `JobSourceOccurrence`, puis JobPilot cherche l’offre canonique correspondante.
+
+Les résultats possibles sont :
+
+```text
+imported    nouvelle offre canonique
+merged      nouvelle source ajoutée à une offre existante
+duplicates  occurrence source déjà connue
+failed      occurrence invalide ou erreur
+```
+
+L’identité idempotente d’une occurrence reste :
+
+```text
+sourceCode + externalId
+```
+
+Pour rapprocher plusieurs plateformes, JobPilot utilise ensuite, dans l’ordre :
+
+1. l’URL canonique ;
+2. l’intitulé et l’entreprise normalisés ;
+3. une similarité conservatrice incluant contrat, lieu et date.
+
+La preuve du rapprochement, son score et ses raisons sont conservés sur l’occurrence. La stratégie complète est documentée dans [`../job-catalog/canonical-offers.md`](../job-catalog/canonical-offers.md).
+
 ## Interface
 
 La page **Connecteurs** permet de :
@@ -74,9 +101,17 @@ La page **Connecteurs** permet de :
 - consulter l’état et la configuration ;
 - activer ou désactiver une source ;
 - lancer un test manuel ;
+- distinguer nouvelles offres, sources fusionnées et occurrences connues ;
 - consulter les vingt dernières exécutions.
 
-La page **Offres** permet de filtrer les offres par source. La page **Messagerie** permet d’exploiter les messages Gmail classés.
+La page **Offres** :
+
+- affiche une seule carte par offre canonique ;
+- montre toutes ses sources ;
+- filtre sur n’importe quelle occurrence ;
+- expose les liens et la méthode de rapprochement.
+
+La page **Messagerie** permet d’exploiter les messages Gmail classés.
 
 ## Commandes
 
@@ -105,23 +140,13 @@ docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 2. Utiliser un code unique en minuscules.
 3. Déclarer le mode réel de collecte.
 4. Retourner des offres avec au minimum `externalId`, `title` et `description`.
-5. Fournir des tests unitaires avec réponses ou fixtures locales.
-6. Documenter les variables d’environnement, quotas et limitations.
-7. Ne jamais rendre la CI dépendante du site externe.
+5. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
+6. Fournir l’URL la plus directe possible vers l’offre.
+7. Fournir des tests unitaires avec réponses ou fixtures locales.
+8. Documenter les variables d’environnement, quotas et limitations.
+9. Ne jamais rendre la CI dépendante du site externe.
 
-L’autoconfiguration Symfony ajoute automatiquement l’implémentation au registre.
-
-## Déduplication actuelle
-
-La déduplication reste fondée sur le couple :
-
-```text
-sourceCode + externalId
-```
-
-Pour Gmail, l’identifiant externe est dérivé de l’URL normalisée de l’offre afin qu’une même alerte reçue plusieurs fois ne crée pas de doublon.
-
-La fusion canonique d’une même offre présente sur plusieurs plateformes est un chantier ultérieur.
+L’autoconfiguration Symfony ajoute automatiquement l’implémentation au registre. Le pipeline commun gère ensuite l’idempotence, la canonicalisation, le scoring, le CV et la préparation.
 
 ## Sécurité et conformité
 

@@ -2,14 +2,14 @@
 
 Cette roadmap privilégie des livraisons petites, testables et réversibles.
 
-## Phase 0 — Fondation
+## Phase 0 — Fondation — livrée
 
 - Documenter l’état actuel et la cible.
 - Définir les ADR, conventions et Definition of Done.
 - Corriger les écarts entre comportement et documentation.
 - Renforcer progressivement l’analyse statique et la CI.
 
-## Phase 1 — Framework de connecteurs
+## Phase 1 — Framework de connecteurs — livrée
 
 - Contrat commun de connecteur.
 - Registre des sources et capacités.
@@ -18,26 +18,28 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Migration d’Arbeitnow et Adzuna.
 - Filtre par source dans Offres.
 
-## Phase 2 — Collecte multi-mode
+## Phase 2 — Gmail intelligent — livrée
+
+- Synchronisation planifiée et visible.
+- Classification des alertes, propositions, réponses, refus et entretiens.
+- Association aux offres et candidatures.
+- Inbox intelligente et erreurs traçables.
+
+## Phase 3 — Offre canonique — livrée
+
+- Séparer offre canonique et occurrences de sources.
+- Déduplication multi-sources déterministe et conservatrice.
+- Historique de première et dernière apparition.
+- Compteurs distincts pour import, fusion et occurrence connue.
+- Badges, liens et filtre multi-sources dans l’interface.
+
+## Phase 4 — Collecte multi-mode
 
 - Scraping HTTP contrôlé.
 - Premier scraper pilote avec fixtures HTML.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Quotas, backoff, circuit breaker et détection de rupture.
-
-## Phase 3 — Gmail intelligent
-
-- Synchronisation planifiée et visible.
-- Classification des alertes, propositions, réponses, refus et entretiens.
-- Association aux offres, candidatures et recruteurs.
-- Inbox intelligente et erreurs traçables.
-
-## Phase 4 — Offre canonique
-
-- Séparer offre canonique et occurrences de sources.
-- Déduplication multi-sources.
-- Historique des apparitions et mises à jour.
-- Badges multi-sources dans l’interface.
+- Ajout progressif des plateformes disposant d’un canal autorisé.
 
 ## Phase 5 — Candidature et CRM
 

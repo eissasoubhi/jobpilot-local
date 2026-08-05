@@ -47,7 +47,7 @@ final class JobSearchSyncService
         return [
             'configured' => array_any(
                 $states,
-                static fn (SourceConnector $connector): bool => $connector->isEnabled() && $connector->isConfigured(),
+                static fn (SourceConnector $connector): bool => $connector->canSynchronize(),
             ),
             'providers' => $connectors,
             'connectors' => $connectors,
@@ -128,7 +128,7 @@ final class JobSearchSyncService
             foreach ($connectors as $connector) {
                 $sourceCode = strtolower($connector->code());
                 $state = $states[$sourceCode] ?? null;
-                if (!$state instanceof SourceConnector || !$state->isEnabled() || !$state->isConfigured()) {
+                if (!$state instanceof SourceConnector || !$state->canSynchronize()) {
                     continue;
                 }
                 if ($force || $state->isDue($this->intervalSeconds)) {
@@ -141,8 +141,8 @@ final class JobSearchSyncService
                     'busy' => false,
                     'skipped' => true,
                     'message' => $connectorCode === null
-                        ? 'Aucun connecteur actif n’est arrivé à échéance.'
-                        : 'Ce connecteur est désactivé, incomplet ou sa dernière synchronisation est encore récente.',
+                        ? 'Aucun connecteur autorisé et actif n’est arrivé à échéance.'
+                        : 'Ce connecteur est désactivé, incomplet, bloqué par sa politique de collecte ou encore récent.',
                 ]);
             }
 

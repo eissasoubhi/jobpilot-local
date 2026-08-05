@@ -2,17 +2,20 @@
 
 ## Objectif
 
-Un connecteur transforme une source externe en offres normalisées comprises par JobPilot. La source peut être une API, un flux RSS, un scraper HTTP, un navigateur Playwright, Gmail ou l’extension Chrome.
+Un connecteur transforme une source externe en offres normalisées comprises par JobPilot. La source peut être une API, un flux RSS, un scraper HTTP autorisé, un navigateur Playwright autorisé, Gmail ou l’extension Chrome.
 
-Les connecteurs livrés dans cette version sont :
+Les connecteurs et canaux livrés dans cette version sont :
 
 - `arbeitnow` — API, active par défaut ;
 - `adzuna` — API, active lorsque les identifiants sont renseignés ;
-- `gmail` — lecture des alertes et échanges de recrutement lorsque Gmail est connecté avec `gmail.readonly`.
+- `gmail` — lecture des alertes et échanges de recrutement lorsque Gmail est connecté avec `gmail.readonly` ;
+- extension Chrome — import déclenché par l’utilisateur depuis une page d’offre visible, avec prise en charge structurée de Free-Work et du balisage `JobPosting`.
+
+Free-Work n’est pas interrogé automatiquement par le backend. Les offres sont récupérées depuis les alertes Gmail ou importées par l’utilisateur avec l’extension. Voir [`free-work.md`](free-work.md).
 
 ## Contrat
 
-Chaque connecteur implémente `JobSourceConnector` et fournit :
+Chaque connecteur planifié implémente `JobSourceConnector` et fournit :
 
 - un `code` stable, technique et unique ;
 - un nom destiné à l’interface ;
@@ -22,6 +25,8 @@ Chaque connecteur implémente `JobSourceConnector` et fournit :
 - une opération de recherche retournant des payloads normalisés.
 
 Le code stable ne doit jamais être dérivé d’un libellé traduit. Il sert aux commandes, aux URL, à l’identité des occurrences et à l’historique.
+
+L’extension n’est pas un crawler planifié : elle transmet une seule page ouverte volontairement par l’utilisateur au pipeline canonique.
 
 ## Modes disponibles
 
@@ -39,7 +44,7 @@ Le mode décrit la manière de collecter les données. Il ne change pas le modè
 
 ## Registre persistant
 
-La table `source_connector` contient l’état opérationnel de chaque connecteur :
+La table `source_connector` contient l’état opérationnel de chaque connecteur planifié :
 
 - activé ou désactivé ;
 - configuré ou incomplet ;
@@ -53,7 +58,7 @@ Les définitions techniques sont resynchronisées depuis le code. Le choix utili
 
 ## Historique
 
-Chaque exécution crée une ligne `connector_sync_run` avec :
+Chaque exécution planifiée crée une ligne `connector_sync_run` avec :
 
 - le connecteur ;
 - le déclencheur (`scheduled`, `page-load`, `manual` ou `cli`) ;
@@ -69,7 +74,7 @@ Pour Gmail, les compteurs du registre concernent les offres extraites. La page *
 
 ## Catalogue canonique
 
-Le payload d’un connecteur n’est plus enregistré directement comme une carte indépendante. Il devient une `JobSourceOccurrence`, puis JobPilot cherche l’offre canonique correspondante.
+Le payload d’un connecteur ou de l’extension n’est plus enregistré directement comme une carte indépendante. Il devient une `JobSourceOccurrence`, puis JobPilot cherche l’offre canonique correspondante.
 
 Les résultats possibles sont :
 
@@ -99,7 +104,7 @@ La preuve du rapprochement, son score et ses raisons sont conservés sur l’occ
 La page **Connecteurs** permet de :
 
 - consulter l’état et la configuration ;
-- activer ou désactiver une source ;
+- activer ou désactiver une source planifiée ;
 - lancer un test manuel ;
 - distinguer nouvelles offres, sources fusionnées et occurrences connues ;
 - consulter les vingt dernières exécutions.
@@ -134,17 +139,21 @@ docker compose exec api php bin/console app:jobs:sync --force --connector=arbeit
 docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 ```
 
+Free-Work n’apparaît pas dans ces commandes, car aucun scraper planifié n’est activé pour cette plateforme.
+
 ## Ajouter un connecteur
 
-1. Implémenter `App\JobDiscovery\Domain\Connector\JobSourceConnector`.
-2. Utiliser un code unique en minuscules.
-3. Déclarer le mode réel de collecte.
-4. Retourner des offres avec au minimum `externalId`, `title` et `description`.
-5. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
-6. Fournir l’URL la plus directe possible vers l’offre.
-7. Fournir des tests unitaires avec réponses ou fixtures locales.
-8. Documenter les variables d’environnement, quotas et limitations.
-9. Ne jamais rendre la CI dépendante du site externe.
+1. Vérifier d’abord l’API officielle, le RSS, les alertes e-mail ou l’import assisté.
+2. Examiner les conditions d’utilisation, les mentions légales et `robots.txt` avant tout scraper.
+3. Implémenter `App\JobDiscovery\Domain\Connector\JobSourceConnector` pour une source planifiée autorisée.
+4. Utiliser un code unique en minuscules.
+5. Déclarer le mode réel de collecte.
+6. Retourner des offres avec au minimum `externalId`, `title` et `description`.
+7. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
+8. Fournir l’URL la plus directe possible vers l’offre.
+9. Fournir des tests unitaires avec réponses ou fixtures locales.
+10. Documenter les variables d’environnement, quotas, date de revue et limitations.
+11. Ne jamais rendre la CI dépendante du site externe.
 
 L’autoconfiguration Symfony ajoute automatiquement l’implémentation au registre. Le pipeline commun gère ensuite l’idempotence, la canonicalisation, le scoring, le CV et la préparation.
 
@@ -156,6 +165,9 @@ Un connecteur ne doit pas :
 - réutiliser des cookies privés sans mécanisme explicitement prévu ;
 - masquer l’automatisation ;
 - contourner un quota ou une interdiction ;
+- aspirer une source dont les conditions réservent ou interdisent l’extraction sans autorisation ;
 - journaliser des secrets ou des données personnelles inutiles.
 
-Le connecteur Gmail utilise des scopes minimaux, ne modifie aucun message dans Gmail et limite le nombre de résultats et de pages lus par synchronisation.
+La disponibilité publique d’une page n’est pas, à elle seule, une autorisation de collecte automatisée. `robots.txt` est un garde-fou technique, pas un remplacement de la revue contractuelle.
+
+Le connecteur Gmail utilise des scopes minimaux, ne modifie aucun message dans Gmail et limite le nombre de résultats et de pages lus par synchronisation. L’extension agit uniquement à la demande de l’utilisateur sur l’onglet actif.

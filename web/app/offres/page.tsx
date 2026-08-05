@@ -6,7 +6,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { Job } from '@/lib/types';
+import type { Job, JobSourceOccurrence } from '@/lib/types';
 
 type JobForm = {
   source: string;
@@ -34,6 +34,7 @@ type ProviderSync = {
   enabled?: boolean;
   received?: number;
   imported?: number;
+  merged?: number;
   duplicates?: number;
   failed?: number;
   error?: string | null;
@@ -50,6 +51,7 @@ type SyncResult = {
   message?: string;
   received?: number;
   imported?: number;
+  merged?: number;
   duplicates?: number;
   failed?: number;
   errors?: string[];
@@ -97,6 +99,35 @@ function formatDate(value: string | null | undefined): string {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function occurrences(job: Job): JobSourceOccurrence[] {
+  if (job.sources && job.sources.length > 0) return job.sources;
+
+  return [{
+    id: null,
+    sourceCode: job.sourceCode || job.source.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    sourceName: job.source,
+    externalId: null,
+    sourceUrl: job.sourceUrl || null,
+    matchType: 'LEGACY',
+    matchScore: 100,
+    matchReasons: [],
+    publishedAt: job.publishedAt || null,
+    firstSeenAt: job.publishedAt || new Date().toISOString(),
+    lastSeenAt: job.publishedAt || new Date().toISOString(),
+  }];
+}
+
+function matchLabel(matchType: string): string {
+  return {
+    PRIMARY: 'Source principale',
+    EXACT_SOURCE_ID: 'Occurrence déjà connue',
+    EXACT_URL: 'Fusion par URL',
+    EXACT_FINGERPRINT: 'Fusion exacte',
+    SIMILARITY: 'Fusion par similarité',
+    LEGACY: 'Source historique',
+  }[matchType] ?? matchType;
 }
 
 export default function JobsPage() {
@@ -174,14 +205,16 @@ export default function JobsPage() {
   };
 
   const sources = useMemo(
-    () => Array.from(new Set((jobs ?? []).map((job) => job.source).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'fr')),
+    () => Array.from(new Set(
+      (jobs ?? []).flatMap((job) => occurrences(job).map((source) => source.sourceName)).filter(Boolean),
+    )).sort((a, b) => a.localeCompare(b, 'fr')),
     [jobs],
   );
 
   const displayed = useMemo(
     () => jobs?.filter((job) => (
       (filter === 'all' || job.status === filter)
-      && (sourceFilter === 'all' || job.source === sourceFilter)
+      && (sourceFilter === 'all' || occurrences(job).some((source) => source.sourceName === sourceFilter))
     )) ?? [],
     [jobs, filter, sourceFilter],
   );
@@ -195,7 +228,7 @@ export default function JobsPage() {
     <>
       <PageHeader
         title="Offres"
-        description="Recherche automatique, classement par fraîcheur, puis par score de compatibilité."
+        description="Une carte par offre canonique, même lorsqu’elle est détectée sur plusieurs sources."
         actions={
           <div className="actions">
             <Link className="btn secondary" href="/connecteurs">Gérer les connecteurs</Link>
@@ -221,7 +254,7 @@ export default function JobsPage() {
             <strong>Recherche automatique</strong>
             <div className="muted small" style={{ marginTop: 5 }}>
               {syncing
-                ? 'JobPilot consulte les connecteurs actifs et analyse les nouvelles offres.'
+                ? 'JobPilot consulte les connecteurs actifs, normalise puis fusionne les occurrences.'
                 : syncInfo?.message ?? 'Initialisation de la recherche automatique…'}
             </div>
           </div>
@@ -234,7 +267,8 @@ export default function JobsPage() {
           <div className="actions" style={{ marginTop: 12 }}>
             <Badge tone="blue">Sources : {providerNames || 'aucune'}</Badge>
             {syncInfo.imported != null && <Badge tone="good">{syncInfo.imported} nouvelle(s)</Badge>}
-            {syncInfo.duplicates != null && <Badge>{syncInfo.duplicates} doublon(s)</Badge>}
+            {syncInfo.merged != null && <Badge tone="blue">{syncInfo.merged} source(s) fusionnée(s)</Badge>}
+            {syncInfo.duplicates != null && <Badge>{syncInfo.duplicates} occurrence(s) connue(s)</Badge>}
             {syncInfo.failed != null && syncInfo.failed > 0 && <Badge tone="warn">{syncInfo.failed} échec(s)</Badge>}
           </div>
         )}
@@ -249,7 +283,7 @@ export default function JobsPage() {
         )}
 
         <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
-          Les API, futurs scrapers, alertes Gmail et imports assistés utiliseront tous le même registre de connecteurs.
+          Une nouvelle plateforme ajoute une occurrence à l’offre existante lorsqu’URL, entreprise et intitulé correspondent avec une confiance suffisante.
         </p>
       </Card>
 
@@ -291,51 +325,99 @@ export default function JobsPage() {
         ) : displayed.length === 0 ? (
           <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>
         ) : (
-          displayed.map((job) => (
-            <div className="list-row" key={job.id}>
-              <div style={{ flex: 1 }}>
-                <div className="actions" style={{ marginBottom: 6 }}>
-                  <Badge tone={tone(job.status)}>{job.status}</Badge>
-                  <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
-                  <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
-                  <Badge>{job.source}</Badge>
-                  {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
-                  {job.proposedSalary != null && (
-                    <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
-                  )}
-                </div>
-                <h3>{job.title}</h3>
-                <div className="muted small">
-                  {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
-                </div>
-                {job.recommendedCv && (
-                  <div className="small" style={{ marginTop: 7 }}>
-                    CV conseillé : <strong>{job.recommendedCv.name}</strong>
+          displayed.map((job) => {
+            const jobOccurrences = occurrences(job);
+
+            return (
+              <div className="list-row" key={job.id}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="actions" style={{ marginBottom: 6 }}>
+                    <Badge tone={tone(job.status)}>{job.status}</Badge>
+                    <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
+                    <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
+                    <Badge tone={jobOccurrences.length > 1 ? 'blue' : 'neutral'}>
+                      {jobOccurrences.length} source{jobOccurrences.length > 1 ? 's' : ''}
+                    </Badge>
+                    {jobOccurrences.slice(0, 4).map((source) => (
+                      <Badge key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                        {source.sourceName}
+                      </Badge>
+                    ))}
+                    {jobOccurrences.length > 4 && <Badge>+{jobOccurrences.length - 4}</Badge>}
+                    {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
+                    {job.proposedSalary != null && (
+                      <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
+                    )}
                   </div>
-                )}
-                <details style={{ marginTop: 8 }}>
-                  <summary className="small muted">Pourquoi ce score ?</summary>
-                  <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
-                </details>
-                <div className="actions" style={{ marginTop: 10 }}>
-                  {job.sourceUrl && (
-                    <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
-                      Ouvrir l’offre
-                    </a>
+                  <h3>{job.title}</h3>
+                  <div className="muted small">
+                    {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
+                  </div>
+                  {job.recommendedCv && (
+                    <div className="small" style={{ marginTop: 7 }}>
+                      CV conseillé : <strong>{job.recommendedCv.name}</strong>
+                    </div>
                   )}
-                  {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
-                    <button className="btn small" type="button" onClick={() => void prepare(job.id)}>
-                      Préparer
-                    </button>
-                  )}
+                  <details style={{ marginTop: 8 }}>
+                    <summary className="small muted">Pourquoi ce score ?</summary>
+                    <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
+                  </details>
+                  <details style={{ marginTop: 8 }}>
+                    <summary className="small muted">
+                      Sources de cette offre ({jobOccurrences.length})
+                    </summary>
+                    <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+                      {jobOccurrences.map((source) => (
+                        <div className="notice" key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                          <div className="actions">
+                            <strong>{source.sourceName}</strong>
+                            <Badge tone={source.matchType === 'PRIMARY' || source.matchType === 'LEGACY' ? 'neutral' : 'blue'}>
+                              {matchLabel(source.matchType)}
+                            </Badge>
+                            {source.matchType !== 'PRIMARY' && source.matchType !== 'LEGACY' && (
+                              <Badge>{source.matchScore} %</Badge>
+                            )}
+                          </div>
+                          {source.matchReasons.length > 0 && (
+                            <div className="small muted" style={{ marginTop: 6 }}>
+                              {source.matchReasons.join(' ')}
+                            </div>
+                          )}
+                          {source.sourceUrl && (
+                            <a
+                              className="btn secondary small"
+                              href={source.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ marginTop: 8 }}
+                            >
+                              Ouvrir sur {source.sourceName}
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                  <div className="actions" style={{ marginTop: 10 }}>
+                    {job.sourceUrl && (
+                      <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
+                        Ouvrir la source principale
+                      </a>
+                    )}
+                    {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
+                      <button className="btn small" type="button" onClick={() => void prepare(job.id)}>
+                        Préparer
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
               </div>
-              <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
-            </div>
-          ))
+            );
+          })
         )}
 
-        {jobs?.some((job) => job.source === 'Adzuna') && (
+        {jobs?.some((job) => occurrences(job).some((source) => source.sourceName === 'Adzuna')) && (
           <p className="small muted" style={{ marginBottom: 0, marginTop: 16 }}>
             Jobs by <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Adzuna</a>
           </p>

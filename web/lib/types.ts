@@ -64,6 +64,18 @@ export type ConnectorResult = {
   failed: number;
 };
 
+export type ConnectorPolicy = {
+  complianceStatus: 'ALLOWED' | 'AUTHORIZED_ONLY' | 'EMAIL_OR_EXTENSION_ONLY' | 'DISABLED' | 'UNDER_REVIEW';
+  complianceLabel: string;
+  collectionAllowed: boolean;
+  reviewedAt?: string | null;
+  note?: string | null;
+  maxRequestsPerSync?: number | null;
+  dailyQuota?: number | null;
+  minimumDelayMilliseconds: number;
+  respectsRobotsTxt: boolean;
+};
+
 export type SourceConnector = {
   id: number;
   code: string;
@@ -72,6 +84,8 @@ export type SourceConnector = {
   enabled: boolean;
   configured: boolean;
   configurationMessage?: string | null;
+  collectionAllowed: boolean;
+  policy: ConnectorPolicy;
   status: string;
   lastSyncedAt?: string | null;
   lastSuccessfulAt?: string | null;

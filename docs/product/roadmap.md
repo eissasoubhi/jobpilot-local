@@ -55,10 +55,20 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Quotas, retries, cache et circuit breaker fournis par le transport HTTP contrôlé.
 - Fixtures locales ; aucun appel au site réel dans la CI.
 
+### Santé des parseurs — livrée
+
+- Contrat optionnel de versionnement des parseurs.
+- Version du parseur conservée dans les diagnostics de synchronisation.
+- Taux de normalisation et détection des résultats vides.
+- Référence calculée depuis les six dernières exécutions.
+- États `NO_DATA`, `HEALTHY`, `WATCH`, `DEGRADED` et `BROKEN`.
+- Alerte conservatrice après plusieurs exécutions vides ou un taux de normalisation faible.
+- Visibilité complète dans la page Connecteurs et son historique.
+
 ### Prochaines livraisons
 
 - Premier scraper HTML pilote uniquement après identification d’une source qui autorise explicitement ce mode de collecte.
-- Détection de rupture de parseur et métriques d’extraction.
+- Métriques par champ obligatoire et notifications de rupture.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Ajout progressif des plateformes disposant d’un canal autorisé.
 

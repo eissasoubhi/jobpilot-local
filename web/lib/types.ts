@@ -171,9 +171,17 @@ export type CrmOfferSummary = {
   sourceUrl?: string | null;
 };
 
+export type CrmOrganizationAnnotation = {
+  displayName?: string | null;
+  note?: string | null;
+  updatedAt?: string | null;
+};
+
 export type CrmOrganization = {
   key: string;
   name: string;
+  sourceName: string;
+  annotation?: CrmOrganizationAnnotation | null;
   roles: CrmOrganizationRole[];
   offerCount: number;
   applicationCount: number;
@@ -191,5 +199,6 @@ export type CrmDirectory = {
   generatedAt: string;
   organizationCount: number;
   contactCount: number;
+  annotationCount: number;
   organizations: CrmOrganization[];
 };

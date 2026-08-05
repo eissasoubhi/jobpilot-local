@@ -100,10 +100,13 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Notes et corrections de nom persistées séparément des données sources.
 - Clé et nom généré d’origine toujours conservés dans la réponse CRM.
 - Endpoint d’annotation validé, effaçable et limité aux organisations réellement présentes.
+- Éditeur CRM pour enregistrer ou effacer le nom affiché et la note interne.
+- Nom source et clé stable visibles avant chaque modification.
+- Rafraîchissement complet de l’annuaire après sauvegarde pour conserver les compteurs et le tri serveur.
+- Recherche étendue aux noms corrigés, noms sources et notes CRM.
 
 ### Prochaines livraisons
 
-- Édition des notes et corrections depuis l’interface CRM.
 - Corrections manuelles de contacts sans modifier les messages ou positionnements sources.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.

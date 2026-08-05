@@ -4,6 +4,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface ExtractedOffer {
@@ -56,7 +57,7 @@ describe('JobPilot extension offer extraction', () => {
       },
     });
 
-    const script = readFileSync(new URL('../../../extension/content.js', import.meta.url), 'utf8');
+    const script = readFileSync(resolve(process.cwd(), '../extension/content.js'), 'utf8');
     window.eval(script);
     expect(addListener).toHaveBeenCalledOnce();
   });

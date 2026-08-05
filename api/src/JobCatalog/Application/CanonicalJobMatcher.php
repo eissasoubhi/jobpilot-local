@@ -114,6 +114,10 @@ final class CanonicalJobMatcher
                 continue;
             }
 
+            if ($contractScore === 0.0 && $locationScore === 0.0) {
+                continue;
+            }
+
             $score = (int) round(
                 ($titleSimilarity * 62)
                 + ($companySimilarity * 26)

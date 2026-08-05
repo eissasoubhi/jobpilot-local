@@ -53,8 +53,8 @@ final class SymfonyJobsRssProviderTest extends TestCase
         self::assertSame(ConnectorMode::RSS, $provider->mode());
         self::assertTrue($provider->isConfigured());
         self::assertSame(ConnectorComplianceStatus::ALLOWED, $provider->policy()->complianceStatus);
-        self::assertSame(1, $provider->policy()->maxRequestsPerSync);
-        self::assertSame(8, $provider->policy()->dailyQuota);
+        self::assertSame(4, $provider->policy()->maxRequestsPerSync);
+        self::assertSame(16, $provider->policy()->dailyQuota);
 
         $offers = $provider->search(['Senior Symfony Developer'], ['PHP', 'Symfony']);
 

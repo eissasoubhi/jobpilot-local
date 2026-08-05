@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\JobDiscovery\Application;
 
+use App\JobDiscovery\Domain\Connector\ConnectorQualityProfile;
+
 final class ConnectorPayloadQualityAnalyzer
 {
-    /** @var list<string> */
-    private const REQUIRED_FIELDS = ['externalId', 'title', 'description'];
-
-    /** @var list<string> */
-    private const RECOMMENDED_FIELDS = ['company', 'sourceUrl', 'location', 'contractType', 'publishedAt'];
-
     /**
      * @param list<array<string, mixed>> $payloads
      * @return array{
+     *   profile: string,
+     *   thresholds: array{brokenRequiredCompleteness: float, watchRecommendedCompleteness: float},
      *   received: int,
      *   requiredCompleteness: float|null,
      *   recommendedCompleteness: float|null,
@@ -24,15 +22,16 @@ final class ConnectorPayloadQualityAnalyzer
      *   warnings: list<string>
      * }
      */
-    public function analyze(array $payloads): array
+    public function analyze(array $payloads, ?ConnectorQualityProfile $profile = null): array
     {
+        $profile ??= ConnectorQualityProfile::default();
         $received = count($payloads);
         $fields = [];
         $missingRequiredRecords = 0;
 
         foreach ([
-            'required' => self::REQUIRED_FIELDS,
-            'recommended' => self::RECOMMENDED_FIELDS,
+            'required' => $profile->requiredFields,
+            'recommended' => $profile->recommendedFields,
         ] as $category => $names) {
             foreach ($names as $name) {
                 $present = 0;
@@ -52,7 +51,7 @@ final class ConnectorPayloadQualityAnalyzer
         }
 
         foreach ($payloads as $payload) {
-            foreach (self::REQUIRED_FIELDS as $field) {
+            foreach ($profile->requiredFields as $field) {
                 if (!$this->isPresent($payload[$field] ?? null)) {
                     ++$missingRequiredRecords;
                     break;
@@ -62,37 +61,31 @@ final class ConnectorPayloadQualityAnalyzer
 
         $requiredCompleteness = $this->categoryCompleteness($fields, 'required', $received);
         $recommendedCompleteness = $this->categoryCompleteness($fields, 'recommended', $received);
-        $requiredSlots = count(self::REQUIRED_FIELDS) * 2;
-        $recommendedSlots = count(self::RECOMMENDED_FIELDS);
+        $requiredSlots = count($profile->requiredFields) * 2;
+        $recommendedSlots = count($profile->recommendedFields);
         $overallCompleteness = $received > 0
-            ? round((($requiredCompleteness ?? 0.0) * $requiredSlots + ($recommendedCompleteness ?? 0.0) * $recommendedSlots) / ($requiredSlots + $recommendedSlots), 1)
+            ? round((($requiredCompleteness ?? 0.0) * $requiredSlots + ($recommendedCompleteness ?? 0.0) * $recommendedSlots) / max(1, $requiredSlots + $recommendedSlots), 1)
             : null;
 
         $warnings = [];
         if ($missingRequiredRecords > 0) {
-            $warnings[] = sprintf(
-                '%d offre(s) sur %d ont au moins un champ obligatoire manquant.',
-                $missingRequiredRecords,
-                $received,
-            );
+            $warnings[] = sprintf('%d offre(s) sur %d ont au moins un champ obligatoire manquant.', $missingRequiredRecords, $received);
         }
         foreach ($fields as $field => $metrics) {
             if ($metrics['category'] === 'required' && $metrics['missing'] > 0) {
-                $warnings[] = sprintf(
-                    'Champ obligatoire « %s » absent de %d offre(s).',
-                    $field,
-                    $metrics['missing'],
-                );
+                $warnings[] = sprintf('Champ obligatoire « %s » absent de %d offre(s).', $field, $metrics['missing']);
             }
         }
-        if ($received > 0 && $recommendedCompleteness !== null && $recommendedCompleteness < 60.0) {
-            $warnings[] = sprintf(
-                'La complétude des champs recommandés est faible : %.1f %%.',
-                $recommendedCompleteness,
-            );
+        if ($received > 0 && $recommendedCompleteness !== null && $recommendedCompleteness < $profile->watchRecommendedCompleteness) {
+            $warnings[] = sprintf('La complétude des champs recommandés est faible : %.1f %%.', $recommendedCompleteness);
         }
 
         return [
+            'profile' => $profile->name,
+            'thresholds' => [
+                'brokenRequiredCompleteness' => $profile->brokenRequiredCompleteness,
+                'watchRecommendedCompleteness' => $profile->watchRecommendedCompleteness,
+            ],
             'received' => $received,
             'requiredCompleteness' => $requiredCompleteness,
             'recommendedCompleteness' => $recommendedCompleteness,
@@ -103,19 +96,14 @@ final class ConnectorPayloadQualityAnalyzer
         ];
     }
 
-    /**
-     * @param array<string, array{category: string, present: int, missing: int, rate: float|null}> $fields
-     */
+    /** @param array<string, array{category: string, present: int, missing: int, rate: float|null}> $fields */
     private function categoryCompleteness(array $fields, string $category, int $received): ?float
     {
         if ($received === 0) {
             return null;
         }
 
-        $selected = array_filter(
-            $fields,
-            static fn (array $metrics): bool => $metrics['category'] === $category,
-        );
+        $selected = array_filter($fields, static fn (array $metrics): bool => $metrics['category'] === $category);
         if ($selected === []) {
             return null;
         }

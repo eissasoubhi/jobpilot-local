@@ -25,6 +25,7 @@ final class ConnectorPayloadQualityAnalyzerTest extends TestCase
         self::assertNull($quality['recommendedCompleteness']);
         self::assertNull($quality['overallCompleteness']);
         self::assertSame(0, $quality['missingRequiredRecords']);
+        self::assertSame('default', $quality['rules']['profile']);
     }
 
     public function testCompletePayloadsScoreOneHundredPercent(): void
@@ -64,6 +65,35 @@ final class ConnectorPayloadQualityAnalyzerTest extends TestCase
         self::assertSame(1, $quality['fields']['externalId']['missing']);
         self::assertSame(1, $quality['fields']['description']['missing']);
         self::assertNotEmpty($quality['warnings']);
+    }
+
+    public function testSymfonyJobsRequiresTheDirectOfferUrl(): void
+    {
+        $payload = $this->completePayload('symfony');
+        $payload['source'] = 'Symfony Jobs';
+        $payload['sourceUrl'] = null;
+
+        $quality = $this->analyzer->analyze([$payload]);
+
+        self::assertSame('symfony jobs', $quality['rules']['profile']);
+        self::assertContains('sourceUrl', $quality['rules']['required']);
+        self::assertSame('required', $quality['fields']['sourceUrl']['category']);
+        self::assertSame(75.0, $quality['requiredCompleteness']);
+        self::assertSame(1, $quality['missingRequiredRecords']);
+    }
+
+    public function testExplicitRulesOverrideTheRegisteredProfile(): void
+    {
+        $payload = $this->completePayload('custom');
+        $payload['source'] = 'Symfony Jobs';
+        $payload['company'] = null;
+
+        $quality = $this->analyzer->analyze([$payload], ['externalId', 'title'], ['company']);
+
+        self::assertSame('default', $quality['rules']['profile']);
+        self::assertSame(['externalId', 'title'], $quality['rules']['required']);
+        self::assertSame(100.0, $quality['requiredCompleteness']);
+        self::assertSame(0.0, $quality['recommendedCompleteness']);
     }
 
     /** @return array<string, mixed> */

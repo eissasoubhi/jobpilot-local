@@ -10,6 +10,7 @@ use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class FranceTravailJobProvider implements GovernedJobSourceConnector, VersionedJobSourceConnector
 {
@@ -121,18 +122,21 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
     private function accessToken(): string
     {
         $response = $this->httpClient->request('POST', $this->tokenEndpoint, [
-            'headers' => ['Accept' => 'application/json'],
+            'headers' => [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
             'body' => [
                 'grant_type' => 'client_credentials',
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret,
+                'client_id' => trim($this->clientId),
+                'client_secret' => trim($this->clientSecret),
                 'scope' => trim($this->scope),
             ],
             'timeout' => 10,
         ]);
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException(sprintf('L’authentification France Travail a répondu avec le statut HTTP %d.', $response->getStatusCode()));
+            throw new \RuntimeException($this->authenticationFailureMessage($response));
         }
 
         $payload = $response->toArray(false);
@@ -142,6 +146,59 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
         }
 
         return $token;
+    }
+
+    private function authenticationFailureMessage(ResponseInterface $response): string
+    {
+        $statusCode = $response->getStatusCode();
+        $payload = [];
+
+        try {
+            $decoded = json_decode($response->getContent(false), true, 16, JSON_THROW_ON_ERROR);
+            if (is_array($decoded)) {
+                $payload = $decoded;
+            }
+        } catch (\Throwable) {
+            // The response body is intentionally ignored when it is not valid JSON.
+        }
+
+        $error = $this->safeOAuthText($payload['error'] ?? null, 80);
+        $description = $this->safeOAuthText(
+            $payload['error_description'] ?? $payload['message'] ?? null,
+            240,
+        );
+
+        $parts = [sprintf('L’authentification France Travail a échoué avec le statut HTTP %d', $statusCode)];
+        if ($error !== null) {
+            $parts[] = sprintf('code OAuth : %s', $error);
+        }
+        if ($description !== null) {
+            $parts[] = $description;
+        }
+
+        $message = implode(' — ', $parts).'.';
+        $hint = match ($error) {
+            'invalid_scope' => ' Vérifie que l’API Offres d’emploi est rattachée et active dans ton application France Travail.io, puis que FRANCE_TRAVAIL_SCOPE correspond exactement au scope indiqué par le portail.',
+            'invalid_client' => ' Vérifie que le client ID et le client secret proviennent de la même application France Travail.io et qu’aucun espace ou retour à la ligne n’a été copié.',
+            'unauthorized_client' => ' Vérifie que ton application France Travail.io est autorisée à utiliser le flux client_credentials et l’API Offres d’emploi.',
+            default => ' Vérifie dans France Travail.io que l’application est active et qu’elle possède bien l’accès au produit API Offres d’emploi.',
+        };
+
+        return $message.$hint;
+    }
+
+    private function safeOAuthText(mixed $value, int $maximumLength): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+        if ($value === '') {
+            return null;
+        }
+
+        return mb_substr($value, 0, $maximumLength);
     }
 
     /**

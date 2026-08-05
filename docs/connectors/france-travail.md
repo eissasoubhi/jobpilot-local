@@ -11,6 +11,8 @@ FRANCE_TRAVAIL_CLIENT_ID=your-client-id
 FRANCE_TRAVAIL_CLIENT_SECRET=your-client-secret
 ```
 
+La création de l’application seule ne suffit pas : le produit **API Offres d’emploi** doit être rattaché et actif dans cette application sur France Travail.io.
+
 Les valeurs techniques suivantes sont configurables uniquement pour suivre une évolution officielle de l’API ou faciliter les tests :
 
 ```dotenv
@@ -37,6 +39,17 @@ Une synchronisation :
 5. envoie chaque résultat dans le catalogue canonique multi-sources de JobPilot.
 
 Les salaires mensuels, horaires ou ambigus ne sont pas convertis artificiellement en salaire annuel. Les offres déjà connues restent idempotentes grâce à l’identifiant France Travail.
+
+## Diagnostic d’une authentification HTTP 400
+
+JobPilot affiche le code OAuth et une description limitée lorsque France Travail les fournit. Le client secret n’est jamais inclus dans le message d’erreur.
+
+- `invalid_scope` : vérifier que le produit API Offres d’emploi est rattaché et actif dans l’application, puis comparer `FRANCE_TRAVAIL_SCOPE` avec le scope affiché dans le portail ;
+- `invalid_client` : vérifier que le client ID et le client secret viennent de la même application et qu’aucun espace ou retour à la ligne n’a été copié ;
+- `unauthorized_client` : vérifier que l’application est autorisée à utiliser le flux `client_credentials` et le produit Offres d’emploi ;
+- autre code : vérifier l’état de l’application et de sa souscription au produit dans France Travail.io.
+
+Après toute correction, recréer les conteneurs `api` et `scheduler`, puis relancer **Tester maintenant** depuis la page Connecteurs.
 
 ## Politique et limites
 

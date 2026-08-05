@@ -61,6 +61,8 @@ function organizationMatchesQuery(organization: CrmOrganization, query: string):
 
   const searchableValues = [
     organization.name,
+    organization.sourceName,
+    organization.annotation?.note ?? '',
     ...organization.contacts.flatMap((contact) => [
       contact.name ?? '',
       contact.email ?? '',

@@ -113,9 +113,10 @@ test('CRM directory exposes validated contacts, filters and persistent annotatio
 
   await page.getByLabel('Rechercher une organisation, un contact, une note ou une offre').fill('');
   await page.getByRole('button', { name: 'Ajouter une note CRM' }).first().click();
-  await expect(page.getByRole('dialog', { name: 'Modifier la fiche CRM Acme Consulting' })).toBeVisible();
-  await expect(page.getByText('Acme Consulting')).toBeVisible();
-  await expect(page.getByText('acme consulting')).toBeVisible();
+  const annotationDialog = page.getByRole('dialog', { name: 'Modifier la fiche CRM Acme Consulting' });
+  await expect(annotationDialog).toBeVisible();
+  await expect(annotationDialog.getByText('Acme Consulting', { exact: true })).toBeVisible();
+  await expect(annotationDialog.getByTestId('crm-organization-key')).toHaveText('acme consulting');
 
   await page.getByLabel('Nom affiché dans le CRM').fill('ACME Consulting France');
   await page.getByLabel('Note interne').fill('Contact prioritaire pour les missions Symfony.');

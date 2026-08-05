@@ -29,6 +29,12 @@ function duration(value: number | null | undefined): string {
   return `${(value / 1000).toFixed(1)} s`;
 }
 
+function percentage(value: number | null | undefined): string {
+  if (value == null) return '—';
+
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
+}
+
 function modeLabel(mode: SourceConnector['mode']): string {
   return {
     API: 'API',
@@ -46,6 +52,14 @@ function statusTone(status: string): 'good' | 'warn' | 'bad' | 'blue' | 'neutral
   if (status === 'RUNNING') return 'blue';
   if (status === 'PARTIAL' || status === 'MISCONFIGURED' || status === 'NEVER_SYNCED') return 'warn';
   if (status === 'ERROR' || status === 'FAILED' || status === 'COMPLIANCE_BLOCKED') return 'bad';
+  return 'neutral';
+}
+
+function healthTone(status: SourceConnector['health']['status']): 'good' | 'warn' | 'bad' | 'blue' | 'neutral' {
+  if (status === 'HEALTHY') return 'good';
+  if (status === 'WATCH') return 'blue';
+  if (status === 'DEGRADED') return 'warn';
+  if (status === 'BROKEN') return 'bad';
   return 'neutral';
 }
 
@@ -120,7 +134,7 @@ export default function ConnectorsPage() {
     <>
       <PageHeader
         title="Connecteurs"
-        description="État, autorisation, limites et historique des sources d’offres de JobPilot."
+        description="État, autorisation, santé d’extraction, limites et historique des sources d’offres de JobPilot."
         actions={
           <button className="btn secondary" type="button" onClick={() => void load()}>
             Actualiser
@@ -143,6 +157,7 @@ export default function ConnectorsPage() {
                 <div style={{ flex: 1 }}>
                   <div className="actions" style={{ marginBottom: 8 }}>
                     <Badge tone={statusTone(connector.status)}>{connector.status}</Badge>
+                    <Badge tone={healthTone(connector.health.status)}>{connector.health.label}</Badge>
                     <Badge tone="blue">{modeLabel(connector.mode)}</Badge>
                     <Badge tone={complianceTone(connector.policy.complianceStatus)}>
                       {connector.policy.complianceLabel}
@@ -156,7 +171,10 @@ export default function ConnectorsPage() {
                   </div>
 
                   <h3>{connector.name}</h3>
-                  <div className="muted small">Code : <code>{connector.code}</code></div>
+                  <div className="muted small">
+                    Code : <code>{connector.code}</code>
+                    {connector.parserVersion && <> · Parseur : <code>{connector.parserVersion}</code></>}
+                  </div>
 
                   {connector.configurationMessage && (
                     <p className="small" style={{ marginBottom: 0 }}>{connector.configurationMessage}</p>
@@ -164,6 +182,11 @@ export default function ConnectorsPage() {
                   {connector.policy.note && (
                     <p className="small" style={{ marginBottom: 0 }}>
                       <strong>Politique de collecte :</strong> {connector.policy.note}
+                    </p>
+                  )}
+                  {connector.health.reasons[0] && (
+                    <p className="small" style={{ marginBottom: 0 }}>
+                      <strong>Santé d’extraction :</strong> {connector.health.reasons[0]}
                     </p>
                   )}
                   {connector.lastError && <ErrorBox message={connector.lastError} />}
@@ -180,6 +203,19 @@ export default function ConnectorsPage() {
                       <Badge>Délai min. {duration(connector.policy.minimumDelayMilliseconds)}</Badge>
                     )}
                     {connector.policy.respectsRobotsTxt && <Badge>robots.txt respecté</Badge>}
+                  </div>
+
+                  <div className="actions" style={{ marginTop: 12 }}>
+                    <Badge>Référence : {connector.health.sampleSize} sync(s)</Badge>
+                    <Badge>Taux récent : {percentage(connector.health.lastExtractionRate)}</Badge>
+                    {connector.health.baselineAverageReceived != null && (
+                      <Badge>Moyenne positive : {connector.health.baselineAverageReceived} offre(s)</Badge>
+                    )}
+                    {connector.health.consecutiveZeroRuns > 0 && (
+                      <Badge tone={connector.health.alert ? 'warn' : 'neutral'}>
+                        {connector.health.consecutiveZeroRuns} sync(s) vide(s)
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="actions" style={{ marginTop: 12 }}>
@@ -231,6 +267,11 @@ export default function ConnectorsPage() {
                   <Badge tone={statusTone(run.status)}>{run.status}</Badge>
                   <Badge>{run.trigger}</Badge>
                   <Badge>{duration(run.durationMs)}</Badge>
+                  {run.details.parserVersion && <Badge>Parseur {run.details.parserVersion}</Badge>}
+                  {run.details.normalizationRate != null && (
+                    <Badge>Taux {percentage(run.details.normalizationRate)}</Badge>
+                  )}
+                  {run.details.zeroResults && <Badge tone="warn">Aucun résultat</Badge>}
                 </div>
                 <h3>{run.connector.name}</h3>
                 <div className="muted small">{formatDate(run.startedAt)}</div>

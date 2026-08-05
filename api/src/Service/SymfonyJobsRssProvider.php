@@ -8,11 +8,12 @@ use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
+use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use App\JobDiscovery\Infrastructure\Feed\SyndicationJobFeedParser;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingRequest;
 
-final class SymfonyJobsRssProvider implements JobProviderInterface, GovernedJobSourceConnector
+final class SymfonyJobsRssProvider implements JobProviderInterface, GovernedJobSourceConnector, VersionedJobSourceConnector
 {
     private const ENDPOINT = 'https://symfony.com/jobs.rss';
 
@@ -36,6 +37,11 @@ final class SymfonyJobsRssProvider implements JobProviderInterface, GovernedJobS
     public function mode(): ConnectorMode
     {
         return ConnectorMode::RSS;
+    }
+
+    public function parserVersion(): string
+    {
+        return 'syndication-v1';
     }
 
     public function isConfigured(): bool

@@ -76,6 +76,17 @@ export type ConnectorPolicy = {
   respectsRobotsTxt: boolean;
 };
 
+export type ConnectorHealth = {
+  status: 'HEALTHY' | 'WATCH' | 'DEGRADED' | 'BROKEN' | 'NO_DATA';
+  label: string;
+  alert: boolean;
+  sampleSize: number;
+  consecutiveZeroRuns: number;
+  lastExtractionRate?: number | null;
+  baselineAverageReceived?: number | null;
+  reasons: string[];
+};
+
 export type SourceConnector = {
   id: number;
   code: string;
@@ -86,6 +97,8 @@ export type SourceConnector = {
   configurationMessage?: string | null;
   collectionAllowed: boolean;
   policy: ConnectorPolicy;
+  parserVersion?: string | null;
+  health: ConnectorHealth;
   status: string;
   lastSyncedAt?: string | null;
   lastSuccessfulAt?: string | null;
@@ -110,7 +123,12 @@ export type ConnectorSyncRun = {
   duplicates: number;
   failed: number;
   error?: string | null;
-  details: { errors?: string[] };
+  details: {
+    errors?: string[];
+    parserVersion?: string | null;
+    normalizationRate?: number | null;
+    zeroResults?: boolean;
+  };
 };
 
 export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };

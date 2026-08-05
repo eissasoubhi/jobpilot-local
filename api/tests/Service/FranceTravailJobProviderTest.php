@@ -53,8 +53,8 @@ final class FranceTravailJobProviderTest extends TestCase
 
         $provider = new FranceTravailJobProvider(
             $client,
-            'client-id',
-            'client-secret',
+            ' client-id ',
+            " client-secret\n",
             'api_offresdemploiv2 o2dsoffre',
             'https://auth.example.test/token',
             'https://api.example.test/offres/search',
@@ -88,6 +88,7 @@ final class FranceTravailJobProviderTest extends TestCase
         parse_str((string) $requests[0][2]['body'], $tokenFields);
         self::assertSame('client_credentials', $tokenFields['grant_type'] ?? null);
         self::assertSame('client-id', $tokenFields['client_id'] ?? null);
+        self::assertSame('client-secret', $tokenFields['client_secret'] ?? null);
         self::assertSame('GET', $requests[1][0]);
         $headers = implode("\n", array_map('strval', $requests[1][2]['headers']));
         self::assertStringContainsString('Authorization: Bearer test-access-token', $headers);
@@ -117,5 +118,49 @@ final class FranceTravailJobProviderTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('aucun jeton');
         $provider->search(['Symfony'], ['PHP']);
+    }
+
+    public function testInvalidScopeProvidesAnActionableSafeDiagnostic(): void
+    {
+        $client = new MockHttpClient(new MockResponse(json_encode([
+            'error' => 'invalid_scope',
+            'error_description' => "Le scope demandé n'est pas autorisé.\nVérifiez votre souscription.",
+        ], JSON_THROW_ON_ERROR), [
+            'http_code' => 400,
+            'response_headers' => ['content-type: application/json'],
+        ]));
+        $provider = new FranceTravailJobProvider($client, 'client-id', 'super-secret-value');
+
+        try {
+            $provider->search(['Symfony'], ['PHP']);
+            self::fail('The authentication request should have failed.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('HTTP 400', $exception->getMessage());
+            self::assertStringContainsString('invalid_scope', $exception->getMessage());
+            self::assertStringContainsString('API Offres d’emploi est rattachée et active', $exception->getMessage());
+            self::assertStringNotContainsString('super-secret-value', $exception->getMessage());
+            self::assertStringNotContainsString("\n", $exception->getMessage());
+        }
+    }
+
+    public function testInvalidClientProvidesCredentialGuidanceWithoutEchoingTheSecret(): void
+    {
+        $client = new MockHttpClient(new MockResponse(json_encode([
+            'error' => 'invalid_client',
+            'error_description' => 'Client authentication failed.',
+        ], JSON_THROW_ON_ERROR), [
+            'http_code' => 400,
+            'response_headers' => ['content-type: application/json'],
+        ]));
+        $provider = new FranceTravailJobProvider($client, 'client-id', 'private-secret');
+
+        try {
+            $provider->search(['Symfony'], ['PHP']);
+            self::fail('The authentication request should have failed.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('invalid_client', $exception->getMessage());
+            self::assertStringContainsString('même application France Travail.io', $exception->getMessage());
+            self::assertStringNotContainsString('private-secret', $exception->getMessage());
+        }
     }
 }

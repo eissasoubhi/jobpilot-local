@@ -251,20 +251,33 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
             return [null, null];
         }
 
-        preg_match_all('/\d[\d\s.,]*/', $label, $matches);
-        $values = [];
-        foreach ($matches[0] ?? [] as $match) {
-            $normalized = preg_replace('/[^0-9]/', '', (string) $match) ?? '';
-            if ($normalized !== '') {
-                $values[] = (int) $normalized;
-            }
+        if (preg_match('/(?:de\s+)?([0-9][0-9\s.,]*)\s*(?:euros?|€).*?(?:à|a|-)\s*([0-9][0-9\s.,]*)\s*(?:euros?|€)/iu', $label, $matches) === 1) {
+            $first = $this->salaryNumber($matches[1]);
+            $second = $this->salaryNumber($matches[2]);
+
+            return $first !== null && $second !== null
+                ? [min($first, $second), max($first, $second)]
+                : [null, null];
         }
 
-        if ($values === []) {
-            return [null, null];
+        if (preg_match('/([0-9][0-9\s.,]*)\s*(?:euros?|€)/iu', $label, $matches) === 1) {
+            $value = $this->salaryNumber($matches[1]);
+
+            return [$value, $value];
         }
 
-        return [min($values), max($values)];
+        return [null, null];
+    }
+
+    private function salaryNumber(string $value): ?int
+    {
+        $value = str_replace(["\u{00A0}", ' '], '', trim($value));
+        $value = str_replace(',', '.', $value);
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return max(0, (int) round((float) $value));
     }
 
     private function date(string $value): ?string

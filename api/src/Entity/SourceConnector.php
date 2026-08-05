@@ -38,7 +38,7 @@ final class SourceConnector
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $configurationMessage = null;
 
-    #[ORM\Column(length: 32, options: ['default' => 'UNDER_REVIEW'])]
+    #[ORM\Column(length: 32)]
     private string $complianceStatus = 'UNDER_REVIEW';
 
     #[ORM\Column(type: 'date_immutable', nullable: true)]
@@ -53,10 +53,10 @@ final class SourceConnector
     #[ORM\Column(nullable: true)]
     private ?int $dailyQuota = null;
 
-    #[ORM\Column(options: ['default' => 0])]
+    #[ORM\Column]
     private int $minimumDelayMilliseconds = 0;
 
-    #[ORM\Column(options: ['default' => false])]
+    #[ORM\Column]
     private bool $respectsRobotsTxt = false;
 
     #[ORM\Column(length: 32)]

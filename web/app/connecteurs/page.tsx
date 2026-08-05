@@ -36,7 +36,7 @@ function percentage(value: number | null | undefined): string {
 }
 
 function fieldLabel(field: string): string {
-  return {
+  const labels: Record<string, string> = {
     externalId: 'identifiant',
     title: 'titre',
     description: 'description',
@@ -45,7 +45,9 @@ function fieldLabel(field: string): string {
     location: 'lieu',
     contractType: 'contrat',
     publishedAt: 'date',
-  }[field] ?? field;
+  };
+
+  return labels[field] ?? field;
 }
 
 function modeLabel(mode: SourceConnector['mode']): string {

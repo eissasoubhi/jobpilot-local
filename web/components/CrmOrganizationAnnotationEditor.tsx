@@ -85,7 +85,9 @@ export function CrmOrganizationAnnotationEditor({
         <div className="notice" style={{ marginBottom: 16 }}>
           <strong>Nom détecté dans les données sources :</strong> {organization.sourceName}
           <div className="small muted" style={{ marginTop: 5 }}>
-            La clé stable <code>{organization.key}</code> et le nom source ne seront pas modifiés.
+            La clé stable{' '}
+            <code data-testid="crm-organization-key">{organization.key}</code>{' '}
+            et le nom source ne seront pas modifiés.
           </div>
         </div>
 

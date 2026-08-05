@@ -130,7 +130,8 @@ test('CRM directory exposes validated contacts, filters and persistent annotatio
   await expect(page.getByText('Nom source : Acme Consulting')).toBeVisible();
   await expect(page.getByText('Contact prioritaire pour les missions Symfony.')).toBeVisible();
   await expect(page.getByText('La fiche CRM de ACME Consulting France a été enregistrée.')).toBeVisible();
-  await expect(page.getByText('1', { exact: true }).nth(2)).toBeVisible();
+  const annotatedMetric = page.getByText('Fiches annotées').locator('..').locator('.metric');
+  await expect(annotatedMetric).toHaveText('1');
 
   await page.getByLabel('Rechercher une organisation, un contact, une note ou une offre').fill('missions Symfony');
   await expect(page.getByRole('heading', { name: 'ACME Consulting France' })).toBeVisible();

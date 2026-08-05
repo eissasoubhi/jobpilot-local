@@ -16,7 +16,9 @@ La documentation produit, architecture, développement et exploitation se trouve
 - Catalogue canonique : une seule offre métier, même lorsqu’elle apparaît sur plusieurs plateformes.
 - Occurrences de sources conservant URL, identifiant, première et dernière observation et preuve de rapprochement.
 - Filtre multi-sources dans la page **Offres** et détail des liens de chaque plateforme.
-- Import manuel d'offres et import depuis l'extension Chrome.
+- Import manuel d'offres et import assisté depuis l'extension Chrome.
+- Extraction structurée `JobPosting` et prise en charge dédiée des pages Free-Work ouvertes par l’utilisateur.
+- Imports de l’extension idempotents dans le catalogue canonique.
 - Détection de langue et choix du CV correspondant.
 - Score de compatibilité, préparation automatique à partir de 50/100.
 - Tri par fraîcheur puis par score.
@@ -138,9 +140,16 @@ Documentation :
 2. Activer **Mode développeur**.
 3. Cliquer **Charger l'extension non empaquetée**.
 4. Sélectionner le dossier `extension`.
-5. Ouvrir une offre, puis cliquer sur l'icône JobPilot.
+5. Ouvrir une page de détail d’offre, puis cliquer sur l'icône JobPilot.
+6. Cliquer sur **Importer l’offre** et vérifier le résultat dans la page **Offres**.
 
-L'extension importe le titre, l'URL et le texte visible vers l'API locale. Elle peut aussi préremplir les champs standards, mais ne clique jamais automatiquement sur le bouton final de soumission.
+L’extension privilégie le balisage structuré `JobPosting` lorsque le site le fournit. À défaut, elle analyse uniquement le contenu déjà visible dans l’onglet. Elle transmet notamment le titre, l’entreprise, le lieu, le contrat, le télétravail, la date, le salaire ou TJM, la description et l’URL canonique.
+
+Les imports passent par le catalogue canonique. Réimporter la même page met à jour son occurrence au lieu de créer une seconde carte ou une seconde candidature.
+
+Pour Free-Work, la collecte automatique en arrière-plan n’est pas activée. L’intégration utilise les alertes Gmail ou cet import assisté déclenché par l’utilisateur. Détails : [`docs/connectors/free-work.md`](docs/connectors/free-work.md).
+
+L'extension peut aussi préremplir les champs standards, mais ne clique jamais automatiquement sur le bouton final de soumission.
 
 ## Gmail OAuth et Inbox intelligente
 
@@ -187,7 +196,9 @@ make reset      # supprimer la base locale et recommencer
 
 ## Limites assumées
 
-JobPilot ne contourne pas les CAPTCHA, authentifications, contrôles d'accès ou limitations de plateformes. Les futurs connecteurs pourront utiliser une API, un flux public, le scraping contrôlé de pages librement accessibles, Gmail ou l'extension selon les possibilités de chaque source.
+JobPilot ne contourne pas les CAPTCHA, authentifications, contrôles d'accès ou limitations de plateformes. Un scraper ne doit être activé qu’après revue de l’API officielle, des flux disponibles, des conditions d’utilisation, des mentions légales et de `robots.txt`.
+
+Une page accessible publiquement ne constitue pas automatiquement une autorisation de collecte massive. Pour une source limitée à l’usage personnel, JobPilot privilégie les alertes e-mail et l’extension déclenchée par l’utilisateur.
 
 La fusion automatique privilégie la prudence. Une offre ambiguë reste séparée plutôt que d’être attachée à tort à une autre mission. La migration crée une occurrence pour chaque offre existante, mais ne fusionne pas destructivement les anciens doublons.
 
@@ -203,6 +214,7 @@ Consulter :
 - [`docs/architecture/context-map.md`](docs/architecture/context-map.md)
 - [`docs/connectors/overview.md`](docs/connectors/overview.md)
 - [`docs/connectors/gmail.md`](docs/connectors/gmail.md)
+- [`docs/connectors/free-work.md`](docs/connectors/free-work.md)
 - [`docs/job-catalog/canonical-offers.md`](docs/job-catalog/canonical-offers.md)
 - [`docs/development/testing.md`](docs/development/testing.md)
 - [`docs/definition-of-done.md`](docs/definition-of-done.md)

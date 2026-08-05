@@ -19,13 +19,6 @@ export interface ConnectorRoadmapEntry {
  */
 export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
   {
-    code: 'france-travail',
-    name: 'France Travail',
-    status: 'PLANNED',
-    modes: ['API'],
-    note: 'Official API integration requires validated access and credentials before implementation.',
-  },
-  {
     code: 'free-work',
     name: 'Free-Work',
     status: 'EMAIL_OR_EXTENSION_ONLY',

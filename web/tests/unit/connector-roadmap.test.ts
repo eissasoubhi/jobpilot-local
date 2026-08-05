@@ -7,7 +7,7 @@ describe('connector roadmap catalog', () => {
     const codes = connectorRoadmap.map((connector) => connector.code);
 
     expect(new Set(codes).size).toBe(codes.length);
-    expect(codes).toContain('france-travail');
+    expect(codes).not.toContain('france-travail');
     expect(codes).toContain('linkedin');
     expect(codes).toContain('indeed');
   });
@@ -30,12 +30,7 @@ describe('connector roadmap catalog', () => {
     }
   });
 
-  it('keeps France Travail gated behind official API access', () => {
-    const connector = connectorRoadmap.find((entry) => entry.code === 'france-travail');
-
-    expect(connector).toMatchObject({
-      status: 'PLANNED',
-      modes: ['API'],
-    });
+  it('contains only non-operational sources', () => {
+    expect(connectorRoadmap.some((entry) => entry.code === 'france-travail')).toBe(false);
   });
 });

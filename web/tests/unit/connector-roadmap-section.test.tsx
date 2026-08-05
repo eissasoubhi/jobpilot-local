@@ -14,14 +14,12 @@ describe('ConnectorRoadmapSection', () => {
     for (const entry of connectorRoadmap) {
       expect(screen.getByTestId(`roadmap-connector-${entry.code}`)).toHaveTextContent(entry.name);
     }
+
+    expect(screen.queryByTestId('roadmap-connector-france-travail')).not.toBeInTheDocument();
   });
 
   it('shows the authorized channel restrictions without operational actions', () => {
     render(<ConnectorRoadmapSection />);
-
-    const franceTravail = within(screen.getByTestId('roadmap-connector-france-travail'));
-    expect(franceTravail.getByText('Planifié')).toBeInTheDocument();
-    expect(franceTravail.getByText('API officielle')).toBeInTheDocument();
 
     const linkedin = within(screen.getByTestId('roadmap-connector-linkedin'));
     expect(linkedin.getByText('Gmail ou extension uniquement')).toBeInTheDocument();

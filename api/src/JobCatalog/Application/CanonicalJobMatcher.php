@@ -66,24 +66,6 @@ final class CanonicalJobMatcher
                 continue;
             }
 
-            if ($candidateTitle === $incomingTitle && $candidateCompany === $incomingCompany) {
-                return [
-                    'job' => $candidate,
-                    'matchType' => 'EXACT_FINGERPRINT',
-                    'score' => 98,
-                    'reasons' => ['Même intitulé normalisé.', 'Même entreprise normalisée.'],
-                ];
-            }
-
-            $titleSimilarity = $this->jaccard(
-                $incomingTitleTokens,
-                $this->significantTokens($candidateTitle),
-            );
-            $companySimilarity = $this->textSimilarity($incomingCompany, $candidateCompany);
-            if ($titleSimilarity < 0.72 || $companySimilarity < 0.82) {
-                continue;
-            }
-
             $contractScore = $this->compatibility(
                 (string) ($payload['contractType'] ?? ''),
                 $candidate->getContractType(),
@@ -96,6 +78,42 @@ final class CanonicalJobMatcher
                 $payload['publishedAt'] ?? null,
                 $candidate->getPublishedAt(),
             );
+
+            if (
+                $candidateTitle === $incomingTitle
+                && $candidateCompany === $incomingCompany
+                && $contractScore > 0.0
+                && $locationScore > 0.0
+                && $dateScore > 0.0
+            ) {
+                $reasons = ['Même intitulé normalisé.', 'Même entreprise normalisée.'];
+                if ($contractScore === 1.0) {
+                    $reasons[] = 'Même type de contrat.';
+                }
+                if ($locationScore === 1.0) {
+                    $reasons[] = 'Même localisation.';
+                }
+                if ($dateScore === 1.0) {
+                    $reasons[] = 'Dates de publication proches.';
+                }
+
+                return [
+                    'job' => $candidate,
+                    'matchType' => 'EXACT_FINGERPRINT',
+                    'score' => 98,
+                    'reasons' => $reasons,
+                ];
+            }
+
+            $titleSimilarity = $this->jaccard(
+                $incomingTitleTokens,
+                $this->significantTokens($candidateTitle),
+            );
+            $companySimilarity = $this->textSimilarity($incomingCompany, $candidateCompany);
+            if ($titleSimilarity < 0.72 || $companySimilarity < 0.82) {
+                continue;
+            }
+
             $score = (int) round(
                 ($titleSimilarity * 62)
                 + ($companySimilarity * 26)

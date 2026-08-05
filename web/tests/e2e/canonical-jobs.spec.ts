@@ -91,8 +91,8 @@ test('one canonical offer displays all sources and filters by any occurrence', a
 
   await expect(page.getByRole('heading', { name: canonicalJob.title, level: 3 })).toHaveCount(1);
   await expect(page.getByText('2 sources', { exact: true })).toBeVisible();
-  await expect(page.getByText('Source Alpha', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Source Beta', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('span.badge').filter({ hasText: /^Source Alpha$/ })).toBeVisible();
+  await expect(page.locator('span.badge').filter({ hasText: /^Source Beta$/ })).toBeVisible();
   await expect(page.getByText('1 source(s) fusionnée(s)', { exact: true })).toBeVisible();
 
   await page.getByLabel('Filtrer par source').selectOption({ label: 'Source Beta' });

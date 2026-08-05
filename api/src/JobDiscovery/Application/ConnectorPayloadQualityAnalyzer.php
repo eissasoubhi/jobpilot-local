@@ -12,6 +12,11 @@ final class ConnectorPayloadQualityAnalyzer
     /** @var list<string> */
     private const DEFAULT_RECOMMENDED_FIELDS = ['company', 'sourceUrl', 'location', 'contractType', 'publishedAt'];
 
+    public function __construct(private ?ConnectorQualityProfileRegistry $profiles = null)
+    {
+        $this->profiles ??= new ConnectorQualityProfileRegistry();
+    }
+
     /**
      * @param list<array<string, mixed>> $payloads
      * @param list<string>|null $requiredFields
@@ -23,7 +28,7 @@ final class ConnectorPayloadQualityAnalyzer
      *   overallCompleteness: float|null,
      *   missingRequiredRecords: int,
      *   fields: array<string, array{category: string, present: int, missing: int, rate: float|null}>,
-     *   rules: array{required: list<string>, recommended: list<string>},
+     *   rules: array{profile: string, required: list<string>, recommended: list<string>},
      *   warnings: list<string>
      * }
      */
@@ -32,9 +37,17 @@ final class ConnectorPayloadQualityAnalyzer
         ?array $requiredFields = null,
         ?array $recommendedFields = null,
     ): array {
-        $requiredFields = $this->normalizeFields($requiredFields ?? self::DEFAULT_REQUIRED_FIELDS);
+        $source = trim((string) ($payloads[0]['source'] ?? ''));
+        $profile = $requiredFields === null && $recommendedFields === null
+            ? $this->profiles?->forSource($source)
+            : null;
+        $requiredFields = $this->normalizeFields(
+            $requiredFields ?? $profile['required'] ?? self::DEFAULT_REQUIRED_FIELDS,
+        );
         $recommendedFields = array_values(array_diff(
-            $this->normalizeFields($recommendedFields ?? self::DEFAULT_RECOMMENDED_FIELDS),
+            $this->normalizeFields(
+                $recommendedFields ?? $profile['recommended'] ?? self::DEFAULT_RECOMMENDED_FIELDS,
+            ),
             $requiredFields,
         ));
         $received = count($payloads);
@@ -96,7 +109,11 @@ final class ConnectorPayloadQualityAnalyzer
             'overallCompleteness' => $overallCompleteness,
             'missingRequiredRecords' => $missingRequiredRecords,
             'fields' => $fields,
-            'rules' => ['required' => $requiredFields, 'recommended' => $recommendedFields],
+            'rules' => [
+                'profile' => $profile !== null ? mb_strtolower($source) : 'default',
+                'required' => $requiredFields,
+                'recommended' => $recommendedFields,
+            ],
             'warnings' => array_slice($warnings, 0, 8),
         ];
     }

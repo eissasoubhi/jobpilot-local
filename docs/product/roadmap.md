@@ -76,12 +76,22 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Ajout progressif des plateformes disposant d’un canal autorisé.
 
-## Phase 5 — Candidature et CRM
+## Phase 5 — Candidature et CRM — en cours
 
-- Pipeline complet des candidatures.
+### Préparation de candidature — livrée
+
+- Message de candidature concis et adapté à l’offre.
+- CV sélectionné sans inventer ni modifier son contenu approuvé.
+- Réponse de rémunération conservée séparément.
+- Lettre de motivation distincte et préparée uniquement lorsque l’offre la demande explicitement.
+- Exclusion des formulations indiquant que la lettre est facultative, non requise ou inutile.
+- Envoi Gmail limité au message concis et au CV ; aucune concaténation de la lettre.
+
+### Prochaines livraisons
+
 - CRM recruteurs et sociétés.
-- Tâches de relance.
-- Lettre de motivation séparée uniquement lorsqu’elle est demandée.
+- Tâches et rappels de relance.
+- Vue chronologique complète du cycle de candidature.
 
 ## Phase 6 — Reporting
 

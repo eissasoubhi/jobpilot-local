@@ -28,8 +28,8 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     public function testHealthyRunReportsExtractionRate(): void
     {
         $health = $this->analyzer->analyze([
-            $this->run('SUCCEEDED', 10, 0),
-            $this->run('SUCCEEDED', 8, 0),
+            $this->syncRun('SUCCEEDED', 10, 0),
+            $this->syncRun('SUCCEEDED', 8, 0),
         ]);
 
         self::assertSame('HEALTHY', $health['status']);
@@ -41,9 +41,9 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     public function testTwoZeroRunsAfterPositiveBaselineAreDegraded(): void
     {
         $health = $this->analyzer->analyze([
-            $this->run('SUCCEEDED', 0, 0),
-            $this->run('SUCCEEDED', 0, 0),
-            $this->run('SUCCEEDED', 12, 0),
+            $this->syncRun('SUCCEEDED', 0, 0),
+            $this->syncRun('SUCCEEDED', 0, 0),
+            $this->syncRun('SUCCEEDED', 12, 0),
         ]);
 
         self::assertSame('DEGRADED', $health['status']);
@@ -54,10 +54,10 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     public function testThreeZeroRunsAfterPositiveBaselineAreBroken(): void
     {
         $health = $this->analyzer->analyze([
-            $this->run('SUCCEEDED', 0, 0),
-            $this->run('SUCCEEDED', 0, 0),
-            $this->run('SUCCEEDED', 0, 0),
-            $this->run('SUCCEEDED', 15, 0),
+            $this->syncRun('SUCCEEDED', 0, 0),
+            $this->syncRun('SUCCEEDED', 0, 0),
+            $this->syncRun('SUCCEEDED', 0, 0),
+            $this->syncRun('SUCCEEDED', 15, 0),
         ]);
 
         self::assertSame('BROKEN', $health['status']);
@@ -68,8 +68,8 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     public function testHighNormalizationFailureRateIsBroken(): void
     {
         $health = $this->analyzer->analyze([
-            $this->run('PARTIAL', 10, 6),
-            $this->run('SUCCEEDED', 10, 0),
+            $this->syncRun('PARTIAL', 10, 6),
+            $this->syncRun('SUCCEEDED', 10, 0),
         ]);
 
         self::assertSame('BROKEN', $health['status']);
@@ -79,7 +79,7 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     public function testFailedRunIsBrokenEvenWithoutReceivedItems(): void
     {
         $health = $this->analyzer->analyze([
-            $this->run('FAILED', 0, 1, 'Flux XML invalide.'),
+            $this->syncRun('FAILED', 0, 1, 'Flux XML invalide.'),
         ]);
 
         self::assertSame('BROKEN', $health['status']);
@@ -87,7 +87,7 @@ final class ConnectorHealthAnalyzerTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function run(string $status, int $received, int $failed, ?string $error = null): array
+    private function syncRun(string $status, int $received, int $failed, ?string $error = null): array
     {
         return [
             'status' => $status,

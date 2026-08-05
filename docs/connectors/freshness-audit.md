@@ -20,6 +20,24 @@ docker compose exec api php bin/console app:connectors:audit-freshness --interva
 
 The command returns a non-zero exit code when an active connector requires attention, so it can be used by a health check, cron job, or external monitoring system.
 
+## Machine-readable output
+
+Monitoring systems can request JSON without parsing the human-readable table:
+
+```bash
+docker compose exec api php bin/console app:connectors:audit-freshness --format=json
+```
+
+The report contains:
+
+- generation date;
+- effective interval;
+- global `OK` or `ALERT` status;
+- connector and alert counts;
+- one structured freshness record per connector, including status, timestamps, overdue duration and reason.
+
+The exit code remains authoritative: `0` means no active connector is alerting and `1` means at least one requires attention. Unsupported formats return the Symfony invalid-command exit code.
+
 ## States
 
 ```text

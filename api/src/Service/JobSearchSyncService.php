@@ -8,7 +8,10 @@ use App\Entity\ConnectorSyncRun;
 use App\Entity\SourceConnector;
 use App\JobCatalog\Application\CanonicalJobImportResult;
 use App\JobCatalog\Application\CanonicalJobOfferService;
+use App\JobDiscovery\Application\ConnectorHealthAnalyzer;
 use App\JobDiscovery\Application\ConnectorRegistry;
+use App\JobDiscovery\Domain\Connector\JobSourceConnector;
+use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class JobSearchSyncService
@@ -18,6 +21,7 @@ final class JobSearchSyncService
         private EntityManagerInterface $em,
         private LocalDataService $data,
         private CanonicalJobOfferService $canonicalJobs,
+        private ConnectorHealthAnalyzer $healthAnalyzer,
         private string $privateDir,
         private int $intervalSeconds = 21600,
     ) {
@@ -28,9 +32,13 @@ final class JobSearchSyncService
     public function status(): array
     {
         $states = array_values($this->synchronizeDefinitions());
+        $definitions = $this->definitionsByCode();
         usort($states, static fn (SourceConnector $a, SourceConnector $b): int => $a->getName() <=> $b->getName());
         $connectors = array_map(
-            fn (SourceConnector $connector): array => $connector->toArray($this->intervalSeconds),
+            fn (SourceConnector $connector): array => $this->connectorStateArray(
+                $connector,
+                $definitions[$connector->getCode()] ?? null,
+            ),
             $states,
         );
 
@@ -93,7 +101,7 @@ final class JobSearchSyncService
         $states[$normalized]->setEnabled($enabled);
         $this->em->flush();
 
-        return $states[$normalized]->toArray($this->intervalSeconds);
+        return $this->connectorStateArray($states[$normalized], $this->registry->get($normalized));
     }
 
     /** @return array<string, mixed> */
@@ -224,6 +232,14 @@ final class JobSearchSyncService
                     }
                 }
 
+                $normalized = $connectorImported + $connectorMerged + $connectorDuplicates;
+                $normalizationRate = $connectorReceived > 0
+                    ? round($normalized * 100 / $connectorReceived, 1)
+                    : null;
+                $parserVersion = $connector instanceof VersionedJobSourceConnector
+                    ? $connector->parserVersion()
+                    : null;
+
                 $state->complete(
                     $connectorReceived,
                     $connectorImported,
@@ -239,7 +255,12 @@ final class JobSearchSyncService
                     $connectorDuplicates,
                     $connectorFailed,
                     $connectorError,
-                    ['errors' => array_slice($connectorErrors, 0, 5)],
+                    [
+                        'errors' => array_slice($connectorErrors, 0, 5),
+                        'parserVersion' => $parserVersion,
+                        'normalizationRate' => $normalizationRate,
+                        'zeroResults' => $connectorReceived === 0,
+                    ],
                 );
                 $this->em->flush();
 
@@ -247,6 +268,8 @@ final class JobSearchSyncService
                     'code' => $sourceCode,
                     'name' => $connector->name(),
                     'mode' => $connector->mode()->value,
+                    'parserVersion' => $parserVersion,
+                    'normalizationRate' => $normalizationRate,
                     'received' => $connectorReceived,
                     'imported' => $connectorImported,
                     'merged' => $connectorMerged,
@@ -300,6 +323,39 @@ final class JobSearchSyncService
         $this->em->flush();
 
         return $states;
+    }
+
+    /** @return array<string, JobSourceConnector> */
+    private function definitionsByCode(): array
+    {
+        $definitions = [];
+        foreach ($this->registry->all() as $connector) {
+            $definitions[strtolower($connector->code())] = $connector;
+        }
+
+        return $definitions;
+    }
+
+    /** @return array<string, mixed> */
+    private function connectorStateArray(SourceConnector $state, ?JobSourceConnector $definition): array
+    {
+        $runs = $this->em->getRepository(ConnectorSyncRun::class)->findBy(
+            ['connector' => $state],
+            ['startedAt' => 'DESC'],
+            6,
+        );
+        $history = array_map(
+            static fn (ConnectorSyncRun $run): array => $run->toArray(),
+            $runs,
+        );
+
+        return [
+            ...$state->toArray($this->intervalSeconds),
+            'parserVersion' => $definition instanceof VersionedJobSourceConnector
+                ? $definition->parserVersion()
+                : null,
+            'health' => $this->healthAnalyzer->analyze($history),
+        ];
     }
 
     /**

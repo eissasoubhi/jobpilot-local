@@ -65,10 +65,20 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Alerte conservatrice après plusieurs exécutions vides ou un taux de normalisation faible.
 - Visibilité complète dans la page Connecteurs et son historique.
 
+### Qualité des champs — livrée
+
+- Mesure de la complétude de chaque champ obligatoire et recommandé.
+- Score obligatoire, recommandé et global par synchronisation.
+- Nombre d’offres incomplètes et détail des champs absents.
+- Intégration de la perte des champs obligatoires dans le diagnostic de santé.
+- Synthèse visible des connecteurs en alerte.
+- Diagnostics conservés dans l’historique sans nouvelle migration.
+
 ### Prochaines livraisons
 
 - Premier scraper HTML pilote uniquement après identification d’une source qui autorise explicitement ce mode de collecte.
-- Métriques par champ obligatoire et notifications de rupture.
+- Notification externe configurable pour les ruptures confirmées.
+- Règles de qualité propres à chaque connecteur.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Ajout progressif des plateformes disposant d’un canal autorisé.
 

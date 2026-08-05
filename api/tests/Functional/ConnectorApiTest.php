@@ -49,6 +49,10 @@ final class ConnectorApiTest extends WebTestCase
         self::assertSame('NO_DATA', $byCode['symfony-jobs']['health']['status']);
         self::assertFalse($byCode['symfony-jobs']['health']['alert']);
         self::assertSame(0, $byCode['symfony-jobs']['health']['sampleSize']);
+        self::assertSame(0, $byCode['symfony-jobs']['fieldQuality']['received']);
+        self::assertNull($byCode['symfony-jobs']['fieldQuality']['requiredCompleteness']);
+        self::assertNull($byCode['symfony-jobs']['fieldQuality']['overallCompleteness']);
+        self::assertArrayHasKey('externalId', $byCode['symfony-jobs']['fieldQuality']['fields']);
 
         $client->jsonRequest('PATCH', '/api/connectors/arbeitnow', ['enabled' => false]);
         self::assertResponseIsSuccessful();
@@ -56,6 +60,7 @@ final class ConnectorApiTest extends WebTestCase
         self::assertFalse($disabled['enabled']);
         self::assertSame('DISABLED', $disabled['status']);
         self::assertArrayHasKey('health', $disabled);
+        self::assertArrayHasKey('fieldQuality', $disabled);
 
         $client->request('POST', '/api/connectors/arbeitnow/sync');
         self::assertResponseIsSuccessful();

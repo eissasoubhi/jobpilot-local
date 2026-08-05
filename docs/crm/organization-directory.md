@@ -18,7 +18,7 @@ Organizations with the same normalized name are merged. Their roles remain expli
 GET /api/crm/organizations
 ```
 
-The response contains global organization/contact counts and one entry per organization with:
+The response contains global organization/contact/annotation counts and one entry per organization with:
 
 - organization roles;
 - offer, application, positioning and linked-message counts;
@@ -60,15 +60,19 @@ The **CRM** entry in the main navigation opens `/crm`.
 
 The page provides:
 
-- global organization, validated-contact and visible-result counts;
-- accent-insensitive search across organization names, contacts, emails, phone numbers and recent offer titles;
+- global organization, validated-contact, annotated-record and visible-result counts;
+- accent-insensitive search across corrected names, original source names, notes, contacts, emails, phone numbers and recent offer titles;
 - filtering by company, intermediary or final-client role;
 - contact origin badges;
 - direct `mailto:` and `tel:` actions for validated data;
 - application and positioning status summaries;
-- links back to recent original offers when their URL is available.
+- links back to recent original offers when their URL is available;
+- a local editor for the display-name correction and internal note;
+- an explicit clear action that removes only the annotation after confirmation.
 
-The current interface displays the generated directory. Editing the new annotations from the CRM page is a separate UI delivery.
+A corrected card displays both the CRM name and the original source name. Saving or clearing re-fetches the complete server directory so annotation counts, sorting and overlays remain authoritative.
+
+The editor shows the immutable organization key and original source name before saving. Errors remain inside the modal, and a failed save does not close the editor or modify the visible directory.
 
 ## Contact rules
 

@@ -95,10 +95,11 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Compteurs d’offres, candidatures, positionnements, messages et statuts par organisation.
 - Aucune identité inventée et aucun contenu privé de message exposé.
 - Endpoint `GET /api/crm/organizations` documenté et testé.
+- Interface CRM recherchable avec filtre par rôle, contacts validés, statuts et offres récentes.
+- Liens directs vers les adresses e-mail, téléphones et annonces originales disponibles.
 
 ### Prochaines livraisons
 
-- Interface CRM des sociétés et contacts.
 - Notes et corrections manuelles sans écraser les données sources.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.

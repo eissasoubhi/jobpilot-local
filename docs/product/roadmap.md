@@ -66,12 +66,13 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Règles de qualité par connecteur avec fallback commun.
 - Audit de fraîcheur du scheduler avec états `FRESH`, `DUE`, `OVERDUE` et `STALE`.
 - Sortie JSON exploitable par un système de supervision externe.
+- Notification webhook HTTPS optionnelle, signée et dédupliquée pour les alertes de fraîcheur.
 - Visibilité complète dans la page Connecteurs et son historique.
+- Catalogue visible des sources planifiées, en revue ou limitées à Gmail et à l’extension.
 
 ### Prochaines livraisons
 
 - Premier scraper HTML pilote uniquement après identification d’une source qui autorise explicitement ce mode de collecte.
-- Notification externe configurable pour les ruptures confirmées.
 - Worker navigateur Playwright isolé lorsque nécessaire.
 - Ajout progressif des plateformes disposant d’un canal autorisé.
 

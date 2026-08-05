@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { CoverLetterEditor } from '@/components/CoverLetterEditor';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -187,7 +188,7 @@ export default function ApplicationsPage() {
             ) : (
               <div className="notice warning" style={{ marginBottom: 14 }}>
                 <strong>JobPilot n’envoie pas automatiquement la candidature.</strong>{' '}
-                Il prépare le CV, le message et la lettre. Tu dois ouvrir le site d’origine, compléter ou coller les informations, puis valider l’envoi sur ce site lorsqu’aucun e-mail officiel utilisable n’est disponible.
+                Il prépare le CV et le message, ainsi qu’une lettre uniquement lorsque l’offre la demande. Tu dois ouvrir le site d’origine, compléter ou coller les informations, puis valider l’envoi sur ce site lorsqu’aucun e-mail officiel utilisable n’est disponible.
               </div>
             )}
 
@@ -240,13 +241,12 @@ export default function ApplicationsPage() {
                 <textarea aria-label="Message" value={selected.message} onChange={(event) => setSelected({ ...selected, message: event.target.value })} />
               </div>
 
-              <div>
-                <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                  <strong className="small">Lettre de motivation</strong>
-                  <button className="btn secondary small" type="button" onClick={() => void copyText('Lettre de motivation', selected.coverLetter)}>Copier la lettre</button>
-                </div>
-                <textarea aria-label="Lettre de motivation" style={{ minHeight: 200 }} value={selected.coverLetter} onChange={(event) => setSelected({ ...selected, coverLetter: event.target.value })} />
-              </div>
+              <CoverLetterEditor
+                key={selected.id}
+                value={selected.coverLetter}
+                onChange={(coverLetter) => setSelected({ ...selected, coverLetter })}
+                onCopy={(coverLetter) => copyText('Lettre de motivation', coverLetter)}
+              />
 
               <label>
                 Réponse rémunération

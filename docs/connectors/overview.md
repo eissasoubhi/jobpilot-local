@@ -8,8 +8,11 @@ Les connecteurs et canaux livrés dans cette version sont :
 
 - `arbeitnow` — API, active par défaut ;
 - `adzuna` — API, active lorsque les identifiants sont renseignés ;
+- `symfony-jobs` — flux RSS officiel du job board Symfony, actif par défaut ;
 - `gmail` — lecture des alertes et échanges de recrutement lorsque Gmail est connecté avec `gmail.readonly` ;
 - extension Chrome — import déclenché par l’utilisateur depuis une page d’offre visible, avec prise en charge structurée de Free-Work et du balisage `JobPosting`.
+
+Symfony Jobs est lu uniquement à travers le lien **Jobs RSS** exposé par le site officiel. Voir [`symfony-jobs.md`](symfony-jobs.md).
 
 Free-Work n’est pas interrogé automatiquement par le backend. Les offres sont récupérées depuis les alertes Gmail ou importées par l’utilisateur avec l’extension. Voir [`free-work.md`](free-work.md).
 
@@ -166,6 +169,7 @@ Forcer une seule source autorisée :
 
 ```bash
 docker compose exec api php bin/console app:jobs:sync --force --connector=arbeitnow
+docker compose exec api php bin/console app:jobs:sync --force --connector=symfony-jobs
 docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 ```
 
@@ -199,6 +203,6 @@ Un connecteur ne doit pas :
 - aspirer une source dont les conditions réservent ou interdisent l’extraction sans autorisation ;
 - journaliser des secrets ou des données personnelles inutiles.
 
-La disponibilité publique d’une page n’est pas, à elle seule, une autorisation de collecte automatisée. `robots.txt` est un garde-fou technique, pas un remplacement de la revue contractuelle.
+La disponibilité publique d’une page n’est pas, à elle seule, une autorisation de collecte automatisée. `robots.txt` est un garde-fou technique, pas un remplacement de la revue contractuelle. Lorsqu’un flux RSS ou une API officielle est proposé, ce canal est préféré au scraping HTML.
 
-Le connecteur Gmail utilise des scopes minimaux, ne modifie aucun message dans Gmail et limite le nombre de résultats et de pages lus par synchronisation. L’extension agit uniquement à la demande de l’utilisateur sur l’onglet actif.
+Le connecteur Gmail utilise des scopes minimaux, ne modifie aucun message dans Gmail et limite le nombre de résultats et de pages lus par synchronisation. Le connecteur Symfony Jobs ne lit qu’un flux officiel. L’extension agit uniquement à la demande de l’utilisateur sur l’onglet actif.

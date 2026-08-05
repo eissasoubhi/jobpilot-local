@@ -9,6 +9,7 @@ parameters:
   env(ADZUNA_RESULTS_PER_QUERY): '20'
   env(ARBEITNOW_ENABLED): '1'
   env(ARBEITNOW_PAGES): '3'
+  env(SYMFONY_JOBS_RSS_ENABLED): '1'
   env(JOB_SYNC_INTERVAL_SECONDS): '21600'
 
 services:
@@ -48,6 +49,10 @@ services:
       $country: '%env(ADZUNA_COUNTRY)%'
       $where: '%env(ADZUNA_WHERE)%'
       $resultsPerQuery: '%env(int:ADZUNA_RESULTS_PER_QUERY)%'
+
+  App\Service\SymfonyJobsRssProvider:
+    arguments:
+      $enabled: '%env(bool:SYMFONY_JOBS_RSS_ENABLED)%'
 
   App\JobDiscovery\Application\ConnectorRegistry:
     arguments:

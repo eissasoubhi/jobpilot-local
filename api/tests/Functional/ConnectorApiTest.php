@@ -15,7 +15,7 @@ final class ConnectorApiTest extends WebTestCase
         $client->request('GET', '/api/connectors');
         self::assertResponseIsSuccessful();
         $connectors = $this->decode($client->getResponse()->getContent());
-        self::assertCount(3, $connectors);
+        self::assertCount(4, $connectors);
 
         $byCode = [];
         foreach ($connectors as $connector) {
@@ -25,17 +25,25 @@ final class ConnectorApiTest extends WebTestCase
         self::assertSame('API', $byCode['arbeitnow']['mode']);
         self::assertSame('API', $byCode['adzuna']['mode']);
         self::assertSame('GMAIL', $byCode['gmail']['mode']);
+        self::assertSame('RSS', $byCode['symfony-jobs']['mode']);
         self::assertSame('ALLOWED', $byCode['arbeitnow']['policy']['complianceStatus']);
         self::assertSame('AUTHORIZED_ONLY', $byCode['adzuna']['policy']['complianceStatus']);
         self::assertSame('AUTHORIZED_ONLY', $byCode['gmail']['policy']['complianceStatus']);
+        self::assertSame('ALLOWED', $byCode['symfony-jobs']['policy']['complianceStatus']);
         self::assertTrue($byCode['arbeitnow']['collectionAllowed']);
+        self::assertTrue($byCode['symfony-jobs']['collectionAllowed']);
         self::assertSame(3, $byCode['arbeitnow']['policy']['maxRequestsPerSync']);
         self::assertSame(6, $byCode['adzuna']['policy']['maxRequestsPerSync']);
+        self::assertSame(4, $byCode['symfony-jobs']['policy']['maxRequestsPerSync']);
+        self::assertSame(16, $byCode['symfony-jobs']['policy']['dailyQuota']);
         self::assertSame('2026-08-05', $byCode['gmail']['policy']['reviewedAt']);
+        self::assertSame('2026-08-05', $byCode['symfony-jobs']['policy']['reviewedAt']);
         self::assertFalse($byCode['arbeitnow']['configured']);
         self::assertFalse($byCode['adzuna']['configured']);
         self::assertFalse($byCode['gmail']['configured']);
+        self::assertTrue($byCode['symfony-jobs']['configured']);
         self::assertStringContainsString('Configuration OAuth incomplète', $byCode['gmail']['configurationMessage']);
+        self::assertStringContainsString('Flux RSS officiel', $byCode['symfony-jobs']['configurationMessage']);
 
         $client->jsonRequest('PATCH', '/api/connectors/arbeitnow', ['enabled' => false]);
         self::assertResponseIsSuccessful();

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Jobs</title>
+  <id>https://jobs.example.test/feed</id>
+  <updated>2026-08-05T12:00:00Z</updated>
+  <entry>
+    <title>Backend Symfony Engineer at Atom Company</title>
+    <id>tag:jobs.example.test,2026:42</id>
+    <updated>2026-08-05T11:00:00Z</updated>
+    <link rel="alternate" href="https://jobs.example.test/42" />
+    <author><name>Atom Company</name></author>
+    <summary type="html">Full-time · Remote + part-time onsite (Lyon, France) · Build reliable Symfony services.</summary>
+  </entry>
+</feed>

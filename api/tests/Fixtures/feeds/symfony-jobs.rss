@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Symfony Jobs</title>
+    <link>https://symfony.com/jobs</link>
+    <description>Latest Symfony job offers</description>
+    <item>
+      <title>Senior Symfony Developer at Example Studio</title>
+      <link>https://symfony.com/jobs/123-senior-symfony-developer</link>
+      <guid isPermaLink="false">symfony-job-123</guid>
+      <pubDate>Tue, 05 Aug 2026 10:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p>Contract / Freelance</p>
+        <p>€500 – €600 / day</p>
+        <p>Full remote</p>
+        <p>Build Symfony APIs with API Platform, PostgreSQL and React.</p>
+      ]]></description>
+    </item>
+    <item>
+      <title>Développeur PHP Symfony chez Société Exemple</title>
+      <link>https://symfony.com/jobs/124-developpeur-php-symfony</link>
+      <guid isPermaLink="false">symfony-job-124</guid>
+      <pubDate>Mon, 04 Aug 2026 09:30:00 +0000</pubDate>
+      <description><![CDATA[
+        <p>CDI</p>
+        <p>€55,000 – €65,000 / year</p>
+        <p>Hybride (Paris, France)</p>
+        <p>Développement d’une plateforme Symfony et React.</p>
+      ]]></description>
+    </item>
+  </channel>
+</rss>

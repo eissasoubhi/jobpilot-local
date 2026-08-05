@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\ConnectorSyncRun;
-use App\Entity\JobOffer;
 use App\Entity\SourceConnector;
+use App\JobCatalog\Application\CanonicalJobImportResult;
+use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\JobDiscovery\Application\ConnectorRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -16,7 +17,7 @@ final class JobSearchSyncService
         private ConnectorRegistry $registry,
         private EntityManagerInterface $em,
         private LocalDataService $data,
-        private JobProcessor $processor,
+        private CanonicalJobOfferService $canonicalJobs,
         private string $privateDir,
         private int $intervalSeconds = 21600,
     ) {
@@ -148,6 +149,7 @@ final class JobSearchSyncService
             $settings = $this->data->settings();
             $profile = $this->data->profile();
             $imported = 0;
+            $merged = 0;
             $duplicates = 0;
             $failed = 0;
             $received = 0;
@@ -163,6 +165,7 @@ final class JobSearchSyncService
                 $this->em->flush();
 
                 $connectorImported = 0;
+                $connectorMerged = 0;
                 $connectorDuplicates = 0;
                 $connectorFailed = 0;
                 $connectorReceived = 0;
@@ -183,33 +186,26 @@ final class JobSearchSyncService
                             continue;
                         }
 
-                        $existing = $this->em->getRepository(JobOffer::class)->findOneBy([
-                            'sourceCode' => $sourceCode,
-                            'externalId' => $externalId,
-                        ]);
-                        if ($existing !== null) {
-                            ++$duplicates;
-                            ++$connectorDuplicates;
-                            continue;
-                        }
-
                         try {
-                            $payload['source'] = $connector->name();
-                            $payload['sourceCode'] = $sourceCode;
-                            $payload['rawData'] = [
-                                'connector' => [
-                                    'code' => $sourceCode,
-                                    'mode' => $connector->mode()->value,
-                                ],
-                                'payload' => is_array($payload['rawData'] ?? null) ? $payload['rawData'] : [],
-                            ];
-                            $job = (new JobOffer())->fill($payload);
-                            if ($job->getTitle() === '' || $job->getDescription() === '') {
-                                throw new \InvalidArgumentException('Offre sans titre ou description.');
+                            $result = $this->canonicalJobs->import(
+                                $payload,
+                                $sourceCode,
+                                $connector->name(),
+                                $connector->mode()->value,
+                                $settings,
+                                $profile,
+                            );
+
+                            if ($result->outcome() === CanonicalJobImportResult::IMPORTED) {
+                                ++$imported;
+                                ++$connectorImported;
+                            } elseif ($result->outcome() === CanonicalJobImportResult::MERGED) {
+                                ++$merged;
+                                ++$connectorMerged;
+                            } else {
+                                ++$duplicates;
+                                ++$connectorDuplicates;
                             }
-                            $this->processor->process($job, $settings, $profile);
-                            ++$imported;
-                            ++$connectorImported;
                         } catch (\Throwable $exception) {
                             ++$failed;
                             ++$connectorFailed;
@@ -231,6 +227,7 @@ final class JobSearchSyncService
                 $state->complete(
                     $connectorReceived,
                     $connectorImported,
+                    $connectorMerged,
                     $connectorDuplicates,
                     $connectorFailed,
                     $connectorError,
@@ -238,6 +235,7 @@ final class JobSearchSyncService
                 $run->complete(
                     $connectorReceived,
                     $connectorImported,
+                    $connectorMerged,
                     $connectorDuplicates,
                     $connectorFailed,
                     $connectorError,
@@ -251,6 +249,7 @@ final class JobSearchSyncService
                     'mode' => $connector->mode()->value,
                     'received' => $connectorReceived,
                     'imported' => $connectorImported,
+                    'merged' => $connectorMerged,
                     'duplicates' => $connectorDuplicates,
                     'failed' => $connectorFailed,
                     'error' => $connectorError,
@@ -260,6 +259,7 @@ final class JobSearchSyncService
             return array_merge($this->status(), [
                 'received' => $received,
                 'imported' => $imported,
+                'merged' => $merged,
                 'duplicates' => $duplicates,
                 'failed' => $failed,
                 'providers' => $connectorResults,
@@ -267,7 +267,11 @@ final class JobSearchSyncService
                 'errors' => $errors,
                 'busy' => false,
                 'skipped' => false,
-                'message' => sprintf('%d nouvelle(s) offre(s) importée(s).', $imported),
+                'message' => sprintf(
+                    '%d nouvelle(s) offre(s), %d nouvelle(s) source(s) fusionnée(s).',
+                    $imported,
+                    $merged,
+                ),
             ]);
         } finally {
             flock($lock, LOCK_UN);
@@ -300,11 +304,11 @@ final class JobSearchSyncService
 
     /**
      * @param list<array<string, mixed>> $connectors
-     * @return array{received: int, imported: int, duplicates: int, failed: int}
+     * @return array{received: int, imported: int, merged: int, duplicates: int, failed: int}
      */
     private function aggregateLastResults(array $connectors): array
     {
-        $result = ['received' => 0, 'imported' => 0, 'duplicates' => 0, 'failed' => 0];
+        $result = ['received' => 0, 'imported' => 0, 'merged' => 0, 'duplicates' => 0, 'failed' => 0];
         foreach ($connectors as $connector) {
             $lastResult = is_array($connector['lastResult'] ?? null) ? $connector['lastResult'] : [];
             foreach (array_keys($result) as $key) {

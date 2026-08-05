@@ -6,7 +6,13 @@ import type { CrmOrganization } from '@/lib/types';
 const organizations: CrmOrganization[] = [
   {
     key: 'societe generale',
-    name: 'Société Générale',
+    name: 'SG France',
+    sourceName: 'Société Générale',
+    annotation: {
+      displayName: 'SG France',
+      note: 'Relation prioritaire pour les missions bancaires.',
+      updatedAt: '2026-08-05T12:00:00+00:00',
+    },
     roles: ['COMPANY', 'CLIENT'],
     offerCount: 1,
     applicationCount: 1,
@@ -36,6 +42,8 @@ const organizations: CrmOrganization[] = [
   {
     key: 'tech partners',
     name: 'Tech Partners',
+    sourceName: 'Tech Partners',
+    annotation: null,
     roles: ['AGENCY'],
     offerCount: 1,
     applicationCount: 0,
@@ -68,6 +76,12 @@ describe('CRM directory filtering', () => {
   it('normalizes accents, casing and whitespace', () => {
     expect(normalizeCrmSearch('  Société   GÉNÉRALE ')).toBe('societe generale');
     expect(filterCrmOrganizations(organizations, 'societe generale', 'ALL')).toHaveLength(1);
+  });
+
+  it('searches corrected names, source names and CRM notes', () => {
+    expect(filterCrmOrganizations(organizations, 'sg france', 'ALL')[0]?.key).toBe('societe generale');
+    expect(filterCrmOrganizations(organizations, 'societe generale', 'ALL')[0]?.key).toBe('societe generale');
+    expect(filterCrmOrganizations(organizations, 'missions bancaires', 'ALL')[0]?.key).toBe('societe generale');
   });
 
   it('searches contact names, emails, phone numbers and offer titles', () => {

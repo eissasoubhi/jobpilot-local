@@ -87,9 +87,19 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Exclusion des formulations indiquant que la lettre est facultative, non requise ou inutile.
 - Envoi Gmail limité au message concis et au CV ; aucune concaténation de la lettre.
 
+### Fondation CRM — livrée
+
+- Annuaire en lecture seule dérivé des candidatures, positionnements et messages Gmail déjà associés.
+- Regroupement déterministe des sociétés, agences et clients finaux par nom normalisé.
+- Contacts recruteurs, adresses de candidature et correspondants Gmail conservés avec leur origine.
+- Compteurs d’offres, candidatures, positionnements, messages et statuts par organisation.
+- Aucune identité inventée et aucun contenu privé de message exposé.
+- Endpoint `GET /api/crm/organizations` documenté et testé.
+
 ### Prochaines livraisons
 
-- CRM recruteurs et sociétés.
+- Interface CRM des sociétés et contacts.
+- Notes et corrections manuelles sans écraser les données sources.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.
 

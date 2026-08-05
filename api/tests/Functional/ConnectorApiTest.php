@@ -34,8 +34,8 @@ final class ConnectorApiTest extends WebTestCase
         self::assertTrue($byCode['symfony-jobs']['collectionAllowed']);
         self::assertSame(3, $byCode['arbeitnow']['policy']['maxRequestsPerSync']);
         self::assertSame(6, $byCode['adzuna']['policy']['maxRequestsPerSync']);
-        self::assertSame(1, $byCode['symfony-jobs']['policy']['maxRequestsPerSync']);
-        self::assertSame(8, $byCode['symfony-jobs']['policy']['dailyQuota']);
+        self::assertSame(4, $byCode['symfony-jobs']['policy']['maxRequestsPerSync']);
+        self::assertSame(16, $byCode['symfony-jobs']['policy']['dailyQuota']);
         self::assertSame('2026-08-05', $byCode['gmail']['policy']['reviewedAt']);
         self::assertSame('2026-08-05', $byCode['symfony-jobs']['policy']['reviewedAt']);
         self::assertFalse($byCode['arbeitnow']['configured']);

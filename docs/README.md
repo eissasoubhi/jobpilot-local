@@ -20,6 +20,7 @@ Cette documentation est la référence produit, métier, technique et opération
 ## Connecteurs
 
 - [Contrat, exploitation et ajout d’une source](connectors/overview.md)
+- [Santé des connecteurs et détection de rupture](connectors/health-monitoring.md)
 - [Infrastructure de scraping HTTP contrôlé](connectors/http-scraping.md)
 - [Symfony Jobs via le flux RSS officiel](connectors/symfony-jobs.md)
 - [Connecteur Gmail et Inbox intelligente](connectors/gmail.md)

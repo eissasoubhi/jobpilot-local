@@ -43,7 +43,6 @@ final class CanonicalJobCatalogTest extends WebTestCase
             'description' => 'Description détaillée de la même mission Symfony React PHP avec Docker et API Platform.',
             'publishedAt' => (new \DateTimeImmutable('-1 day'))->format(DATE_ATOM),
         ]);
-        self::assertResponseIsSuccessful();
         self::assertResponseStatusCodeSame(200);
         $merged = $this->decode($client->getResponse()->getContent());
 
@@ -77,6 +76,46 @@ final class CanonicalJobCatalogTest extends WebTestCase
             static fn (array $job): bool => $job['company'] === $company,
         ));
         self::assertCount(1, $matching);
+    }
+
+    public function testConflictingContractAndLocationKeepSeparateCanonicalOffers(): void
+    {
+        $client = static::createClient();
+        $suffix = bin2hex(random_bytes(5));
+        $company = 'Multiple Vacancies '.$suffix;
+        $title = 'Développeur PHP Symfony '.$suffix;
+
+        $client->jsonRequest('POST', '/api/jobs', [
+            'source' => 'Source One',
+            'sourceCode' => 'source-one-'.$suffix,
+            'sourceUrl' => 'https://one.example/jobs/'.$suffix,
+            'title' => $title,
+            'company' => $company,
+            'location' => 'Paris',
+            'contractType' => 'CDI',
+            'description' => 'Poste PHP Symfony à Paris en CDI.',
+            'publishedAt' => (new \DateTimeImmutable('-2 days'))->format(DATE_ATOM),
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $first = $this->decode($client->getResponse()->getContent());
+
+        $client->jsonRequest('POST', '/api/jobs', [
+            'source' => 'Source Two',
+            'sourceCode' => 'source-two-'.$suffix,
+            'sourceUrl' => 'https://two.example/jobs/'.$suffix,
+            'title' => $title,
+            'company' => $company,
+            'location' => 'Lyon',
+            'contractType' => 'Freelance',
+            'description' => 'Mission PHP Symfony distincte à Lyon en freelance.',
+            'publishedAt' => (new \DateTimeImmutable('-1 day'))->format(DATE_ATOM),
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $second = $this->decode($client->getResponse()->getContent());
+
+        self::assertNotSame($first['id'], $second['id']);
+        self::assertSame(1, $first['sourceCount']);
+        self::assertSame(1, $second['sourceCount']);
     }
 
     /** @return array<string|int, mixed> */

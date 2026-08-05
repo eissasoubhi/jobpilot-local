@@ -29,7 +29,7 @@ final class ConnectorApiTest extends WebTestCase
         self::assertSame('AUTHORIZED_ONLY', $byCode['adzuna']['policy']['complianceStatus']);
         self::assertSame('AUTHORIZED_ONLY', $byCode['gmail']['policy']['complianceStatus']);
         self::assertTrue($byCode['arbeitnow']['collectionAllowed']);
-        self::assertSame(5, $byCode['arbeitnow']['policy']['maxRequestsPerSync']);
+        self::assertSame(3, $byCode['arbeitnow']['policy']['maxRequestsPerSync']);
         self::assertSame(6, $byCode['adzuna']['policy']['maxRequestsPerSync']);
         self::assertSame('2026-08-05', $byCode['gmail']['policy']['reviewedAt']);
         self::assertFalse($byCode['arbeitnow']['configured']);

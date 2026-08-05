@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\SourceConnector;
-use App\JobDiscovery\Application\ConnectorFreshnessAnalyzer;
 use App\JobDiscovery\Application\ConnectorFreshnessReportFormatter;
-use Doctrine\ORM\EntityManagerInterface;
+use App\JobDiscovery\Application\ConnectorFreshnessReportProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,8 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class AuditConnectorFreshnessCommand extends Command
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
-        private ConnectorFreshnessAnalyzer $freshnessAnalyzer,
+        private ConnectorFreshnessReportProvider $reportProvider,
         private ConnectorFreshnessReportFormatter $reportFormatter,
     ) {
         parent::__construct();
@@ -59,26 +56,7 @@ final class AuditConnectorFreshnessCommand extends Command
             return Command::INVALID;
         }
 
-        $connectors = $this->entityManager->getRepository(SourceConnector::class)->findBy([], ['name' => 'ASC']);
-        $reports = [];
-
-        foreach ($connectors as $connector) {
-            if (!$connector instanceof SourceConnector) {
-                continue;
-            }
-
-            $freshness = $this->freshnessAnalyzer->analyze(
-                $connector->getLastSyncedAt(),
-                $connector->canSynchronize(),
-                $interval,
-            );
-            $reports[] = [
-                'code' => $connector->getCode(),
-                'name' => $connector->getName(),
-                ...$freshness,
-            ];
-        }
-
+        $reports = $this->reportProvider->reports($interval);
         $alerts = count(array_filter(
             $reports,
             static fn (array $report): bool => (bool) $report['alert'],

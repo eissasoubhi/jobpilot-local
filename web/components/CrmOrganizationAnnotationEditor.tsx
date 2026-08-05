@@ -92,9 +92,11 @@ export function CrmOrganizationAnnotationEditor({
         </div>
 
         <form className="stack" onSubmit={(event) => void save(event)}>
-          <label>
-            Nom affiché dans le CRM
+          <div>
+            <label htmlFor="crm-organization-display-name">Nom affiché dans le CRM</label>
             <input
+              id="crm-organization-display-name"
+              aria-label="Nom affiché dans le CRM"
               value={displayName}
               maxLength={255}
               placeholder={organization.sourceName}
@@ -103,11 +105,12 @@ export function CrmOrganizationAnnotationEditor({
             <span className="small muted">
               Laisse vide pour afficher le nom détecté automatiquement. {displayName.length}/255
             </span>
-          </label>
+          </div>
 
-          <label>
-            Note interne
+          <div>
+            <label htmlFor="crm-organization-note">Note interne</label>
             <textarea
+              id="crm-organization-note"
               aria-label="Note interne"
               value={note}
               maxLength={5000}
@@ -118,7 +121,7 @@ export function CrmOrganizationAnnotationEditor({
             <span className="small muted">
               Visible uniquement dans le CRM local. {note.length}/5000
             </span>
-          </label>
+          </div>
 
           <div className="actions" style={{ justifyContent: 'space-between' }}>
             <button

@@ -38,7 +38,18 @@ function statusEntries(statuses: Record<string, number>): Array<[string, number]
   return Object.entries(statuses).sort((left, right) => right[1] - left[1]);
 }
 
-export function CrmOrganizationCard({ organization }: { organization: CrmOrganization }) {
+interface CrmOrganizationCardProps {
+  organization: CrmOrganization;
+  onEditAnnotation?: (organization: CrmOrganization) => void;
+}
+
+export function CrmOrganizationCard({
+  organization,
+  onEditAnnotation,
+}: CrmOrganizationCardProps) {
+  const hasCorrectedName = organization.name !== organization.sourceName;
+  const note = organization.annotation?.note?.trim() ?? '';
+
   return (
     <Card>
       <article aria-labelledby={`crm-organization-${organization.key}`}>
@@ -47,10 +58,17 @@ export function CrmOrganizationCard({ organization }: { organization: CrmOrganiz
             <h2 id={`crm-organization-${organization.key}`} style={{ marginBottom: 7 }}>
               {organization.name}
             </h2>
+            {hasCorrectedName && (
+              <div className="small muted" style={{ marginBottom: 7 }}>
+                Nom source : {organization.sourceName}
+              </div>
+            )}
             <div className="actions">
               {organization.roles.map((role) => (
                 <Badge key={role} tone="blue">{crmOrganizationRoleLabel(role)}</Badge>
               ))}
+              {hasCorrectedName && <Badge tone="warn">Nom corrigé</Badge>}
+              {note !== '' && <Badge tone="good">Note CRM</Badge>}
             </div>
           </div>
           <div className="small muted" style={{ textAlign: 'right' }}>
@@ -58,6 +76,30 @@ export function CrmOrganizationCard({ organization }: { organization: CrmOrganiz
             <strong>{formatDate(organization.lastActivityAt)}</strong>
           </div>
         </div>
+
+        {note !== '' && (
+          <div className="notice" style={{ marginTop: 14, whiteSpace: 'pre-wrap' }}>
+            <strong>Note CRM</strong>
+            <div style={{ marginTop: 5 }}>{note}</div>
+            {organization.annotation?.updatedAt && (
+              <div className="small muted" style={{ marginTop: 7 }}>
+                Mise à jour : {formatDate(organization.annotation.updatedAt)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {onEditAnnotation && (
+          <div className="actions" style={{ marginTop: 12 }}>
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => onEditAnnotation(organization)}
+            >
+              {organization.annotation ? 'Modifier la fiche CRM' : 'Ajouter une note CRM'}
+            </button>
+          </div>
+        )}
 
         <div className="actions" style={{ marginTop: 14 }}>
           <Badge>{organization.offerCount} offre{organization.offerCount > 1 ? 's' : ''}</Badge>

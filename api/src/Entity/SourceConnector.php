@@ -50,6 +50,9 @@ final class SourceConnector
     private int $lastImported = 0;
 
     #[ORM\Column]
+    private int $lastMerged = 0;
+
+    #[ORM\Column]
     private int $lastDuplicates = 0;
 
     #[ORM\Column]
@@ -157,6 +160,7 @@ final class SourceConnector
     public function complete(
         int $received,
         int $imported,
+        int $merged,
         int $duplicates,
         int $failed,
         ?string $error = null,
@@ -165,6 +169,7 @@ final class SourceConnector
         $this->lastSyncedAt = $now;
         $this->lastReceived = max(0, $received);
         $this->lastImported = max(0, $imported);
+        $this->lastMerged = max(0, $merged);
         $this->lastDuplicates = max(0, $duplicates);
         $this->lastFailed = max(0, $failed);
         $this->lastError = $error !== null && trim($error) !== '' ? trim($error) : null;
@@ -200,6 +205,7 @@ final class SourceConnector
             'lastResult' => [
                 'received' => $this->lastReceived,
                 'imported' => $this->lastImported,
+                'merged' => $this->lastMerged,
                 'duplicates' => $this->lastDuplicates,
                 'failed' => $this->lastFailed,
             ],

@@ -6,7 +6,10 @@ namespace App\Tests\Unit;
 
 use App\Entity\ConnectorSyncRun;
 use App\Entity\SourceConnector;
+use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
+use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
+use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use App\JobDiscovery\Domain\Connector\JobSourceConnector;
 use PHPUnit\Framework\TestCase;
 
@@ -20,6 +23,9 @@ final class SourceConnectorStateTest extends TestCase
         self::assertSame('NEVER_SYNCED', $initial['status']);
         self::assertTrue($initial['enabled']);
         self::assertTrue($initial['configured']);
+        self::assertTrue($initial['collectionAllowed']);
+        self::assertSame('ALLOWED', $initial['policy']['complianceStatus']);
+        self::assertSame(4, $initial['policy']['maxRequestsPerSync']);
         self::assertTrue($initial['due']);
 
         $connector->markRunning();
@@ -51,6 +57,20 @@ final class SourceConnectorStateTest extends TestCase
         self::assertSame('MISCONFIGURED', $connector->toArray(900)['status']);
     }
 
+    public function testConnectorWithoutExplicitPolicyIsBlockedEvenWhenForced(): void
+    {
+        $connector = new SourceConnector($this->unreviewedConnector());
+        $payload = $connector->toArray(900);
+
+        self::assertSame('COMPLIANCE_BLOCKED', $payload['status']);
+        self::assertSame('UNDER_REVIEW', $payload['policy']['complianceStatus']);
+        self::assertFalse($payload['collectionAllowed']);
+        self::assertFalse($payload['due']);
+
+        $this->expectException(\LogicException::class);
+        $connector->markRunning();
+    }
+
     public function testSyncRunCapturesCountersAndDiagnostics(): void
     {
         $connector = new SourceConnector($this->connector(true));
@@ -70,9 +90,9 @@ final class SourceConnectorStateTest extends TestCase
         self::assertIsInt($payload['durationMs']);
     }
 
-    private function connector(bool $configured): JobSourceConnector
+    private function connector(bool $configured): GovernedJobSourceConnector
     {
-        return new class($configured) implements JobSourceConnector {
+        return new class($configured) implements GovernedJobSourceConnector {
             public function __construct(private bool $configured)
             {
             }
@@ -92,6 +112,19 @@ final class SourceConnectorStateTest extends TestCase
                 return ConnectorMode::SCRAPING_HTTP;
             }
 
+            public function policy(): ConnectorPolicy
+            {
+                return new ConnectorPolicy(
+                    ConnectorComplianceStatus::ALLOWED,
+                    new \DateTimeImmutable('2026-08-05'),
+                    'Source de test autorisée.',
+                    maxRequestsPerSync: 4,
+                    dailyQuota: 20,
+                    minimumDelayMilliseconds: 500,
+                    respectsRobotsTxt: true,
+                );
+            }
+
             public function isConfigured(): bool
             {
                 return $this->configured;
@@ -100,6 +133,41 @@ final class SourceConnectorStateTest extends TestCase
             public function configurationMessage(): ?string
             {
                 return $this->configured ? null : 'Configuration absente.';
+            }
+
+            public function search(array $targetJobs, array $skills): array
+            {
+                return [];
+            }
+        };
+    }
+
+    private function unreviewedConnector(): JobSourceConnector
+    {
+        return new class implements JobSourceConnector {
+            public function code(): string
+            {
+                return 'unreviewed-source';
+            }
+
+            public function name(): string
+            {
+                return 'Unreviewed Source';
+            }
+
+            public function mode(): ConnectorMode
+            {
+                return ConnectorMode::SCRAPING_HTTP;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function configurationMessage(): ?string
+            {
+                return null;
             }
 
             public function search(array $targetJobs, array $skills): array

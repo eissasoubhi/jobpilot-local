@@ -38,6 +38,9 @@ final class ConnectorSyncRun
     private int $imported = 0;
 
     #[ORM\Column]
+    private int $merged = 0;
+
+    #[ORM\Column]
     private int $duplicates = 0;
 
     #[ORM\Column]
@@ -59,6 +62,7 @@ final class ConnectorSyncRun
     public function complete(
         int $received,
         int $imported,
+        int $merged,
         int $duplicates,
         int $failed,
         ?string $error = null,
@@ -66,6 +70,7 @@ final class ConnectorSyncRun
     ): void {
         $this->received = max(0, $received);
         $this->imported = max(0, $imported);
+        $this->merged = max(0, $merged);
         $this->duplicates = max(0, $duplicates);
         $this->failed = max(0, $failed);
         $this->error = $error !== null && trim($error) !== '' ? trim($error) : null;
@@ -98,6 +103,7 @@ final class ConnectorSyncRun
             'durationMs' => $durationMs,
             'received' => $this->received,
             'imported' => $this->imported,
+            'merged' => $this->merged,
             'duplicates' => $this->duplicates,
             'failed' => $this->failed,
             'error' => $this->error,

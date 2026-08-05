@@ -13,7 +13,9 @@ La documentation produit, architecture, développement et exploitation se trouve
 - Connecteur Adzuna France facultatif pour élargir les résultats.
 - Registre persistant des connecteurs, activation indépendante et historique des synchronisations.
 - Page **Connecteurs** avec diagnostic, test manuel, compteurs et erreurs par source.
-- Filtre par source dans la page **Offres**.
+- Catalogue canonique : une seule offre métier, même lorsqu’elle apparaît sur plusieurs plateformes.
+- Occurrences de sources conservant URL, identifiant, première et dernière observation et preuve de rapprochement.
+- Filtre multi-sources dans la page **Offres** et détail des liens de chaque plateforme.
 - Import manuel d'offres et import depuis l'extension Chrome.
 - Détection de langue et choix du CV correspondant.
 - Score de compatibilité, préparation automatique à partir de 50/100.
@@ -114,9 +116,21 @@ docker compose exec api php bin/console app:jobs:sync --force --connector=arbeit
 docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 ```
 
-Les offres sont actuellement dédupliquées par code de source et identifiant externe. La déduplication canonique multi-sources est prévue dans la roadmap. Les offres importées passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
+Chaque résultat reçu devient une occurrence de source. JobPilot distingue :
 
-La documentation détaillée du contrat et de l’ajout d’une nouvelle source est disponible dans [`docs/connectors/overview.md`](docs/connectors/overview.md).
+- une **nouvelle offre** canonique ;
+- une **nouvelle source fusionnée** avec une offre existante ;
+- une **occurrence déjà connue** pour le même `sourceCode + externalId` ;
+- un échec de normalisation ou de traitement.
+
+Le rapprochement multi-sources utilise l’URL canonique, puis l’intitulé et l’entreprise normalisés, puis une similarité conservatrice intégrant contrat, lieu et date. Une seule offre est scorée et préparée ; ses différentes plateformes restent visibles avec leurs liens et la preuve du rapprochement.
+
+Les offres nouvelles passent par les règles de langue, exclusion, score, CV, TJM, salaire et préparation automatique.
+
+Documentation :
+
+- [`docs/connectors/overview.md`](docs/connectors/overview.md)
+- [`docs/job-catalog/canonical-offers.md`](docs/job-catalog/canonical-offers.md)
 
 ## Extension Chrome
 
@@ -175,6 +189,8 @@ make reset      # supprimer la base locale et recommencer
 
 JobPilot ne contourne pas les CAPTCHA, authentifications, contrôles d'accès ou limitations de plateformes. Les futurs connecteurs pourront utiliser une API, un flux public, le scraping contrôlé de pages librement accessibles, Gmail ou l'extension selon les possibilités de chaque source.
 
+La fusion automatique privilégie la prudence. Une offre ambiguë reste séparée plutôt que d’être attachée à tort à une autre mission. La migration crée une occurrence pour chaque offre existante, mais ne fusionne pas destructivement les anciens doublons.
+
 Les actions automatiques sensibles doivent être explicitement autorisées, idempotentes, traçables et limitées. Une lettre de motivation reste séparée du corps de l'e-mail et ne doit être envoyée que lorsqu'elle est demandée.
 
 ## Architecture et qualité
@@ -187,5 +203,6 @@ Consulter :
 - [`docs/architecture/context-map.md`](docs/architecture/context-map.md)
 - [`docs/connectors/overview.md`](docs/connectors/overview.md)
 - [`docs/connectors/gmail.md`](docs/connectors/gmail.md)
+- [`docs/job-catalog/canonical-offers.md`](docs/job-catalog/canonical-offers.md)
 - [`docs/development/testing.md`](docs/development/testing.md)
 - [`docs/definition-of-done.md`](docs/definition-of-done.md)

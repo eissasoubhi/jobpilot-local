@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const links = [
   ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/connecteurs', 'Connecteurs', '⛓'],
-  ['/candidatures', 'Candidatures', '✓'], ['/positionnements', 'Positionnements', '⇄'],
+  ['/candidatures', 'Candidatures', '✓'], ['/crm', 'CRM', '◇'], ['/positionnements', 'Positionnements', '⇄'],
   ['/messages', 'Messagerie', '✉'], ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'],
   ['/parametres', 'Paramètres', '⚙'],
 ];

@@ -9,6 +9,7 @@ use App\Entity\SourceConnector;
 use App\JobCatalog\Application\CanonicalJobImportResult;
 use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\JobDiscovery\Application\ConnectorHealthAnalyzer;
+use App\JobDiscovery\Application\ConnectorPayloadQualityAnalyzer;
 use App\JobDiscovery\Application\ConnectorRegistry;
 use App\JobDiscovery\Domain\Connector\JobSourceConnector;
 use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
@@ -22,6 +23,7 @@ final class JobSearchSyncService
         private LocalDataService $data,
         private CanonicalJobOfferService $canonicalJobs,
         private ConnectorHealthAnalyzer $healthAnalyzer,
+        private ConnectorPayloadQualityAnalyzer $payloadQualityAnalyzer,
         private string $privateDir,
         private int $intervalSeconds = 21600,
     ) {
@@ -51,6 +53,18 @@ final class JobSearchSyncService
         }
         $nextSyncAt = $lastSyncedAt?->modify(sprintf('+%d seconds', $this->intervalSeconds));
         $aggregate = $this->aggregateLastResults($connectors);
+        $alerts = array_values(array_map(
+            static fn (array $connector): array => [
+                'code' => (string) ($connector['code'] ?? ''),
+                'name' => (string) ($connector['name'] ?? ''),
+                'status' => (string) ($connector['health']['status'] ?? ''),
+                'message' => (string) ($connector['health']['reasons'][0] ?? ''),
+            ],
+            array_filter(
+                $connectors,
+                static fn (array $connector): bool => (bool) ($connector['health']['alert'] ?? false),
+            ),
+        ));
 
         return [
             'configured' => array_any(
@@ -59,6 +73,7 @@ final class JobSearchSyncService
             ),
             'providers' => $connectors,
             'connectors' => $connectors,
+            'alerts' => $alerts,
             'lastSyncedAt' => $lastSyncedAt?->format(DATE_ATOM),
             'nextSyncAt' => $nextSyncAt?->format(DATE_ATOM),
             'due' => array_any($states, fn (SourceConnector $connector): bool => $connector->isDue($this->intervalSeconds)),
@@ -179,10 +194,12 @@ final class JobSearchSyncService
                 $connectorReceived = 0;
                 $connectorError = null;
                 $connectorErrors = [];
+                $fieldQuality = $this->payloadQualityAnalyzer->analyze([]);
 
                 try {
                     $offers = $connector->search($settings->getTargetJobs(), $settings->getSkills());
                     $connectorReceived = count($offers);
+                    $fieldQuality = $this->payloadQualityAnalyzer->analyze($offers);
                     $received += $connectorReceived;
 
                     foreach ($offers as $payload) {
@@ -260,6 +277,7 @@ final class JobSearchSyncService
                         'parserVersion' => $parserVersion,
                         'normalizationRate' => $normalizationRate,
                         'zeroResults' => $connectorReceived === 0,
+                        'fieldQuality' => $fieldQuality,
                     ],
                 );
                 $this->em->flush();
@@ -270,6 +288,7 @@ final class JobSearchSyncService
                     'mode' => $connector->mode()->value,
                     'parserVersion' => $parserVersion,
                     'normalizationRate' => $normalizationRate,
+                    'fieldQuality' => $fieldQuality,
                     'received' => $connectorReceived,
                     'imported' => $connectorImported,
                     'merged' => $connectorMerged,
@@ -348,6 +367,10 @@ final class JobSearchSyncService
             static fn (ConnectorSyncRun $run): array => $run->toArray(),
             $runs,
         );
+        $latestDetails = is_array($history[0]['details'] ?? null) ? $history[0]['details'] : [];
+        $fieldQuality = is_array($latestDetails['fieldQuality'] ?? null)
+            ? $latestDetails['fieldQuality']
+            : $this->payloadQualityAnalyzer->analyze([]);
 
         return [
             ...$state->toArray($this->intervalSeconds),
@@ -355,6 +378,7 @@ final class JobSearchSyncService
                 ? $definition->parserVersion()
                 : null,
             'health' => $this->healthAnalyzer->analyze($history),
+            'fieldQuality' => $fieldQuality,
         ];
     }
 

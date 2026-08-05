@@ -16,6 +16,12 @@ function formatDate(value: string | null | undefined): string {
   }).format(new Date(value));
 }
 
+function formatReviewDate(value: string | null | undefined): string {
+  if (!value) return 'Non revue';
+
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
+}
+
 function duration(value: number | null | undefined): string {
   if (value == null) return '—';
   if (value < 1000) return `${value} ms`;
@@ -39,8 +45,15 @@ function statusTone(status: string): 'good' | 'warn' | 'bad' | 'blue' | 'neutral
   if (status === 'SUCCESS' || status === 'SUCCEEDED' || status === 'READY') return 'good';
   if (status === 'RUNNING') return 'blue';
   if (status === 'PARTIAL' || status === 'MISCONFIGURED' || status === 'NEVER_SYNCED') return 'warn';
-  if (status === 'ERROR' || status === 'FAILED') return 'bad';
+  if (status === 'ERROR' || status === 'FAILED' || status === 'COMPLIANCE_BLOCKED') return 'bad';
   return 'neutral';
+}
+
+function complianceTone(status: SourceConnector['policy']['complianceStatus']): 'good' | 'warn' | 'bad' | 'blue' | 'neutral' {
+  if (status === 'ALLOWED') return 'good';
+  if (status === 'AUTHORIZED_ONLY') return 'blue';
+  if (status === 'EMAIL_OR_EXTENSION_ONLY' || status === 'UNDER_REVIEW') return 'warn';
+  return 'bad';
 }
 
 export default function ConnectorsPage() {
@@ -107,7 +120,7 @@ export default function ConnectorsPage() {
     <>
       <PageHeader
         title="Connecteurs"
-        description="État, configuration et historique des sources d’offres de JobPilot."
+        description="État, autorisation, limites et historique des sources d’offres de JobPilot."
         actions={
           <button className="btn secondary" type="button" onClick={() => void load()}>
             Actualiser
@@ -131,6 +144,9 @@ export default function ConnectorsPage() {
                   <div className="actions" style={{ marginBottom: 8 }}>
                     <Badge tone={statusTone(connector.status)}>{connector.status}</Badge>
                     <Badge tone="blue">{modeLabel(connector.mode)}</Badge>
+                    <Badge tone={complianceTone(connector.policy.complianceStatus)}>
+                      {connector.policy.complianceLabel}
+                    </Badge>
                     <Badge tone={connector.enabled ? 'good' : 'neutral'}>
                       {connector.enabled ? 'Activé' : 'Désactivé'}
                     </Badge>
@@ -145,11 +161,30 @@ export default function ConnectorsPage() {
                   {connector.configurationMessage && (
                     <p className="small" style={{ marginBottom: 0 }}>{connector.configurationMessage}</p>
                   )}
+                  {connector.policy.note && (
+                    <p className="small" style={{ marginBottom: 0 }}>
+                      <strong>Politique de collecte :</strong> {connector.policy.note}
+                    </p>
+                  )}
                   {connector.lastError && <ErrorBox message={connector.lastError} />}
 
                   <div className="actions" style={{ marginTop: 12 }}>
+                    <Badge>Revue : {formatReviewDate(connector.policy.reviewedAt)}</Badge>
+                    {connector.policy.maxRequestsPerSync != null && (
+                      <Badge>{connector.policy.maxRequestsPerSync} requête(s) max/sync</Badge>
+                    )}
+                    {connector.policy.dailyQuota != null && (
+                      <Badge>{connector.policy.dailyQuota} requête(s) max/jour</Badge>
+                    )}
+                    {connector.policy.minimumDelayMilliseconds > 0 && (
+                      <Badge>Délai min. {duration(connector.policy.minimumDelayMilliseconds)}</Badge>
+                    )}
+                    {connector.policy.respectsRobotsTxt && <Badge>robots.txt respecté</Badge>}
+                  </div>
+
+                  <div className="actions" style={{ marginTop: 12 }}>
                     <Badge>Dernière sync : {formatDate(connector.lastSyncedAt)}</Badge>
-                    <Badge>Prochaine : {connector.enabled && connector.configured ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
+                    <Badge>Prochaine : {connector.enabled && connector.configured && connector.collectionAllowed ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
                     <Badge tone="good">{connector.lastResult.imported} nouvelle(s)</Badge>
                     <Badge tone="blue">{connector.lastResult.merged} source(s) fusionnée(s)</Badge>
                     <Badge>{connector.lastResult.duplicates} occurrence(s) connue(s)</Badge>
@@ -168,7 +203,7 @@ export default function ConnectorsPage() {
                     <button
                       className="btn small"
                       type="button"
-                      disabled={busyCode !== '' || !connector.enabled || !connector.configured}
+                      disabled={busyCode !== '' || !connector.enabled || !connector.configured || !connector.collectionAllowed}
                       onClick={() => void synchronize(connector)}
                     >
                       {busyCode === connector.code ? 'Synchronisation…' : 'Tester maintenant'}

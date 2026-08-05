@@ -14,18 +14,14 @@ final class ApplicationPreparationService
     public function __construct(
         private EntityManagerInterface $em,
         private ApplicationCvRepairService $cvRepair,
-        private ApplicationMessageBuilder $messageBuilder,
-        private CoverLetterRequirementDetector $coverLetterRequirementDetector,
+        private ApplicationContentBuilder $contentBuilder,
     ) {}
 
     public function prepare(JobOffer $job, CandidateProfile $profile): Application
     {
         $existing = $this->em->getRepository(Application::class)->findOneBy(['jobOffer' => $job]);
         $application = $existing ?? new Application($job);
-        $content = $this->messageBuilder->build($job, $profile);
-        $coverLetterRequired = $this->coverLetterRequirementDetector->isRequired(
-            $job->getTitle().' '.$job->getDescription(),
-        );
+        $content = $this->contentBuilder->build($job, $profile);
 
         $compensation = null;
         if ($job->getProposedTjm() !== null) {
@@ -38,7 +34,7 @@ final class ApplicationPreparationService
         $application->prepare(
             $cv,
             $content['message'],
-            $coverLetterRequired ? $content['coverLetter'] : '',
+            $content['coverLetter'],
             $compensation,
         );
         $job->markPrepared();

@@ -15,9 +15,10 @@ final class CoverLetterRequirementDetector
 
         $negativePatterns = [
             '/\b(?:sans|aucune?)\s+(?:lettre de motivation|lettre de candidature|lettre de présentation)\b/u',
-            '/\b(?:lettre de motivation|lettre de candidature|lettre de présentation)\s+(?:non requise|non demandée|facultative|optionnelle)\b/u',
+            '/\b(?:lettre de motivation|lettre de candidature|lettre de présentation)\s+(?:est\s+)?(?:non requise|non demandée|facultative|optionnelle|inutile)\b/u',
+            '/\b(?:lettre de motivation|lettre de candidature|lettre de présentation)\s+n[’\']est\s+pas\s+(?:requise|demandée|nécessaire|obligatoire)\b/u',
             '/\b(?:no|without)\s+(?:cover letter|motivation letter)\b/u',
-            '/\b(?:cover letter|motivation letter)\s+(?:is\s+)?(?:not required|not requested|optional)\b/u',
+            '/\b(?:cover letter|motivation letter)\s+(?:is\s+)?(?:not required|not requested|optional|unnecessary)\b/u',
         ];
 
         foreach ($negativePatterns as $pattern) {

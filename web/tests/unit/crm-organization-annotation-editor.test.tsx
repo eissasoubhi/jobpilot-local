@@ -41,7 +41,7 @@ describe('CrmOrganizationAnnotationEditor', () => {
     );
 
     expect(screen.getByText('Acme Consulting')).toBeInTheDocument();
-    expect(screen.getByText('acme consulting')).toBeInTheDocument();
+    expect(screen.getByText('acme consulting', { selector: 'code' })).toBeInTheDocument();
     expect(screen.getByLabelText('Nom affiché dans le CRM')).toHaveValue('ACME Consulting France');
     expect(screen.getByLabelText('Note interne')).toHaveValue('Relancer dans une semaine.');
   });

@@ -38,7 +38,7 @@ final class ExtensionImportTest extends WebTestCase
         self::assertSame('free-work', $first['sourceCode']);
         self::assertSame(1, $first['sourceCount']);
         self::assertSame('free-work', $first['sources'][0]['sourceCode']);
-        self::assertSame('EXTENSION', $first['sources'][0]['matchType'] === 'PRIMARY' ? 'EXTENSION' : 'EXTENSION');
+        self::assertSame('PRIMARY', $first['sources'][0]['matchType']);
         self::assertSame(450, $first['tjmMin']);
         self::assertSame(520, $first['tjmMax']);
 

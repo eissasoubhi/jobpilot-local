@@ -87,6 +87,21 @@ export type ConnectorHealth = {
   reasons: string[];
 };
 
+export type ConnectorFieldQuality = {
+  received: number;
+  requiredCompleteness?: number | null;
+  recommendedCompleteness?: number | null;
+  overallCompleteness?: number | null;
+  missingRequiredRecords: number;
+  fields: Record<string, {
+    category: 'required' | 'recommended';
+    present: number;
+    missing: number;
+    rate?: number | null;
+  }>;
+  warnings: string[];
+};
+
 export type SourceConnector = {
   id: number;
   code: string;
@@ -99,6 +114,7 @@ export type SourceConnector = {
   policy: ConnectorPolicy;
   parserVersion?: string | null;
   health: ConnectorHealth;
+  fieldQuality: ConnectorFieldQuality;
   status: string;
   lastSyncedAt?: string | null;
   lastSuccessfulAt?: string | null;
@@ -128,6 +144,7 @@ export type ConnectorSyncRun = {
     parserVersion?: string | null;
     normalizationRate?: number | null;
     zeroResults?: boolean;
+    fieldQuality?: ConnectorFieldQuality;
   };
 };
 

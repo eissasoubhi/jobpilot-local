@@ -53,6 +53,14 @@ services:
     arguments:
       $connectors: !tagged_iterator app.job_source_connector
 
+  App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore:
+    arguments:
+      $directory: '%private_dir%/http-scraping/state'
+
+  App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard:
+    arguments:
+      $cacheDirectory: '%private_dir%/http-scraping/robots'
+
   App\Service\JobSearchSyncService:
     arguments:
       $privateDir: '%private_dir%'

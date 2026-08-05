@@ -20,6 +20,7 @@ Cette documentation est la référence produit, métier, technique et opération
 ## Connecteurs
 
 - [Contrat, exploitation et ajout d’une source](connectors/overview.md)
+- [Infrastructure de scraping HTTP contrôlé](connectors/http-scraping.md)
 - [Connecteur Gmail et Inbox intelligente](connectors/gmail.md)
 - [Free-Work via Gmail et import assisté](connectors/free-work.md)
 

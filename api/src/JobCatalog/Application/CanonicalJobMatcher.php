@@ -114,7 +114,7 @@ final class CanonicalJobMatcher
                 continue;
             }
 
-            if ($contractScore === 0.0 && $locationScore === 0.0) {
+            if ($contractScore === 0.0 || $locationScore === 0.0 || $dateScore === 0.0) {
                 continue;
             }
 

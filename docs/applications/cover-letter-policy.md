@@ -26,6 +26,14 @@ When no cover letter is requested, the application keeps an empty `coverLetter` 
 
 When a letter is requested, JobPilot stores it separately from the email. Automatic Gmail delivery continues to send only the concise email and the selected CV; the cover letter is never concatenated into the email body.
 
+## Applications interface
+
+An empty generated letter is not displayed as a blank textarea. The interface states that the offer did not request a letter and keeps the concise message visible.
+
+The user can deliberately open a manual letter editor. Until text is entered, the copy action remains disabled and the interface labels the content as a manual addition rather than an offer requirement.
+
+A prepared or manually entered letter remains editable, copyable, and stored separately from the email message.
+
 ## Limits
 
 The decision is based on explicit text patterns, not an external AI model. Ambiguous wording may require manual correction from the Applications page. The detector does not invent qualifications, experience, salary, or availability.

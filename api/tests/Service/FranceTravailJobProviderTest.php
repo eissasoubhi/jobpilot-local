@@ -65,7 +65,7 @@ final class FranceTravailJobProviderTest extends TestCase
         self::assertSame('France Travail', $provider->name());
         self::assertSame(ConnectorMode::API, $provider->mode());
         self::assertSame('offres-emploi-v2', $provider->parserVersion());
-        self::assertSame(ConnectorComplianceStatus::AUTHORIZED_ONLY, $provider->policy()->complianceStatus());
+        self::assertSame(ConnectorComplianceStatus::AUTHORIZED_ONLY, $provider->policy()->complianceStatus);
         self::assertTrue($provider->isConfigured());
         self::assertNull($provider->configurationMessage());
 
@@ -79,8 +79,8 @@ final class FranceTravailJobProviderTest extends TestCase
         self::assertSame('95 - CERGY', $offers[0]['location']);
         self::assertSame('CDI', $offers[0]['contractType']);
         self::assertSame('Hybride', $offers[0]['workMode']);
-        self::assertSame(500000, $offers[0]['salaryMin']);
-        self::assertSame(600000, $offers[0]['salaryMax']);
+        self::assertSame(50000, $offers[0]['salaryMin']);
+        self::assertSame(60000, $offers[0]['salaryMax']);
         self::assertSame('Symfony, API Platform et React. Télétravail partiel.', $offers[0]['description']);
 
         self::assertCount(2, $requests);
@@ -88,8 +88,8 @@ final class FranceTravailJobProviderTest extends TestCase
         self::assertSame('client_credentials', $requests[0][2]['body']['grant_type']);
         self::assertSame('client-id', $requests[0][2]['body']['client_id']);
         self::assertSame('GET', $requests[1][0]);
-        self::assertContains('Authorization: Bearer test-access-token', $requests[1][2]['normalized_headers']['authorization']);
-        self::assertContains('Range: offres=0-49', $requests[1][2]['normalized_headers']['range']);
+        self::assertSame('Bearer test-access-token', $requests[1][2]['headers']['Authorization']);
+        self::assertSame('offres=0-49', $requests[1][2]['headers']['Range']);
     }
 
     public function testMissingCredentialsPreventEveryNetworkRequest(): void

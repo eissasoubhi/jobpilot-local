@@ -7,14 +7,10 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\Table(
-    name: 'crm_contact_correction',
-    uniqueConstraints: [
-        new ORM\UniqueConstraint(
-            name: 'uniq_crm_contact_correction_org_contact',
-            columns: ['organization_key', 'contact_key'],
-        ),
-    ],
+#[ORM\Table(name: 'crm_contact_correction')]
+#[ORM\UniqueConstraint(
+    name: 'uniq_crm_contact_correction_org_contact',
+    columns: ['organization_key', 'contact_key'],
 )]
 final class CrmContactCorrection
 {

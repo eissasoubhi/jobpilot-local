@@ -95,6 +95,76 @@ final class FranceTravailJobProviderTest extends TestCase
         self::assertStringContainsString('Range: offres=0-49', $headers);
     }
 
+    public function testNoContentForOneQueryContinuesWithTheNextQuery(): void
+    {
+        $searchRequests = 0;
+        $client = new MockHttpClient(function (string $method) use (&$searchRequests): ResponseInterface {
+            if ($method === 'POST') {
+                return new MockResponse(json_encode([
+                    'access_token' => 'test-access-token',
+                ], JSON_THROW_ON_ERROR), [
+                    'http_code' => 200,
+                    'response_headers' => ['content-type: application/json'],
+                ]);
+            }
+
+            ++$searchRequests;
+            if ($searchRequests === 1) {
+                return new MockResponse('', ['http_code' => 204]);
+            }
+
+            return new MockResponse(json_encode([
+                'resultats' => [[
+                    'id' => '204-FALLBACK',
+                    'intitule' => 'Développeur Symfony',
+                    'description' => 'Développement PHP et Symfony.',
+                    'typeContrat' => 'CDI',
+                    'typeContratLibelle' => 'CDI',
+                ]],
+            ], JSON_THROW_ON_ERROR), [
+                'http_code' => 206,
+                'response_headers' => ['content-type: application/json'],
+            ]);
+        });
+
+        $provider = new FranceTravailJobProvider($client, 'client-id', 'client-secret');
+        $offers = $provider->search(
+            ['Senior Symfony Developer', 'Backend PHP Developer'],
+            ['PHP', 'Symfony'],
+        );
+
+        self::assertSame(2, $searchRequests);
+        self::assertCount(1, $offers);
+        self::assertSame('204-FALLBACK', $offers[0]['externalId']);
+    }
+
+    public function testAllNoContentResponsesReturnAnEmptySuccessfulResult(): void
+    {
+        $searchRequests = 0;
+        $client = new MockHttpClient(function (string $method) use (&$searchRequests): ResponseInterface {
+            if ($method === 'POST') {
+                return new MockResponse(json_encode([
+                    'access_token' => 'test-access-token',
+                ], JSON_THROW_ON_ERROR), [
+                    'http_code' => 200,
+                    'response_headers' => ['content-type: application/json'],
+                ]);
+            }
+
+            ++$searchRequests;
+
+            return new MockResponse('', ['http_code' => 204]);
+        });
+
+        $provider = new FranceTravailJobProvider($client, 'client-id', 'client-secret');
+
+        self::assertSame([], $provider->search(
+            ['Senior Symfony Developer', 'Backend PHP Developer'],
+            ['PHP', 'Symfony'],
+        ));
+        self::assertSame(2, $searchRequests);
+    }
+
     public function testMissingCredentialsPreventEveryNetworkRequest(): void
     {
         $client = new MockHttpClient(static function (): never {

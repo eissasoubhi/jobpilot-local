@@ -95,8 +95,13 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
                 'timeout' => 15,
             ]);
 
-            if (!in_array($response->getStatusCode(), [200, 206], true)) {
-                throw new \RuntimeException(sprintf('France Travail a répondu avec le statut HTTP %d.', $response->getStatusCode()));
+            $statusCode = $response->getStatusCode();
+            if ($statusCode === 204) {
+                continue;
+            }
+
+            if (!in_array($statusCode, [200, 206], true)) {
+                throw new \RuntimeException(sprintf('France Travail a répondu avec le statut HTTP %d.', $statusCode));
             }
 
             $payload = $response->toArray(false);

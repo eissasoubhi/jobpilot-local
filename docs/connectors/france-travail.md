@@ -38,6 +38,8 @@ Une synchronisation :
 4. normalise l’identifiant, le titre, l’entreprise, le lieu, le contrat, le mode de travail, la description, la date, l’URL et le salaire annuel explicite ;
 5. envoie chaque résultat dans le catalogue canonique multi-sources de JobPilot.
 
+Un statut HTTP `204 No Content` sur une recherche signifie qu’aucune offre ne correspond à cette requête. JobPilot considère ce résultat comme vide, continue avec les autres requêtes de la synchronisation et ne classe plus le connecteur en erreur pour ce seul statut.
+
 Les salaires mensuels, horaires ou ambigus ne sont pas convertis artificiellement en salaire annuel. Les offres déjà connues restent idempotentes grâce à l’identifiant France Travail.
 
 ## Diagnostic d’une authentification HTTP 400

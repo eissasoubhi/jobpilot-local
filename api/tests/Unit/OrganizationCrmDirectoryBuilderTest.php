@@ -21,7 +21,6 @@ final class OrganizationCrmDirectoryBuilderTest extends TestCase
             'clientName' => 'Final Client',
             'applicationEmail' => 'jobs@acme.test',
             'status' => 'PREPARED',
-            'score' => 82,
             'sourceUrl' => 'https://example.test/jobs/42',
         ]);
         $application = (new Application($job))->fill(['status' => 'INTERVIEW']);
@@ -52,7 +51,7 @@ final class OrganizationCrmDirectoryBuilderTest extends TestCase
         );
 
         self::assertSame(2, $directory['organizationCount']);
-        self::assertSame(3, $directory['contactCount']);
+        self::assertSame(2, $directory['contactCount']);
 
         $acme = $this->organization($directory['organizations'], 'acme consulting');
         self::assertSame(['AGENCY', 'COMPANY'], $acme['roles']);

@@ -13,7 +13,7 @@ use App\Entity\InboxMessage;
 use App\Entity\JobOffer;
 use App\Entity\Positioning;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ObjectRepository;
+use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,7 +37,7 @@ final class CrmControllerAnnotationTest extends TestCase
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnCallback(
-            static fn (string $class): ObjectRepository => match ($class) {
+            static fn (string $class): EntityRepository => match ($class) {
                 Application::class => $applicationRepository,
                 Positioning::class, InboxMessage::class => $emptyRepository,
                 CrmOrganizationAnnotation::class => $annotationRepository,
@@ -100,9 +100,8 @@ final class CrmControllerAnnotationTest extends TestCase
         self::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
     }
 
-    /** @return ObjectRepository<object> */
-    private function repository(): ObjectRepository
+    private function repository(): EntityRepository
     {
-        return $this->createMock(ObjectRepository::class);
+        return $this->createMock(EntityRepository::class);
     }
 }

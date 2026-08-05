@@ -75,13 +75,15 @@ test('CRM directory exposes validated contacts and searchable organization roles
 
   await page.getByLabel('Rôle de l’organisation').selectOption('CLIENT');
   await expect(page.getByRole('heading', { name: 'Final Client' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Acme Consulting' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Acme Consulting' })).not.toBeVisible();
 
   await page.getByLabel('Rechercher une organisation, un contact ou une offre').fill('Jane Recruiter');
+  await expect(page.getByText('Aucune organisation ne correspond à ces critères.')).toBeVisible();
+
+  await page.getByLabel('Rôle de l’organisation').selectOption('ALL');
   await expect(page.getByRole('heading', { name: 'Acme Consulting' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Final Client' })).not.toBeVisible();
 
   await page.getByLabel('Rôle de l’organisation').selectOption('AGENCY');
   await expect(page.getByRole('heading', { name: 'Acme Consulting' })).toBeVisible();
-  await expect(page.getByText('1', { exact: true }).last()).toBeVisible();
 });

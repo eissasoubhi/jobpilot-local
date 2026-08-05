@@ -85,8 +85,9 @@ final class FranceTravailJobProviderTest extends TestCase
 
         self::assertCount(2, $requests);
         self::assertSame('POST', $requests[0][0]);
-        self::assertSame('client_credentials', $requests[0][2]['body']['grant_type']);
-        self::assertSame('client-id', $requests[0][2]['body']['client_id']);
+        parse_str((string) $requests[0][2]['body'], $tokenFields);
+        self::assertSame('client_credentials', $tokenFields['grant_type'] ?? null);
+        self::assertSame('client-id', $tokenFields['client_id'] ?? null);
         self::assertSame('GET', $requests[1][0]);
         $headers = implode("\n", array_map('strval', $requests[1][2]['headers']));
         self::assertStringContainsString('Authorization: Bearer test-access-token', $headers);

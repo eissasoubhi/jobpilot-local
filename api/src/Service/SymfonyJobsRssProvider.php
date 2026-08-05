@@ -56,8 +56,8 @@ final class SymfonyJobsRssProvider implements JobProviderInterface, GovernedJobS
             ConnectorComplianceStatus::ALLOWED,
             new \DateTimeImmutable('2026-08-05'),
             'Symfony expose explicitement un lien « Jobs RSS » sur son job board officiel. Le connecteur lit uniquement ce flux de syndication, sans parcourir les pages HTML.',
-            maxRequestsPerSync: 1,
-            dailyQuota: 8,
+            maxRequestsPerSync: 4,
+            dailyQuota: 16,
             minimumDelayMilliseconds: 1_000,
             respectsRobotsTxt: false,
         );

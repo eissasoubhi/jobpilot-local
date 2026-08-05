@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
+use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
+use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class ArbeitnowJobProvider implements JobProviderInterface
+final class ArbeitnowJobProvider implements GovernedJobSourceConnector
 {
     private const ENDPOINT = 'https://www.arbeitnow.com/api/job-board-api';
 
@@ -31,6 +34,16 @@ final class ArbeitnowJobProvider implements JobProviderInterface
     public function mode(): ConnectorMode
     {
         return ConnectorMode::API;
+    }
+
+    public function policy(): ConnectorPolicy
+    {
+        return new ConnectorPolicy(
+            ConnectorComplianceStatus::ALLOWED,
+            new \DateTimeImmutable('2026-08-05'),
+            'API publique sans authentification. Les limites locales restent volontairement inférieures au maximum technique.',
+            maxRequestsPerSync: max(1, min(5, $this->pages)),
+        );
     }
 
     public function isConfigured(): bool

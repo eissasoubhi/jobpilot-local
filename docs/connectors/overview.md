@@ -24,6 +24,8 @@ Chaque connecteur planifié implémente `JobSourceConnector` et fournit :
 - un message expliquant une configuration manquante ;
 - une opération de recherche retournant des payloads normalisés.
 
+Un connecteur utilisable automatiquement implémente aussi `GovernedJobSourceConnector` et fournit un `ConnectorPolicy`. En l’absence de cette politique explicite, JobPilot classe la source `UNDER_REVIEW` et bloque toute synchronisation, y compris forcée.
+
 Le code stable ne doit jamais être dérivé d’un libellé traduit. Il sert aux commandes, aux URL, à l’identité des occurrences et à l’historique.
 
 L’extension n’est pas un crawler planifié : elle transmet une seule page ouverte volontairement par l’utilisateur au pipeline canonique.
@@ -42,19 +44,46 @@ MANUAL
 
 Le mode décrit la manière de collecter les données. Il ne change pas le modèle d’offre produit par le connecteur.
 
+## Politique de conformité
+
+La configuration technique et l’autorisation de collecter sont deux choses différentes. Chaque connecteur planifié déclare l’un des statuts suivants :
+
+```text
+ALLOWED                  collecte automatique autorisée
+AUTHORIZED_ONLY          accès, clé ou consentement utilisateur requis
+EMAIL_OR_EXTENSION_ONLY  backend bloqué ; Gmail ou extension seulement
+DISABLED                 collecte explicitement interdite
+UNDER_REVIEW             collecte bloquée en attendant une revue
+```
+
+La politique peut aussi préciser :
+
+- la date de dernière revue ;
+- la justification de la décision ;
+- le nombre maximal de requêtes par synchronisation ;
+- un quota journalier ;
+- un délai minimal entre requêtes ;
+- le respect de `robots.txt`.
+
+`--force` accélère uniquement une source déjà autorisée. Il ne contourne jamais `EMAIL_OR_EXTENSION_ONLY`, `DISABLED` ou `UNDER_REVIEW`.
+
+La décision d’architecture est détaillée dans [`../architecture/adr/0007-connector-compliance-policy.md`](../architecture/adr/0007-connector-compliance-policy.md).
+
 ## Registre persistant
 
 La table `source_connector` contient l’état opérationnel de chaque connecteur planifié :
 
 - activé ou désactivé ;
 - configuré ou incomplet ;
+- politique de conformité et date de revue ;
+- limites déclarées de collecte ;
 - dernière synchronisation ;
 - dernière réussite ;
 - prochain lancement estimé ;
 - volumes reçus, importés, fusionnés, déjà connus et échoués ;
 - dernière erreur.
 
-Les définitions techniques sont resynchronisées depuis le code. Le choix utilisateur `enabled` reste conservé en base.
+Les définitions techniques et la politique sont resynchronisées depuis le code. Le choix utilisateur `enabled` reste conservé en base.
 
 ## Historique
 
@@ -68,7 +97,7 @@ Chaque exécution planifiée crée une ligne `connector_sync_run` avec :
 - l’erreur éventuelle ;
 - quelques détails de diagnostic non sensibles.
 
-Une exécution désactivée ou non configurée est ignorée et ne crée pas de faux historique.
+Une exécution désactivée, non configurée ou bloquée par sa politique est ignorée et ne crée pas de faux historique.
 
 Pour Gmail, les compteurs du registre concernent les offres extraites. La page **Messagerie** expose en complément les volumes de messages lus, associés et nécessitant une action.
 
@@ -103,9 +132,10 @@ La preuve du rapprochement, son score et ses raisons sont conservés sur l’occ
 
 La page **Connecteurs** permet de :
 
-- consulter l’état et la configuration ;
+- consulter l’état, la configuration et l’autorisation ;
+- voir la date de revue et les limites de collecte ;
 - activer ou désactiver une source planifiée ;
-- lancer un test manuel ;
+- lancer un test manuel lorsque la politique l’autorise ;
 - distinguer nouvelles offres, sources fusionnées et occurrences connues ;
 - consulter les vingt dernières exécutions.
 
@@ -126,13 +156,13 @@ Synchroniser toutes les sources arrivées à échéance :
 docker compose exec api php bin/console app:jobs:sync
 ```
 
-Forcer toutes les sources actives :
+Forcer toutes les sources actives et autorisées :
 
 ```bash
 docker compose exec api php bin/console app:jobs:sync --force
 ```
 
-Forcer une seule source :
+Forcer une seule source autorisée :
 
 ```bash
 docker compose exec api php bin/console app:jobs:sync --force --connector=arbeitnow
@@ -145,15 +175,16 @@ Free-Work n’apparaît pas dans ces commandes, car aucun scraper planifié n’
 
 1. Vérifier d’abord l’API officielle, le RSS, les alertes e-mail ou l’import assisté.
 2. Examiner les conditions d’utilisation, les mentions légales et `robots.txt` avant tout scraper.
-3. Implémenter `App\JobDiscovery\Domain\Connector\JobSourceConnector` pour une source planifiée autorisée.
-4. Utiliser un code unique en minuscules.
-5. Déclarer le mode réel de collecte.
-6. Retourner des offres avec au minimum `externalId`, `title` et `description`.
-7. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
-8. Fournir l’URL la plus directe possible vers l’offre.
-9. Fournir des tests unitaires avec réponses ou fixtures locales.
-10. Documenter les variables d’environnement, quotas, date de revue et limitations.
-11. Ne jamais rendre la CI dépendante du site externe.
+3. Implémenter `App\JobDiscovery\Domain\Connector\JobSourceConnector`.
+4. Implémenter `GovernedJobSourceConnector` et déclarer une politique explicite avant toute synchronisation.
+5. Utiliser un code unique en minuscules.
+6. Déclarer le mode réel de collecte.
+7. Retourner des offres avec au minimum `externalId`, `title` et `description`.
+8. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
+9. Fournir l’URL la plus directe possible vers l’offre.
+10. Fournir des tests unitaires avec réponses ou fixtures locales.
+11. Documenter les variables d’environnement, quotas, date de revue et limitations.
+12. Ne jamais rendre la CI dépendante du site externe.
 
 L’autoconfiguration Symfony ajoute automatiquement l’implémentation au registre. Le pipeline commun gère ensuite l’idempotence, la canonicalisation, le scoring, le CV et la préparation.
 

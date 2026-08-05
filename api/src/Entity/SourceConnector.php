@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
+use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
+use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use App\JobDiscovery\Domain\Connector\JobSourceConnector;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -11,6 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'source_connector')]
 #[ORM\UniqueConstraint(name: 'uniq_source_connector_code', columns: ['code'])]
 #[ORM\Index(columns: ['status'], name: 'idx_source_connector_status')]
+#[ORM\Index(columns: ['compliance_status'], name: 'idx_source_connector_compliance')]
 final class SourceConnector
 {
     #[ORM\Id, ORM\GeneratedValue, ORM\Column]
@@ -33,6 +37,27 @@ final class SourceConnector
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $configurationMessage = null;
+
+    #[ORM\Column(length: 32)]
+    private string $complianceStatus = 'UNDER_REVIEW';
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $complianceReviewedAt = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $complianceNote = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $maxRequestsPerSync = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $dailyQuota = null;
+
+    #[ORM\Column]
+    private int $minimumDelayMilliseconds = 0;
+
+    #[ORM\Column]
+    private bool $respectsRobotsTxt = false;
 
     #[ORM\Column(length: 32)]
     private string $status = 'NEVER_SYNCED';
@@ -103,6 +128,16 @@ final class SourceConnector
         return $this->configured;
     }
 
+    public function isCollectionAllowed(): bool
+    {
+        return ConnectorComplianceStatus::tryFrom($this->complianceStatus)?->allowsAutomatedCollection() ?? false;
+    }
+
+    public function canSynchronize(): bool
+    {
+        return $this->enabled && $this->configured && $this->isCollectionAllowed();
+    }
+
     public function getLastSyncedAt(): ?\DateTimeImmutable
     {
         return $this->lastSyncedAt;
@@ -110,7 +145,7 @@ final class SourceConnector
 
     public function isDue(int $intervalSeconds): bool
     {
-        if (!$this->enabled || !$this->configured) {
+        if (!$this->canSynchronize()) {
             return false;
         }
 
@@ -126,32 +161,29 @@ final class SourceConnector
         $this->configured = $connector->isConfigured();
         $message = trim((string) $connector->configurationMessage());
         $this->configurationMessage = $message === '' ? null : $message;
+        $this->applyPolicy(
+            $connector instanceof GovernedJobSourceConnector
+                ? $connector->policy()
+                : ConnectorPolicy::underReview(),
+        );
 
-        if (!$this->enabled) {
-            $this->status = 'DISABLED';
-        } elseif (!$this->configured) {
-            $this->status = 'MISCONFIGURED';
-        } elseif (in_array($this->status, ['DISABLED', 'MISCONFIGURED'], true)) {
-            $this->status = $this->lastSyncedAt === null ? 'NEVER_SYNCED' : 'READY';
-        }
-
+        $this->status = $this->resolvedStatus();
         $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function setEnabled(bool $enabled): void
     {
         $this->enabled = $enabled;
-        $this->status = match (true) {
-            !$enabled => 'DISABLED',
-            !$this->configured => 'MISCONFIGURED',
-            $this->lastSyncedAt === null => 'NEVER_SYNCED',
-            default => 'READY',
-        };
+        $this->status = $this->resolvedStatus(true);
         $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function markRunning(): void
     {
+        if (!$this->canSynchronize()) {
+            throw new \LogicException(sprintf('Le connecteur %s ne peut pas être synchronisé dans son état actuel.', $this->code));
+        }
+
         $this->status = 'RUNNING';
         $this->lastError = null;
         $this->updatedAt = new \DateTimeImmutable();
@@ -188,6 +220,15 @@ final class SourceConnector
     public function toArray(int $intervalSeconds): array
     {
         $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', max(900, $intervalSeconds)));
+        $policy = new ConnectorPolicy(
+            ConnectorComplianceStatus::tryFrom($this->complianceStatus) ?? ConnectorComplianceStatus::UNDER_REVIEW,
+            $this->complianceReviewedAt,
+            $this->complianceNote,
+            $this->maxRequestsPerSync,
+            $this->dailyQuota,
+            $this->minimumDelayMilliseconds,
+            $this->respectsRobotsTxt,
+        );
 
         return [
             'id' => $this->id,
@@ -197,6 +238,8 @@ final class SourceConnector
             'enabled' => $this->enabled,
             'configured' => $this->configured,
             'configurationMessage' => $this->configurationMessage,
+            'collectionAllowed' => $this->isCollectionAllowed(),
+            'policy' => $policy->toArray(),
             'status' => $this->status,
             'lastSyncedAt' => $this->lastSyncedAt?->format(DATE_ATOM),
             'lastSuccessfulAt' => $this->lastSuccessfulAt?->format(DATE_ATOM),
@@ -212,5 +255,36 @@ final class SourceConnector
             'lastError' => $this->lastError,
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];
+    }
+
+    private function applyPolicy(ConnectorPolicy $policy): void
+    {
+        $this->complianceStatus = $policy->complianceStatus->value;
+        $this->complianceReviewedAt = $policy->reviewedAt;
+        $note = trim((string) $policy->note);
+        $this->complianceNote = $note === '' ? null : $note;
+        $this->maxRequestsPerSync = $policy->maxRequestsPerSync;
+        $this->dailyQuota = $policy->dailyQuota;
+        $this->minimumDelayMilliseconds = $policy->minimumDelayMilliseconds;
+        $this->respectsRobotsTxt = $policy->respectsRobotsTxt;
+    }
+
+    private function resolvedStatus(bool $forceIdle = false): string
+    {
+        if (!$this->enabled) {
+            return 'DISABLED';
+        }
+        if (!$this->configured) {
+            return 'MISCONFIGURED';
+        }
+        if (!$this->isCollectionAllowed()) {
+            return 'COMPLIANCE_BLOCKED';
+        }
+
+        if ($forceIdle || in_array($this->status, ['DISABLED', 'MISCONFIGURED', 'COMPLIANCE_BLOCKED'], true)) {
+            return $this->lastSyncedAt === null ? 'NEVER_SYNCED' : 'READY';
+        }
+
+        return $this->status;
     }
 }

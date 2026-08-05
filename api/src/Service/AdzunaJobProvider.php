@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
+use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
+use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class AdzunaJobProvider implements JobProviderInterface
+final class AdzunaJobProvider implements GovernedJobSourceConnector
 {
     public function __construct(
         private HttpClientInterface $httpClient,
@@ -32,6 +35,16 @@ final class AdzunaJobProvider implements JobProviderInterface
     public function mode(): ConnectorMode
     {
         return ConnectorMode::API;
+    }
+
+    public function policy(): ConnectorPolicy
+    {
+        return new ConnectorPolicy(
+            ConnectorComplianceStatus::AUTHORIZED_ONLY,
+            new \DateTimeImmutable('2026-08-05'),
+            'API officielle nécessitant des identifiants développeur fournis par l’utilisateur.',
+            maxRequestsPerSync: 6,
+        );
     }
 
     public function isConfigured(): bool

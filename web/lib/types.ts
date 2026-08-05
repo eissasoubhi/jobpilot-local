@@ -149,3 +149,47 @@ export type ConnectorSyncRun = {
 };
 
 export type Positioning = { id:number; finalClient:string; agency:string; recruiterName:string; recruiterEmail?:string; missionTitle:string; description:string; callForTenderReference?:string; proposedTjm?:number; acceptedTjm?:number; location:string; remotePolicy:string; agreementGivenAt?:string; status:string; agreementEmailSubject?:string; agreementEmailBody?:string; mailtoUrl?:string };
+
+export type CrmContactRole = 'RECRUITER' | 'APPLICATION_ADDRESS' | 'INBOX_CONTACT';
+export type CrmOrganizationRole = 'COMPANY' | 'AGENCY' | 'CLIENT';
+
+export type CrmContact = {
+  key: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  roles: CrmContactRole[];
+  messageCount: number;
+  lastContactAt?: string | null;
+};
+
+export type CrmOfferSummary = {
+  id?: number | null;
+  title: string;
+  status: string;
+  score: number;
+  sourceUrl?: string | null;
+};
+
+export type CrmOrganization = {
+  key: string;
+  name: string;
+  roles: CrmOrganizationRole[];
+  offerCount: number;
+  applicationCount: number;
+  positioningCount: number;
+  messageCount: number;
+  contactCount: number;
+  applicationStatuses: Record<string, number>;
+  positioningStatuses: Record<string, number>;
+  lastActivityAt?: string | null;
+  contacts: CrmContact[];
+  latestOffers: CrmOfferSummary[];
+};
+
+export type CrmDirectory = {
+  generatedAt: string;
+  organizationCount: number;
+  contactCount: number;
+  organizations: CrmOrganization[];
+};

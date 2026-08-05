@@ -27,6 +27,22 @@ The response contains global organization/contact counts and one entry per organ
 - detected contacts and their origins;
 - up to five recent related offers.
 
+## Interface
+
+The **CRM** entry in the main navigation opens `/crm`.
+
+The page provides:
+
+- global organization, validated-contact and visible-result counts;
+- accent-insensitive search across organization names, contacts, emails, phone numbers and recent offer titles;
+- filtering by company, intermediary or final-client role;
+- contact origin badges;
+- direct `mailto:` and `tel:` actions for validated data;
+- application and positioning status summaries;
+- links back to recent original offers when their URL is available.
+
+The interface is deliberately read-only. It displays the generated directory without silently changing the underlying application, positioning or Gmail records.
+
 ## Contact rules
 
 Contacts are merged by validated lowercase email address. A positioning recruiter and a linked Gmail sender using the same address become one contact with both roles.
@@ -39,4 +55,4 @@ The directory exposes no Gmail body, snippet, OAuth token, CV content or cover l
 
 ## Current limits
 
-This first slice is derived and read-only. Notes, manual contact editing, organization merging overrides, follow-up tasks and a dedicated CRM interface are separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response.
+The current directory is derived and read-only. Notes, manual contact editing, organization merging overrides and follow-up tasks are separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response.

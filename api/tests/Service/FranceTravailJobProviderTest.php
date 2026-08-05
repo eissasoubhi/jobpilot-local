@@ -88,8 +88,9 @@ final class FranceTravailJobProviderTest extends TestCase
         self::assertSame('client_credentials', $requests[0][2]['body']['grant_type']);
         self::assertSame('client-id', $requests[0][2]['body']['client_id']);
         self::assertSame('GET', $requests[1][0]);
-        self::assertSame('Bearer test-access-token', $requests[1][2]['headers']['Authorization']);
-        self::assertSame('offres=0-49', $requests[1][2]['headers']['Range']);
+        $headers = implode("\n", array_map('strval', $requests[1][2]['headers']));
+        self::assertStringContainsString('Authorization: Bearer test-access-token', $headers);
+        self::assertStringContainsString('Range: offres=0-49', $headers);
     }
 
     public function testMissingCredentialsPreventEveryNetworkRequest(): void

@@ -51,6 +51,7 @@ final class SymfonyJobsRssProviderTest extends TestCase
         self::assertSame('symfony-jobs', $provider->code());
         self::assertSame('Symfony Jobs', $provider->name());
         self::assertSame(ConnectorMode::RSS, $provider->mode());
+        self::assertSame('syndication-v1', $provider->parserVersion());
         self::assertTrue($provider->isConfigured());
         self::assertSame(ConnectorComplianceStatus::ALLOWED, $provider->policy()->complianceStatus);
         self::assertSame(4, $provider->policy()->maxRequestsPerSync);

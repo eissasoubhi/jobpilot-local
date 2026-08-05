@@ -29,6 +29,8 @@ Chaque connecteur planifié implémente `JobSourceConnector` et fournit :
 
 Un connecteur utilisable automatiquement implémente aussi `GovernedJobSourceConnector` et fournit un `ConnectorPolicy`. En l’absence de cette politique explicite, JobPilot classe la source `UNDER_REVIEW` et bloque toute synchronisation, y compris forcée.
 
+Lorsqu’une extraction dépend d’une logique de parsing versionnée, le connecteur implémente aussi `VersionedJobSourceConnector`. La version est conservée dans les diagnostics de synchronisation afin de relier une rupture éventuelle à la logique d’extraction utilisée.
+
 Le code stable ne doit jamais être dérivé d’un libellé traduit. Il sert aux commandes, aux URL, à l’identité des occurrences et à l’historique.
 
 L’extension n’est pas un crawler planifié : elle transmet une seule page ouverte volontairement par l’utilisateur au pipeline canonique.
@@ -98,11 +100,29 @@ Chaque exécution planifiée crée une ligne `connector_sync_run` avec :
 - le statut ;
 - les compteurs ;
 - l’erreur éventuelle ;
+- la version du parseur lorsqu’elle existe ;
+- le taux de normalisation et l’indicateur de résultat vide ;
 - quelques détails de diagnostic non sensibles.
 
 Une exécution désactivée, non configurée ou bloquée par sa politique est ignorée et ne crée pas de faux historique.
 
 Pour Gmail, les compteurs du registre concernent les offres extraites. La page **Messagerie** expose en complément les volumes de messages lus, associés et nécessitant une action.
+
+## Santé d’extraction
+
+JobPilot analyse les six dernières synchronisations terminées de chaque connecteur. Le diagnostic distingue :
+
+```text
+NO_DATA
+HEALTHY
+WATCH
+DEGRADED
+BROKEN
+```
+
+Une synchronisation vide n’est pas immédiatement considérée comme une rupture. Une référence positive antérieure est nécessaire avant d’émettre une alerte. Deux résultats vides consécutifs signalent une dégradation ; trois signalent une rupture probable. Le taux de normalisation déclenche également une alerte lorsqu’il passe sous 90 %, puis une rupture probable sous 50 %.
+
+Le détail des règles et limites est documenté dans [`health-monitoring.md`](health-monitoring.md) et l’ADR [`../architecture/adr/0010-connector-parser-health.md`](../architecture/adr/0010-connector-parser-health.md).
 
 ## Catalogue canonique
 
@@ -136,6 +156,8 @@ La preuve du rapprochement, son score et ses raisons sont conservés sur l’occ
 La page **Connecteurs** permet de :
 
 - consulter l’état, la configuration et l’autorisation ;
+- voir la version du parseur et la santé d’extraction ;
+- consulter le taux de normalisation, la référence positive et les synchronisations vides ;
 - voir la date de revue et les limites de collecte ;
 - activer ou désactiver une source planifiée ;
 - lancer un test manuel lorsque la politique l’autorise ;
@@ -181,14 +203,16 @@ Free-Work n’apparaît pas dans ces commandes, car aucun scraper planifié n’
 2. Examiner les conditions d’utilisation, les mentions légales et `robots.txt` avant tout scraper.
 3. Implémenter `App\JobDiscovery\Domain\Connector\JobSourceConnector`.
 4. Implémenter `GovernedJobSourceConnector` et déclarer une politique explicite avant toute synchronisation.
-5. Utiliser un code unique en minuscules.
-6. Déclarer le mode réel de collecte.
-7. Retourner des offres avec au minimum `externalId`, `title` et `description`.
-8. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
-9. Fournir l’URL la plus directe possible vers l’offre.
-10. Fournir des tests unitaires avec réponses ou fixtures locales.
-11. Documenter les variables d’environnement, quotas, date de revue et limitations.
-12. Ne jamais rendre la CI dépendante du site externe.
+5. Implémenter `VersionedJobSourceConnector` lorsque la source dépend d’un parseur évolutif.
+6. Utiliser un code unique en minuscules.
+7. Déclarer le mode réel de collecte.
+8. Retourner des offres avec au minimum `externalId`, `title` et `description`.
+9. Fournir une entreprise fiable lorsque la source la connaît : elle sécurise la fusion multi-sources.
+10. Fournir l’URL la plus directe possible vers l’offre.
+11. Fournir des tests unitaires avec réponses ou fixtures locales.
+12. Tester les résultats vides, les champs manquants et les erreurs de normalisation.
+13. Documenter les variables d’environnement, quotas, date de revue et limitations.
+14. Ne jamais rendre la CI dépendante du site externe.
 
 L’autoconfiguration Symfony ajoute automatiquement l’implémentation au registre. Le pipeline commun gère ensuite l’idempotence, la canonicalisation, le scoring, le CV et la préparation.
 

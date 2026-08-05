@@ -44,12 +44,18 @@ final class ConnectorApiTest extends WebTestCase
         self::assertTrue($byCode['symfony-jobs']['configured']);
         self::assertStringContainsString('Configuration OAuth incomplète', $byCode['gmail']['configurationMessage']);
         self::assertStringContainsString('Flux RSS officiel', $byCode['symfony-jobs']['configurationMessage']);
+        self::assertNull($byCode['arbeitnow']['parserVersion']);
+        self::assertSame('syndication-v1', $byCode['symfony-jobs']['parserVersion']);
+        self::assertSame('NO_DATA', $byCode['symfony-jobs']['health']['status']);
+        self::assertFalse($byCode['symfony-jobs']['health']['alert']);
+        self::assertSame(0, $byCode['symfony-jobs']['health']['sampleSize']);
 
         $client->jsonRequest('PATCH', '/api/connectors/arbeitnow', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $disabled = $this->decode($client->getResponse()->getContent());
         self::assertFalse($disabled['enabled']);
         self::assertSame('DISABLED', $disabled['status']);
+        self::assertArrayHasKey('health', $disabled);
 
         $client->request('POST', '/api/connectors/arbeitnow/sync');
         self::assertResponseIsSuccessful();

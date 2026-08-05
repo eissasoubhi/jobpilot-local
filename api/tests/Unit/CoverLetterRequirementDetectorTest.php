@@ -37,6 +37,7 @@ final class CoverLetterRequirementDetectorTest extends TestCase
         yield 'normal job description' => ['Développeur Symfony pour concevoir des API et maintenir la plateforme.'];
         yield 'French explicitly unnecessary' => ['Candidature sans lettre de motivation, le CV suffit.'];
         yield 'French optional' => ['La lettre de motivation est facultative.'];
+        yield 'French not required' => ['La lettre de candidature n’est pas requise.'];
         yield 'English not required' => ['A cover letter is not required.'];
         yield 'English optional' => ['Cover letter optional; resume only is accepted.'];
         yield 'empty text' => [''];

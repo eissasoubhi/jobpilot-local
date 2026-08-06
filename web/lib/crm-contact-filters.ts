@@ -10,9 +10,9 @@ export type FilterableCrmContact = {
   correction?: unknown | null;
 };
 
-export type FilterableCrmContactEntry<TContact extends FilterableCrmContact = FilterableCrmContact> = {
+export type FilterableCrmContactEntry = {
   organizationName: string;
-  contact: TContact;
+  contact: FilterableCrmContact;
 };
 
 function normalizedSearchText(entry: FilterableCrmContactEntry): string {
@@ -32,11 +32,11 @@ function normalizedSearchText(entry: FilterableCrmContactEntry): string {
     .toLocaleLowerCase('fr');
 }
 
-export function filterCrmContacts<TContact extends FilterableCrmContact>(
-  entries: FilterableCrmContactEntry<TContact>[],
+export function filterCrmContacts<TEntry extends FilterableCrmContactEntry>(
+  entries: TEntry[],
   search: string,
   filter: CrmContactFilter,
-): FilterableCrmContactEntry<TContact>[] {
+): TEntry[] {
   const normalizedSearch = search
     .trim()
     .normalize('NFD')

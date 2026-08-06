@@ -83,24 +83,45 @@ export default function CrmFollowUpsPage() {
         {directory === null ? <Loading /> : directory.organizations.length === 0 ? <Empty>Aucune organisation CRM disponible.</Empty> : (
           <div className="stack">
             <div className="form-grid">
-              <label>Organisation
-                <select value={organizationKey} disabled={busy} onChange={(event) => { setOrganizationKey(event.target.value); setContactKey(''); }}>
+              <div>
+                <label htmlFor="follow-up-organization">Organisation</label>
+                <select
+                  id="follow-up-organization"
+                  value={organizationKey}
+                  disabled={busy}
+                  onChange={(event) => { setOrganizationKey(event.target.value); setContactKey(''); }}
+                >
                   <option value="">Sélectionner une organisation</option>
                   {directory.organizations.map((organization) => <option key={organization.key} value={organization.key}>{organization.name}</option>)}
                 </select>
-              </label>
-              <label>Contact facultatif
-                <select value={contactKey} disabled={busy || selectedOrganization === null} onChange={(event) => setContactKey(event.target.value)}>
+              </div>
+              <div>
+                <label htmlFor="follow-up-contact">Contact facultatif</label>
+                <select
+                  id="follow-up-contact"
+                  value={contactKey}
+                  disabled={busy || selectedOrganization === null}
+                  onChange={(event) => setContactKey(event.target.value)}
+                >
                   <option value="">Toute l’organisation</option>
                   {selectedOrganization?.contacts.map((contact) => (
                     <option key={contact.key} value={contact.key}>{contact.name || contact.email || contact.phone || contact.key}</option>
                   ))}
                 </select>
-              </label>
-              <label>Date de relance<input type="date" value={dueAt} disabled={busy} onChange={(event) => setDueAt(event.target.value)} /></label>
-              <label>Titre<input value={title} maxLength={180} disabled={busy} onChange={(event) => setTitle(event.target.value)} /></label>
+              </div>
+              <div>
+                <label htmlFor="follow-up-due-at">Date de relance</label>
+                <input id="follow-up-due-at" type="date" value={dueAt} disabled={busy} onChange={(event) => setDueAt(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="follow-up-title">Titre</label>
+                <input id="follow-up-title" value={title} maxLength={180} disabled={busy} onChange={(event) => setTitle(event.target.value)} />
+              </div>
             </div>
-            <label>Note facultative<textarea value={note} maxLength={2000} disabled={busy} onChange={(event) => setNote(event.target.value)} /></label>
+            <div>
+              <label htmlFor="follow-up-note">Note facultative</label>
+              <textarea id="follow-up-note" value={note} maxLength={2000} disabled={busy} onChange={(event) => setNote(event.target.value)} />
+            </div>
             <div><button className="btn" type="button" disabled={busy || organizationKey === '' || title.trim() === '' || dueAt === ''} onClick={() => void createTask()}>{busy ? 'Enregistrement…' : 'Créer la relance'}</button></div>
           </div>
         )}
@@ -109,7 +130,14 @@ export default function CrmFollowUpsPage() {
       <Card>
         <div className="actions" style={{ justifyContent: 'space-between' }}>
           <h2 className="section-title" style={{ margin: 0 }}>Tâches</h2>
-          <label className="small">État <select value={status} onChange={(event) => setStatus(event.target.value as CrmFollowUpStatus)}><option value="open">Ouvertes</option><option value="completed">Terminées</option><option value="all">Toutes</option></select></label>
+          <div>
+            <label className="small" htmlFor="follow-up-status">État</label>{' '}
+            <select id="follow-up-status" value={status} onChange={(event) => setStatus(event.target.value as CrmFollowUpStatus)}>
+              <option value="open">Ouvertes</option>
+              <option value="completed">Terminées</option>
+              <option value="all">Toutes</option>
+            </select>
+          </div>
         </div>
         {tasks === null ? <Loading /> : tasks.length === 0 ? <Empty>Aucune relance dans cette vue.</Empty> : (
           <div className="stack" style={{ marginTop: 14 }}>

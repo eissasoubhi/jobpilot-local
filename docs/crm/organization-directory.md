@@ -126,6 +126,10 @@ A corrected displayed email does not change contact deduplication or the stable 
 
 The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. Manual notes and corrections are local application data and are returned only through the local CRM endpoint.
 
+## Rollback
+
+The migration is reversible and drops only `crm_contact_correction`. Rolling it back removes local contact overlays but leaves every application, positioning, offer and Gmail-derived source value unchanged. Export local corrections first when they must be retained.
+
 ## Current limits
 
 The contact-correction editor, organization merge overrides and follow-up tasks remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while local annotations and corrections stay attached to stable derived keys.

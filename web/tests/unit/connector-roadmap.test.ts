@@ -56,8 +56,8 @@ describe('platform acquisition matrix', () => {
     ))).toBe(true);
   });
 
-  it('marks existing API connectors as operational', () => {
-    for (const code of ['adzuna', 'france-travail']) {
+  it('marks registered API connectors as operational', () => {
+    for (const code of ['adzuna', 'france-travail', 'smartrecruiters']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
@@ -76,13 +76,14 @@ describe('platform acquisition matrix', () => {
     }
   });
 
-  it('selects SmartRecruiters as the next official API connector', () => {
+  it('describes SmartRecruiters as a configured official API connector', () => {
     const connector = connectorRoadmap.find((entry) => entry.code === 'smartrecruiters');
 
     expect(connector).toBeDefined();
-    expect(connector?.status).toBe('PLANNED');
+    expect(connector?.status).toBe('OPERATIONAL');
     expect(connector?.modes).toEqual(['API']);
-    expect(connector?.nextStep).toContain('identifiants d’entreprises');
+    expect(connector?.note).toContain('jeton');
+    expect(connector?.nextStep).toContain('entreprises');
   });
 
   it('does not invent a reusable EURES channel before it is confirmed', () => {

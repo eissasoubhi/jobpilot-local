@@ -12,6 +12,7 @@ use App\JobDiscovery\Application\ConnectorHealthAnalyzer;
 use App\JobDiscovery\Application\ConnectorPayloadQualityAnalyzer;
 use App\JobDiscovery\Application\ConnectorRegistry;
 use App\JobDiscovery\Domain\Connector\JobSourceConnector;
+use App\JobDiscovery\Domain\Connector\SearchDiagnosticsConnector;
 use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -256,6 +257,9 @@ final class JobSearchSyncService
                 $parserVersion = $connector instanceof VersionedJobSourceConnector
                     ? $connector->parserVersion()
                     : null;
+                $searchDiagnostics = $connector instanceof SearchDiagnosticsConnector
+                    ? $connector->searchDiagnostics()
+                    : null;
 
                 $state->complete(
                     $connectorReceived,
@@ -278,6 +282,7 @@ final class JobSearchSyncService
                         'normalizationRate' => $normalizationRate,
                         'zeroResults' => $connectorReceived === 0,
                         'fieldQuality' => $fieldQuality,
+                        'searchDiagnostics' => $searchDiagnostics,
                     ],
                 );
                 $this->em->flush();
@@ -289,6 +294,7 @@ final class JobSearchSyncService
                     'parserVersion' => $parserVersion,
                     'normalizationRate' => $normalizationRate,
                     'fieldQuality' => $fieldQuality,
+                    'searchDiagnostics' => $searchDiagnostics,
                     'received' => $connectorReceived,
                     'imported' => $connectorImported,
                     'merged' => $connectorMerged,
@@ -371,6 +377,9 @@ final class JobSearchSyncService
         $fieldQuality = is_array($latestDetails['fieldQuality'] ?? null)
             ? $latestDetails['fieldQuality']
             : $this->payloadQualityAnalyzer->analyze([]);
+        $searchDiagnostics = is_array($latestDetails['searchDiagnostics'] ?? null)
+            ? $latestDetails['searchDiagnostics']
+            : null;
 
         return [
             ...$state->toArray($this->intervalSeconds),
@@ -379,6 +388,7 @@ final class JobSearchSyncService
                 : null,
             'health' => $this->healthAnalyzer->analyze($history),
             'fieldQuality' => $fieldQuality,
+            'searchDiagnostics' => $searchDiagnostics,
         ];
     }
 

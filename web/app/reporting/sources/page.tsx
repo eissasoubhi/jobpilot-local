@@ -18,6 +18,10 @@ type SourceRow = {
   applicationRate: number;
   responseRate: number;
   interviewRate: number;
+  tjmProposalCount: number;
+  salaryProposalCount: number;
+  averageProposedTjm: number | null;
+  averageProposedSalary: number | null;
 };
 
 type Report = {
@@ -27,6 +31,10 @@ type Report = {
 
 function rate(value: number): string {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
+}
+
+function amount(value: number): string {
+  return new Intl.NumberFormat('fr-FR').format(value);
 }
 
 export default function SourceReportingPage() {
@@ -57,7 +65,7 @@ export default function SourceReportingPage() {
     <>
       <PageHeader
         title="Conversion par source"
-        description="Mesure en lecture seule des offres, candidatures, réponses et entretiens attribués à chaque source."
+        description="Mesure en lecture seule des offres, candidatures, réponses, entretiens et propositions de rémunération attribués à chaque source."
       />
 
       <div className="grid cols-3">
@@ -91,6 +99,17 @@ export default function SourceReportingPage() {
               <div className="small muted" style={{ marginTop: 9 }}>
                 Taux de candidature : {rate(source.applicationRate)} · Réponse après envoi : {rate(source.responseRate)} · Entretien après envoi : {rate(source.interviewRate)}
               </div>
+              {(source.averageProposedTjm !== null || source.averageProposedSalary !== null) && (
+                <div className="small" style={{ marginTop: 7 }}>
+                  {source.averageProposedTjm !== null && (
+                    <>TJM proposé moyen : <strong>{amount(source.averageProposedTjm)} €</strong> ({source.tjmProposalCount} offre(s))</>
+                  )}
+                  {source.averageProposedTjm !== null && source.averageProposedSalary !== null && ' · '}
+                  {source.averageProposedSalary !== null && (
+                    <>Salaire proposé moyen : <strong>{amount(source.averageProposedSalary)} € brut/an</strong> ({source.salaryProposalCount} offre(s))</>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}

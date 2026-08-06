@@ -75,9 +75,11 @@ describe('ConnectorSearchCriteriaPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les critères' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const [, request] = fetchMock.mock.calls[1];
+    const secondCall = fetchMock.mock.calls[1];
+    expect(secondCall).toBeDefined();
+    const request = secondCall?.[1] as RequestInit;
     expect(request.method).toBe('PUT');
-    expect(JSON.parse(request.body)).toEqual({
+    expect(JSON.parse(String(request.body))).toEqual({
       targetJobs: ['Full-Stack Symfony/React'],
       skills: ['PHP', 'React'],
     });

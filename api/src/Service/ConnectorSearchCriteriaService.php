@@ -80,14 +80,28 @@ final class ConnectorSearchCriteriaService
      */
     private function response(string $name, string $code, array $targetJobs, array $skills): array
     {
+        $effectiveQueries = $this->effectiveQueries($targetJobs, $skills);
+        $latestSearchDiagnostics = $this->latestSearchDiagnostics($code);
+        if ($latestSearchDiagnostics !== null) {
+            $diagnosticQueries = array_values(array_map(
+                static fn (mixed $query): string => is_array($query)
+                    ? trim((string) ($query['query'] ?? ''))
+                    : '',
+                is_array($latestSearchDiagnostics['queries'] ?? null)
+                    ? $latestSearchDiagnostics['queries']
+                    : [],
+            ));
+            $latestSearchDiagnostics['matchesCurrentCriteria'] = $diagnosticQueries === $effectiveQueries;
+        }
+
         return [
             'code' => $code,
             'name' => $name,
             'scope' => 'GLOBAL',
             'targetJobs' => $targetJobs,
             'skills' => $skills,
-            'effectiveQueries' => $this->effectiveQueries($targetJobs, $skills),
-            'latestSearchDiagnostics' => $this->latestSearchDiagnostics($code),
+            'effectiveQueries' => $effectiveQueries,
+            'latestSearchDiagnostics' => $latestSearchDiagnostics,
             'fixedCriteria' => [
                 ['key' => 'sort', 'label' => 'Tri', 'value' => 'Offres les plus récentes'],
                 ['key' => 'limit', 'label' => 'Limite', 'value' => '6 requêtes maximum par synchronisation'],
@@ -119,10 +133,17 @@ final class ConnectorSearchCriteriaService
 
         $serialized = $run->toArray();
         $details = is_array($serialized['details'] ?? null) ? $serialized['details'] : [];
-
-        return is_array($details['searchDiagnostics'] ?? null)
+        $diagnostics = is_array($details['searchDiagnostics'] ?? null)
             ? $details['searchDiagnostics']
             : null;
+        if ($diagnostics === null) {
+            return null;
+        }
+
+        return [
+            'startedAt' => (string) ($serialized['startedAt'] ?? ''),
+            ...$diagnostics,
+        ];
     }
 
     /** @return list<string> */

@@ -12,7 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class SourceConversionReportApiTest extends WebTestCase
 {
-    public function testReportAttributesApplicationOutcomeAndCompensationToSourcesAndContractTypes(): void
+    public function testReportAttributesApplicationOutcomeCompensationAndMatchingQuality(): void
     {
         $client = static::createClient();
         $em = static::getContainer()->get(EntityManagerInterface::class);
@@ -23,7 +23,7 @@ final class SourceConversionReportApiTest extends WebTestCase
             'externalId' => 'report-job-1',
             'title' => 'Senior Symfony Developer',
             'company' => 'Example',
-            'contractType' => 'Freelance',
+            'contractType' => 'Reporting Freelance',
         ]);
         $job->setEvaluation('fr', 90, [], 500, 60000, 'PREPARED', null);
         $first = new JobSourceOccurrence($job, 'report-primary', 'Report Primary', 'report-job-1');
@@ -54,6 +54,9 @@ final class SourceConversionReportApiTest extends WebTestCase
             self::assertSame(1, $rows[$code]['responses']);
             self::assertSame(1, $rows[$code]['interviews']);
             self::assertEquals(100.0, $rows[$code]['interviewRate']);
+            self::assertEquals(90.0, $rows[$code]['averageMatchingScore']);
+            self::assertSame(1, $rows[$code]['strongMatches']);
+            self::assertEquals(100.0, $rows[$code]['strongMatchRate']);
             self::assertSame(1, $rows[$code]['tjmProposalCount']);
             self::assertSame(500, $rows[$code]['averageProposedTjm']);
             self::assertSame(1, $rows[$code]['salaryProposalCount']);
@@ -65,13 +68,16 @@ final class SourceConversionReportApiTest extends WebTestCase
             $contractTypes[$row['code']] = $row;
         }
 
-        self::assertArrayHasKey('freelance', $contractTypes);
-        $contractType = $contractTypes['freelance'];
-        self::assertSame('Freelance', $contractType['name']);
-        self::assertGreaterThanOrEqual(1, $contractType['offers']);
-        self::assertGreaterThanOrEqual(1, $contractType['applications']);
-        self::assertGreaterThanOrEqual(1, $contractType['interviews']);
-        self::assertGreaterThanOrEqual(1, $contractType['tjmProposalCount']);
-        self::assertGreaterThanOrEqual(1, $contractType['salaryProposalCount']);
+        self::assertArrayHasKey('reporting freelance', $contractTypes);
+        $contractType = $contractTypes['reporting freelance'];
+        self::assertSame('Reporting Freelance', $contractType['name']);
+        self::assertSame(1, $contractType['offers']);
+        self::assertSame(1, $contractType['applications']);
+        self::assertSame(1, $contractType['interviews']);
+        self::assertEquals(90.0, $contractType['averageMatchingScore']);
+        self::assertSame(1, $contractType['strongMatches']);
+        self::assertEquals(100.0, $contractType['strongMatchRate']);
+        self::assertSame(1, $contractType['tjmProposalCount']);
+        self::assertSame(1, $contractType['salaryProposalCount']);
     }
 }

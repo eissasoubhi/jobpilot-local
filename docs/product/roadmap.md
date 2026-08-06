@@ -125,15 +125,17 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 ### Livré
 
 - Conversion par source avec attribution multi-sources explicite.
-- Offres, candidatures, envois, réponses, entretiens et refus par source.
+- Conversion par type de contrat sans normalisation métier risquée.
+- Offres, candidatures, envois, réponses, entretiens et refus par groupe.
 - Taux de candidature, de réponse et d’entretien.
-- TJM proposé moyen et salaire annuel brut proposé moyen par source, calculés uniquement depuis les champs structurés existants.
+- TJM proposé moyen et salaire annuel brut proposé moyen, calculés uniquement depuis les champs structurés existants.
+- Score de matching moyen et proportion d’offres avec un score supérieur ou égal à 60.
 
 ### Prochaines livraisons
 
 - Temps moyen de réponse à partir d’événements horodatés fiables.
 - Taux d’acceptation lorsque le statut métier correspondant sera défini et historisé.
-- Qualité du matching et corrections manuelles.
+- Corrections manuelles du matching après clarification du comportement produit et de la traçabilité attendue.
 
 ## Phase 7 — Production
 

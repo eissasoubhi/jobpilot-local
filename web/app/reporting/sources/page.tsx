@@ -18,6 +18,9 @@ type ConversionRow = {
   applicationRate: number;
   responseRate: number;
   interviewRate: number;
+  averageMatchingScore: number;
+  strongMatches: number;
+  strongMatchRate: number;
   tjmProposalCount: number;
   salaryProposalCount: number;
   averageProposedTjm: number | null;
@@ -32,6 +35,10 @@ type Report = {
 
 function rate(value: number): string {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
+}
+
+function score(value: number): string {
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value);
 }
 
 function amount(value: number): string {
@@ -58,6 +65,9 @@ function ConversionRows({ rows, emptyMessage }: { rows: ConversionRow[]; emptyMe
         </div>
         <div className="small muted" style={{ marginTop: 9 }}>
           Taux de candidature : {rate(row.applicationRate)} · Réponse après envoi : {rate(row.responseRate)} · Entretien après envoi : {rate(row.interviewRate)}
+        </div>
+        <div className="small" style={{ marginTop: 7 }}>
+          Score moyen : <strong>{score(row.averageMatchingScore)} / 100</strong> · Matching ≥ 60 : <strong>{row.strongMatches} offre(s)</strong> ({rate(row.strongMatchRate)})
         </div>
         {(row.averageProposedTjm !== null || row.averageProposedSalary !== null) && (
           <div className="small" style={{ marginTop: 7 }}>
@@ -103,7 +113,7 @@ export default function SourceReportingPage() {
     <>
       <PageHeader
         title="Conversion"
-        description="Mesure en lecture seule des offres, candidatures, réponses, entretiens et propositions de rémunération par source et type de contrat."
+        description="Mesure en lecture seule de la conversion, de la qualité du matching et des propositions de rémunération par source et type de contrat."
       />
 
       <div className="grid cols-3">

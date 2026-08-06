@@ -123,4 +123,93 @@ describe('ConnectorSearchCriteriaPanel', () => {
     expect(screen.getByText('Full Stack Symfony React', { selector: 'span.badge.blue' })).toBeInTheDocument();
     expect(screen.getByText('Critères modifiés depuis ce test')).toBeInTheDocument();
   });
+
+  it('runs the connector and reloads the latest diagnostics from the server', async () => {
+    const refreshedCriteria = {
+      ...initialCriteria,
+      latestSearchDiagnostics: {
+        ...initialCriteria.latestSearchDiagnostics,
+        startedAt: '2026-08-06T12:00:00+02:00',
+        queriesWithResults: 2,
+        queriesWithoutResults: 0,
+        received: 7,
+        uniqueOffers: 5,
+        queries: [
+          {
+            query: 'Symfony',
+            statusCode: 206,
+            outcome: 'RESULTS',
+            received: 4,
+            uniqueOffersAdded: 3,
+          },
+          {
+            query: 'Backend PHP Symfony',
+            statusCode: 206,
+            outcome: 'RESULTS',
+            received: 3,
+            uniqueOffersAdded: 2,
+          },
+        ],
+      },
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => initialCriteria,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          skipped: false,
+          message: '5 nouvelle(s) offre(s), 0 nouvelle(s) source(s) fusionnée(s).',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => refreshedCriteria,
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ConnectorSearchCriteriaPanel connectorCode="france-travail" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tester ces critères maintenant' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const syncCall = fetchMock.mock.calls[1];
+    expect(syncCall?.[0]).toBe('/api/connectors/france-travail/sync');
+    expect((syncCall?.[1] as RequestInit).method).toBe('POST');
+    expect(await screen.findByText('5 nouvelle(s) offre(s), 0 nouvelle(s) source(s) fusionnée(s).')).toBeInTheDocument();
+    expect(screen.getByText('5 offre(s) unique(s)')).toBeInTheDocument();
+    expect(screen.getByText('4 offre(s) reçue(s)')).toBeInTheDocument();
+    expect(screen.getByText('0 vide(s)')).toBeInTheDocument();
+  });
+
+  it('shows the connector refusal without replacing the previous diagnostics', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => initialCriteria,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          skipped: true,
+          message: 'Ce connecteur est désactivé ou incomplet.',
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ConnectorSearchCriteriaPanel connectorCode="france-travail" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tester ces critères maintenant' }));
+
+    expect(await screen.findByText('Ce connecteur est désactivé ou incomplet.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('2 offre(s) unique(s)')).toBeInTheDocument();
+  });
 });

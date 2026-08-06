@@ -49,6 +49,11 @@ type ConnectorSearchCriteria = {
   note: string;
 };
 
+type ConnectorSyncResult = {
+  skipped?: boolean;
+  message?: string;
+};
+
 function formatDate(value: string): string {
   if (value.trim() === '') return 'Date inconnue';
 
@@ -94,6 +99,7 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
   const [targetJobs, setTargetJobs] = useState('');
   const [skills, setSkills] = useState('');
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -143,6 +149,31 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
     }
   };
 
+  const testCriteria = async (): Promise<void> => {
+    setTesting(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const result = await api<ConnectorSyncResult>(
+        `/connectors/${encodeURIComponent(connectorCode)}/sync`,
+        { method: 'POST' },
+      );
+
+      if (result.skipped) {
+        setError(result.message ?? 'La synchronisation n’a pas pu être lancée.');
+        return;
+      }
+
+      await load();
+      setMessage(result.message ?? 'Les critères ont été testés et les diagnostics ont été actualisés.');
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (criteria === null && error === '') {
     return <p className="small muted" style={{ marginTop: 14 }}>Chargement des critères de recherche…</p>;
   }
@@ -158,16 +189,27 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
             {criteria && <p className="small" style={{ marginBottom: 0 }}>{criteria.note}</p>}
           </div>
           {criteria && !editing && (
-            <button
-              className="btn secondary small"
-              type="button"
-              onClick={() => {
-                setEditing(true);
-                setMessage('');
-              }}
-            >
-              Modifier les critères
-            </button>
+            <div className="actions">
+              <button
+                className="btn small"
+                type="button"
+                disabled={testing}
+                onClick={() => void testCriteria()}
+              >
+                {testing ? 'Test en cours…' : 'Tester ces critères maintenant'}
+              </button>
+              <button
+                className="btn secondary small"
+                type="button"
+                disabled={testing}
+                onClick={() => {
+                  setEditing(true);
+                  setMessage('');
+                }}
+              >
+                Modifier les critères
+              </button>
+            </div>
           )}
         </div>
 
@@ -227,7 +269,7 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
                 </div>
               ) : (
                 <p className="small muted" style={{ marginBottom: 0 }}>
-                  Aucun diagnostic disponible. Lance une synchronisation France Travail depuis la page Connecteurs.
+                  Aucun diagnostic disponible. Lance un test avec le bouton ci-dessus.
                 </p>
               )}
             </div>

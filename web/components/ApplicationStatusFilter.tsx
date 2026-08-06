@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  applicationStatusLabel,
   applicationStatusOptions,
   filterApplications,
   type ApplicationStatusFilter as ApplicationStatusFilterValue,
@@ -24,7 +25,13 @@ export function ApplicationStatusFilter({
   value,
   onChange,
 }: ApplicationStatusFilterProps) {
-  const options = applicationStatusOptions(applications);
+  const baseOptions = applicationStatusOptions(applications);
+  const options = baseOptions.some((option) => option.value === value)
+    ? baseOptions
+    : [
+        ...baseOptions,
+        { value, label: applicationStatusLabel(value), count: 0 },
+      ];
   const optionByValue = new Map(options.map((option) => [option.value, option]));
   const visibleCount = filterApplications(applications, value).length;
 

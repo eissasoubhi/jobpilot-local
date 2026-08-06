@@ -1,6 +1,6 @@
-# Conversion par source et type de contrat
+# Conversion par source, type de contrat et mode de travail
 
-La page **Conversion** fournit un reporting en lecture seule sur les canaux d’acquisition et les types de contrat des offres.
+La page **Conversion** fournit un reporting en lecture seule sur les canaux d’acquisition, les types de contrat et les modes de travail des offres.
 
 ## Mesures
 
@@ -30,6 +30,10 @@ Une offre canonique peut être présente sur plusieurs sources. Dans ce cas, son
 ## Attribution par type de contrat
 
 Chaque offre canonique est attribuée une seule fois à la valeur structurée de son champ `contractType`. Les valeurs vides sont regroupées sous **Non renseigné**. Aucune normalisation métier risquée n’est appliquée : des libellés différents restent des groupes différents.
+
+## Attribution par mode de travail
+
+Chaque offre canonique est attribuée une seule fois à la valeur structurée de son champ `workMode`. Les valeurs vides sont regroupées sous **Non renseigné**. Les libellés existants sont conservés tels quels : JobPilot ne fusionne pas automatiquement des variantes comme `remote`, `télétravail` ou `full remote`.
 
 ## Limites
 

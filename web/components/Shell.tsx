@@ -8,7 +8,8 @@ const links = [
   ['/criteres-recherche', 'Critères de recherche', '⌕'],
   ['/candidatures', 'Candidatures', '✓'], ['/parcours-candidatures', 'Parcours candidatures', '↝'],
   ['/crm', 'CRM', '◇'], ['/crm/contacts', 'Contacts CRM', '♙'],
-  ['/crm/follow-ups', 'Relances CRM', '◷'], ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'],
+  ['/crm/follow-ups', 'Relances CRM', '◷'], ['/reporting/sources', 'Conversion par source', '▥'],
+  ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'],
   ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
 ];
 

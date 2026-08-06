@@ -17,7 +17,6 @@ final class JobProcessor
         private CvSelector $cvSelector,
         private ApplicationEmailExtractor $emailExtractor,
         private ApplicationPreparationService $preparation,
-        private AutomaticSubmissionService $automaticSubmission,
         private EntityManagerInterface $em,
     ) {}
 
@@ -50,18 +49,14 @@ final class JobProcessor
         }
 
         $cv = $this->cvSelector->select($language, $job->getTitle().' '.$job->getDescription());
-        $status = $hardRejected ? 'REJECTED_BY_FILTER' : 'MATCHED';
-        if (!$hardRejected && $settings->isAutoPrepare() && $evaluation['score'] >= $settings->getMatchingThreshold()) {
-            $status = 'PREPARED';
-        }
+        $status = $hardRejected ? 'REJECTED_BY_FILTER' : 'PREPARED';
 
         $job->setEvaluation($language, $evaluation['score'], $reasons, $proposedTjm, $salary['proposed'], $status, $cv);
         $this->em->persist($job);
         $this->em->flush();
 
         if ($status === 'PREPARED') {
-            $application = $this->preparation->prepare($job, $profile);
-            $this->automaticSubmission->submitIfEligible($application, $settings);
+            $this->preparation->prepare($job, $profile);
         }
     }
 }

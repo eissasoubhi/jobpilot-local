@@ -77,7 +77,6 @@ services:
       - |
         while true; do
           php bin/console app:jobs:sync || true
-          php bin/console app:applications:auto-submit || true
           php bin/console app:connectors:notify-freshness --interval="$${JOB_SYNC_INTERVAL_SECONDS:-21600}" || true
           sleep "$${JOB_SYNC_INTERVAL_SECONDS:-21600}"
         done

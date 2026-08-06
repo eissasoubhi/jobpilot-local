@@ -127,7 +127,9 @@ final class ConnectorSearchCriteriaService
             }
 
             $key = mb_strtolower($item);
-            $normalized[$key] = $item;
+            if (!isset($normalized[$key])) {
+                $normalized[$key] = $item;
+            }
         }
 
         return array_values($normalized);
@@ -149,7 +151,10 @@ final class ConnectorSearchCriteriaService
             $query = preg_replace('/\b(senior|developer|developpeur|développeur|engineer|native)\b/iu', ' ', $targetJob) ?? '';
             $query = trim(preg_replace('/[^\pL\pN.+#]+/u', ' ', $query) ?? '');
             if (mb_strlen($query) >= 3) {
-                $queries[mb_strtolower($query)] = $query;
+                $key = mb_strtolower($query);
+                if (!isset($queries[$key])) {
+                    $queries[$key] = $query;
+                }
             }
         }
 
@@ -157,7 +162,10 @@ final class ConnectorSearchCriteriaService
             foreach ($skills as $skill) {
                 $skill = trim($skill);
                 if (mb_strlen($skill) >= 3) {
-                    $queries[mb_strtolower($skill)] = $skill;
+                    $key = mb_strtolower($skill);
+                    if (!isset($queries[$key])) {
+                        $queries[$key] = $skill;
+                    }
                 }
             }
         }

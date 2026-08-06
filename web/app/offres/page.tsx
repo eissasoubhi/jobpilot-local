@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { Job, JobSourceOccurrence } from '@/lib/types';
+import type { Application, Job, JobSourceOccurrence } from '@/lib/types';
 
 type JobForm = {
   source: string;
@@ -132,6 +133,7 @@ function matchLabel(matchType: string): string {
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [applications, setApplications] = useState<Application[] | null>(null);
   const [form, setForm] = useState<JobForm>(initialForm);
   const [error, setError] = useState('');
   const [show, setShow] = useState(false);
@@ -141,12 +143,26 @@ export default function JobsPage() {
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
-    try {
-      setJobs(await api<Job[]>('/jobs'));
-      setError('');
-    } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+    const [jobsResult, applicationsResult] = await Promise.allSettled([
+      api<Job[]>('/jobs'),
+      api<Application[]>('/applications'),
+    ]);
+
+    if (jobsResult.status === 'rejected') {
+      setError(getErrorMessage(jobsResult.reason));
+      return;
     }
+
+    setJobs(jobsResult.value);
+
+    if (applicationsResult.status === 'fulfilled') {
+      setApplications(applicationsResult.value);
+      setError('');
+      return;
+    }
+
+    setApplications([]);
+    setError(`Les offres sont chargées, mais les préparations de candidature sont indisponibles : ${getErrorMessage(applicationsResult.reason)}`);
   }, []);
 
   const syncJobs = useCallback(async (force: boolean): Promise<void> => {
@@ -211,6 +227,11 @@ export default function JobsPage() {
     [jobs],
   );
 
+  const applicationsByJobId = useMemo(
+    () => new Map((applications ?? []).map((application) => [application.jobOffer.id, application])),
+    [applications],
+  );
+
   const displayed = useMemo(
     () => jobs?.filter((job) => (
       (filter === 'all' || job.status === filter)
@@ -228,7 +249,7 @@ export default function JobsPage() {
     <>
       <PageHeader
         title="Offres"
-        description="Une carte par offre canonique, même lorsqu’elle est détectée sur plusieurs sources."
+        description="Examine l’offre, son score et les éléments de candidature déjà préparés depuis un seul espace."
         actions={
           <div className="actions">
             <Link className="btn secondary" href="/connecteurs">Gérer les connecteurs</Link>
@@ -327,6 +348,7 @@ export default function JobsPage() {
         ) : (
           displayed.map((job) => {
             const jobOccurrences = occurrences(job);
+            const application = applicationsByJobId.get(job.id);
 
             return (
               <div className="list-row" key={job.id}>
@@ -358,6 +380,7 @@ export default function JobsPage() {
                       CV conseillé : <strong>{job.recommendedCv.name}</strong>
                     </div>
                   )}
+                  {application && <OfferApplicationSummary application={application} />}
                   <details style={{ marginTop: 8 }}>
                     <summary className="small muted">Pourquoi ce score ?</summary>
                     <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>

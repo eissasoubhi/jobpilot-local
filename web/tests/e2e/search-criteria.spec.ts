@@ -77,8 +77,8 @@ test('search criteria page shows query performance and updates France Travail ke
 
   await expect(page.getByRole('heading', { name: 'Critères de recherche', level: 1 })).toBeVisible();
   await expect(page.getByText('Requêtes réellement envoyées à France Travail')).toBeVisible();
-  await expect(page.getByText('Symfony', { exact: true })).toBeVisible();
-  await expect(page.getByText('Backend PHP Symfony', { exact: true })).toBeVisible();
+  await expect(page.locator('span.badge.blue', { hasText: /^Symfony$/ })).toBeVisible();
+  await expect(page.locator('span.badge.blue', { hasText: /^Backend PHP Symfony$/ })).toBeVisible();
   await expect(page.getByText('Tri : Offres les plus récentes')).toBeVisible();
   await expect(page.getByText('Performance de la dernière synchronisation')).toBeVisible();
   await expect(page.getByText('Aucun résultat')).toBeVisible();
@@ -96,7 +96,7 @@ test('search criteria page shows query performance and updates France Travail ke
     skills: ['PHP', 'React'],
   });
   await expect(page.getByText('Les critères de recherche ont été enregistrés.')).toBeVisible();
-  await expect(page.getByText('Full Stack Symfony React', { exact: true })).toBeVisible();
+  await expect(page.locator('span.badge.blue', { hasText: /^Full Stack Symfony React$/ })).toBeVisible();
   await expect(page.getByText('Full-Stack Symfony/React', { exact: true })).toBeVisible();
   await expect(page.getByText('Critères modifiés depuis ce test')).toBeVisible();
 });

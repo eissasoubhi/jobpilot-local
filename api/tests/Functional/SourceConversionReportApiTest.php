@@ -51,7 +51,7 @@ final class SourceConversionReportApiTest extends WebTestCase
             self::assertSame(1, $rows[$code]['submitted']);
             self::assertSame(1, $rows[$code]['responses']);
             self::assertSame(1, $rows[$code]['interviews']);
-            self::assertSame(100.0, $rows[$code]['interviewRate']);
+            self::assertEquals(100.0, $rows[$code]['interviewRate']);
         }
     }
 }

@@ -8,14 +8,26 @@ use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
+use App\JobDiscovery\Domain\Connector\SearchDiagnosticsConnector;
 use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-final class FranceTravailJobProvider implements GovernedJobSourceConnector, VersionedJobSourceConnector
+final class FranceTravailJobProvider implements GovernedJobSourceConnector, SearchDiagnosticsConnector, VersionedJobSourceConnector
 {
     private const DEFAULT_TOKEN_ENDPOINT = 'https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire';
     private const DEFAULT_SEARCH_ENDPOINT = 'https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search';
+
+    /** @var array<string, mixed> */
+    private array $searchDiagnostics = [
+        'requestedQueries' => 0,
+        'completedQueries' => 0,
+        'queriesWithResults' => 0,
+        'queriesWithoutResults' => 0,
+        'received' => 0,
+        'uniqueOffers' => 0,
+        'queries' => [],
+    ];
 
     public function __construct(
         private HttpClientInterface $httpClient,
@@ -70,8 +82,17 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
             : 'Renseigne FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET dans le fichier .env.';
     }
 
+    /** @return array<string, mixed> */
+    public function searchDiagnostics(): array
+    {
+        return $this->searchDiagnostics;
+    }
+
     public function search(array $targetJobs, array $skills): array
     {
+        $queries = $this->queries($targetJobs, $skills);
+        $this->resetSearchDiagnostics($queries);
+
         if (!$this->isConfigured()) {
             return [];
         }
@@ -80,7 +101,7 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
         $offers = [];
         $seen = [];
 
-        foreach ($this->queries($targetJobs, $skills) as $query) {
+        foreach ($queries as $query) {
             $limit = max(1, min(150, $this->resultsPerQuery));
             $response = $this->httpClient->request('GET', $this->searchEndpoint, [
                 'headers' => [
@@ -97,19 +118,26 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
 
             $statusCode = $response->getStatusCode();
             if ($statusCode === 204) {
+                $this->recordSearch($query, $statusCode, 0, 0, 'NO_RESULTS');
                 continue;
             }
 
             if (!in_array($statusCode, [200, 206], true)) {
+                $this->recordSearch($query, $statusCode, 0, 0, 'ERROR');
                 throw new \RuntimeException(sprintf('France Travail a répondu avec le statut HTTP %d.', $statusCode));
             }
 
             $payload = $response->toArray(false);
-            foreach (is_array($payload['resultats'] ?? null) ? $payload['resultats'] : [] as $job) {
+            $results = is_array($payload['resultats'] ?? null) ? $payload['resultats'] : [];
+            $receivedForQuery = 0;
+            $uniqueOffersAdded = 0;
+
+            foreach ($results as $job) {
                 if (!is_array($job)) {
                     continue;
                 }
 
+                ++$receivedForQuery;
                 $normalized = $this->normalize($job);
                 $externalId = (string) ($normalized['externalId'] ?? '');
                 if ($externalId === '' || isset($seen[$externalId])) {
@@ -118,7 +146,16 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
 
                 $seen[$externalId] = true;
                 $offers[] = $normalized;
+                ++$uniqueOffersAdded;
             }
+
+            $this->recordSearch(
+                $query,
+                $statusCode,
+                $receivedForQuery,
+                $uniqueOffersAdded,
+                $receivedForQuery > 0 ? 'RESULTS' : 'NO_RESULTS',
+            );
         }
 
         return $offers;
@@ -204,6 +241,48 @@ final class FranceTravailJobProvider implements GovernedJobSourceConnector, Vers
         }
 
         return mb_substr($value, 0, $maximumLength);
+    }
+
+    /**
+     * @param list<string> $queries
+     */
+    private function resetSearchDiagnostics(array $queries): void
+    {
+        $this->searchDiagnostics = [
+            'requestedQueries' => count($queries),
+            'completedQueries' => 0,
+            'queriesWithResults' => 0,
+            'queriesWithoutResults' => 0,
+            'received' => 0,
+            'uniqueOffers' => 0,
+            'queries' => [],
+        ];
+    }
+
+    private function recordSearch(
+        string $query,
+        int $statusCode,
+        int $received,
+        int $uniqueOffersAdded,
+        string $outcome,
+    ): void {
+        ++$this->searchDiagnostics['completedQueries'];
+        $this->searchDiagnostics['received'] += max(0, $received);
+        $this->searchDiagnostics['uniqueOffers'] += max(0, $uniqueOffersAdded);
+
+        if ($outcome === 'RESULTS') {
+            ++$this->searchDiagnostics['queriesWithResults'];
+        } elseif ($outcome === 'NO_RESULTS') {
+            ++$this->searchDiagnostics['queriesWithoutResults'];
+        }
+
+        $this->searchDiagnostics['queries'][] = [
+            'query' => $query,
+            'statusCode' => $statusCode,
+            'outcome' => $outcome,
+            'received' => max(0, $received),
+            'uniqueOffersAdded' => max(0, $uniqueOffersAdded),
+        ];
     }
 
     /**

@@ -18,7 +18,7 @@ Organizations with the same normalized name are merged. Their roles remain expli
 GET /api/crm/organizations
 ```
 
-The response contains global organization/contact/annotation counts and one entry per organization with:
+The response contains global organization, contact, annotation and contact-correction counts. Each organization includes:
 
 - organization roles;
 - offer, application, positioning and linked-message counts;
@@ -31,7 +31,15 @@ The response contains global organization/contact/annotation counts and one entr
 
 A display-name correction changes only the returned `name`. The stable organization `key` and `sourceName` remain unchanged.
 
-## Manual annotation endpoint
+Each contact exposes its stable `key`, its effective `name`, `email` and `phone`, and the original values as:
+
+- `sourceName`;
+- `sourceEmail`;
+- `sourcePhone`.
+
+An optional `correction` contains `correctedName`, `correctedEmail`, `correctedPhone` and `updatedAt`. A null correction field falls back to the corresponding source value. The stable contact key never changes, even when the displayed email is corrected.
+
+## Manual organization annotation endpoint
 
 ```text
 PUT /api/crm/organizations/{organizationKey}/annotation
@@ -54,6 +62,36 @@ The display name is limited to one line and 255 characters. The note is limited 
 
 Annotations are stored in `crm_organization_annotation`, separately from offers, applications, positionings and Gmail metadata. They never rewrite source records or alter organization grouping.
 
+## Manual contact correction endpoint
+
+```text
+PUT /api/crm/organizations/{organizationKey}/contacts/{contactKey}/correction
+```
+
+Both path values must identify a contact currently derived inside that exact organization. URL-encode the stable keys, including spaces and `@` characters.
+
+Example payload:
+
+```json
+{
+  "name": "Jane Recruiter France",
+  "email": "jane.france@acme.test",
+  "phone": "+33 6 10 20 30 40"
+}
+```
+
+All fields are optional. Empty values clear the corresponding correction. Sending all three fields empty removes an existing correction instead of keeping an empty row.
+
+Validation rules:
+
+- name: one line, at most 255 characters;
+- email: a valid address, normalized to lowercase, at most 254 characters;
+- phone: one line, at most 64 characters, containing at least one digit.
+
+An unknown organization/contact pair returns `404`. Invalid correction content returns `422`.
+
+Corrections are stored in `crm_contact_correction`, keyed by the immutable organization and contact keys. They do not update the recruiter data in a positioning, the sender or reply-to of a Gmail message, or an application address. Stale corrections are ignored when the derived contact no longer exists.
+
 ## Interface
 
 The **CRM** entry in the main navigation opens `/crm`.
@@ -67,23 +105,31 @@ The page provides:
 - direct `mailto:` and `tel:` actions for validated data;
 - application and positioning status summaries;
 - links back to recent original offers when their URL is available;
-- a local editor for the display-name correction and internal note;
-- an explicit clear action that removes only the annotation after confirmation.
+- a local editor for the organization display-name correction and internal note;
+- an explicit clear action that removes only the organization annotation after confirmation.
 
-A corrected card displays both the CRM name and the original source name. Saving or clearing re-fetches the complete server directory so annotation counts, sorting and overlays remain authoritative.
+A corrected organization card displays both the CRM name and the original source name. Saving or clearing re-fetches the complete server directory so annotation counts, sorting and overlays remain authoritative.
 
-The editor shows the immutable organization key and original source name before saving. Errors remain inside the modal, and a failed save does not close the editor or modify the visible directory.
+The organization editor shows the immutable organization key and original source name before saving. Errors remain inside the modal, and a failed save does not close the editor or modify the visible directory.
+
+The contact-correction API is available in this backend delivery. Editing contact corrections from the CRM interface is a separate UI delivery.
 
 ## Contact rules
 
-Contacts are merged by validated lowercase email address. A positioning recruiter and a linked Gmail sender using the same address become one contact with both roles.
+Contacts are merged by validated lowercase source email address. A positioning recruiter and a linked Gmail sender using the same source address become one contact with both roles.
 
 An application address remains labeled as an application address. A Gmail header without a valid email address does not create a contact. JobPilot does not infer a person from a company domain, message text or display name alone.
 
+A corrected displayed email does not change contact deduplication or the stable key. This prevents a manual correction from silently splitting or merging source records.
+
 ## Privacy
 
-The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. Manual notes are local application data and are returned only through the local CRM endpoint.
+The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. Manual notes and corrections are local application data and are returned only through the local CRM endpoint.
+
+## Rollback
+
+The migration is reversible and drops only `crm_contact_correction`. Rolling it back removes local contact overlays but leaves every application, positioning, offer and Gmail-derived source value unchanged. Export local corrections first when they must be retained.
 
 ## Current limits
 
-Manual contact corrections, organization merge overrides and follow-up tasks remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while annotations stay attached to the stable organization key.
+The contact-correction editor, organization merge overrides and follow-up tasks remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while local annotations and corrections stay attached to stable derived keys.

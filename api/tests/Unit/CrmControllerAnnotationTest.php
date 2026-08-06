@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Controller\CrmController;
 use App\Crm\Application\OrganizationCrmAnnotationApplier;
+use App\Crm\Application\OrganizationCrmContactCorrectionApplier;
 use App\Crm\Application\OrganizationCrmDirectoryBuilder;
 use App\Entity\Application;
 use App\Entity\CrmOrganizationAnnotation;
@@ -57,6 +58,7 @@ final class CrmControllerAnnotationTest extends TestCase
             $entityManager,
             new OrganizationCrmDirectoryBuilder(),
             new OrganizationCrmAnnotationApplier(),
+            new OrganizationCrmContactCorrectionApplier(),
         );
         $request = Request::create(
             '/api/crm/organizations/acme%20consulting/annotation',
@@ -91,6 +93,7 @@ final class CrmControllerAnnotationTest extends TestCase
             $entityManager,
             new OrganizationCrmDirectoryBuilder(),
             new OrganizationCrmAnnotationApplier(),
+            new OrganizationCrmContactCorrectionApplier(),
         );
 
         $response = $controller->updateAnnotation(

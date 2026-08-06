@@ -104,10 +104,16 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Nom source et clé stable visibles avant chaque modification.
 - Rafraîchissement complet de l’annuaire après sauvegarde pour conserver les compteurs et le tri serveur.
 - Recherche étendue aux noms corrigés, noms sources et notes CRM.
+- Corrections de nom, e-mail et téléphone des contacts persistées dans une table séparée.
+- Valeurs sources et clé stable du contact conservées dans la réponse CRM.
+- Overlay partiel : chaque champ non corrigé continue d’utiliser sa valeur source.
+- Endpoint de correction limité aux contacts réellement dérivés dans l’organisation demandée.
+- Validation stricte des noms, adresses e-mail et téléphones ; suppression des corrections entièrement vides.
+- Aucun changement de déduplication ou de données Gmail/positionnement après une correction manuelle.
 
 ### Prochaines livraisons
 
-- Corrections manuelles de contacts sans modifier les messages ou positionnements sources.
+- Édition des corrections de contacts depuis l’interface CRM.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.
 

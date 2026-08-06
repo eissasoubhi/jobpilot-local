@@ -37,6 +37,6 @@ test('shows application conversion reporting from stored applications', async ({
   await page.goto('/reporting');
   await expect(page.getByRole('heading', { name: 'Reporting candidatures' })).toBeVisible();
   await expect(page.getByText('1 préparée(s)')).toBeVisible();
-  await expect(page.getByText('1 entretien(s)')).toBeVisible();
+  await expect(page.getByText('1 entretien(s)').first()).toBeVisible();
   await expect(page.getByText('France Travail')).toBeVisible();
 });

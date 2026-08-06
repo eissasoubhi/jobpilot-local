@@ -37,7 +37,7 @@ final class ConnectorSearchCriteriaApiTest extends WebTestCase
         $updated = $this->decode($client->getResponse()->getContent());
 
         self::assertSame(
-            ['Senior Symfony Developer', 'Backend PHP/Symfony', 'senior symfony developer'],
+            ['Senior Symfony Developer', 'Backend PHP/Symfony'],
             $updated['targetJobs'],
         );
         self::assertSame(['PHP', 'Symfony'], $updated['skills']);

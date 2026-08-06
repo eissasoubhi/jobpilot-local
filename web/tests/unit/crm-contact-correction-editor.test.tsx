@@ -1,18 +1,22 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { CrmContactCorrectionEditor } from '@/components/CrmContactCorrectionEditor';
+import {
+  CrmContactCorrectionEditor,
+  type EditableCrmContact,
+} from '@/components/CrmContactCorrectionEditor';
+import type { CrmOrganization } from '@/lib/types';
 
-const organization = {
-  key: 'acme', name: 'Acme', sourceName: 'ACME', roles: ['COMPANY'] as const,
+const organization: CrmOrganization = {
+  key: 'acme', name: 'Acme', sourceName: 'ACME', roles: ['COMPANY'],
   offerCount: 0, applicationCount: 0, positioningCount: 0, messageCount: 0,
   contactCount: 1, applicationStatuses: {}, positioningStatuses: {}, contacts: [], latestOffers: [],
 };
 
-const contact = {
+const contact: EditableCrmContact = {
   key: 'contact-1', name: 'Corrected Name', email: 'corrected@example.com', phone: '+33102030405',
   sourceName: 'Source Name', sourceEmail: 'source@example.com', sourcePhone: '+33100000000',
-  roles: ['RECRUITER'] as const, messageCount: 0,
+  roles: ['RECRUITER'], messageCount: 0,
 };
 
 describe('CrmContactCorrectionEditor', () => {

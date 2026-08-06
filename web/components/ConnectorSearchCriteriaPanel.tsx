@@ -33,8 +33,9 @@ export function parseCriteriaLines(value: string): string[] {
 
   for (const line of value.split(/\r?\n/)) {
     const normalized = line.replace(/\s+/g, ' ').trim();
-    if (normalized !== '') {
-      unique.set(normalized.toLocaleLowerCase('fr'), normalized);
+    const key = normalized.toLocaleLowerCase('fr');
+    if (normalized !== '' && !unique.has(key)) {
+      unique.set(key, normalized);
     }
   }
 

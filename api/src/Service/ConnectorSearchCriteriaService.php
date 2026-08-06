@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\ConnectorSyncRun;
+use App\Entity\SourceConnector;
 use App\JobDiscovery\Application\ConnectorRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -85,6 +87,7 @@ final class ConnectorSearchCriteriaService
             'targetJobs' => $targetJobs,
             'skills' => $skills,
             'effectiveQueries' => $this->effectiveQueries($targetJobs, $skills),
+            'latestSearchDiagnostics' => $this->latestSearchDiagnostics($code),
             'fixedCriteria' => [
                 ['key' => 'sort', 'label' => 'Tri', 'value' => 'Offres les plus récentes'],
                 ['key' => 'limit', 'label' => 'Limite', 'value' => '6 requêtes maximum par synchronisation'],
@@ -96,6 +99,30 @@ final class ConnectorSearchCriteriaService
             ],
             'note' => 'Ces intitulés et compétences sont les critères globaux de JobPilot. Les modifier ici met aussi à jour les réglages utilisés par les autres connecteurs compatibles.',
         ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function latestSearchDiagnostics(string $code): ?array
+    {
+        $connector = $this->entityManager->getRepository(SourceConnector::class)->findOneBy(['code' => $code]);
+        if (!$connector instanceof SourceConnector) {
+            return null;
+        }
+
+        $run = $this->entityManager->getRepository(ConnectorSyncRun::class)->findOneBy(
+            ['connector' => $connector],
+            ['startedAt' => 'DESC'],
+        );
+        if (!$run instanceof ConnectorSyncRun) {
+            return null;
+        }
+
+        $serialized = $run->toArray();
+        $details = is_array($serialized['details'] ?? null) ? $serialized['details'] : [];
+
+        return is_array($details['searchDiagnostics'] ?? null)
+            ? $details['searchDiagnostics']
+            : null;
     }
 
     /** @return list<string> */

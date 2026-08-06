@@ -91,8 +91,8 @@ describe('ConnectorSearchCriteriaPanel', () => {
     render(<ConnectorSearchCriteriaPanel connectorCode="france-travail" />);
 
     expect(await screen.findByText('Requêtes réellement envoyées à France Travail')).toBeInTheDocument();
-    expect(screen.getByText('Symfony')).toBeInTheDocument();
-    expect(screen.getByText('Backend PHP Symfony')).toBeInTheDocument();
+    expect(screen.getByText('Symfony', { selector: 'span.badge.blue' })).toBeInTheDocument();
+    expect(screen.getByText('Backend PHP Symfony', { selector: 'span.badge.blue' })).toBeInTheDocument();
     expect(screen.getByText('Tri : Offres les plus récentes')).toBeInTheDocument();
     expect(screen.getByText('Performance de la dernière synchronisation')).toBeInTheDocument();
     expect(screen.getByText('Aucun résultat')).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe('ConnectorSearchCriteriaPanel', () => {
     });
 
     expect(await screen.findByText('Les critères de recherche ont été enregistrés.')).toBeInTheDocument();
-    expect(screen.getByText('Full Stack Symfony React')).toBeInTheDocument();
+    expect(screen.getByText('Full Stack Symfony React', { selector: 'span.badge.blue' })).toBeInTheDocument();
     expect(screen.getByText('Critères modifiés depuis ce test')).toBeInTheDocument();
   });
 });

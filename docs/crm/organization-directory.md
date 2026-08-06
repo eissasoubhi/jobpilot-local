@@ -94,9 +94,9 @@ Corrections are stored in `crm_contact_correction`, keyed by the immutable organ
 
 ## Interface
 
-The **CRM** entry in the main navigation opens `/crm`.
+The **CRM** entry in the main navigation opens `/crm`. The dedicated **Contacts CRM** entry opens `/crm/contacts`.
 
-The page provides:
+The organization page provides:
 
 - global organization, validated-contact, annotated-record and visible-result counts;
 - accent-insensitive search across corrected names, original source names, notes, contacts, emails, phone numbers and recent offer titles;
@@ -108,11 +108,19 @@ The page provides:
 - a local editor for the organization display-name correction and internal note;
 - an explicit clear action that removes only the organization annotation after confirmation.
 
+The contact page provides:
+
+- accent-insensitive search across displayed and source names, emails, phones and organization names;
+- filters for all, locally corrected or uncorrected contacts;
+- editing and clearing of local contact corrections;
+- counters for total, corrected and currently visible contacts;
+- CSV export limited to the currently visible filtered contacts.
+
+The CSV contains the organization, displayed contact values, roles, correction status, original source values, last-contact date and linked-message count. It uses UTF-8 with a byte-order mark and semicolon separators for common French spreadsheet applications. Every cell is quoted, and values starting with `=`, `+`, `-` or `@` are prefixed with an apostrophe to prevent spreadsheet formula execution. Exporting never changes CRM or source records.
+
 A corrected organization card displays both the CRM name and the original source name. Saving or clearing re-fetches the complete server directory so annotation counts, sorting and overlays remain authoritative.
 
-The organization editor shows the immutable organization key and original source name before saving. Errors remain inside the modal, and a failed save does not close the editor or modify the visible directory.
-
-The contact-correction API is available in this backend delivery. Editing contact corrections from the CRM interface is a separate UI delivery.
+The organization and contact editors show immutable keys and original source values before saving. Errors remain inside the modal, and a failed save does not close the editor or modify the visible directory.
 
 ## Contact rules
 
@@ -126,10 +134,14 @@ A corrected displayed email does not change contact deduplication or the stable 
 
 The directory exposes no Gmail body, snippet, OAuth token, CV content or cover letter. Manual notes and corrections are local application data and are returned only through the local CRM endpoint.
 
+The CSV export contains only fields already visible in the local CRM contact directory. It is generated entirely in the browser and is not uploaded to an external service.
+
 ## Rollback
 
-The migration is reversible and drops only `crm_contact_correction`. Rolling it back removes local contact overlays but leaves every application, positioning, offer and Gmail-derived source value unchanged. Export local corrections first when they must be retained.
+The CSV export has no migration and can be rolled back by removing the frontend action and helper. Existing organization annotations, contact corrections and source records remain unchanged.
+
+The contact-correction migration remains reversible and drops only `crm_contact_correction`. Rolling it back removes local contact overlays but leaves every application, positioning, offer and Gmail-derived source value unchanged.
 
 ## Current limits
 
-The contact-correction editor, organization merge overrides and follow-up tasks remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while local annotations and corrections stay attached to stable derived keys.
+Organization merge overrides, follow-up tasks and a full chronological application cycle remain separate roadmap deliveries. Because the directory is generated from current records, correcting an offer, positioning or linked message automatically changes the next response while local annotations and corrections stay attached to stable derived keys.

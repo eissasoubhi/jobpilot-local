@@ -93,8 +93,14 @@ final class SourceConversionReportService
             'salaryProposalCount' => 0,
             'proposedTjmTotal' => 0,
             'proposedSalaryTotal' => 0,
+            'matchScoreTotal' => 0,
+            'highestMatchScore' => 0,
         ];
         ++$rows[$code]['offers'];
+
+        $score = $job->getScore();
+        $rows[$code]['matchScoreTotal'] += $score;
+        $rows[$code]['highestMatchScore'] = max($rows[$code]['highestMatchScore'], $score);
 
         $proposedTjm = $job->getProposedTjm();
         if ($proposedTjm !== null) {
@@ -137,13 +143,16 @@ final class SourceConversionReportService
             $row['applicationRate'] = $row['offers'] > 0 ? round($row['applications'] * 100 / $row['offers'], 1) : 0.0;
             $row['responseRate'] = $row['submitted'] > 0 ? round($row['responses'] * 100 / $row['submitted'], 1) : 0.0;
             $row['interviewRate'] = $row['submitted'] > 0 ? round($row['interviews'] * 100 / $row['submitted'], 1) : 0.0;
+            $row['averageMatchScore'] = $row['offers'] > 0
+                ? round($row['matchScoreTotal'] / $row['offers'], 1)
+                : 0.0;
             $row['averageProposedTjm'] = $row['tjmProposalCount'] > 0
                 ? (int) round($row['proposedTjmTotal'] / $row['tjmProposalCount'])
                 : null;
             $row['averageProposedSalary'] = $row['salaryProposalCount'] > 0
                 ? (int) round($row['proposedSalaryTotal'] / $row['salaryProposalCount'])
                 : null;
-            unset($row['proposedTjmTotal'], $row['proposedSalaryTotal']);
+            unset($row['matchScoreTotal'], $row['proposedTjmTotal'], $row['proposedSalaryTotal']);
 
             return $row;
         }, $rows));

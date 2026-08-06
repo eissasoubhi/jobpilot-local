@@ -21,9 +21,12 @@ Cette documentation est la référence produit, métier, technique et opération
 ## Connecteurs
 
 - [Contrat, exploitation et ajout d’une source](connectors/overview.md)
+- [Matrice d’acquisition des plateformes](connectors/acquisition-matrix.md)
 - [Santé des connecteurs et détection de rupture](connectors/health-monitoring.md)
 - [Profils de qualité propres aux connecteurs](connectors/quality-profiles.md)
 - [Infrastructure de scraping HTTP contrôlé](connectors/http-scraping.md)
+- [France Travail via l’API Offres d’emploi v2](connectors/france-travail.md)
+- [SmartRecruiters via la Posting API officielle](connectors/smartrecruiters.md)
 - [Symfony Jobs via le flux RSS officiel](connectors/symfony-jobs.md)
 - [Connecteur Gmail et Inbox intelligente](connectors/gmail.md)
 - [Free-Work via Gmail et import assisté](connectors/free-work.md)

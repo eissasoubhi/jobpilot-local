@@ -17,9 +17,10 @@ describe('ConnectorRoadmapSection', () => {
 
     expect(screen.getByTestId('roadmap-connector-france-travail')).toHaveTextContent('Opérationnel');
     expect(screen.getByTestId('roadmap-connector-adzuna')).toHaveTextContent('Opérationnel');
+    expect(screen.getByTestId('roadmap-connector-smartrecruiters')).toHaveTextContent('Opérationnel');
   });
 
-  it('shows official, restricted and review states without operational actions', () => {
+  it('shows official, restricted and review states without matrix actions', () => {
     render(<ConnectorRoadmapSection />);
 
     const linkedin = within(screen.getByTestId('roadmap-connector-linkedin'));
@@ -31,8 +32,9 @@ describe('ConnectorRoadmapSection', () => {
     expect(freeWork.getByText(/n’autorise pas une extraction planifiée de la base/i)).toBeInTheDocument();
 
     const smartRecruiters = within(screen.getByTestId('roadmap-connector-smartrecruiters'));
-    expect(smartRecruiters.getByText('API planifiée')).toBeInTheDocument();
+    expect(smartRecruiters.getByText('Opérationnel')).toBeInTheDocument();
     expect(smartRecruiters.getByText('API officielle')).toBeInTheDocument();
+    expect(smartRecruiters.getByText(/configuration requise/i)).toBeInTheDocument();
 
     const eures = within(screen.getByTestId('roadmap-connector-eures'));
     expect(eures.getByText('Canal en revue')).toBeInTheDocument();

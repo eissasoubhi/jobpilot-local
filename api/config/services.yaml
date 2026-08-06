@@ -13,6 +13,11 @@ parameters:
   env(FRANCE_TRAVAIL_TOKEN_ENDPOINT): 'https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire'
   env(FRANCE_TRAVAIL_SEARCH_ENDPOINT): 'https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search'
   env(FRANCE_TRAVAIL_RESULTS_PER_QUERY): '50'
+  env(SMARTRECRUITERS_API_TOKEN): ''
+  env(SMARTRECRUITERS_COMPANY_IDENTIFIERS): ''
+  env(SMARTRECRUITERS_PAGES): '1'
+  env(SMARTRECRUITERS_RESULTS_PER_PAGE): '100'
+  env(SMARTRECRUITERS_MAX_DETAILS): '20'
   env(ARBEITNOW_ENABLED): '1'
   env(ARBEITNOW_PAGES): '3'
   env(SYMFONY_JOBS_RSS_ENABLED): '1'
@@ -67,6 +72,14 @@ services:
       $tokenEndpoint: '%env(FRANCE_TRAVAIL_TOKEN_ENDPOINT)%'
       $searchEndpoint: '%env(FRANCE_TRAVAIL_SEARCH_ENDPOINT)%'
       $resultsPerQuery: '%env(int:FRANCE_TRAVAIL_RESULTS_PER_QUERY)%'
+
+  App\Service\SmartRecruitersJobProvider:
+    arguments:
+      $apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
+      $companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
+      $pages: '%env(int:SMARTRECRUITERS_PAGES)%'
+      $resultsPerPage: '%env(int:SMARTRECRUITERS_RESULTS_PER_PAGE)%'
+      $maxDetails: '%env(int:SMARTRECRUITERS_MAX_DETAILS)%'
 
   App\Service\SymfonyJobsRssProvider:
     arguments:

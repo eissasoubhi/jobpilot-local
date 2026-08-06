@@ -19,20 +19,16 @@ Un connecteur existe dans le registre backend et dispose de sa propre politique 
 Plateformes actuellement représentées dans la matrice :
 
 - Adzuna, via son API ;
-- France Travail, via l’API officielle Offres d’emploi v2.
+- France Travail, via l’API officielle Offres d’emploi v2 ;
+- SmartRecruiters, via la Posting API officielle et une liste bornée d’entreprises configurées par l’utilisateur.
+
+Un connecteur opérationnel peut rester en **configuration requise** tant que ses identifiants ou paramètres obligatoires sont absents. Dans ce cas, aucune requête externe n’est exécutée.
 
 ### `PLANNED`
 
 Un canal officiel réutilisable a été identifié, mais le connecteur n’est pas encore développé ou configuré.
 
-SmartRecruiters est la première source dans cet état. Son API officielle **Posting API** expose les offres publiques actives d’une entreprise et fournit des filtres de recherche, de pays, de région, de ville et de mode de travail.
-
-Références officielles :
-
-- <https://developers.smartrecruiters.com/docs/posting-api>
-- <https://developers.smartrecruiters.com/reference/v1listpostings>
-
-L’implémentation JobPilot devra utiliser une liste bornée d’identifiants d’entreprises, respecter l’authentification officielle et limiter la pagination et le nombre de requêtes.
+Une source passe dans cet état uniquement après confirmation de son API ou de son flux officiel. Elle ne devient `OPERATIONAL` qu’après ajout au registre backend, politique de collecte, limites, tests et documentation.
 
 ### `EMAIL_OR_EXTENSION_ONLY`
 

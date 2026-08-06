@@ -116,10 +116,10 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
   {
     code: 'smartrecruiters',
     name: 'SmartRecruiters',
-    status: 'PLANNED',
+    status: 'OPERATIONAL',
     modes: ['API'],
-    note: 'La Posting API officielle expose les offres publiques actives d’une entreprise et fournit des filtres de recherche, de lieu et de mode de travail.',
-    nextStep: 'Développer un connecteur configurable avec un accès API autorisé et une liste bornée d’identifiants d’entreprises.',
+    note: 'Le connecteur de la Posting API officielle est enregistré. Il reste en configuration requise tant que le jeton et les identifiants d’entreprises ne sont pas renseignés.',
+    nextStep: 'Configurer une liste bornée d’entreprises, puis surveiller la qualité des champs et les quotas.',
   },
   underReview('getyourjob', 'GetYourJob'),
   underReview('le-studio-tech', 'Le Studio Tech'),

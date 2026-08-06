@@ -12,7 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class SourceConversionReportApiTest extends WebTestCase
 {
-    public function testReportAttributesApplicationOutcomeToEveryOfferSource(): void
+    public function testReportAttributesApplicationOutcomeAndCompensationToEveryOfferSource(): void
     {
         $client = static::createClient();
         $em = static::getContainer()->get(EntityManagerInterface::class);
@@ -24,6 +24,7 @@ final class SourceConversionReportApiTest extends WebTestCase
             'title' => 'Senior Symfony Developer',
             'company' => 'Example',
         ]);
+        $job->setEvaluation('fr', 90, [], 500, 60000, 'PREPARED', null);
         $first = new JobSourceOccurrence($job, 'report-primary', 'Report Primary', 'report-job-1');
         $second = new JobSourceOccurrence($job, 'report-secondary', 'Report Secondary', 'report-job-2');
         $application = (new Application($job))->fill([
@@ -52,6 +53,10 @@ final class SourceConversionReportApiTest extends WebTestCase
             self::assertSame(1, $rows[$code]['responses']);
             self::assertSame(1, $rows[$code]['interviews']);
             self::assertEquals(100.0, $rows[$code]['interviewRate']);
+            self::assertSame(1, $rows[$code]['tjmProposalCount']);
+            self::assertSame(500, $rows[$code]['averageProposedTjm']);
+            self::assertSame(1, $rows[$code]['salaryProposalCount']);
+            self::assertSame(60000, $rows[$code]['averageProposedSalary']);
         }
     }
 }

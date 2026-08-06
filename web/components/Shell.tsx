@@ -7,8 +7,8 @@ const links = [
   ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/connecteurs', 'Connecteurs', '⛓'],
   ['/criteres-recherche', 'Critères de recherche', '⌕'],
   ['/candidatures', 'Candidatures', '✓'], ['/crm', 'CRM', '◇'], ['/crm/contacts', 'Contacts CRM', '♙'],
-  ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'], ['/cv', 'Mes CV', '▤'],
-  ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
+  ['/crm/follow-ups', 'Relances CRM', '◷'], ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'],
+  ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

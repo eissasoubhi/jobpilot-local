@@ -89,7 +89,7 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 
 ### Fondation CRM — livrée
 
-- Annuaire en lecture seule dérivé des candidatures, positionnements et messages Gmail déjà associés.
+- Annuaire dérivé des candidatures, positionnements et messages Gmail déjà associés.
 - Regroupement déterministe des sociétés, agences et clients finaux par nom normalisé.
 - Contacts recruteurs, adresses de candidature et correspondants Gmail conservés avec leur origine.
 - Compteurs d’offres, candidatures, positionnements, messages et statuts par organisation.
@@ -101,8 +101,6 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Clé et nom généré d’origine toujours conservés dans la réponse CRM.
 - Endpoint d’annotation validé, effaçable et limité aux organisations réellement présentes.
 - Éditeur CRM pour enregistrer ou effacer le nom affiché et la note interne.
-- Nom source et clé stable visibles avant chaque modification.
-- Rafraîchissement complet de l’annuaire après sauvegarde pour conserver les compteurs et le tri serveur.
 - Recherche étendue aux noms corrigés, noms sources et notes CRM.
 - Corrections de nom, e-mail et téléphone des contacts persistées dans une table séparée.
 - Valeurs sources et clé stable du contact conservées dans la réponse CRM.
@@ -110,12 +108,16 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Endpoint de correction limité aux contacts réellement dérivés dans l’organisation demandée.
 - Validation stricte des noms, adresses e-mail et téléphones ; suppression des corrections entièrement vides.
 - Aucun changement de déduplication ou de données Gmail/positionnement après une correction manuelle.
+- Interface dédiée d’édition et de suppression des corrections de contacts.
+- Recherche accent-insensible et filtres corrigés/non corrigés sur les contacts.
+- Export CSV local des contacts actuellement filtrés, avec valeurs affichées et valeurs sources séparées.
+- Protection contre l’exécution de formules lors de l’ouverture du CSV dans un tableur.
 
 ### Prochaines livraisons
 
-- Édition des corrections de contacts depuis l’interface CRM.
 - Tâches et rappels de relance.
 - Vue chronologique complète du cycle de candidature.
+- Règles de fusion manuelle des organisations, après clarification du comportement produit.
 
 ## Phase 6 — Reporting
 

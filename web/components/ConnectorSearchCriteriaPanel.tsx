@@ -91,9 +91,13 @@ export function parseCriteriaLines(value: string): string[] {
 
 interface ConnectorSearchCriteriaPanelProps {
   connectorCode: string;
+  allowGlobalEditing?: boolean;
 }
 
-export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchCriteriaPanelProps) {
+export function ConnectorSearchCriteriaPanel({
+  connectorCode,
+  allowGlobalEditing = true,
+}: ConnectorSearchCriteriaPanelProps) {
   const [criteria, setCriteria] = useState<ConnectorSearchCriteria | null>(null);
   const [editing, setEditing] = useState(false);
   const [targetJobs, setTargetJobs] = useState('');
@@ -186,7 +190,13 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
             <h4 id={`connector-criteria-${connectorCode}`} style={{ margin: 0 }}>
               Critères de recherche
             </h4>
-            {criteria && <p className="small" style={{ marginBottom: 0 }}>{criteria.note}</p>}
+            {criteria && (
+              <p className="small" style={{ marginBottom: 0 }}>
+                {allowGlobalEditing
+                  ? criteria.note
+                  : 'Aperçu calculé à partir des critères globaux enregistrés dans la section précédente.'}
+              </p>
+            )}
           </div>
           {criteria && !editing && (
             <div className="actions">
@@ -198,17 +208,19 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
               >
                 {testing ? 'Test en cours…' : 'Tester ces critères maintenant'}
               </button>
-              <button
-                className="btn secondary small"
-                type="button"
-                disabled={testing}
-                onClick={() => {
-                  setEditing(true);
-                  setMessage('');
-                }}
-              >
-                Modifier les critères
-              </button>
+              {allowGlobalEditing && (
+                <button
+                  className="btn secondary small"
+                  type="button"
+                  disabled={testing}
+                  onClick={() => {
+                    setEditing(true);
+                    setMessage('');
+                  }}
+                >
+                  Modifier les critères
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -297,7 +309,7 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
           </>
         )}
 
-        {criteria && editing && (
+        {criteria && editing && allowGlobalEditing && (
           <div className="stack" style={{ marginTop: 14 }}>
             <label htmlFor={`connector-target-jobs-${connectorCode}`}>
               Intitulés ciblés — un par ligne

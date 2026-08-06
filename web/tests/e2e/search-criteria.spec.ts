@@ -8,13 +8,33 @@ async function fulfillJson(route: Route, body: unknown): Promise<void> {
   });
 }
 
-test('search criteria page edits, tests and refreshes France Travail keywords', async ({ page }) => {
+test('search criteria page edits global keys and tests France Travail queries', async ({ page }) => {
+  let settings = {
+    interfaceLanguage: 'fr',
+    targetJobs: ['Senior Symfony Developer', 'Backend PHP/Symfony'],
+    exclusions: ['Stage'],
+    skills: ['PHP', 'Symfony'],
+    matchingThreshold: 50,
+    defaultIdfTjm: 500,
+    defaultOutsideIdfTjm: 480,
+    defaultRemoteTjm: 480,
+    minimumFreelanceTjm: 300,
+    maximumTjm: 520,
+    minimumCdiSalary: 35000,
+    salaryIncludesTotalCompensation: true,
+    cddSalaryRule: null,
+    autoPrepare: true,
+    autoSubmitEnabled: false,
+    autoSubmitThreshold: 60,
+    autoSubmitDailyLimit: 5,
+    finalSubmissionMode: 'ONE_CLICK',
+  };
   let criteria = {
     code: 'france-travail',
     name: 'France Travail',
     scope: 'GLOBAL',
-    targetJobs: ['Senior Symfony Developer', 'Backend PHP/Symfony'],
-    skills: ['PHP', 'Symfony'],
+    targetJobs: settings.targetJobs,
+    skills: settings.skills,
     effectiveQueries: ['Symfony', 'Backend PHP Symfony'],
     latestSearchDiagnostics: {
       startedAt: '2026-08-06T09:00:00+02:00',
@@ -53,16 +73,23 @@ test('search criteria page edits, tests and refreshes France Travail keywords', 
     },
     note: 'Ces intitulés et compétences sont les critères globaux de JobPilot.',
   };
-  let savedPayload: unknown = null;
+  let savedGlobalPayload: unknown = null;
   let synchronizationRequested = false;
 
-  await page.route('**/api/connectors/france-travail/criteria', async (route) => {
+  await page.route('**/api/settings', async (route) => {
     if (route.request().method() === 'PUT') {
-      savedPayload = route.request().postDataJSON();
-      criteria = {
-        ...criteria,
+      savedGlobalPayload = route.request().postDataJSON();
+      settings = {
+        ...settings,
         targetJobs: ['Full-Stack Symfony/React'],
         skills: ['PHP', 'React'],
+        exclusions: ['Stage', 'Alternance'],
+        matchingThreshold: 65,
+      };
+      criteria = {
+        ...criteria,
+        targetJobs: settings.targetJobs,
+        skills: settings.skills,
         effectiveQueries: ['Full Stack Symfony React'],
         latestSearchDiagnostics: {
           ...criteria.latestSearchDiagnostics,
@@ -71,6 +98,10 @@ test('search criteria page edits, tests and refreshes France Travail keywords', 
       };
     }
 
+    await fulfillJson(route, settings);
+  });
+
+  await page.route('**/api/connectors/france-travail/criteria', async (route) => {
     await fulfillJson(route, criteria);
   });
 
@@ -108,34 +139,33 @@ test('search criteria page edits, tests and refreshes France Travail keywords', 
   await page.goto('/criteres-recherche');
 
   await expect(page.getByRole('heading', { name: 'Critères de recherche', level: 1 })).toBeVisible();
-  await expect(page.getByText('Requêtes réellement envoyées à France Travail')).toBeVisible();
-  await expect(page.locator('span.badge.blue', { hasText: /^Symfony$/ })).toBeVisible();
-  await expect(page.locator('span.badge.blue', { hasText: /^Backend PHP Symfony$/ })).toBeVisible();
-  await expect(page.getByText('Tri : Offres les plus récentes')).toBeVisible();
-  await expect(page.getByText('Performance de la dernière synchronisation')).toBeVisible();
-  await expect(page.getByText('Aucun résultat')).toBeVisible();
-  await expect(page.getByText('3 offre(s) reçue(s)')).toBeVisible();
-  await expect(page.getByText('2 nouvelle(s) offre(s) unique(s)')).toBeVisible();
-  await expect(page.getByText('Correspond aux critères actuels')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Critères globaux — toutes les sources' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Clés réellement utilisées' })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^targetJobs$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^skills$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^exclusions$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^matchingThreshold$/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Modifier les critères' }).click();
-  await page.getByLabel('Intitulés ciblés — un par ligne').fill('Full-Stack Symfony/React');
-  await page.getByLabel('Compétences de repli — une par ligne').fill('PHP\nReact\nphp');
-  await page.getByRole('button', { name: 'Enregistrer les critères' }).click();
+  await page.getByLabel('Postes ciblés globaux — un par ligne').fill('Full-Stack Symfony/React');
+  await page.getByLabel('Compétences globales — une par ligne').fill('PHP\nReact\nphp');
+  await page.getByLabel('Exclusions locales — une par ligne').fill('Stage\nAlternance\nstage');
+  await page.getByLabel('Seuil de préparation automatique').fill('65');
+  await page.getByRole('button', { name: 'Enregistrer les critères globaux' }).click();
 
-  await expect.poll(() => savedPayload).toEqual({
+  await expect.poll(() => savedGlobalPayload).toEqual({
     targetJobs: ['Full-Stack Symfony/React'],
     skills: ['PHP', 'React'],
+    exclusions: ['Stage', 'Alternance'],
+    matchingThreshold: 65,
   });
-  await expect(page.getByText('Les critères de recherche ont été enregistrés.')).toBeVisible();
-  await expect(page.locator('span.badge.blue', { hasText: /^Full Stack Symfony React$/ })).toBeVisible();
-  await expect(page.getByText('Full-Stack Symfony/React', { exact: true })).toBeVisible();
-  await expect(page.getByText('Critères modifiés depuis ce test')).toBeVisible();
+  await expect(page.getByText(/Les critères globaux ont été enregistrés/)).toBeVisible();
 
+  await expect(page.getByText('Requêtes réellement envoyées à France Travail')).toBeVisible();
   await page.getByRole('button', { name: 'Tester ces critères maintenant' }).click();
 
   await expect.poll(() => synchronizationRequested).toBe(true);
   await expect(page.getByText('4 nouvelle(s) offre(s), 0 nouvelle(s) source(s) fusionnée(s).')).toBeVisible();
+  await expect(page.locator('span.badge.blue', { hasText: /^Full Stack Symfony React$/ })).toBeVisible();
   await expect(page.getByText('Correspond aux critères actuels')).toBeVisible();
   await expect(page.getByText('5 offre(s) reçue(s)')).toBeVisible();
   await expect(page.getByText('4 nouvelle(s) offre(s) unique(s)')).toBeVisible();

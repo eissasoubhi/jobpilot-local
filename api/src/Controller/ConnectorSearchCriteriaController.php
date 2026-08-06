@@ -35,16 +35,19 @@ final class ConnectorSearchCriteriaController
     {
         try {
             $payload = $request->toArray();
+        } catch (\Throwable) {
+            return new JsonResponse(
+                ['error' => 'Les critères de recherche doivent être envoyés en JSON.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        try {
             return new JsonResponse($this->criteria->update(
                 $code,
                 $payload['targetJobs'] ?? null,
                 $payload['skills'] ?? null,
             ));
-        } catch (\JsonException) {
-            return new JsonResponse(
-                ['error' => 'Les critères de recherche doivent être envoyés en JSON.'],
-                Response::HTTP_BAD_REQUEST,
-            );
         } catch (\InvalidArgumentException $exception) {
             return new JsonResponse(
                 ['error' => $exception->getMessage()],

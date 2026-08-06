@@ -13,6 +13,32 @@ const initialCriteria = {
   targetJobs: ['Senior Symfony Developer', 'Backend PHP/Symfony'],
   skills: ['PHP', 'Symfony'],
   effectiveQueries: ['Symfony', 'Backend PHP Symfony'],
+  latestSearchDiagnostics: {
+    startedAt: '2026-08-06T09:00:00+02:00',
+    requestedQueries: 2,
+    completedQueries: 2,
+    queriesWithResults: 1,
+    queriesWithoutResults: 1,
+    received: 3,
+    uniqueOffers: 2,
+    matchesCurrentCriteria: true,
+    queries: [
+      {
+        query: 'Symfony',
+        statusCode: 204,
+        outcome: 'NO_RESULTS',
+        received: 0,
+        uniqueOffersAdded: 0,
+      },
+      {
+        query: 'Backend PHP Symfony',
+        statusCode: 206,
+        outcome: 'RESULTS',
+        received: 3,
+        uniqueOffersAdded: 2,
+      },
+    ],
+  },
   fixedCriteria: [
     { key: 'sort', label: 'Tri', value: 'Offres les plus récentes' },
     { key: 'limit', label: 'Limite', value: '6 requêtes maximum par synchronisation' },
@@ -39,7 +65,7 @@ describe('ConnectorSearchCriteriaPanel', () => {
     ]);
   });
 
-  it('shows the effective France Travail queries and saves edited criteria', async () => {
+  it('shows effective queries, latest performance and saves edited criteria', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -54,6 +80,10 @@ describe('ConnectorSearchCriteriaPanel', () => {
           targetJobs: ['Full-Stack Symfony/React'],
           skills: ['PHP', 'React'],
           effectiveQueries: ['Full Stack Symfony React'],
+          latestSearchDiagnostics: {
+            ...initialCriteria.latestSearchDiagnostics,
+            matchesCurrentCriteria: false,
+          },
         }),
       });
     vi.stubGlobal('fetch', fetchMock);
@@ -61,9 +91,14 @@ describe('ConnectorSearchCriteriaPanel', () => {
     render(<ConnectorSearchCriteriaPanel connectorCode="france-travail" />);
 
     expect(await screen.findByText('Requêtes réellement envoyées à France Travail')).toBeInTheDocument();
-    expect(screen.getByText('Symfony')).toBeInTheDocument();
-    expect(screen.getByText('Backend PHP Symfony')).toBeInTheDocument();
+    expect(screen.getByText('Symfony', { selector: 'span.badge.blue' })).toBeInTheDocument();
+    expect(screen.getByText('Backend PHP Symfony', { selector: 'span.badge.blue' })).toBeInTheDocument();
     expect(screen.getByText('Tri : Offres les plus récentes')).toBeInTheDocument();
+    expect(screen.getByText('Performance de la dernière synchronisation')).toBeInTheDocument();
+    expect(screen.getByText('Aucun résultat')).toBeInTheDocument();
+    expect(screen.getByText('3 offre(s) reçue(s)')).toBeInTheDocument();
+    expect(screen.getByText('2 nouvelle(s) offre(s) unique(s)')).toBeInTheDocument();
+    expect(screen.getByText('Correspond aux critères actuels')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Modifier les critères' }));
     fireEvent.change(screen.getByLabelText('Intitulés ciblés — un par ligne'), {
@@ -85,6 +120,7 @@ describe('ConnectorSearchCriteriaPanel', () => {
     });
 
     expect(await screen.findByText('Les critères de recherche ont été enregistrés.')).toBeInTheDocument();
-    expect(screen.getByText('Full Stack Symfony React')).toBeInTheDocument();
+    expect(screen.getByText('Full Stack Symfony React', { selector: 'span.badge.blue' })).toBeInTheDocument();
+    expect(screen.getByText('Critères modifiés depuis ce test')).toBeInTheDocument();
   });
 });

@@ -76,6 +76,22 @@ Exemple de mise à jour :
 }
 ```
 
+## Mesurer l’efficacité des mots-clés
+
+Chaque synchronisation conserve dans `connector_sync_run.details.searchDiagnostics` un diagnostic limité aux informations nécessaires :
+
+- mot-clé envoyé ;
+- statut HTTP de la recherche ;
+- résultat, absence de résultat ou erreur ;
+- nombre d’offres reçues ;
+- nombre d’offres uniques ajoutées au lot après déduplication interne.
+
+Aucun jeton OAuth, client ID, client secret, corps de réponse complet ou donnée de candidature n’est conservé dans ce diagnostic. La mesure réutilise les requêtes déjà effectuées et n’ajoute aucun appel API.
+
+La page **Critères de recherche** affiche le dernier diagnostic sous chaque mot-clé. Elle indique aussi si ce diagnostic correspond encore aux critères actuels. Après une modification, le résultat précédent est marqué **Critères modifiés depuis ce test** jusqu’à la prochaine synchronisation France Travail.
+
+Un mot-clé qui renvoie régulièrement `204` peut ainsi être supprimé ou élargi. Un statut `200` ou `206` avec zéro résultat est également présenté comme une recherche vide plutôt que comme une panne globale.
+
 ## Diagnostic d’une authentification HTTP 400
 
 JobPilot affiche le code OAuth et une description limitée lorsque France Travail les fournit. Le client secret n’est jamais inclus dans le message d’erreur.

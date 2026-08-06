@@ -12,6 +12,26 @@ type FixedCriterion = {
   value: string;
 };
 
+type SearchQueryDiagnostic = {
+  query: string;
+  statusCode: number;
+  outcome: 'RESULTS' | 'NO_RESULTS' | 'ERROR';
+  received: number;
+  uniqueOffersAdded: number;
+};
+
+type SearchDiagnostics = {
+  startedAt: string;
+  requestedQueries: number;
+  completedQueries: number;
+  queriesWithResults: number;
+  queriesWithoutResults: number;
+  received: number;
+  uniqueOffers: number;
+  matchesCurrentCriteria: boolean;
+  queries: SearchQueryDiagnostic[];
+};
+
 type ConnectorSearchCriteria = {
   code: string;
   name: string;
@@ -19,6 +39,7 @@ type ConnectorSearchCriteria = {
   targetJobs: string[];
   skills: string[];
   effectiveQueries: string[];
+  latestSearchDiagnostics?: SearchDiagnostics | null;
   fixedCriteria: FixedCriterion[];
   limits: {
     maxItemsPerList: number;
@@ -27,6 +48,27 @@ type ConnectorSearchCriteria = {
   };
   note: string;
 };
+
+function formatDate(value: string): string {
+  if (value.trim() === '') return 'Date inconnue';
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function diagnosticTone(outcome: SearchQueryDiagnostic['outcome']): 'good' | 'warn' | 'bad' {
+  if (outcome === 'RESULTS') return 'good';
+  if (outcome === 'ERROR') return 'bad';
+  return 'warn';
+}
+
+function diagnosticLabel(diagnostic: SearchQueryDiagnostic): string {
+  if (diagnostic.outcome === 'RESULTS') return `${diagnostic.received} offre(s) reçue(s)`;
+  if (diagnostic.outcome === 'ERROR') return `Erreur HTTP ${diagnostic.statusCode}`;
+  return 'Aucun résultat';
+}
 
 export function parseCriteriaLines(value: string): string[] {
   const unique = new Map<string, string>();
@@ -143,6 +185,51 @@ export function ConnectorSearchCriteriaPanel({ connectorCode }: ConnectorSearchC
                   <Badge key={query} tone="blue">{query}</Badge>
                 ))}
               </div>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <strong className="small">Performance de la dernière synchronisation</strong>
+              {criteria.latestSearchDiagnostics ? (
+                <div style={{ marginTop: 7 }}>
+                  <div className="actions">
+                    <Badge>{formatDate(criteria.latestSearchDiagnostics.startedAt)}</Badge>
+                    <Badge>{criteria.latestSearchDiagnostics.completedQueries}/{criteria.latestSearchDiagnostics.requestedQueries} requête(s) exécutée(s)</Badge>
+                    <Badge tone="good">{criteria.latestSearchDiagnostics.queriesWithResults} avec résultat(s)</Badge>
+                    <Badge tone={criteria.latestSearchDiagnostics.queriesWithoutResults > 0 ? 'warn' : 'neutral'}>
+                      {criteria.latestSearchDiagnostics.queriesWithoutResults} vide(s)
+                    </Badge>
+                    <Badge>{criteria.latestSearchDiagnostics.uniqueOffers} offre(s) unique(s)</Badge>
+                    <Badge tone={criteria.latestSearchDiagnostics.matchesCurrentCriteria ? 'good' : 'warn'}>
+                      {criteria.latestSearchDiagnostics.matchesCurrentCriteria
+                        ? 'Correspond aux critères actuels'
+                        : 'Critères modifiés depuis ce test'}
+                    </Badge>
+                  </div>
+
+                  <div className="stack" style={{ marginTop: 10 }}>
+                    {criteria.latestSearchDiagnostics.queries.map((diagnostic) => (
+                      <div className="list-row" key={`${diagnostic.query}-${diagnostic.statusCode}`}>
+                        <div style={{ flex: 1 }}>
+                          <code>{diagnostic.query}</code>
+                          <div className="actions" style={{ marginTop: 6 }}>
+                            <Badge tone={diagnosticTone(diagnostic.outcome)}>
+                              {diagnosticLabel(diagnostic)}
+                            </Badge>
+                            <Badge>HTTP {diagnostic.statusCode}</Badge>
+                            {diagnostic.uniqueOffersAdded > 0 && (
+                              <Badge tone="blue">{diagnostic.uniqueOffersAdded} nouvelle(s) offre(s) unique(s)</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="small muted" style={{ marginBottom: 0 }}>
+                  Aucun diagnostic disponible. Lance une synchronisation France Travail depuis la page Connecteurs.
+                </p>
+              )}
             </div>
 
             <div className="grid two" style={{ marginTop: 14 }}>

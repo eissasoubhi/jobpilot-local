@@ -28,7 +28,7 @@ describe('ConnectorRoadmapSection', () => {
     expect(linkedin.getByText('Import assisté')).toBeInTheDocument();
 
     const freeWork = within(screen.getByTestId('roadmap-connector-free-work'));
-    expect(freeWork.getByText(/does not authorize scheduled database extraction/i)).toBeInTheDocument();
+    expect(freeWork.getByText(/n’autorise pas une extraction planifiée de la base/i)).toBeInTheDocument();
 
     const smartRecruiters = within(screen.getByTestId('roadmap-connector-smartrecruiters'));
     expect(smartRecruiters.getByText('API planifiée')).toBeInTheDocument();

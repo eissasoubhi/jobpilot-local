@@ -34,13 +34,47 @@ Une synchronisation :
 
 1. demande un jeton OAuth à France Travail ;
 2. construit au maximum six recherches à partir des intitulés ciblés ;
-3. récupère au maximum 150 offres par recherche, 50 par défaut ;
-4. normalise l’identifiant, le titre, l’entreprise, le lieu, le contrat, le mode de travail, la description, la date, l’URL et le salaire annuel explicite ;
-5. envoie chaque résultat dans le catalogue canonique multi-sources de JobPilot.
+3. utilise les compétences uniquement si aucun intitulé ne produit de requête exploitable ;
+4. récupère au maximum 150 offres par recherche, 50 par défaut ;
+5. normalise l’identifiant, le titre, l’entreprise, le lieu, le contrat, le mode de travail, la description, la date, l’URL et le salaire annuel explicite ;
+6. envoie chaque résultat dans le catalogue canonique multi-sources de JobPilot.
 
 Un statut HTTP `204 No Content` sur une recherche signifie qu’aucune offre ne correspond à cette requête. JobPilot considère ce résultat comme vide, continue avec les autres requêtes de la synchronisation et ne classe plus le connecteur en erreur pour ce seul statut.
 
 Les salaires mensuels, horaires ou ambigus ne sont pas convertis artificiellement en salaire annuel. Les offres déjà connues restent idempotentes grâce à l’identifiant France Travail.
+
+## Voir et modifier les critères
+
+La page **Critères de recherche** est accessible depuis la navigation principale.
+
+Elle affiche :
+
+- les intitulés ciblés enregistrés dans les paramètres globaux ;
+- les compétences utilisées comme solution de repli ;
+- les requêtes finales réellement envoyées dans le paramètre `motsCles` de France Travail ;
+- le tri appliqué et la limite de six requêtes par synchronisation.
+
+Les intitulés et compétences sont saisis à raison d’un élément par ligne. Les doublons sont supprimés sans tenir compte de la casse. Chaque liste accepte au maximum vingt éléments de 120 caractères.
+
+Le connecteur retire des intitulés certains termes génériques comme `senior`, `developer`, `développeur`, `engineer` et `native`, puis remplace les séparateurs comme `/` ou `-` par des espaces. La page affiche le résultat exact de cette transformation avant la prochaine synchronisation.
+
+Les valeurs sont globales : une modification depuis cette page met également à jour les champs **Postes ciblés** et **Compétences** de la page Paramètres, ainsi que les autres connecteurs qui utilisent ces réglages.
+
+API locale correspondante :
+
+```text
+GET /api/connectors/france-travail/criteria
+PUT /api/connectors/france-travail/criteria
+```
+
+Exemple de mise à jour :
+
+```json
+{
+  "targetJobs": ["Senior PHP/Symfony", "Full-Stack Symfony/React"],
+  "skills": ["PHP", "Symfony", "React"]
+}
+```
 
 ## Diagnostic d’une authentification HTTP 400
 

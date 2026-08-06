@@ -112,19 +112,27 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 - Recherche accent-insensible et filtres corrigés/non corrigés sur les contacts.
 - Export CSV local des contacts actuellement filtrés, avec valeurs affichées et valeurs sources séparées.
 - Protection contre l’exécution de formules lors de l’ouverture du CSV dans un tableur.
+- Tâches et rappels de relance locaux, sans envoi ni notification automatique.
+- Vue chronologique en lecture seule des événements de candidature disponibles.
 
 ### Prochaines livraisons
 
-- Tâches et rappels de relance.
-- Vue chronologique complète du cycle de candidature.
 - Règles de fusion manuelle des organisations, après clarification du comportement produit.
+- Historique métier persistant des transitions de candidature, uniquement après définition des événements à conserver.
 
-## Phase 6 — Reporting
+## Phase 6 — Reporting — en cours
 
-- Conversion par source.
-- Temps moyen de réponse.
-- Taux d’entretien et d’acceptation.
-- TJM et salaire proposés.
+### Livré
+
+- Conversion par source avec attribution multi-sources explicite.
+- Offres, candidatures, envois, réponses, entretiens et refus par source.
+- Taux de candidature, de réponse et d’entretien.
+- TJM proposé moyen et salaire annuel brut proposé moyen par source, calculés uniquement depuis les champs structurés existants.
+
+### Prochaines livraisons
+
+- Temps moyen de réponse à partir d’événements horodatés fiables.
+- Taux d’acceptation lorsque le statut métier correspondant sera défini et historisé.
 - Qualité du matching et corrections manuelles.
 
 ## Phase 7 — Production

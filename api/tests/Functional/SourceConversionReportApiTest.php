@@ -12,7 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class SourceConversionReportApiTest extends WebTestCase
 {
-    public function testReportAttributesApplicationOutcomeAndCompensationToEveryOfferSource(): void
+    public function testReportAttributesApplicationOutcomeAndCompensationToSourcesAndContractTypes(): void
     {
         $client = static::createClient();
         $em = static::getContainer()->get(EntityManagerInterface::class);
@@ -23,6 +23,7 @@ final class SourceConversionReportApiTest extends WebTestCase
             'externalId' => 'report-job-1',
             'title' => 'Senior Symfony Developer',
             'company' => 'Example',
+            'contractType' => 'Freelance',
         ]);
         $job->setEvaluation('fr', 90, [], 500, 60000, 'PREPARED', null);
         $first = new JobSourceOccurrence($job, 'report-primary', 'Report Primary', 'report-job-1');
@@ -58,5 +59,19 @@ final class SourceConversionReportApiTest extends WebTestCase
             self::assertSame(1, $rows[$code]['salaryProposalCount']);
             self::assertSame(60000, $rows[$code]['averageProposedSalary']);
         }
+
+        $contractTypes = [];
+        foreach ($payload['contractTypes'] as $row) {
+            $contractTypes[$row['code']] = $row;
+        }
+
+        self::assertArrayHasKey('freelance', $contractTypes);
+        $contractType = $contractTypes['freelance'];
+        self::assertSame('Freelance', $contractType['name']);
+        self::assertGreaterThanOrEqual(1, $contractType['offers']);
+        self::assertGreaterThanOrEqual(1, $contractType['applications']);
+        self::assertGreaterThanOrEqual(1, $contractType['interviews']);
+        self::assertGreaterThanOrEqual(1, $contractType['tjmProposalCount']);
+        self::assertGreaterThanOrEqual(1, $contractType['salaryProposalCount']);
     }
 }

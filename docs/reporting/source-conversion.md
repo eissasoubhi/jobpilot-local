@@ -1,10 +1,10 @@
-# Conversion par source
+# Conversion par source et type de contrat
 
-La page **Conversion par source** fournit un reporting en lecture seule sur les canaux d’acquisition des offres.
+La page **Conversion** fournit un reporting en lecture seule sur les canaux d’acquisition et les types de contrat des offres.
 
 ## Mesures
 
-Pour chaque source présente sur une offre canonique, JobPilot affiche :
+Pour chaque groupe, JobPilot affiche :
 
 - le nombre d’offres ;
 - le nombre de candidatures préparées ;
@@ -19,9 +19,13 @@ Une candidature est considérée comme envoyée lorsqu’elle possède une date 
 
 Les moyennes de rémunération utilisent uniquement les champs structurés `proposedTjm` et `proposedSalary` déjà calculés et enregistrés sur les offres. Une offre sans proposition structurée est exclue de la moyenne. JobPilot ne tente pas d’interpréter le texte libre d’une candidature ou d’une annonce pour compléter ces chiffres.
 
-## Attribution multi-sources
+## Attribution par source
 
-Une offre canonique peut être présente sur plusieurs sources. Dans ce cas, son offre, sa candidature éventuelle et ses propositions de rémunération sont attribuées à chacune de ces sources. Les lignes servent à comparer les sources ; elles ne doivent pas être additionnées pour reconstruire le total canonique.
+Une offre canonique peut être présente sur plusieurs sources. Dans ce cas, son offre, sa candidature éventuelle et ses propositions de rémunération sont attribuées à chacune de ces sources. Les lignes par source servent à comparer les canaux ; elles ne doivent pas être additionnées pour reconstruire le total canonique.
+
+## Attribution par type de contrat
+
+Chaque offre canonique est attribuée une seule fois à la valeur structurée de son champ `contractType`. Les valeurs vides sont regroupées sous **Non renseigné**. Aucune normalisation métier risquée n’est appliquée : des libellés différents restent des groupes différents.
 
 ## Limites
 

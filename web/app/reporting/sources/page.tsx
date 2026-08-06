@@ -6,7 +6,7 @@ import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
-type SourceRow = {
+type ConversionRow = {
   code: string;
   name: string;
   offers: number;
@@ -25,8 +25,9 @@ type SourceRow = {
 };
 
 type Report = {
-  sources: SourceRow[];
-  totals: { offers: number; applications: number; sources: number };
+  sources: ConversionRow[];
+  contractTypes: ConversionRow[];
+  totals: { offers: number; applications: number; sources: number; contractTypes: number };
 };
 
 function rate(value: number): string {
@@ -35,6 +36,43 @@ function rate(value: number): string {
 
 function amount(value: number): string {
   return new Intl.NumberFormat('fr-FR').format(value);
+}
+
+function ConversionRows({ rows, emptyMessage }: { rows: ConversionRow[]; emptyMessage: string }) {
+  if (rows.length === 0) return <Empty>{emptyMessage}</Empty>;
+
+  return rows.map((row) => (
+    <div className="list-row" key={row.code}>
+      <div style={{ flex: 1 }}>
+        <div className="actions" style={{ marginBottom: 6 }}>
+          <Badge tone="blue">{row.name}</Badge>
+          <Badge>{row.code}</Badge>
+        </div>
+        <div className="actions">
+          <Badge>{row.offers} offre(s)</Badge>
+          <Badge>{row.applications} candidature(s)</Badge>
+          <Badge tone="good">{row.submitted} envoyée(s)</Badge>
+          <Badge>{row.responses} réponse(s)</Badge>
+          <Badge tone="blue">{row.interviews} entretien(s)</Badge>
+          {row.rejections > 0 && <Badge tone="warn">{row.rejections} refus</Badge>}
+        </div>
+        <div className="small muted" style={{ marginTop: 9 }}>
+          Taux de candidature : {rate(row.applicationRate)} · Réponse après envoi : {rate(row.responseRate)} · Entretien après envoi : {rate(row.interviewRate)}
+        </div>
+        {(row.averageProposedTjm !== null || row.averageProposedSalary !== null) && (
+          <div className="small" style={{ marginTop: 7 }}>
+            {row.averageProposedTjm !== null && (
+              <>TJM proposé moyen : <strong>{amount(row.averageProposedTjm)} €</strong> ({row.tjmProposalCount} offre(s))</>
+            )}
+            {row.averageProposedTjm !== null && row.averageProposedSalary !== null && ' · '}
+            {row.averageProposedSalary !== null && (
+              <>Salaire proposé moyen : <strong>{amount(row.averageProposedSalary)} € brut/an</strong> ({row.salaryProposalCount} offre(s))</>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  ));
 }
 
 export default function SourceReportingPage() {
@@ -57,62 +95,39 @@ export default function SourceReportingPage() {
   }, []);
 
   if (error !== '') {
-    return <><PageHeader title="Conversion par source" /><ErrorBox message={error} /></>;
+    return <><PageHeader title="Conversion" /><ErrorBox message={error} /></>;
   }
   if (report === null) return <Loading />;
 
   return (
     <>
       <PageHeader
-        title="Conversion par source"
-        description="Mesure en lecture seule des offres, candidatures, réponses, entretiens et propositions de rémunération attribués à chaque source."
+        title="Conversion"
+        description="Mesure en lecture seule des offres, candidatures, réponses, entretiens et propositions de rémunération par source et type de contrat."
       />
 
       <div className="grid cols-3">
         <Card className="stat-card"><span>Sources observées</span><strong>{report.totals.sources}</strong></Card>
-        <Card className="stat-card"><span>Offres canoniques</span><strong>{report.totals.offers}</strong></Card>
-        <Card className="stat-card"><span>Candidatures</span><strong>{report.totals.applications}</strong></Card>
+        <Card className="stat-card"><span>Types de contrat</span><strong>{report.totals.contractTypes}</strong></Card>
+        <Card className="stat-card"><span>Offres / candidatures</span><strong>{report.totals.offers} / {report.totals.applications}</strong></Card>
       </div>
 
       <div style={{ height: 18 }} />
       <Card>
+        <h2 style={{ marginTop: 0 }}>Par source</h2>
         <div className="notice" style={{ marginBottom: 14 }}>
           Une offre multi-sources est attribuée à chacune de ses sources. Les lignes ne doivent donc pas être additionnées pour retrouver le total canonique.
         </div>
-        {report.sources.length === 0 ? (
-          <Empty>Aucune donnée de source disponible.</Empty>
-        ) : report.sources.map((source) => (
-          <div className="list-row" key={source.code}>
-            <div style={{ flex: 1 }}>
-              <div className="actions" style={{ marginBottom: 6 }}>
-                <Badge tone="blue">{source.name}</Badge>
-                <Badge>{source.code}</Badge>
-              </div>
-              <div className="actions">
-                <Badge>{source.offers} offre(s)</Badge>
-                <Badge>{source.applications} candidature(s)</Badge>
-                <Badge tone="good">{source.submitted} envoyée(s)</Badge>
-                <Badge>{source.responses} réponse(s)</Badge>
-                <Badge tone="blue">{source.interviews} entretien(s)</Badge>
-                {source.rejections > 0 && <Badge tone="warn">{source.rejections} refus</Badge>}
-              </div>
-              <div className="small muted" style={{ marginTop: 9 }}>
-                Taux de candidature : {rate(source.applicationRate)} · Réponse après envoi : {rate(source.responseRate)} · Entretien après envoi : {rate(source.interviewRate)}
-              </div>
-              {(source.averageProposedTjm !== null || source.averageProposedSalary !== null) && (
-                <div className="small" style={{ marginTop: 7 }}>
-                  {source.averageProposedTjm !== null && (
-                    <>TJM proposé moyen : <strong>{amount(source.averageProposedTjm)} €</strong> ({source.tjmProposalCount} offre(s))</>
-                  )}
-                  {source.averageProposedTjm !== null && source.averageProposedSalary !== null && ' · '}
-                  {source.averageProposedSalary !== null && (
-                    <>Salaire proposé moyen : <strong>{amount(source.averageProposedSalary)} € brut/an</strong> ({source.salaryProposalCount} offre(s))</>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+        <ConversionRows rows={report.sources} emptyMessage="Aucune donnée de source disponible." />
+      </Card>
+
+      <div style={{ height: 18 }} />
+      <Card>
+        <h2 style={{ marginTop: 0 }}>Par type de contrat</h2>
+        <div className="notice" style={{ marginBottom: 14 }}>
+          Chaque offre canonique apparaît une seule fois dans son type de contrat actuel. Les valeurs absentes sont regroupées sous « Non renseigné ».
+        </div>
+        <ConversionRows rows={report.contractTypes} emptyMessage="Aucune donnée de contrat disponible." />
       </Card>
     </>
   );

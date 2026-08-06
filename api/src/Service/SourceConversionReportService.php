@@ -16,11 +16,12 @@ final class SourceConversionReportService
     {
     }
 
-    /** @return array{sources: list<array<string, int|string|float|null>>, contractTypes: list<array<string, int|string|float|null>>, totals: array<string, int>} */
+    /** @return array{sources: list<array<string, int|string|float|null>>, contractTypes: list<array<string, int|string|float|null>>, workModes: list<array<string, int|string|float|null>>, totals: array<string, int>} */
     public function report(): array
     {
         $sourceRows = [];
         $contractTypeRows = [];
+        $workModeRows = [];
         $jobs = $this->em->getRepository(JobOffer::class)->findAll();
         $applications = $this->em->getRepository(Application::class)->findAll();
         $applicationsByJob = [];
@@ -51,30 +52,41 @@ final class SourceConversionReportService
                 $this->accumulate($sourceRows, $code, $name !== '' ? $name : $code, $job, $jobApplications);
             }
 
-            $contractType = trim($job->getContractType());
-            $contractCode = $contractType === '' ? 'unknown' : mb_strtolower($contractType);
-            $this->accumulate(
-                $contractTypeRows,
-                $contractCode,
-                $contractType === '' ? 'Non renseigné' : $contractType,
-                $job,
-                $jobApplications,
-            );
+            $this->accumulateByStoredValue($contractTypeRows, $job->getContractType(), $job, $jobApplications);
+            $this->accumulateByStoredValue($workModeRows, $job->getWorkMode(), $job, $jobApplications);
         }
 
         $sources = $this->finalizeRows($sourceRows);
         $contractTypes = $this->finalizeRows($contractTypeRows);
+        $workModes = $this->finalizeRows($workModeRows);
 
         return [
             'sources' => $sources,
             'contractTypes' => $contractTypes,
+            'workModes' => $workModes,
             'totals' => [
                 'offers' => count($jobs),
                 'applications' => count($applications),
                 'sources' => count($sources),
                 'contractTypes' => count($contractTypes),
+                'workModes' => count($workModes),
             ],
         ];
+    }
+
+    /** @param array<string, array<string, int|string>> $rows
+     *  @param list<Application> $applications
+     */
+    private function accumulateByStoredValue(array &$rows, string $value, JobOffer $job, array $applications): void
+    {
+        $trimmedValue = trim($value);
+        $this->accumulate(
+            $rows,
+            $trimmedValue === '' ? 'unknown' : mb_strtolower($trimmedValue),
+            $trimmedValue === '' ? 'Non renseigné' : $trimmedValue,
+            $job,
+            $applications,
+        );
     }
 
     /** @param array<string, array<string, int|string>> $rows

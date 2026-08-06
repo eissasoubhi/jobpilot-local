@@ -14,10 +14,11 @@ final class SourceConversionReportService
     {
     }
 
-    /** @return array{sources: list<array<string, int|string|float|null>>, totals: array<string, int>} */
+    /** @return array{sources: list<array<string, int|string|float|null>>, contractTypes: list<array<string, int|string|float|null>>, totals: array<string, int>} */
     public function report(): array
     {
-        $rows = [];
+        $sourceRows = [];
+        $contractTypeRows = [];
         $jobs = $this->em->getRepository(JobOffer::class)->findAll();
         $applications = $this->em->getRepository(Application::class)->findAll();
         $applicationsByJob = [];
@@ -30,6 +31,7 @@ final class SourceConversionReportService
         }
 
         foreach ($jobs as $job) {
+            $jobApplications = $applicationsByJob[$job->getId() ?? 0] ?? [];
             $sources = $job->toArray()['sources'] ?? [];
             $seenCodes = [];
 
@@ -44,56 +46,94 @@ final class SourceConversionReportService
                 }
                 $seenCodes[$code] = true;
                 $name = trim((string) ($source['sourceName'] ?? $code));
-                $rows[$code] ??= [
-                    'code' => $code,
-                    'name' => $name !== '' ? $name : $code,
-                    'offers' => 0,
-                    'applications' => 0,
-                    'submitted' => 0,
-                    'responses' => 0,
-                    'interviews' => 0,
-                    'rejections' => 0,
-                    'tjmProposalCount' => 0,
-                    'salaryProposalCount' => 0,
-                    'proposedTjmTotal' => 0,
-                    'proposedSalaryTotal' => 0,
-                ];
-                ++$rows[$code]['offers'];
-
-                $proposedTjm = $job->getProposedTjm();
-                if ($proposedTjm !== null) {
-                    ++$rows[$code]['tjmProposalCount'];
-                    $rows[$code]['proposedTjmTotal'] += $proposedTjm;
-                }
-
-                $proposedSalary = $job->getProposedSalary();
-                if ($proposedSalary !== null) {
-                    ++$rows[$code]['salaryProposalCount'];
-                    $rows[$code]['proposedSalaryTotal'] += $proposedSalary;
-                }
-
-                foreach ($applicationsByJob[$job->getId() ?? 0] ?? [] as $application) {
-                    ++$rows[$code]['applications'];
-                    $status = $application->getStatus();
-                    if ($application->getSubmittedAt() !== null || in_array($status, [
-                        'SUBMITTED', 'APPLICATION_CONFIRMED', 'RESPONSE_RECEIVED', 'INFORMATION_REQUESTED', 'INTERVIEW', 'REJECTED',
-                    ], true)) {
-                        ++$rows[$code]['submitted'];
-                    }
-                    if (in_array($status, ['RESPONSE_RECEIVED', 'INFORMATION_REQUESTED', 'INTERVIEW', 'REJECTED'], true)) {
-                        ++$rows[$code]['responses'];
-                    }
-                    if ($status === 'INTERVIEW') {
-                        ++$rows[$code]['interviews'];
-                    }
-                    if ($status === 'REJECTED') {
-                        ++$rows[$code]['rejections'];
-                    }
-                }
+                $this->accumulate($sourceRows, $code, $name !== '' ? $name : $code, $job, $jobApplications);
             }
+
+            $contractType = trim($job->getContractType());
+            $contractCode = $contractType === '' ? 'unknown' : mb_strtolower($contractType);
+            $this->accumulate(
+                $contractTypeRows,
+                $contractCode,
+                $contractType === '' ? 'Non renseigné' : $contractType,
+                $job,
+                $jobApplications,
+            );
         }
 
-        $sources = array_values(array_map(static function (array $row): array {
+        $sources = $this->finalizeRows($sourceRows);
+        $contractTypes = $this->finalizeRows($contractTypeRows);
+
+        return [
+            'sources' => $sources,
+            'contractTypes' => $contractTypes,
+            'totals' => [
+                'offers' => count($jobs),
+                'applications' => count($applications),
+                'sources' => count($sources),
+                'contractTypes' => count($contractTypes),
+            ],
+        ];
+    }
+
+    /** @param array<string, array<string, int|string>> $rows
+     *  @param list<Application> $applications
+     */
+    private function accumulate(array &$rows, string $code, string $name, JobOffer $job, array $applications): void
+    {
+        $rows[$code] ??= [
+            'code' => $code,
+            'name' => $name,
+            'offers' => 0,
+            'applications' => 0,
+            'submitted' => 0,
+            'responses' => 0,
+            'interviews' => 0,
+            'rejections' => 0,
+            'tjmProposalCount' => 0,
+            'salaryProposalCount' => 0,
+            'proposedTjmTotal' => 0,
+            'proposedSalaryTotal' => 0,
+        ];
+        ++$rows[$code]['offers'];
+
+        $proposedTjm = $job->getProposedTjm();
+        if ($proposedTjm !== null) {
+            ++$rows[$code]['tjmProposalCount'];
+            $rows[$code]['proposedTjmTotal'] += $proposedTjm;
+        }
+
+        $proposedSalary = $job->getProposedSalary();
+        if ($proposedSalary !== null) {
+            ++$rows[$code]['salaryProposalCount'];
+            $rows[$code]['proposedSalaryTotal'] += $proposedSalary;
+        }
+
+        foreach ($applications as $application) {
+            ++$rows[$code]['applications'];
+            $status = $application->getStatus();
+            if ($application->getSubmittedAt() !== null || in_array($status, [
+                'SUBMITTED', 'APPLICATION_CONFIRMED', 'RESPONSE_RECEIVED', 'INFORMATION_REQUESTED', 'INTERVIEW', 'REJECTED',
+            ], true)) {
+                ++$rows[$code]['submitted'];
+            }
+            if (in_array($status, ['RESPONSE_RECEIVED', 'INFORMATION_REQUESTED', 'INTERVIEW', 'REJECTED'], true)) {
+                ++$rows[$code]['responses'];
+            }
+            if ($status === 'INTERVIEW') {
+                ++$rows[$code]['interviews'];
+            }
+            if ($status === 'REJECTED') {
+                ++$rows[$code]['rejections'];
+            }
+        }
+    }
+
+    /** @param array<string, array<string, int|string>> $rows
+     *  @return list<array<string, int|string|float|null>>
+     */
+    private function finalizeRows(array $rows): array
+    {
+        $finalRows = array_values(array_map(static function (array $row): array {
             $row['applicationRate'] = $row['offers'] > 0 ? round($row['applications'] * 100 / $row['offers'], 1) : 0.0;
             $row['responseRate'] = $row['submitted'] > 0 ? round($row['responses'] * 100 / $row['submitted'], 1) : 0.0;
             $row['interviewRate'] = $row['submitted'] > 0 ? round($row['interviews'] * 100 / $row['submitted'], 1) : 0.0;
@@ -108,15 +148,8 @@ final class SourceConversionReportService
             return $row;
         }, $rows));
 
-        usort($sources, static fn (array $a, array $b): int => [$b['applications'], $b['offers'], $a['name']] <=> [$a['applications'], $a['offers'], $b['name']]);
+        usort($finalRows, static fn (array $a, array $b): int => [$b['applications'], $b['offers'], $a['name']] <=> [$a['applications'], $a['offers'], $b['name']]);
 
-        return [
-            'sources' => $sources,
-            'totals' => [
-                'offers' => count($jobs),
-                'applications' => count($applications),
-                'sources' => count($sources),
-            ],
-        ];
+        return $finalRows;
     }
 }

@@ -80,4 +80,18 @@ describe('ApplicationStatusFilter', () => {
     fireEvent.change(select, { target: { value: 'REJECTED' } });
     expect(onChange).toHaveBeenCalledWith('REJECTED');
   });
+
+  it('keeps a selected custom status visible after its last application disappears', () => {
+    render(
+      <ApplicationStatusFilter
+        applications={applications}
+        value="CUSTOM_REVIEW"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Filtrer les candidatures par statut')).toHaveValue('CUSTOM_REVIEW');
+    expect(screen.getByRole('option', { name: 'Custom review (0)' })).toBeInTheDocument();
+    expect(screen.getByText('0 candidature(s) affichée(s) sur 4.')).toBeInTheDocument();
+  });
 });

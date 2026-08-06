@@ -8,14 +8,17 @@ import {
 
 function statusLabel(status: ConnectorRoadmapStatus): string {
   return {
-    PLANNED: 'Planifié',
-    UNDER_REVIEW: 'En revue',
-    EMAIL_OR_EXTENSION_ONLY: 'Gmail ou extension uniquement',
+    OPERATIONAL: 'Opérationnel',
+    PLANNED: 'API planifiée',
+    UNDER_REVIEW: 'Canal en revue',
+    EMAIL_OR_EXTENSION_ONLY: 'Gmail ou import assisté uniquement',
   }[status];
 }
 
-function statusTone(status: ConnectorRoadmapStatus): 'blue' | 'warn' {
-  return status === 'PLANNED' ? 'blue' : 'warn';
+function statusTone(status: ConnectorRoadmapStatus): 'good' | 'blue' | 'warn' {
+  if (status === 'OPERATIONAL') return 'good';
+  if (status === 'PLANNED') return 'blue';
+  return 'warn';
 }
 
 function modeLabel(mode: ConnectorRoadmapMode): string {
@@ -27,52 +30,71 @@ function modeLabel(mode: ConnectorRoadmapMode): string {
 }
 
 function roadmapExplanation(entry: ConnectorRoadmapEntry): string {
+  if (entry.status === 'OPERATIONAL') {
+    return 'Le connecteur existe déjà. Sa configuration, son activation, sa santé et ses actions sont affichées dans la section opérationnelle de cette page.';
+  }
+
   if (entry.status === 'PLANNED') {
-    return 'Intégration prévue uniquement après validation de l’accès et des identifiants de l’API officielle.';
+    return 'Un canal officiel réutilisable a été identifié. Le connecteur reste inactif jusqu’à son implémentation, sa configuration et ses tests.';
   }
 
   if (entry.status === 'EMAIL_OR_EXTENSION_ONLY') {
-    return 'Collecte limitée aux alertes Gmail reconnues ou à une page importée volontairement par l’utilisateur.';
+    return 'Aucune collecte automatique en arrière-plan : seules les alertes reconnues ou une importation déclenchée explicitement par l’utilisateur sont admises.';
   }
 
   return 'Aucune collecte planifiée tant que la revue technique et de conformité de cette source n’est pas terminée.';
 }
 
 export function ConnectorRoadmapSection() {
+  const operationalCount = connectorRoadmap.filter((entry) => entry.status === 'OPERATIONAL').length;
+  const plannedCount = connectorRoadmap.filter((entry) => entry.status === 'PLANNED').length;
+  const restrictedCount = connectorRoadmap.filter((entry) => entry.status === 'EMAIL_OR_EXTENSION_ONLY').length;
+  const reviewCount = connectorRoadmap.filter((entry) => entry.status === 'UNDER_REVIEW').length;
+
   return (
     <section aria-labelledby="connector-roadmap-title" style={{ marginTop: 30 }}>
-      <h2 className="section-title" id="connector-roadmap-title">Sources prévues et restreintes</h2>
+      <h2 className="section-title" id="connector-roadmap-title">Matrice des plateformes suivies</h2>
       <p className="muted" style={{ marginTop: -6 }}>
-        Ces sources ne sont pas des connecteurs opérationnels. Elles ne peuvent être ni activées, ni testées, ni synchronisées depuis cette page.
+        Cette matrice couvre les plateformes demandées et indique le canal réellement disponible. Une ligne informative ne crée jamais un connecteur, une synchronisation ou un droit de scraper.
       </p>
 
-      <div className="stack" data-testid="connector-roadmap-list">
-        {connectorRoadmap.map((entry) => (
-          <Card key={entry.code}>
+      <div className="actions" style={{ marginBottom: 14 }}>
+        <Badge tone="good">{operationalCount} opérationnelle(s)</Badge>
+        <Badge tone="blue">{plannedCount} API planifiée(s)</Badge>
+        <Badge tone="warn">{restrictedCount} restreinte(s)</Badge>
+        <Badge>{reviewCount} en revue</Badge>
+      </div>
+
+      <Card>
+        <div className="stack" data-testid="connector-roadmap-list">
+          {connectorRoadmap.map((entry) => (
             <div
               className="list-row"
               data-roadmap-connector={entry.code}
               data-testid={`roadmap-connector-${entry.code}`}
-              style={{ alignItems: 'flex-start', paddingTop: 0, paddingBottom: 0 }}
+              key={entry.code}
+              style={{ alignItems: 'flex-start' }}
             >
               <div style={{ flex: 1 }}>
-                <div className="actions" style={{ marginBottom: 8 }}>
+                <div className="actions" style={{ marginBottom: 7 }}>
                   <Badge tone={statusTone(entry.status)}>{statusLabel(entry.status)}</Badge>
                   {entry.modes.map((mode) => (
                     <Badge key={mode} tone="neutral">{modeLabel(mode)}</Badge>
                   ))}
                 </div>
 
-                <h3>{entry.name}</h3>
-                <div className="muted small">Code roadmap : <code>{entry.code}</code></div>
+                <h3 style={{ marginBottom: 5 }}>{entry.name}</h3>
+                <div className="muted small">Code : <code>{entry.code}</code></div>
+                <p className="small" style={{ marginBottom: 5 }}>{roadmapExplanation(entry)}</p>
+                <p className="small muted" style={{ marginBottom: 5 }}>{entry.note}</p>
                 <p className="small" style={{ marginBottom: 0 }}>
-                  {roadmapExplanation(entry)}
+                  <strong>Étape suivante :</strong> {entry.nextStep}
                 </p>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Card>
     </section>
   );
 }

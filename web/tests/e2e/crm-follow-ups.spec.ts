@@ -31,10 +31,10 @@ test('CRM follow-up page creates and completes a local reminder', async ({ page 
   await expect(page.getByRole('heading', { name: 'Relances CRM', level: 1 })).toBeVisible();
   await expect(page.getByText('Relancer Jane')).toBeVisible();
 
-  await page.getByLabel('Organisation').selectOption('acme');
-  await page.getByLabel('Contact facultatif').selectOption('jane@acme.test');
-  await page.getByLabel('Date de relance').fill('2026-08-12');
-  await page.getByLabel('Titre').fill('Demander une décision');
+  await page.getByLabel('Organisation', { exact: true }).selectOption('acme');
+  await page.getByLabel('Contact facultatif', { exact: true }).selectOption('jane@acme.test');
+  await page.getByLabel('Date de relance', { exact: true }).fill('2026-08-12');
+  await page.getByLabel('Titre', { exact: true }).fill('Demander une décision');
   await page.getByRole('button', { name: 'Créer la relance' }).click();
   await expect.poll(() => createdPayload).toEqual({ contactKey: 'jane@acme.test', title: 'Demander une décision', note: '', dueAt: '2026-08-12' });
   await expect(page.getByText('La tâche de relance a été créée.')).toBeVisible();

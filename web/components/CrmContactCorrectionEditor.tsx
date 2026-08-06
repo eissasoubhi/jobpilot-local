@@ -11,6 +11,12 @@ export type EditableCrmContact = CrmContact & {
   sourceName?: string | null;
   sourceEmail?: string | null;
   sourcePhone?: string | null;
+  correction?: {
+    correctedName?: string | null;
+    correctedEmail?: string | null;
+    correctedPhone?: string | null;
+    updatedAt?: string | null;
+  } | null;
 };
 
 type Props = {

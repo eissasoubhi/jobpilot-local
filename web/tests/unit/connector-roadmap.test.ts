@@ -82,7 +82,7 @@ describe('platform acquisition matrix', () => {
     expect(connector).toBeDefined();
     expect(connector?.status).toBe('PLANNED');
     expect(connector?.modes).toEqual(['API']);
-    expect(connector?.nextStep).toContain('company identifiers');
+    expect(connector?.nextStep).toContain('identifiants d’entreprises');
   });
 
   it('does not invent a reusable EURES channel before it is confirmed', () => {

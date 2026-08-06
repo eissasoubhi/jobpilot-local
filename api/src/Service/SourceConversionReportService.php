@@ -10,6 +10,8 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class SourceConversionReportService
 {
+    private const STRONG_MATCH_THRESHOLD = 60;
+
     public function __construct(private EntityManagerInterface $em)
     {
     }
@@ -93,8 +95,14 @@ final class SourceConversionReportService
             'salaryProposalCount' => 0,
             'proposedTjmTotal' => 0,
             'proposedSalaryTotal' => 0,
+            'matchingScoreTotal' => 0,
+            'strongMatches' => 0,
         ];
         ++$rows[$code]['offers'];
+        $rows[$code]['matchingScoreTotal'] += $job->getScore();
+        if ($job->getScore() >= self::STRONG_MATCH_THRESHOLD) {
+            ++$rows[$code]['strongMatches'];
+        }
 
         $proposedTjm = $job->getProposedTjm();
         if ($proposedTjm !== null) {
@@ -137,13 +145,19 @@ final class SourceConversionReportService
             $row['applicationRate'] = $row['offers'] > 0 ? round($row['applications'] * 100 / $row['offers'], 1) : 0.0;
             $row['responseRate'] = $row['submitted'] > 0 ? round($row['responses'] * 100 / $row['submitted'], 1) : 0.0;
             $row['interviewRate'] = $row['submitted'] > 0 ? round($row['interviews'] * 100 / $row['submitted'], 1) : 0.0;
+            $row['averageMatchingScore'] = $row['offers'] > 0
+                ? round($row['matchingScoreTotal'] / $row['offers'], 1)
+                : 0.0;
+            $row['strongMatchRate'] = $row['offers'] > 0
+                ? round($row['strongMatches'] * 100 / $row['offers'], 1)
+                : 0.0;
             $row['averageProposedTjm'] = $row['tjmProposalCount'] > 0
                 ? (int) round($row['proposedTjmTotal'] / $row['tjmProposalCount'])
                 : null;
             $row['averageProposedSalary'] = $row['salaryProposalCount'] > 0
                 ? (int) round($row['proposedSalaryTotal'] / $row['salaryProposalCount'])
                 : null;
-            unset($row['proposedTjmTotal'], $row['proposedSalaryTotal']);
+            unset($row['matchingScoreTotal'], $row['proposedTjmTotal'], $row['proposedSalaryTotal']);
 
             return $row;
         }, $rows));

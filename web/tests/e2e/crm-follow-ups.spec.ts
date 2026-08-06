@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import type { CrmFollowUpTask } from '@/lib/crm-follow-ups';
+
 test('CRM follow-up page creates and completes a local reminder', async ({ page }) => {
   const organization = {
     key: 'acme', name: 'Acme', sourceName: 'Acme', roles: ['COMPANY'], offerCount: 0,
@@ -7,7 +9,7 @@ test('CRM follow-up page creates and completes a local reminder', async ({ page 
     applicationStatuses: {}, positioningStatuses: {}, latestOffers: [],
     contacts: [{ key: 'jane@acme.test', name: 'Jane', email: 'jane@acme.test', phone: null, roles: ['RECRUITER'], messageCount: 0 }],
   };
-  let tasks = [{
+  let tasks: CrmFollowUpTask[] = [{
     id: 1, organizationKey: 'acme', contactKey: 'jane@acme.test', title: 'Relancer Jane', note: null,
     dueAt: '2026-08-07', completed: false, completedAt: null,
     createdAt: '2026-08-06T08:00:00+02:00', updatedAt: '2026-08-06T08:00:00+02:00',

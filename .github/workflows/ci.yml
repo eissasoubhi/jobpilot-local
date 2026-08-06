@@ -11,40 +11,11 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-bundle:
-    name: Apply consolidated audit bundle
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          fetch-depth: 0
-      - name: Apply bundle when present
-        shell: bash
-        run: |
-          if [ ! -f tools/apply_bundle.py ]; then
-            echo "No temporary bundle to apply"
-            exit 0
-          fi
-          python3 tools/apply_bundle.py
-          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/apply-bundle.yml
-          rm -f tools/bundle.part* tools/apply_bundle.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --all
-          if git diff --cached --quiet; then
-            echo "No source changes produced"
-            exit 0
-          fi
-          git commit -m "Apply audited fixes and test suite [bundle applied]"
-          git push origin HEAD:${{ github.head_ref || github.ref_name }}
-
   backend:
     name: Backend tests
-    needs: apply-bundle
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -102,7 +73,6 @@ jobs:
 
   frontend:
     name: Frontend tests
-    needs: apply-bundle
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -129,7 +99,6 @@ jobs:
 
   compose-config:
     name: Docker Compose configuration
-    needs: apply-bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -142,7 +111,6 @@ jobs:
 
   e2e:
     name: Chromium end-to-end tests
-    needs: apply-bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:

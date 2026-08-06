@@ -2,9 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { ApplicationStatusFilter } from '@/components/ApplicationStatusFilter';
 import { CoverLetterEditor } from '@/components/CoverLetterEditor';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
+import {
+  applicationBadgeLabel,
+  applicationStatusLabel,
+  applicationStatusTone,
+  filterApplications,
+  type ApplicationStatusFilter as ApplicationStatusFilterValue,
+} from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
@@ -12,25 +20,10 @@ function companyName(application: Application): string {
   return application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
 }
 
-function statusLabel(application: Application): string {
-  if (application.status === 'SUBMITTED') {
-    return application.channel === 'Gmail automatique' ? 'ENVOYÉE AUTOMATIQUEMENT' : 'ENVOYÉE';
-  }
-  if (application.status === 'SUBMISSION_PENDING') return 'ENVOI EN COURS';
-  if (application.status === 'SUBMISSION_FAILED') return 'ÉCHEC DE L’ENVOI';
-  return application.status;
-}
-
-function statusTone(application: Application): 'good' | 'warn' | 'bad' | 'blue' | 'neutral' {
-  if (application.status === 'SUBMITTED') return 'good';
-  if (application.status === 'SUBMISSION_PENDING') return 'warn';
-  if (application.status === 'SUBMISSION_FAILED') return 'bad';
-  return 'blue';
-}
-
 export default function ApplicationsPage() {
   const [items, setItems] = useState<Application[] | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatusFilterValue>('ALL');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
@@ -109,47 +102,61 @@ export default function ApplicationsPage() {
     setError('');
   };
 
+  const filteredItems = items === null ? null : filterApplications(items, statusFilter);
+
   return (
     <>
       <PageHeader
         title="Candidatures"
-        description="Suis les candidatures préparées, envoyées manuellement ou transmises automatiquement par un canal officiel autorisé."
+        description="Suis et filtre les candidatures préparées, envoyées manuellement ou transmises automatiquement par un canal officiel autorisé."
       />
       {error !== '' && <ErrorBox message={error} />}
 
       <Card>
-        {items === null ? (
+        {items === null || filteredItems === null ? (
           <Loading />
         ) : items.length === 0 ? (
           <Empty>Aucune candidature préparée.</Empty>
         ) : (
-          items.map((application) => (
-            <div className="list-row" key={application.id}>
-              <div style={{ flex: 1 }}>
-                <h3>{application.jobOffer.title}</h3>
-                <div className="muted small">
-                  {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
-                  {application.jobOffer.contractType || 'Contrat non renseigné'}
-                </div>
-                <div className="actions" style={{ marginTop: 8 }}>
-                  <Badge tone={statusTone(application)}>{statusLabel(application)}</Badge>
-                  <Badge tone="blue">Score {application.jobOffer.score}</Badge>
-                  <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
-                  {application.cvDocument && <Badge>{application.cvDocument.name}</Badge>}
-                  {application.jobOffer.applicationEmail && <Badge>{application.jobOffer.applicationEmail}</Badge>}
-                  {application.compensationAnswer && <Badge tone="good">{application.compensationAnswer}</Badge>}
-                </div>
-                {application.submissionError && (
-                  <div className="small" style={{ marginTop: 8 }}>
-                    <strong>Erreur :</strong> {application.submissionError}
+          <>
+            <ApplicationStatusFilter
+              applications={items}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
+
+            {filteredItems.length === 0 ? (
+              <Empty>
+                Aucune candidature dans le statut « {applicationStatusLabel(statusFilter)} ».
+              </Empty>
+            ) : filteredItems.map((application) => (
+              <div className="list-row" key={application.id}>
+                <div style={{ flex: 1 }}>
+                  <h3>{application.jobOffer.title}</h3>
+                  <div className="muted small">
+                    {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
+                    {application.jobOffer.contractType || 'Contrat non renseigné'}
                   </div>
-                )}
+                  <div className="actions" style={{ marginTop: 8 }}>
+                    <Badge tone={applicationStatusTone(application.status)}>{applicationBadgeLabel(application)}</Badge>
+                    <Badge tone="blue">Score {application.jobOffer.score}</Badge>
+                    <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
+                    {application.cvDocument && <Badge>{application.cvDocument.name}</Badge>}
+                    {application.jobOffer.applicationEmail && <Badge>{application.jobOffer.applicationEmail}</Badge>}
+                    {application.compensationAnswer && <Badge tone="good">{application.compensationAnswer}</Badge>}
+                  </div>
+                  {application.submissionError && (
+                    <div className="small" style={{ marginTop: 8 }}>
+                      <strong>Erreur :</strong> {application.submissionError}
+                    </div>
+                  )}
+                </div>
+                <button className="btn secondary small" type="button" onClick={() => openApplication(application)}>
+                  {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
+                </button>
               </div>
-              <button className="btn secondary small" type="button" onClick={() => openApplication(application)}>
-                {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
-              </button>
-            </div>
-          ))
+            ))}
+          </>
         )}
       </Card>
 

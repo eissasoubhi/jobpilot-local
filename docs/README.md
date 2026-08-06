@@ -6,6 +6,7 @@ Cette documentation est la référence produit, métier, technique et opération
 
 - [Vision](product/vision.md)
 - [Roadmap](product/roadmap.md)
+- [Filtres de statut des candidatures](product/application-status-filters.md)
 
 ## Architecture
 

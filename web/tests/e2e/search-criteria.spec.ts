@@ -141,10 +141,10 @@ test('search criteria page edits global keys and tests France Travail queries', 
   await expect(page.getByRole('heading', { name: 'Critères de recherche', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Critères globaux — toutes les sources' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Clés réellement utilisées' })).toBeVisible();
-  await expect(page.getByText('targetJobs')).toBeVisible();
-  await expect(page.getByText('skills')).toBeVisible();
-  await expect(page.getByText('exclusions')).toBeVisible();
-  await expect(page.getByText('matchingThreshold')).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^targetJobs$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^skills$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^exclusions$/ })).toBeVisible();
+  await expect(page.locator('.list-row code', { hasText: /^matchingThreshold$/ })).toBeVisible();
 
   await page.getByLabel('Postes ciblés globaux — un par ligne').fill('Full-Stack Symfony/React');
   await page.getByLabel('Compétences globales — une par ligne').fill('PHP\nReact\nphp');

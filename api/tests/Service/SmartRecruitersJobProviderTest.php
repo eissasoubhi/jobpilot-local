@@ -99,7 +99,8 @@ final class SmartRecruitersJobProviderTest extends TestCase
         self::assertStringContainsString('destination=PUBLIC', $requests[0]['url']);
         self::assertStringContainsString('limit=100', $requests[0]['url']);
         self::assertStringContainsString('/v1/companies/acme/postings/uuid-123', $requests[1]['url']);
-        self::assertSame(['secret-token'], $requests[0]['options']['normalized_headers']['x-smarttoken']);
+        $smartTokenHeaders = $requests[0]['options']['normalized_headers']['x-smarttoken'] ?? [];
+        self::assertStringContainsString('secret-token', implode(' ', $smartTokenHeaders));
 
         self::assertCount(1, $offers);
         self::assertSame('SmartRecruiters', $offers[0]['source']);

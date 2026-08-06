@@ -8,7 +8,7 @@ async function fulfillJson(route: Route, body: unknown): Promise<void> {
   });
 }
 
-test('search criteria page shows query performance and updates France Travail keywords', async ({ page }) => {
+test('search criteria page edits, tests and refreshes France Travail keywords', async ({ page }) => {
   let criteria = {
     code: 'france-travail',
     name: 'France Travail',
@@ -54,6 +54,7 @@ test('search criteria page shows query performance and updates France Travail ke
     note: 'Ces intitulés et compétences sont les critères globaux de JobPilot.',
   };
   let savedPayload: unknown = null;
+  let synchronizationRequested = false;
 
   await page.route('**/api/connectors/france-travail/criteria', async (route) => {
     if (route.request().method() === 'PUT') {
@@ -71,6 +72,37 @@ test('search criteria page shows query performance and updates France Travail ke
     }
 
     await fulfillJson(route, criteria);
+  });
+
+  await page.route('**/api/connectors/france-travail/sync', async (route) => {
+    synchronizationRequested = true;
+    criteria = {
+      ...criteria,
+      latestSearchDiagnostics: {
+        startedAt: '2026-08-06T12:00:00+02:00',
+        requestedQueries: 1,
+        completedQueries: 1,
+        queriesWithResults: 1,
+        queriesWithoutResults: 0,
+        received: 5,
+        uniqueOffers: 4,
+        matchesCurrentCriteria: true,
+        queries: [
+          {
+            query: 'Full Stack Symfony React',
+            statusCode: 206,
+            outcome: 'RESULTS',
+            received: 5,
+            uniqueOffersAdded: 4,
+          },
+        ],
+      },
+    };
+
+    await fulfillJson(route, {
+      skipped: false,
+      message: '4 nouvelle(s) offre(s), 0 nouvelle(s) source(s) fusionnée(s).',
+    });
   });
 
   await page.goto('/criteres-recherche');
@@ -99,4 +131,13 @@ test('search criteria page shows query performance and updates France Travail ke
   await expect(page.locator('span.badge.blue', { hasText: /^Full Stack Symfony React$/ })).toBeVisible();
   await expect(page.getByText('Full-Stack Symfony/React', { exact: true })).toBeVisible();
   await expect(page.getByText('Critères modifiés depuis ce test')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Tester ces critères maintenant' }).click();
+
+  await expect.poll(() => synchronizationRequested).toBe(true);
+  await expect(page.getByText('4 nouvelle(s) offre(s), 0 nouvelle(s) source(s) fusionnée(s).')).toBeVisible();
+  await expect(page.getByText('Correspond aux critères actuels')).toBeVisible();
+  await expect(page.getByText('5 offre(s) reçue(s)')).toBeVisible();
+  await expect(page.getByText('4 nouvelle(s) offre(s) unique(s)')).toBeVisible();
+  await expect(page.getByText('0 vide(s)')).toBeVisible();
 });

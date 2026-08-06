@@ -2,6 +2,19 @@
 
 JobPilot stores follow-up reminders as local CRM data. A task references an organization already derived by the CRM directory and may optionally reference one of its stable contact keys. It never changes applications, positionings, Gmail headers, offers, organization grouping or contact deduplication.
 
+## Interface
+
+The **Relances CRM** page at `/crm/follow-ups` provides:
+
+- creation of a reminder for an existing CRM organization;
+- optional attachment to one of that organization’s existing contacts;
+- title, optional note and calendar due date;
+- open, completed and all-task views;
+- overdue, today, upcoming and completed badges;
+- explicit completion and reopening actions.
+
+The interface never sends an email, notification or application automatically. It only reads and writes the local follow-up API. Organization and contact choices come from the current CRM directory, so the interface cannot invent a target.
+
 ## Endpoints
 
 ```text
@@ -51,4 +64,4 @@ Repeating completion preserves the original completion timestamp. Sending `false
 
 Tasks are stored in the additive `crm_follow_up_task` table. The migration is reversible and drops only local reminders. It does not delete or modify source records.
 
-This delivery provides the backend foundation. The task-management interface remains a separate small delivery.
+The interface itself has no migration. Rolling it back removes only the page, navigation entry and presentation helpers; existing tasks and source records remain intact.

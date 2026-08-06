@@ -12,9 +12,23 @@ JobPilot prepares every valid offer automatically so the user can decide what to
 - The background scheduler never submits prepared applications.
 - Final submission remains a deliberate user action. Existing automatic-submission implementation is retained only for backward compatibility and is not invoked by the normal offer-processing or scheduling flow.
 
+## Offers workspace
+
+The Offers page is the primary workspace for reviewing opportunities. For every application draft already associated with an offer, the offer card now shows:
+
+- the current application tracking status;
+- whether the CV, application message, requested cover letter and compensation answer are ready;
+- the selected CV with a direct local preview/download link;
+- the prepared message, requested cover letter and compensation answer inside an expandable review section;
+- a direct link to the original platform when a source URL is available.
+
+Loading application preparation data is intentionally non-blocking: if that API call fails, the offers themselves remain available and the page reports that only the preparation details are unavailable.
+
+This is an incremental step toward the single-workspace UX. Editing the prepared material and updating submission status still remain on the Applications page until those interactions are safely moved into Offers and covered by tests.
+
 ## UX direction
 
-The Offers page is the target single workspace for reviewing an offer, its matching explanation and prepared application material, then deciding whether to apply, ignore or archive it. The separate Applications page can be retired only after those controls are available and covered by tests.
+The target is to review an offer, its matching explanation and prepared application material, then decide whether to apply, ignore or archive it without navigating to another page. The separate Applications page can be retired only after all of its editing and tracking controls are available in Offers and covered by tests.
 
 ## Safety
 

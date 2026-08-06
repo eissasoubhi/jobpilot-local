@@ -65,10 +65,10 @@ describe('GlobalSearchCriteriaPanel', () => {
     render(<GlobalSearchCriteriaPanel />);
 
     expect(await screen.findByRole('heading', { name: 'Clés réellement utilisées' })).toBeInTheDocument();
-    expect(screen.getByText('targetJobs')).toBeInTheDocument();
-    expect(screen.getByText('skills')).toBeInTheDocument();
-    expect(screen.getByText('exclusions')).toBeInTheDocument();
-    expect(screen.getByText('matchingThreshold')).toBeInTheDocument();
+    expect(screen.getAllByText('targetJobs', { selector: 'code' })).toHaveLength(2);
+    expect(screen.getAllByText('skills', { selector: 'code' })).toHaveLength(2);
+    expect(screen.getByText('exclusions', { selector: 'code' })).toBeInTheDocument();
+    expect(screen.getByText('matchingThreshold', { selector: 'code' })).toBeInTheDocument();
     expect(screen.getAllByText('Transmis aux connecteurs')).toHaveLength(2);
     expect(screen.getAllByText('Traitement local')).toHaveLength(2);
     expect(screen.getByText(/contrats acceptés, mobilité, ville et préférence de télétravail/i)).toBeInTheDocument();

@@ -83,7 +83,7 @@ export function ConnectorRoadmapSection() {
                   ))}
                 </div>
 
-                <h3 style={{ marginBottom: 5 }}>{entry.name}</h3>
+                <strong style={{ display: 'block', marginBottom: 5 }}>{entry.name}</strong>
                 <div className="muted small">Code : <code>{entry.code}</code></div>
                 <p className="small" style={{ marginBottom: 5 }}>{roadmapExplanation(entry)}</p>
                 <p className="small muted" style={{ marginBottom: 5 }}>{entry.note}</p>

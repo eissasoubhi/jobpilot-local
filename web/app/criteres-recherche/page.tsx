@@ -25,9 +25,9 @@ export default function SearchCriteriaPage() {
           <h2 className="section-title">Aperçu et diagnostic France Travail</h2>
           <p className="muted">
             Les requêtes affichées correspondent exactement au paramètre <code>motsCles</code> envoyé à l’API Offres d’emploi v2.
-            Le bouton de modification historique ci-dessous met à jour les mêmes valeurs globales <code>targetJobs</code> et <code>skills</code> affichées dans la section précédente.
+            Elles sont calculées depuis les critères globaux enregistrés ci-dessus.
           </p>
-          <ConnectorSearchCriteriaPanel connectorCode="france-travail" />
+          <ConnectorSearchCriteriaPanel connectorCode="france-travail" allowGlobalEditing={false} />
         </Card>
       </div>
     </>

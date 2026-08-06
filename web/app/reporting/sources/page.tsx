@@ -30,7 +30,8 @@ type ConversionRow = {
 type Report = {
   sources: ConversionRow[];
   contractTypes: ConversionRow[];
-  totals: { offers: number; applications: number; sources: number; contractTypes: number };
+  workModes: ConversionRow[];
+  totals: { offers: number; applications: number; sources: number; contractTypes: number; workModes: number };
 };
 
 function rate(value: number): string {
@@ -113,12 +114,13 @@ export default function SourceReportingPage() {
     <>
       <PageHeader
         title="Conversion"
-        description="Mesure en lecture seule de la conversion, de la qualité du matching et des propositions de rémunération par source et type de contrat."
+        description="Mesure en lecture seule de la conversion, de la qualité du matching et des propositions de rémunération par source, type de contrat et mode de travail."
       />
 
       <div className="grid cols-3">
         <Card className="stat-card"><span>Sources observées</span><strong>{report.totals.sources}</strong></Card>
         <Card className="stat-card"><span>Types de contrat</span><strong>{report.totals.contractTypes}</strong></Card>
+        <Card className="stat-card"><span>Modes de travail</span><strong>{report.totals.workModes}</strong></Card>
         <Card className="stat-card"><span>Offres / candidatures</span><strong>{report.totals.offers} / {report.totals.applications}</strong></Card>
       </div>
 
@@ -138,6 +140,15 @@ export default function SourceReportingPage() {
           Chaque offre canonique apparaît une seule fois dans son type de contrat actuel. Les valeurs absentes sont regroupées sous « Non renseigné ».
         </div>
         <ConversionRows rows={report.contractTypes} emptyMessage="Aucune donnée de contrat disponible." />
+      </Card>
+
+      <div style={{ height: 18 }} />
+      <Card>
+        <h2 style={{ marginTop: 0 }}>Par mode de travail</h2>
+        <div className="notice" style={{ marginBottom: 14 }}>
+          Chaque offre canonique apparaît une seule fois dans son mode de travail actuel. Les libellés stockés restent distincts et les valeurs absentes sont regroupées sous « Non renseigné ».
+        </div>
+        <ConversionRows rows={report.workModes} emptyMessage="Aucune donnée de mode de travail disponible." />
       </Card>
     </>
   );

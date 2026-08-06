@@ -24,6 +24,7 @@ final class SourceConversionReportApiTest extends WebTestCase
             'title' => 'Senior Symfony Developer',
             'company' => 'Example',
             'contractType' => 'Reporting Freelance',
+            'workMode' => 'Reporting Hybrid',
         ]);
         $job->setEvaluation('fr', 90, [], 500, 60000, 'PREPARED', null);
         $first = new JobSourceOccurrence($job, 'report-primary', 'Report Primary', 'report-job-1');
@@ -79,5 +80,22 @@ final class SourceConversionReportApiTest extends WebTestCase
         self::assertEquals(100.0, $contractType['strongMatchRate']);
         self::assertSame(1, $contractType['tjmProposalCount']);
         self::assertSame(1, $contractType['salaryProposalCount']);
+
+        $workModes = [];
+        foreach ($payload['workModes'] as $row) {
+            $workModes[$row['code']] = $row;
+        }
+
+        self::assertArrayHasKey('reporting hybrid', $workModes);
+        $workMode = $workModes['reporting hybrid'];
+        self::assertSame('Reporting Hybrid', $workMode['name']);
+        self::assertSame(1, $workMode['offers']);
+        self::assertSame(1, $workMode['applications']);
+        self::assertSame(1, $workMode['interviews']);
+        self::assertEquals(90.0, $workMode['averageMatchingScore']);
+        self::assertSame(1, $workMode['strongMatches']);
+        self::assertEquals(100.0, $workMode['strongMatchRate']);
+        self::assertSame(1, $workMode['tjmProposalCount']);
+        self::assertSame(1, $workMode['salaryProposalCount']);
     }
 }

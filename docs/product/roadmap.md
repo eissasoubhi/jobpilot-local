@@ -126,6 +126,7 @@ Cette roadmap privilégie des livraisons petites, testables et réversibles.
 
 - Conversion par source avec attribution multi-sources explicite.
 - Conversion par type de contrat sans normalisation métier risquée.
+- Conversion par mode de travail à partir des libellés structurés existants.
 - Offres, candidatures, envois, réponses, entretiens et refus par groupe.
 - Taux de candidature, de réponse et d’entretien.
 - TJM proposé moyen et salaire annuel brut proposé moyen, calculés uniquement depuis les champs structurés existants.

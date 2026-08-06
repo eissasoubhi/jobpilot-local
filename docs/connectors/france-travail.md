@@ -65,6 +65,7 @@ API locale correspondante :
 ```text
 GET /api/connectors/france-travail/criteria
 PUT /api/connectors/france-travail/criteria
+POST /api/connectors/france-travail/sync
 ```
 
 Exemple de mise à jour :
@@ -90,6 +91,8 @@ Aucun jeton OAuth, client ID, client secret, corps de réponse complet ou donné
 
 La page **Critères de recherche** affiche le dernier diagnostic sous chaque mot-clé. Elle indique aussi si ce diagnostic correspond encore aux critères actuels. Après une modification, le résultat précédent est marqué **Critères modifiés depuis ce test** jusqu’à la prochaine synchronisation France Travail.
 
+Le bouton **Tester ces critères maintenant** lance le connecteur France Travail avec les valeurs enregistrées, puis recharge automatiquement les diagnostics depuis le serveur. Il ne sauvegarde pas les champs encore en cours d’édition : il faut d’abord cliquer sur **Enregistrer les critères**. Si le connecteur est désactivé, incomplet ou bloqué, le motif est affiché et les anciens diagnostics restent visibles.
+
 Un mot-clé qui renvoie régulièrement `204` peut ainsi être supprimé ou élargi. Un statut `200` ou `206` avec zéro résultat est également présenté comme une recherche vide plutôt que comme une panne globale.
 
 ## Diagnostic d’une authentification HTTP 400
@@ -101,7 +104,7 @@ JobPilot affiche le code OAuth et une description limitée lorsque France Travai
 - `unauthorized_client` : vérifier que l’application est autorisée à utiliser le flux `client_credentials` et le produit Offres d’emploi ;
 - autre code : vérifier l’état de l’application et de sa souscription au produit dans France Travail.io.
 
-Après toute correction, recréer les conteneurs `api` et `scheduler`, puis relancer **Tester maintenant** depuis la page Connecteurs.
+Après toute correction, recréer les conteneurs `api` et `scheduler`, puis relancer **Tester maintenant** depuis la page Connecteurs ou **Tester ces critères maintenant** depuis la page Critères de recherche.
 
 ## Politique et limites
 

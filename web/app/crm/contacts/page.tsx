@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   CrmContactCorrectionEditor,
@@ -9,14 +9,18 @@ import {
 } from '@/components/CrmContactCorrectionEditor';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
+import { filterCrmContacts, type CrmContactFilter } from '@/lib/crm-contact-filters';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory, CrmOrganization } from '@/lib/types';
 
 type Selection = { organization: CrmOrganization; contact: EditableCrmContact };
+type ContactEntry = { organization: CrmOrganization; organizationName: string; contact: EditableCrmContact };
 
 export default function CrmContactsPage() {
   const [directory, setDirectory] = useState<CrmDirectory | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<CrmContactFilter>('ALL');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -43,9 +47,19 @@ export default function CrmContactsPage() {
     await load();
   };
 
-  const contacts = directory?.organizations.flatMap((organization) =>
-    organization.contacts.map((contact) => ({ organization, contact: contact as EditableCrmContact })),
-  ) ?? [];
+  const contacts = useMemo<ContactEntry[]>(() => directory?.organizations.flatMap((organization) =>
+    organization.contacts.map((contact) => ({
+      organization,
+      organizationName: organization.name,
+      contact: contact as EditableCrmContact,
+    })),
+  ) ?? [], [directory]);
+
+  const visibleContacts = useMemo(
+    () => filterCrmContacts(contacts, search, filter),
+    [contacts, filter, search],
+  );
+  const correctedCount = contacts.filter(({ contact }) => contact.correction != null).length;
 
   return (
     <>
@@ -55,34 +69,67 @@ export default function CrmContactsPage() {
       {directory === null && error === '' ? <Loading /> : contacts.length === 0 ? (
         <Card><Empty>Aucun contact CRM validé n’est disponible.</Empty></Card>
       ) : (
-        <div className="stack">
-          {contacts.map(({ organization, contact }) => {
-            const corrected = contact.correction != null;
-            return (
-              <Card key={`${organization.key}-${contact.key}`}>
-                <div className="list-row" style={{ padding: 0 }}>
-                  <div style={{ flex: 1 }}>
-                    <strong>{contact.name || contact.email || contact.phone || 'Contact sans libellé'}</strong>
-                    <div className="small muted" style={{ marginTop: 4 }}>{organization.name} · <code>{contact.key}</code></div>
-                    <div className="actions" style={{ marginTop: 7 }}>
-                      {corrected && <Badge tone="warn">Corrigé localement</Badge>}
-                      {contact.email && <Badge>{contact.email}</Badge>}
-                      {contact.phone && <Badge>{contact.phone}</Badge>}
-                    </div>
-                    {corrected && (
-                      <div className="small muted" style={{ marginTop: 7 }}>
-                        Sources : {contact.sourceName || '—'} · {contact.sourceEmail || '—'} · {contact.sourcePhone || '—'}
+        <>
+          <Card>
+            <div className="form-grid">
+              <label>
+                Rechercher un contact ou une organisation
+                <input
+                  type="search"
+                  value={search}
+                  placeholder="Nom, e-mail, téléphone ou société"
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label>
+                État de correction
+                <select value={filter} onChange={(event) => setFilter(event.target.value as CrmContactFilter)}>
+                  <option value="ALL">Tous les contacts</option>
+                  <option value="CORRECTED">Corrigés localement</option>
+                  <option value="UNCORRECTED">Sans correction locale</option>
+                </select>
+              </label>
+            </div>
+            <div className="actions" style={{ marginTop: 12 }}>
+              <Badge>{contacts.length} contact(s)</Badge>
+              <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
+              <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
+            </div>
+          </Card>
+
+          {visibleContacts.length === 0 ? (
+            <Card><Empty>Aucun contact ne correspond aux filtres actuels.</Empty></Card>
+          ) : (
+            <div className="stack">
+              {visibleContacts.map(({ organization, contact }) => {
+                const corrected = contact.correction != null;
+                return (
+                  <Card key={`${organization.key}-${contact.key}`}>
+                    <div className="list-row" style={{ padding: 0 }}>
+                      <div style={{ flex: 1 }}>
+                        <strong>{contact.name || contact.email || contact.phone || 'Contact sans libellé'}</strong>
+                        <div className="small muted" style={{ marginTop: 4 }}>{organization.name} · <code>{contact.key}</code></div>
+                        <div className="actions" style={{ marginTop: 7 }}>
+                          {corrected && <Badge tone="warn">Corrigé localement</Badge>}
+                          {contact.email && <Badge>{contact.email}</Badge>}
+                          {contact.phone && <Badge>{contact.phone}</Badge>}
+                        </div>
+                        {corrected && (
+                          <div className="small muted" style={{ marginTop: 7 }}>
+                            Sources : {contact.sourceName || '—'} · {contact.sourceEmail || '—'} · {contact.sourcePhone || '—'}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <button className="btn secondary small" type="button" onClick={() => { setSelection({ organization, contact }); setNotice(''); }}>
-                    {corrected ? 'Modifier la correction' : 'Corriger le contact'}
-                  </button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                      <button className="btn secondary small" type="button" onClick={() => { setSelection({ organization, contact }); setNotice(''); }}>
+                        {corrected ? 'Modifier la correction' : 'Corriger le contact'}
+                      </button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
       {selection && <CrmContactCorrectionEditor organization={selection.organization} contact={selection.contact} onClose={() => setSelection(null)} onSave={save} />}
     </>

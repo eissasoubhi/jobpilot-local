@@ -12,4 +12,13 @@ The editor always shows the immutable contact key and the original source values
 
 Submitting all three fields empty removes the local correction. The directory is reloaded after every successful save so server-side validation, source fallback and correction counts remain authoritative.
 
+The page also provides local, client-side controls to:
+
+- search effective and original source names, email addresses, phone numbers and organization names;
+- display all contacts, only locally corrected contacts, or only contacts without a correction;
+- show total, corrected and currently visible contact counts;
+- display a dedicated empty state when no contact matches the active filters.
+
+Search is case-insensitive and accent-insensitive. Filtering does not modify CRM data and does not trigger any external request beyond the existing directory load.
+
 The backend validates names, email addresses and phone values. Errors remain in the editor and do not alter the visible contact data.

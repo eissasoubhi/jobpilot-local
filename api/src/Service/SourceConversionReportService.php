@@ -14,7 +14,7 @@ final class SourceConversionReportService
     {
     }
 
-    /** @return array{sources: list<array<string, int|string|float>>, totals: array<string, int>} */
+    /** @return array{sources: list<array<string, int|string|float|null>>, totals: array<string, int>} */
     public function report(): array
     {
         $rows = [];
@@ -53,8 +53,24 @@ final class SourceConversionReportService
                     'responses' => 0,
                     'interviews' => 0,
                     'rejections' => 0,
+                    'tjmProposalCount' => 0,
+                    'salaryProposalCount' => 0,
+                    'proposedTjmTotal' => 0,
+                    'proposedSalaryTotal' => 0,
                 ];
                 ++$rows[$code]['offers'];
+
+                $proposedTjm = $job->getProposedTjm();
+                if ($proposedTjm !== null) {
+                    ++$rows[$code]['tjmProposalCount'];
+                    $rows[$code]['proposedTjmTotal'] += $proposedTjm;
+                }
+
+                $proposedSalary = $job->getProposedSalary();
+                if ($proposedSalary !== null) {
+                    ++$rows[$code]['salaryProposalCount'];
+                    $rows[$code]['proposedSalaryTotal'] += $proposedSalary;
+                }
 
                 foreach ($applicationsByJob[$job->getId() ?? 0] ?? [] as $application) {
                     ++$rows[$code]['applications'];
@@ -81,6 +97,13 @@ final class SourceConversionReportService
             $row['applicationRate'] = $row['offers'] > 0 ? round($row['applications'] * 100 / $row['offers'], 1) : 0.0;
             $row['responseRate'] = $row['submitted'] > 0 ? round($row['responses'] * 100 / $row['submitted'], 1) : 0.0;
             $row['interviewRate'] = $row['submitted'] > 0 ? round($row['interviews'] * 100 / $row['submitted'], 1) : 0.0;
+            $row['averageProposedTjm'] = $row['tjmProposalCount'] > 0
+                ? (int) round($row['proposedTjmTotal'] / $row['tjmProposalCount'])
+                : null;
+            $row['averageProposedSalary'] = $row['salaryProposalCount'] > 0
+                ? (int) round($row['proposedSalaryTotal'] / $row['salaryProposalCount'])
+                : null;
+            unset($row['proposedTjmTotal'], $row['proposedSalaryTotal']);
 
             return $row;
         }, $rows));

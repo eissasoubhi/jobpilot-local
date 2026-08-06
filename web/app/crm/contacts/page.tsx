@@ -9,6 +9,7 @@ import {
 } from '@/components/CrmContactCorrectionEditor';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
+import { downloadCrmContactsCsv } from '@/lib/crm-contact-export';
 import { filterCrmContacts, type CrmContactFilter } from '@/lib/crm-contact-filters';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory, CrmOrganization } from '@/lib/types';
@@ -61,6 +62,11 @@ export default function CrmContactsPage() {
   );
   const correctedCount = contacts.filter(({ contact }) => contact.correction != null).length;
 
+  const exportVisibleContacts = (): void => {
+    downloadCrmContactsCsv(visibleContacts);
+    setNotice(`${visibleContacts.length} contact(s) visible(s) ont été exporté(s) en CSV.`);
+  };
+
   return (
     <>
       <PageHeader title="Corrections des contacts CRM" description="Corrige le nom, l’e-mail ou le téléphone affiché sans modifier les données sources." />
@@ -94,7 +100,18 @@ export default function CrmContactsPage() {
               <Badge>{contacts.length} contact(s)</Badge>
               <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
               <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
+              <button
+                className="btn secondary small"
+                type="button"
+                disabled={visibleContacts.length === 0}
+                onClick={exportVisibleContacts}
+              >
+                Exporter les contacts affichés
+              </button>
             </div>
+            <p className="small muted" style={{ marginBottom: 0, marginTop: 10 }}>
+              L’export contient uniquement les résultats actuellement filtrés. Les valeurs affichées et les valeurs sources restent séparées.
+            </p>
           </Card>
 
           {visibleContacts.length === 0 ? (

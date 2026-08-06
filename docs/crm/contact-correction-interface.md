@@ -1,0 +1,15 @@
+# CRM contact correction interface
+
+The **Contacts CRM** page at `/crm/contacts` lists contacts already derived from applications, positionings and linked Gmail messages.
+
+For each contact, the interface can save a local correction for the displayed name, email address or phone number through:
+
+```text
+PUT /api/crm/organizations/{organizationKey}/contacts/{contactKey}/correction
+```
+
+The editor always shows the immutable contact key and the original source values returned by the CRM directory. Corrections are overlays only: Gmail headers, positioning recruiter data, application addresses, deduplication and stable contact identities are not rewritten.
+
+Submitting all three fields empty removes the local correction. The directory is reloaded after every successful save so server-side validation, source fallback and correction counts remain authoritative.
+
+The backend validates names, email addresses and phone values. Errors remain in the editor and do not alter the visible contact data.

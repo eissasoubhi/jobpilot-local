@@ -98,6 +98,33 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',
+            'title' => 'COBOL Engineer',
+            'company' => 'Legacy Systems',
+            'location' => 'Paris',
+            'contractType' => 'CDI',
+            'workMode' => 'Hybride',
+            'description' => 'Maintenance applicative et évolution de systèmes COBOL.',
+            'salaryMin' => 40_000,
+            'salaryMax' => 45_000,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $lowScoreJob = $this->decodeResponse($client);
+        self::assertLessThan(50, $lowScoreJob['score']);
+        self::assertSame('PREPARED', $lowScoreJob['status']);
+
+        $client->request('GET', '/api/applications');
+        self::assertResponseIsSuccessful();
+        $applicationsAfterLowScoreOffer = $this->decodeResponse($client);
+        $lowScoreApplications = array_values(array_filter(
+            $applicationsAfterLowScoreOffer,
+            static fn (array $application): bool => ($application['jobOffer']['title'] ?? null) === 'COBOL Engineer',
+        ));
+        self::assertCount(1, $lowScoreApplications);
+        self::assertSame('READY_TO_SUBMIT', $lowScoreApplications[0]['status']);
+        self::assertNull($lowScoreApplications[0]['submittedAt']);
+
+        $client->jsonRequest('POST', '/api/jobs', [
+            'source' => 'Test',
             'title' => 'Stage développeur PHP',
             'company' => 'Example',
             'location' => 'Paris',
@@ -137,7 +164,7 @@ final class ApiWorkflowTest extends WebTestCase
         $client->request('GET', '/api/dashboard');
         self::assertResponseIsSuccessful();
         $dashboard = $this->decodeResponse($client);
-        self::assertGreaterThanOrEqual(3, $dashboard['counts']['jobs']);
+        self::assertGreaterThanOrEqual(4, $dashboard['counts']['jobs']);
         self::assertGreaterThanOrEqual(1, $dashboard['counts']['positionings']);
     }
 

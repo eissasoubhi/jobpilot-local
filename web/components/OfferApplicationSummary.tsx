@@ -67,6 +67,10 @@ export function OfferApplicationSummary({ application }: { application: Applicat
     await saveApplication(currentApplication.status, 'Modifications enregistrées dans JobPilot.');
   };
 
+  const saveTrackingStatus = async (): Promise<void> => {
+    await saveApplication(currentApplication.status, 'Statut de suivi enregistré dans JobPilot.');
+  };
+
   const markSubmitted = async (): Promise<void> => {
     if (currentApplication.status === 'SUBMITTED') return;
 
@@ -301,19 +305,46 @@ export function OfferApplicationSummary({ application }: { application: Applicat
               <section>
                 <strong>Suivi</strong>
                 <div className="small muted" style={{ marginTop: 7 }}>
-                  Après l’envoi réel sur la plateforme, enregistre-le ici. Cette action met uniquement à jour JobPilot et n’envoie rien à l’extérieur.
+                  Mets à jour ici l’état réel de la candidature. Ces changements servent uniquement au suivi dans JobPilot et ne déclenchent aucun envoi externe.
                 </div>
-                <div className="actions" style={{ marginTop: 10 }}>
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={saving || currentApplication.status === 'SUBMITTED'}
-                    onClick={() => void markSubmitted()}
-                  >
-                    {currentApplication.status === 'SUBMITTED'
-                      ? 'Candidature déjà marquée comme envoyée'
-                      : saving ? 'Enregistrement…' : 'J’ai envoyé la candidature'}
-                  </button>
+                <div className="stack" style={{ gap: 10, marginTop: 10 }}>
+                  <label>
+                    Statut de suivi dans JobPilot
+                    <select
+                      aria-label="Statut de suivi dans JobPilot"
+                      value={currentApplication.status}
+                      disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+                      onChange={(event) => setCurrentApplication({ ...currentApplication, status: event.target.value })}
+                    >
+                      <option value="READY_TO_SUBMIT">Prête à envoyer</option>
+                      <option value="SUBMISSION_FAILED">Échec de l’envoi automatique</option>
+                      <option value="SUBMITTED">Envoyée</option>
+                      <option value="RECRUITER_REPLIED">Réponse recruteur</option>
+                      <option value="INTERVIEW">Entretien</option>
+                      <option value="REJECTED">Refusée</option>
+                      <option value="OFFER_RECEIVED">Offre reçue</option>
+                    </select>
+                  </label>
+                  <div className="actions">
+                    <button
+                      className="btn secondary small"
+                      type="button"
+                      disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+                      onClick={() => void saveTrackingStatus()}
+                    >
+                      {saving ? 'Enregistrement…' : 'Enregistrer le statut'}
+                    </button>
+                    <button
+                      className="btn secondary small"
+                      type="button"
+                      disabled={saving || currentApplication.status === 'SUBMITTED'}
+                      onClick={() => void markSubmitted()}
+                    >
+                      {currentApplication.status === 'SUBMITTED'
+                        ? 'Candidature déjà marquée comme envoyée'
+                        : saving ? 'Enregistrement…' : 'J’ai envoyé la candidature'}
+                    </button>
+                  </div>
                 </div>
                 {notice !== '' && <div className="small" role="status" style={{ marginTop: 8 }}>{notice}</div>}
                 {error !== '' && <div className="small" role="alert" style={{ marginTop: 8 }}>{error}</div>}

@@ -88,10 +88,51 @@ describe('OfferApplicationSummary', () => {
     expect(dialog).toHaveTextContent('Score : 82 %');
     expect(dialog).toHaveTextContent('Symfony correspond au profil.');
     expect(dialog).toHaveTextContent('CV Symfony FR');
-    expect(dialog).toHaveTextContent('TJM proposé : 500 €');
+    expect(screen.getByRole('textbox', { name: 'Réponse rémunération' })).toHaveValue('TJM proposé : 500 €');
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('edits and saves prepared application material from the review drawer', async () => {
+    const updated = application({
+      message: 'Message raccourci.',
+      coverLetter: 'Lettre mise à jour.',
+      compensationAnswer: 'TJM proposé : 510 €',
+      confirmationRef: 'REF-123',
+    });
+    apiMock.mockResolvedValueOnce(updated);
+
+    render(<OfferApplicationSummary application={application()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message préparé' }), {
+      target: { value: 'Message raccourci.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lettre de motivation demandée' }), {
+      target: { value: 'Lettre mise à jour.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Réponse rémunération' }), {
+      target: { value: 'TJM proposé : 510 €' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Confirmation / référence après envoi' }), {
+      target: { value: 'REF-123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les modifications' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledTimes(1));
+    expect(apiMock).toHaveBeenCalledWith('/applications/42', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'READY_TO_SUBMIT',
+        message: 'Message raccourci.',
+        coverLetter: 'Lettre mise à jour.',
+        compensationAnswer: 'TJM proposé : 510 €',
+        confirmationRef: 'REF-123',
+      }),
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('Modifications enregistrées dans JobPilot.');
+    expect(screen.getByRole('textbox', { name: 'Message préparé' })).toHaveValue('Message raccourci.');
   });
 
   it('marks the application as submitted from the review drawer without external submission', async () => {

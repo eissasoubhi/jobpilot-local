@@ -335,6 +335,7 @@ export default function JobsPage() {
         {[
           ['actionable', 'À traiter'],
           ['submitted', 'Envoyées'],
+          ['ignored', 'Ignorées'],
         ].map(([value, label]) => (
           <button
             key={value}

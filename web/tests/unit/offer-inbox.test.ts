@@ -44,4 +44,11 @@ describe('matchesOfferInboxView', () => {
     expect(matchesOfferInboxView(application('INTERVIEW'), 'submitted')).toBe(false);
     expect(matchesOfferInboxView(undefined, 'submitted')).toBe(false);
   });
+
+  it('shows only explicitly ignored applications in the ignored view', () => {
+    expect(matchesOfferInboxView(application('IGNORED_NOT_MATCH'), 'ignored')).toBe(true);
+    expect(matchesOfferInboxView(application('SUBMITTED'), 'ignored')).toBe(false);
+    expect(matchesOfferInboxView(application('READY_TO_SUBMIT'), 'ignored')).toBe(false);
+    expect(matchesOfferInboxView(undefined, 'ignored')).toBe(false);
+  });
 });

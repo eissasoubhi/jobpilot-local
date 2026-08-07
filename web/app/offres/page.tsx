@@ -7,6 +7,7 @@ import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { matchesOfferInboxView, type OfferInboxView } from '@/lib/offer-inbox';
 import type { Application, Job, JobSourceOccurrence } from '@/lib/types';
 
 type JobForm = {
@@ -138,6 +139,7 @@ export default function JobsPage() {
   const [error, setError] = useState('');
   const [show, setShow] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [inboxView, setInboxView] = useState<OfferInboxView>('actionable');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [syncing, setSyncing] = useState(false);
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
@@ -220,6 +222,12 @@ export default function JobsPage() {
     }
   };
 
+  const updateApplication = useCallback((updated: Application): void => {
+    setApplications((current) => current?.map((application) => (
+      application.id === updated.id ? updated : application
+    )) ?? current);
+  }, []);
+
   const sources = useMemo(
     () => Array.from(new Set(
       (jobs ?? []).flatMap((job) => occurrences(job).map((source) => source.sourceName)).filter(Boolean),
@@ -236,8 +244,9 @@ export default function JobsPage() {
     () => jobs?.filter((job) => (
       (filter === 'all' || job.status === filter)
       && (sourceFilter === 'all' || occurrences(job).some((source) => source.sourceName === sourceFilter))
+      && matchesOfferInboxView(applicationsByJobId.get(job.id), inboxView)
     )) ?? [],
-    [jobs, filter, sourceFilter],
+    [jobs, filter, sourceFilter, applicationsByJobId, inboxView],
   );
 
   const providerNames = syncInfo?.providers
@@ -322,6 +331,22 @@ export default function JobsPage() {
         </label>
       </Card>
 
+      <div className="tabs" aria-label="Boîte des offres">
+        {[
+          ['actionable', 'À traiter'],
+          ['submitted', 'Envoyées'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            className={inboxView === value ? 'active' : ''}
+            type="button"
+            onClick={() => setInboxView(value as OfferInboxView)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="tabs" aria-label="Filtres des offres">
         {[
           ['all', 'Toutes'],
@@ -380,7 +405,12 @@ export default function JobsPage() {
                       CV conseillé : <strong>{job.recommendedCv.name}</strong>
                     </div>
                   )}
-                  {application && <OfferApplicationSummary application={application} />}
+                  {application && (
+                    <OfferApplicationSummary
+                      application={application}
+                      onApplicationUpdated={updateApplication}
+                    />
+                  )}
                   <details style={{ marginTop: 8 }}>
                     <summary className="small muted">Pourquoi ce score ?</summary>
                     <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>

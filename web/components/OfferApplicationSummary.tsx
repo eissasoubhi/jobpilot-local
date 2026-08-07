@@ -8,7 +8,15 @@ import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
-export function OfferApplicationSummary({ application }: { application: Application }) {
+type OfferApplicationSummaryProps = {
+  application: Application;
+  onApplicationUpdated?: (application: Application) => void;
+};
+
+export function OfferApplicationSummary({
+  application,
+  onApplicationUpdated,
+}: OfferApplicationSummaryProps) {
   const [currentApplication, setCurrentApplication] = useState(application);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,6 +63,7 @@ export function OfferApplicationSummary({ application }: { application: Applicat
         }),
       });
       setCurrentApplication(updated);
+      onApplicationUpdated?.(updated);
       setNotice(successMessage);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));

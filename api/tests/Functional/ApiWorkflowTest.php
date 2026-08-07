@@ -98,12 +98,12 @@ final class ApiWorkflowTest extends WebTestCase
 
         $client->jsonRequest('POST', '/api/jobs', [
             'source' => 'Test',
-            'title' => 'COBOL Engineer',
+            'title' => 'Développeur COBOL',
             'company' => 'Legacy Systems',
             'location' => 'Paris',
             'contractType' => 'CDI',
             'workMode' => 'Hybride',
-            'description' => 'Maintenance applicative et évolution de systèmes COBOL.',
+            'description' => 'Nous recherchons un développeur COBOL pour la maintenance applicative et l’évolution de systèmes existants.',
             'salaryMin' => 40_000,
             'salaryMax' => 45_000,
         ]);
@@ -117,7 +117,7 @@ final class ApiWorkflowTest extends WebTestCase
         $applicationsAfterLowScoreOffer = $this->decodeResponse($client);
         $lowScoreApplications = array_values(array_filter(
             $applicationsAfterLowScoreOffer,
-            static fn (array $application): bool => ($application['jobOffer']['title'] ?? null) === 'COBOL Engineer',
+            static fn (array $application): bool => ($application['jobOffer']['title'] ?? null) === 'Développeur COBOL',
         ));
         self::assertCount(1, $lowScoreApplications);
         self::assertSame('READY_TO_SUBMIT', $lowScoreApplications[0]['status']);

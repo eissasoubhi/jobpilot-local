@@ -10,13 +10,10 @@ function application(status: string): Application {
     status,
     message: '',
     coverLetter: '',
-    compensationAnswer: null,
     updatedAt: '2026-08-07T00:00:00+02:00',
-    cvDocument: null,
     jobOffer: {
       id: 7,
       source: 'Test',
-      sourceUrl: null,
       title: 'Senior Symfony Developer',
       company: 'Example',
       sources: [],

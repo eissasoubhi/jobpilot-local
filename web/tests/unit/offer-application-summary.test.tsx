@@ -158,7 +158,7 @@ describe('OfferApplicationSummary', () => {
       }),
     });
     expect(await screen.findByRole('status')).toHaveTextContent('Statut de suivi enregistré dans JobPilot.');
-    expect(screen.getByText('ENTRETIEN')).toBeInTheDocument();
+    expect(screen.getAllByText('ENTRETIEN')).toHaveLength(2);
   });
 
   it('marks the application as submitted from the review drawer without external submission', async () => {

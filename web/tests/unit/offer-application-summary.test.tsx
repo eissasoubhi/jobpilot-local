@@ -1,8 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
 import type { Application } from '@/lib/types';
+
+const { apiMock } = vi.hoisted(() => ({
+  apiMock: vi.fn(),
+}));
+
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+}));
 
 function application(overrides: Partial<Application> = {}): Application {
   return {
@@ -47,6 +55,10 @@ function application(overrides: Partial<Application> = {}): Application {
 }
 
 describe('OfferApplicationSummary', () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+  });
+
   it('shows the prepared application material directly on the offer workspace', () => {
     render(<OfferApplicationSummary application={application()} />);
 
@@ -80,6 +92,35 @@ describe('OfferApplicationSummary', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('marks the application as submitted from the review drawer without external submission', async () => {
+    const submitted = application({ status: 'SUBMITTED' });
+    apiMock.mockResolvedValueOnce(submitted);
+
+    render(<OfferApplicationSummary application={application()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+    fireEvent.click(screen.getByRole('button', { name: 'J’ai envoyé la candidature' }));
+
+    await waitFor(() => {
+      expect(apiMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(apiMock).toHaveBeenCalledWith('/applications/42', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'SUBMITTED',
+        message: 'Bonjour, je suis intéressé par cette mission Symfony.',
+        coverLetter: 'Lettre adaptée à la mission.',
+        compensationAnswer: 'TJM proposé : 500 €',
+      }),
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('Candidature marquée comme envoyée');
+    expect(screen.getByRole('button', { name: 'Candidature déjà marquée comme envoyée' })).toBeDisabled();
+    expect(screen.getAllByRole('link', { name: 'Ouvrir la plateforme pour postuler' })).toHaveLength(2);
+    for (const link of screen.getAllByRole('link', { name: 'Ouvrir la plateforme pour postuler' })) {
+      expect(link).toHaveAttribute('href', 'https://example.test/jobs/7');
+    }
   });
 
   it('does not claim that optional material is ready when it is empty', () => {

@@ -2,6 +2,21 @@
 
 Cette roadmap privilégie des livraisons petites, testables et réversibles.
 
+## Roadmaps produit versionnées
+
+La roadmap opérationnelle ci-dessous décrit l’état réel du projet et les prochaines livraisons concrètes. Les visions produit à moyen et long terme sont conservées séparément afin de pouvoir les revisiter sans polluer le backlog actif :
+
+- [`roadmap-v1.md`](./roadmap-v1.md) — **V1 Personal ATS** : version active, centrée sur le Unified Offers Workspace, la Review Queue, la timeline fiable, le CRM contextualisé, les analytics et le hardening production ;
+- [`roadmap-v2.md`](./roadmap-v2.md) — **V2 AI-first ATS** : assistant IA contextuel, explication, comparaison, application copilot, interview coach, salary advisor et follow-up assistant ;
+- [`roadmap-v3.md`](./roadmap-v3.md) — **V3 Career OS** : vision long terme incluant networking, learning, objectifs de carrière, salary history et analytics de carrière.
+
+### Règle d’utilisation
+
+- `roadmap.md` = vérité opérationnelle actuelle ;
+- `roadmap-v1.md` = cible produit active ;
+- `roadmap-v2.md` et `roadmap-v3.md` = idées et plans d’action conservés pour réévaluation ultérieure ;
+- une idée V2/V3 ne remonte dans la roadmap active qu’après identification d’un problème utilisateur réel et d’un premier PR petit, sûr et testable.
+
 ## Phase 0 — Fondation — livrée
 
 - Documenter l’état actuel et la cible.

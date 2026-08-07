@@ -71,14 +71,8 @@ export default function ApplicationsPage() {
     }
   };
 
-  const confirmSubmission = async (): Promise<void> => {
+  const markSubmitted = async (): Promise<void> => {
     if (selected === null || selected.status === 'SUBMITTED') return;
-
-    const confirmed = window.confirm(
-      'Confirme uniquement après avoir réellement envoyé la candidature sur la plateforme d’origine. JobPilot va enregistrer le suivi, mais il n’envoie pas la candidature à ta place.',
-    );
-
-    if (!confirmed) return;
 
     await save(
       'SUBMITTED',
@@ -305,10 +299,10 @@ export default function ApplicationsPage() {
                   )}
 
                   <div>
-                    <strong>3. Confirme le suivi après l’envoi réel</strong>
-                    <div className="small muted">Cette action ne soumet rien : elle marque simplement la candidature comme envoyée et enregistre la date.</div>
+                    <strong>3. Marque la candidature comme envoyée</strong>
+                    <div className="small muted">Après l’envoi réel sur la plateforme, ce bouton met immédiatement à jour le suivi dans JobPilot sans ouvrir de confirmation.</div>
                   </div>
-                  <button className="btn" type="button" disabled={saving || selected.status === 'SUBMITTED'} onClick={() => void confirmSubmission()}>
+                  <button className="btn" type="button" disabled={saving || selected.status === 'SUBMITTED'} onClick={() => void markSubmitted()}>
                     {selected.status === 'SUBMITTED' ? 'Candidature déjà marquée comme envoyée' : saving ? 'Enregistrement…' : 'Étape 3 — J’ai envoyé la candidature'}
                   </button>
                 </div>

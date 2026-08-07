@@ -7,6 +7,9 @@ export function matchesOfferInboxView(
   view: OfferInboxView,
 ): boolean {
   const submitted = application?.status === 'SUBMITTED';
+  const ignored = application?.status === 'IGNORED_NOT_MATCH';
 
-  return view === 'submitted' ? submitted : !submitted;
+  if (view === 'submitted') return submitted;
+
+  return !submitted && !ignored;
 }

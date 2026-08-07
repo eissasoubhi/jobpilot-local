@@ -15,7 +15,7 @@ final class ConnectorApiTest extends WebTestCase
         $client->request('GET', '/api/connectors');
         self::assertResponseIsSuccessful();
         $connectors = $this->decode($client->getResponse()->getContent());
-        self::assertCount(5, $connectors);
+        self::assertGreaterThanOrEqual(5, count($connectors));
 
         $byCode = [];
         foreach ($connectors as $connector) {

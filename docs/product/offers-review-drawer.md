@@ -31,18 +31,33 @@ The review drawer reuses the existing application PATCH endpoint already used by
 
 Saving keeps the current application status unchanged and updates only JobPilot. It performs no source-platform request and never submits a candidature externally.
 
+## Tracking status
+
+The same drawer now exposes the existing manual tracking states already available on the Applications page:
+
+- ready to submit;
+- automatic submission failed;
+- submitted;
+- recruiter replied;
+- interview;
+- rejected;
+- offer received.
+
+Changing the selection is local until `Enregistrer le statut` is clicked. Saving reuses the existing application PATCH endpoint with the current prepared fields and performs no external request. `SUBMISSION_PENDING` remains locked because the existing workflow treats it as an in-flight state that must not be manually overwritten.
+
 ## Interaction
 
 - `Examiner` opens the drawer without a page navigation;
 - `Fermer`, the backdrop, or the `Escape` key closes it;
 - the drawer is exposed as an accessible modal dialog;
 - `Enregistrer les modifications` persists the current prepared fields through the existing application endpoint;
+- `Enregistrer le statut` persists the selected local tracking state;
 - `J’ai envoyé la candidature` records the existing `SUBMITTED` tracking transition only after the user has actually submitted externally;
 - applying on the external platform remains a deliberate user action through the existing source link.
 
 ## Migration boundary
 
-This is an incremental V1 Unified Offers Workspace step. Prepared-material editing and explicit submitted tracking are now available in Offers, but the Applications page remains as a fallback while the remaining tracking/status controls reach functional parity and equivalent end-to-end coverage.
+This is an incremental V1 Unified Offers Workspace step. Prepared-material editing, explicit submitted tracking and the existing manual tracking statuses are now available in Offers. The Applications page remains as a fallback until the remaining workflow controls have functional parity and equivalent end-to-end coverage.
 
 ## Safety
 

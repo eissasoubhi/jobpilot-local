@@ -135,6 +135,32 @@ describe('OfferApplicationSummary', () => {
     expect(screen.getByRole('textbox', { name: 'Message préparé' })).toHaveValue('Message raccourci.');
   });
 
+  it('updates the manual tracking status from the review drawer', async () => {
+    const updated = application({ status: 'INTERVIEW' });
+    apiMock.mockResolvedValueOnce(updated);
+
+    render(<OfferApplicationSummary application={application()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Statut de suivi dans JobPilot' }), {
+      target: { value: 'INTERVIEW' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le statut' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledTimes(1));
+    expect(apiMock).toHaveBeenCalledWith('/applications/42', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'INTERVIEW',
+        message: 'Bonjour, je suis intéressé par cette mission Symfony.',
+        coverLetter: 'Lettre adaptée à la mission.',
+        compensationAnswer: 'TJM proposé : 500 €',
+      }),
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('Statut de suivi enregistré dans JobPilot.');
+    expect(screen.getAllByText('ENTRETIEN')).toHaveLength(2);
+  });
+
   it('marks the application as submitted from the review drawer without external submission', async () => {
     const submitted = application({ status: 'SUBMITTED' });
     apiMock.mockResolvedValueOnce(submitted);

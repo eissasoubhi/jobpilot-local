@@ -117,10 +117,10 @@ describe('OfferApplicationSummary', () => {
     });
     expect(await screen.findByRole('status')).toHaveTextContent('Candidature marquée comme envoyée');
     expect(screen.getByRole('button', { name: 'Candidature déjà marquée comme envoyée' })).toBeDisabled();
-    expect(screen.getByRole('link', { name: 'Ouvrir la plateforme pour postuler' })).toHaveAttribute(
-      'href',
-      'https://example.test/jobs/7',
-    );
+    expect(screen.getAllByRole('link', { name: 'Ouvrir la plateforme pour postuler' })).toHaveLength(2);
+    for (const link of screen.getAllByRole('link', { name: 'Ouvrir la plateforme pour postuler' })) {
+      expect(link).toHaveAttribute('href', 'https://example.test/jobs/7');
+    }
   });
 
   it('does not claim that optional material is ready when it is empty', () => {

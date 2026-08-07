@@ -33,8 +33,11 @@ export function OfferApplicationSummary({ application }: { application: Applicat
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [reviewOpen]);
 
-  const markSubmitted = async (): Promise<void> => {
-    if (currentApplication.status === 'SUBMITTED' || saving) return;
+  const saveApplication = async (
+    status: string,
+    successMessage: string,
+  ): Promise<void> => {
+    if (saving) return;
 
     setSaving(true);
     setNotice('');
@@ -44,7 +47,7 @@ export function OfferApplicationSummary({ application }: { application: Applicat
       const updated = await api<Application>(`/applications/${currentApplication.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          status: 'SUBMITTED',
+          status,
           message: currentApplication.message,
           coverLetter: currentApplication.coverLetter,
           compensationAnswer: currentApplication.compensationAnswer,
@@ -52,12 +55,25 @@ export function OfferApplicationSummary({ application }: { application: Applicat
         }),
       });
       setCurrentApplication(updated);
-      setNotice('Candidature marquée comme envoyée. La date d’envoi a été enregistrée dans JobPilot.');
+      setNotice(successMessage);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
       setSaving(false);
     }
+  };
+
+  const savePreparation = async (): Promise<void> => {
+    await saveApplication(currentApplication.status, 'Modifications enregistrées dans JobPilot.');
+  };
+
+  const markSubmitted = async (): Promise<void> => {
+    if (currentApplication.status === 'SUBMITTED') return;
+
+    await saveApplication(
+      'SUBMITTED',
+      'Candidature marquée comme envoyée. La date d’envoi a été enregistrée dans JobPilot.',
+    );
   };
 
   return (
@@ -232,30 +248,55 @@ export function OfferApplicationSummary({ application }: { application: Applicat
                 </section>
               )}
 
-              {hasMessage && (
-                <section>
-                  <strong>Message préparé</strong>
-                  <div className="notice small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 7 }}>
-                    {currentApplication.message}
-                  </div>
-                </section>
-              )}
+              <section>
+                <strong>Éléments de candidature</strong>
+                <div className="small muted" style={{ marginTop: 7 }}>
+                  Tu peux ajuster les éléments préparés ici avant d’ouvrir la plateforme d’origine. L’enregistrement reste local à JobPilot et ne déclenche aucun envoi externe.
+                </div>
+                <div className="stack" style={{ gap: 12, marginTop: 12 }}>
+                  <label>
+                    Message préparé
+                    <textarea
+                      aria-label="Message préparé"
+                      value={currentApplication.message}
+                      onChange={(event) => setCurrentApplication({ ...currentApplication, message: event.target.value })}
+                    />
+                  </label>
 
-              {hasCoverLetter && (
-                <section>
-                  <strong>Lettre de motivation demandée</strong>
-                  <div className="notice small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 7 }}>
-                    {currentApplication.coverLetter}
-                  </div>
-                </section>
-              )}
+                  <label>
+                    Lettre de motivation demandée
+                    <textarea
+                      aria-label="Lettre de motivation demandée"
+                      value={currentApplication.coverLetter}
+                      onChange={(event) => setCurrentApplication({ ...currentApplication, coverLetter: event.target.value })}
+                    />
+                  </label>
 
-              {hasCompensation && (
-                <section>
-                  <strong>Rémunération</strong>
-                  <div className="small" style={{ marginTop: 7 }}>{currentApplication.compensationAnswer}</div>
-                </section>
-              )}
+                  <label>
+                    Réponse rémunération
+                    <input
+                      aria-label="Réponse rémunération"
+                      value={currentApplication.compensationAnswer ?? ''}
+                      onChange={(event) => setCurrentApplication({ ...currentApplication, compensationAnswer: event.target.value })}
+                    />
+                  </label>
+
+                  <label>
+                    Confirmation / référence après envoi
+                    <input
+                      aria-label="Confirmation / référence après envoi"
+                      value={currentApplication.confirmationRef ?? ''}
+                      onChange={(event) => setCurrentApplication({ ...currentApplication, confirmationRef: event.target.value })}
+                    />
+                  </label>
+
+                  <div className="actions">
+                    <button className="btn secondary small" type="button" disabled={saving} onClick={() => void savePreparation()}>
+                      {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                    </button>
+                  </div>
+                </div>
+              </section>
 
               <section>
                 <strong>Suivi</strong>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
@@ -37,9 +37,9 @@ function application(overrides: Partial<Application> = {}): Application {
       contractType: 'Freelance',
       workMode: 'Hybride',
       language: 'fr',
-      description: 'Description',
+      description: 'Mission Symfony avec API Platform et Docker.',
       score: 82,
-      scoreReasons: [],
+      scoreReasons: ['Symfony correspond au profil.', 'Docker est demandé.'],
       status: 'PREPARED',
     },
     ...overrides,
@@ -61,6 +61,25 @@ describe('OfferApplicationSummary', () => {
       'href',
       'https://example.test/jobs/7',
     );
+  });
+
+  it('opens a review drawer with offer and preparation context without navigating away', () => {
+    render(<OfferApplicationSummary application={application()} />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Senior Symfony Developer' });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Mission Symfony avec API Platform et Docker.');
+    expect(dialog).toHaveTextContent('Score : 82 %');
+    expect(dialog).toHaveTextContent('Symfony correspond au profil.');
+    expect(dialog).toHaveTextContent('CV Symfony FR');
+    expect(dialog).toHaveTextContent('TJM proposé : 500 €');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('does not claim that optional material is ready when it is empty', () => {

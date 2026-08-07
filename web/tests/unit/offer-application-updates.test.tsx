@@ -15,9 +15,7 @@ function application(status = 'READY_TO_SUBMIT'): Application {
     status,
     message: 'Bonjour',
     coverLetter: '',
-    compensationAnswer: null,
     updatedAt: '2026-08-07T00:00:00+02:00',
-    cvDocument: null,
     jobOffer: {
       id: 7,
       source: 'Test',

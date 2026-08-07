@@ -44,6 +44,8 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
+        env:
+          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
@@ -143,6 +145,8 @@ jobs:
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
+        env:
+          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter

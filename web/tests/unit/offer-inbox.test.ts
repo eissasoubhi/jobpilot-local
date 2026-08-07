@@ -31,14 +31,16 @@ function application(status: string): Application {
 }
 
 describe('matchesOfferInboxView', () => {
-  it('keeps submitted applications out of the actionable inbox', () => {
+  it('keeps submitted and explicitly ignored applications out of the actionable inbox', () => {
     expect(matchesOfferInboxView(application('SUBMITTED'), 'actionable')).toBe(false);
+    expect(matchesOfferInboxView(application('IGNORED_NOT_MATCH'), 'actionable')).toBe(false);
     expect(matchesOfferInboxView(application('READY_TO_SUBMIT'), 'actionable')).toBe(true);
     expect(matchesOfferInboxView(undefined, 'actionable')).toBe(true);
   });
 
   it('shows only submitted applications in the submitted view', () => {
     expect(matchesOfferInboxView(application('SUBMITTED'), 'submitted')).toBe(true);
+    expect(matchesOfferInboxView(application('IGNORED_NOT_MATCH'), 'submitted')).toBe(false);
     expect(matchesOfferInboxView(application('INTERVIEW'), 'submitted')).toBe(false);
     expect(matchesOfferInboxView(undefined, 'submitted')).toBe(false);
   });

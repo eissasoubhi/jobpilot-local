@@ -54,4 +54,30 @@ describe('OfferApplicationSummary updates', () => {
 
     await waitFor(() => expect(onApplicationUpdated).toHaveBeenCalledWith(submitted));
   });
+
+  it('marks a reviewed offer as not matching without any external submission', async () => {
+    const ignored = application('IGNORED_NOT_MATCH');
+    const onApplicationUpdated = vi.fn();
+    apiMock.mockResolvedValueOnce(ignored);
+
+    render(
+      <OfferApplicationSummary
+        application={application()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ne correspond pas à mon profil' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'IGNORED_NOT_MATCH',
+        message: 'Bonjour',
+        coverLetter: '',
+      }),
+    }));
+    expect(onApplicationUpdated).toHaveBeenCalledWith(ignored);
+  });
 });

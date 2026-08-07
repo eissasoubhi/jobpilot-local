@@ -89,6 +89,15 @@ export function OfferApplicationSummary({
     );
   };
 
+  const markIgnoredNotMatch = async (): Promise<void> => {
+    if (currentApplication.status === 'IGNORED_NOT_MATCH') return;
+
+    await saveApplication(
+      'IGNORED_NOT_MATCH',
+      'Offre marquée comme ne correspondant pas au profil.',
+    );
+  };
+
   return (
     <section
       className="notice"
@@ -312,6 +321,25 @@ export function OfferApplicationSummary({
               </section>
 
               <section>
+                <strong>Décision</strong>
+                <div className="small muted" style={{ marginTop: 7 }}>
+                  Si l’offre ne correspond pas à ton profil, marque-la ici. Elle quittera la boîte À traiter sans être supprimée ni envoyer quoi que ce soit à la plateforme.
+                </div>
+                <div className="actions" style={{ marginTop: 10 }}>
+                  <button
+                    className="btn secondary small"
+                    type="button"
+                    disabled={saving || currentApplication.status === 'IGNORED_NOT_MATCH'}
+                    onClick={() => void markIgnoredNotMatch()}
+                  >
+                    {currentApplication.status === 'IGNORED_NOT_MATCH'
+                      ? 'Déjà marquée comme non correspondante'
+                      : saving ? 'Enregistrement…' : 'Ne correspond pas à mon profil'}
+                  </button>
+                </div>
+              </section>
+
+              <section>
                 <strong>Suivi</strong>
                 <div className="small muted" style={{ marginTop: 7 }}>
                   Mets à jour ici l’état réel de la candidature. Ces changements servent uniquement au suivi dans JobPilot et ne déclenchent aucun envoi externe.
@@ -332,6 +360,7 @@ export function OfferApplicationSummary({
                       <option value="INTERVIEW">Entretien</option>
                       <option value="REJECTED">Refusée</option>
                       <option value="OFFER_RECEIVED">Offre reçue</option>
+                      <option value="IGNORED_NOT_MATCH">Ne correspond pas au profil</option>
                     </select>
                   </label>
                   <div className="actions">

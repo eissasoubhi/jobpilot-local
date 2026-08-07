@@ -14,6 +14,7 @@ export const APPLICATION_STATUSES = [
   'INTERVIEW',
   'REJECTED',
   'OFFER_RECEIVED',
+  'IGNORED_NOT_MATCH',
 ] as const;
 
 export type ApplicationStatusFilter = 'ALL' | string;
@@ -32,6 +33,7 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   INTERVIEW: 'Entretiens',
   REJECTED: 'Refusées',
   OFFER_RECEIVED: 'Offres reçues',
+  IGNORED_NOT_MATCH: 'Ne correspondent pas au profil',
 };
 
 const BADGE_LABELS: Readonly<Record<string, string>> = {
@@ -48,6 +50,7 @@ const BADGE_LABELS: Readonly<Record<string, string>> = {
   INTERVIEW: 'ENTRETIEN',
   REJECTED: 'REFUSÉE',
   OFFER_RECEIVED: 'OFFRE REÇUE',
+  IGNORED_NOT_MATCH: 'NE CORRESPOND PAS AU PROFIL',
 };
 
 export type ApplicationStatusTone = 'good' | 'warn' | 'bad' | 'blue' | 'neutral';
@@ -80,7 +83,7 @@ export function applicationStatusTone(status: string): ApplicationStatusTone {
   if (status === 'SUBMISSION_FAILED' || status === 'REJECTED') {
     return 'bad';
   }
-  if (status === 'DRAFT') {
+  if (status === 'DRAFT' || status === 'IGNORED_NOT_MATCH') {
     return 'neutral';
   }
 

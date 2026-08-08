@@ -9,6 +9,27 @@ vi.mock('@/lib/api', () => ({ api: vi.fn() }));
 
 const mockedApi = vi.mocked(api);
 
+const emptyGemini = {
+  provider: 'gemini',
+  enabled: false,
+  model: 'gemini-3.5-flash-lite',
+  apiKeyConfigured: false,
+  apiKeySource: 'none',
+  hasInterfaceOverrides: false,
+};
+
+const adzuna = {
+  id: 'adzuna',
+  label: 'Adzuna',
+  category: 'connector',
+  runtimeActive: true,
+  note: 'Ces identifiants sont utilisés immédiatement par le connecteur Adzuna.',
+  fields: {
+    appId: { label: 'App ID', secret: false, configured: false, source: 'none', value: '' },
+    appKey: { label: 'App key', secret: true, configured: false, source: 'none', value: null },
+  },
+};
+
 describe('IntegrationSettingsPage', () => {
   beforeEach(() => {
     mockedApi.mockReset();
@@ -16,18 +37,11 @@ describe('IntegrationSettingsPage', () => {
 
   it('stores a new Gemini key without ever redisplaying the secret', async () => {
     mockedApi
+      .mockResolvedValueOnce(emptyGemini)
+      .mockResolvedValueOnce([adzuna])
       .mockResolvedValueOnce({
-        provider: 'gemini',
-        enabled: false,
-        model: 'gemini-3.5-flash-lite',
-        apiKeyConfigured: false,
-        apiKeySource: 'none',
-        hasInterfaceOverrides: false,
-      })
-      .mockResolvedValueOnce({
-        provider: 'gemini',
+        ...emptyGemini,
         enabled: true,
-        model: 'gemini-3.5-flash-lite',
         apiKeyConfigured: true,
         apiKeySource: 'interface',
         hasInterfaceOverrides: true,
@@ -36,14 +50,14 @@ describe('IntegrationSettingsPage', () => {
     const user = userEvent.setup();
     render(<IntegrationSettingsPage />);
 
-    await screen.findByText('Gemini — matching IA');
+    await screen.findByText('Gemini — matching IA actif');
     await user.click(screen.getByLabelText('Activer le matching IA'));
     await user.type(screen.getByLabelText('Clé API Gemini'), 'test-secret-key');
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer Gemini' }));
 
-    await waitFor(() => expect(mockedApi).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockedApi).toHaveBeenCalledTimes(3));
 
-    const request = mockedApi.mock.calls[1];
+    const request = mockedApi.mock.calls[2];
     expect(request[0]).toBe('/settings/ai');
     const init = request[1] as RequestInit;
     expect(init.method).toBe('PUT');
@@ -55,6 +69,41 @@ describe('IntegrationSettingsPage', () => {
 
     expect(screen.queryByDisplayValue('test-secret-key')).not.toBeInTheDocument();
     expect(await screen.findByText('Clé configurée')).toBeInTheDocument();
-    expect(screen.getByText(/Clé enregistrée dans JobPilot/)).toBeInTheDocument();
+    expect(screen.getByText(/Enregistré dans JobPilot/)).toBeInTheDocument();
+  });
+
+  it('stores connector credentials without redisplaying the secret', async () => {
+    mockedApi
+      .mockResolvedValueOnce(emptyGemini)
+      .mockResolvedValueOnce([adzuna])
+      .mockResolvedValueOnce({
+        ...adzuna,
+        fields: {
+          appId: { label: 'App ID', secret: false, configured: true, source: 'interface', value: 'jobpilot-app' },
+          appKey: { label: 'App key', secret: true, configured: true, source: 'interface', value: null },
+        },
+      });
+
+    const user = userEvent.setup();
+    render(<IntegrationSettingsPage />);
+
+    await screen.findByText('Adzuna');
+    await user.type(screen.getByLabelText('Adzuna — App ID'), 'jobpilot-app');
+    await user.type(screen.getByLabelText('Adzuna — App key'), 'adzuna-secret');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer Adzuna' }));
+
+    await waitFor(() => expect(mockedApi).toHaveBeenCalledTimes(3));
+
+    const request = mockedApi.mock.calls[2];
+    expect(request[0]).toBe('/settings/integrations/adzuna');
+    const init = request[1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({
+      values: { appId: 'jobpilot-app' },
+      secrets: { appKey: 'adzuna-secret' },
+    });
+
+    expect(screen.queryByDisplayValue('adzuna-secret')).not.toBeInTheDocument();
+    expect(await screen.findByText('Adzuna enregistré.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Supprimer app key' })).toBeInTheDocument();
   });
 });

@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
+import { Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { matchesOfferInboxView } from '@/lib/offer-inbox';
@@ -42,6 +42,7 @@ export default function ReviewQueuePage() {
 
   const currentIndex = clampReviewQueueIndex(index, queue.length);
   const current = currentReviewQueueItem(queue, currentIndex);
+  const progress = queue.length > 0 ? ((currentIndex + 1) / queue.length) * 100 : 0;
 
   const updateApplication = useCallback((updated: Application): void => {
     const completedCurrentDecision = current?.id === updated.id
@@ -60,7 +61,7 @@ export default function ReviewQueuePage() {
     <>
       <PageHeader
         title="Review Queue"
-        description="Traite les candidatures préparées une par une, sans perdre le contexte de l’offre."
+        description="Décide rapidement, une offre à la fois, avec tout le contexte visible sans ouvrir un panneau secondaire."
         actions={<Link className="btn secondary" href="/offres">Retour aux offres</Link>}
       />
 
@@ -73,48 +74,45 @@ export default function ReviewQueuePage() {
           <Empty>Aucune offre à traiter dans la Review Queue.</Empty>
         </Card>
       ) : current ? (
-        <>
-          <Card>
-            <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="actions">
-                <Badge tone="blue">Review Queue</Badge>
-                <Badge>{currentIndex + 1} / {queue.length}</Badge>
-              </div>
-              <div className="actions">
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={currentIndex === 0}
-                  onClick={() => setIndex(currentIndex - 1)}
-                >
-                  Précédente
-                </button>
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={currentIndex >= queue.length - 1}
-                  onClick={() => setIndex(currentIndex + 1)}
-                >
-                  Suivante
-                </button>
-              </div>
-            </div>
-            <div className="small muted" style={{ marginTop: 8 }}>
-              Une candidature envoyée ou ignorée quitte la queue dès que son statut est enregistré, puis JobPilot ouvre automatiquement la prochaine offre encore actionnable.
-            </div>
-          </Card>
+        <div className="review-queue-workspace">
+          <nav className="review-queue-slider" aria-label="Navigation dans la Review Queue">
+            <button
+              className="btn secondary small"
+              type="button"
+              disabled={currentIndex === 0}
+              onClick={() => setIndex(currentIndex - 1)}
+            >
+              ← Précédente
+            </button>
 
-          <Card>
-            <h2 style={{ marginTop: 0 }}>{current.jobOffer.title}</h2>
-            <div className="small muted">
-              {current.jobOffer.company || 'Entreprise non renseignée'} · {current.jobOffer.location || 'Lieu non renseigné'}
+            <div className="review-queue-slider-center">
+              <div className="review-queue-slider-label">
+                <strong>Offre {currentIndex + 1}</strong>
+                <span>sur {queue.length}</span>
+              </div>
+              <div className="review-queue-slider-track" aria-hidden="true">
+                <span style={{ width: `${progress}%` }} />
+              </div>
+              <div className="review-queue-slider-hint">
+                Une décision finale retire l’offre de la queue et ouvre automatiquement la suivante.
+              </div>
             </div>
-            <OfferApplicationSummary
-              application={current}
-              onApplicationUpdated={updateApplication}
-            />
-          </Card>
-        </>
+
+            <button
+              className="btn secondary small"
+              type="button"
+              disabled={currentIndex >= queue.length - 1}
+              onClick={() => setIndex(currentIndex + 1)}
+            >
+              Suivante →
+            </button>
+          </nav>
+
+          <ReviewQueueApplicationCard
+            application={current}
+            onApplicationUpdated={updateApplication}
+          />
+        </div>
       ) : null}
     </>
   );

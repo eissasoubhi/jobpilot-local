@@ -15,6 +15,7 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
         private AiMatchingConfigurationStore $configuration,
+        private AiQuotaManager $quotaManager,
     ) {
     }
 
@@ -29,6 +30,32 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
             $configuration['model'],
         );
 
-        return $analyzer->analyze($job, $settings);
+        if (!$configuration['enabled'] || trim($configuration['apiKey']) === '') {
+            return $analyzer->analyze($job, $settings);
+        }
+
+        $reservationId = $this->quotaManager->reserve(
+            'gemini',
+            $configuration['model'],
+            $analyzer->estimatedInputTokens($job, $settings, $this->quotaManager),
+            $configuration['quota'],
+        );
+
+        if ($reservationId === null) {
+            $this->logger->notice('Gemini matching skipped because the local quota guard reached its safe limit.', [
+                'model' => $configuration['model'],
+                'quota' => $configuration['quota'],
+            ]);
+
+            return null;
+        }
+
+        $analysis = $analyzer->analyze($job, $settings);
+        $actualInputTokens = $analyzer->lastInputTokens();
+        if ($actualInputTokens !== null) {
+            $this->quotaManager->reconcile($reservationId, $actualInputTokens);
+        }
+
+        return $analysis;
     }
 }

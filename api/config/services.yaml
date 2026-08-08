@@ -113,6 +113,10 @@ services:
     arguments:
       $privateDir: '%private_dir%'
 
+  App\Service\Ai\AiMatchingCache:
+    arguments:
+      $privateDir: '%private_dir%'
+
   App\Service\Ai\GeminiJobMatchAnalyzer:
     arguments:
       $enabled: '%env(bool:AI_MATCHING_ENABLED)%'

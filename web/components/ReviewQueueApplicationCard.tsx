@@ -70,16 +70,6 @@ export function ReviewQueueApplicationCard({
     }
   };
 
-  const markIgnoredNotMatch = async (): Promise<void> => {
-    if (currentApplication.status === 'IGNORED_NOT_MATCH') return;
-    await saveApplication('IGNORED_NOT_MATCH', 'Offre marquée comme ne correspondant pas au profil.');
-  };
-
-  const markSubmitted = async (): Promise<void> => {
-    if (currentApplication.status === 'SUBMITTED') return;
-    await saveApplication('SUBMITTED', 'Candidature marquée comme envoyée dans JobPilot.');
-  };
-
   const saveTrackingStatus = async (): Promise<void> => {
     if (selectedStatus === currentApplication.status) return;
     await saveApplication(selectedStatus, 'Statut de suivi enregistré dans JobPilot.');
@@ -124,31 +114,13 @@ export function ReviewQueueApplicationCard({
         <span><strong>Rémunération</strong> {hasCompensation ? currentApplication.compensationAnswer : 'non préparée'}</span>
       </div>
 
-      <section className="review-queue-actions-panel" aria-label="Actions sur la candidature">
+      <section className="review-queue-actions-panel" aria-label="Actions secondaires sur la candidature">
         <div className="review-queue-primary-actions">
           {job.sourceUrl && (
             <a className="btn small" href={job.sourceUrl} target="_blank" rel="noreferrer">
               Ouvrir la plateforme
             </a>
           )}
-
-          <button
-            className="btn secondary small"
-            type="button"
-            disabled={saving || currentApplication.status === 'SUBMITTED'}
-            onClick={() => void markSubmitted()}
-          >
-            {currentApplication.status === 'SUBMITTED' ? 'Déjà envoyée' : 'J’ai envoyé'}
-          </button>
-
-          <button
-            className="btn danger small"
-            type="button"
-            disabled={saving || currentApplication.status === 'IGNORED_NOT_MATCH'}
-            onClick={() => void markIgnoredNotMatch()}
-          >
-            Ne correspond pas
-          </button>
 
           {currentApplication.cvDocument && (
             <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">

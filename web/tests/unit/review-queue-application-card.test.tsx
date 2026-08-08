@@ -55,7 +55,7 @@ describe('ReviewQueueApplicationCard', () => {
     apiMock.mockReset();
   });
 
-  it('shows mission, compact decisions, contract and score without the prepared message body', () => {
+  it('keeps mission context and secondary actions in the card while primary decisions live in the bottom bar', () => {
     render(<ReviewQueueApplicationCard application={application()} />);
 
     expect(screen.getByRole('article', { name: /Développeur Front-end React/ })).toBeInTheDocument();
@@ -66,39 +66,14 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByText('88%')).toBeInTheDocument();
     expect(screen.getByText('Pourquoi ce score ?')).toBeInTheDocument();
     expect(screen.getByText('React correspond à un poste cible.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ne correspond pas' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'J’ai envoyé' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ne correspond pas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'J’ai envoyé' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Envoyée' })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Statut de suivi dans JobPilot' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Appliquer' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Ouvrir la plateforme' })).toHaveAttribute('href', 'https://example.test/jobs/7');
     expect(screen.getByRole('link', { name: 'Ouvrir le CV' })).toHaveAttribute('href', '/api/cvs/3/download');
     expect(screen.queryByText('Ce message préparé ne doit pas occuper la Review Queue.')).not.toBeInTheDocument();
-  });
-
-  it('marks a non-matching offer locally and notifies the queue', async () => {
-    const ignored = application({ status: 'IGNORED_NOT_MATCH' });
-    const onApplicationUpdated = vi.fn();
-    apiMock.mockResolvedValueOnce(ignored);
-
-    render(
-      <ReviewQueueApplicationCard
-        application={application()}
-        onApplicationUpdated={onApplicationUpdated}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Ne correspond pas' }));
-
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        status: 'IGNORED_NOT_MATCH',
-        message: 'Ce message préparé ne doit pas occuper la Review Queue.',
-        coverLetter: 'Lettre de motivation préparée.',
-        compensationAnswer: '55 000 € brut annuel',
-      }),
-    }));
-    expect(onApplicationUpdated).toHaveBeenCalledWith(ignored);
   });
 
   it('keeps a selected status local until Apply is clicked', async () => {

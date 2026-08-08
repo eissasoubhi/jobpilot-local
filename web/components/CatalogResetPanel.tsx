@@ -7,6 +7,22 @@ import { getErrorMessage } from '@/lib/errors';
 
 import styles from './CatalogResetPanel.module.css';
 
+type CatalogCleanupResult = {
+  message: string;
+  cleanup: {
+    busy: boolean;
+    scannedOffers: number;
+    deletedOffers: number;
+    deletedApplications: number;
+    deletedOccurrences: number;
+    deletedMarkedNotMatch: number;
+    deletedStoredAiNoMatch: number;
+    deletedAiNoMatch: number;
+    protectedHistoryOffers: number;
+    keptOffers: number;
+  };
+};
+
 type CatalogResetResult = {
   message: string;
   reset: {
@@ -28,14 +44,42 @@ type CatalogResetResult = {
 
 const CONFIRMATION_LABEL = 'REINITIALISER';
 const API_CONFIRMATION = 'RESET_OFFERS';
+const CLEANUP_API_CONFIRMATION = 'CLEAN_NO_MATCH';
 
 export function CatalogResetPanel() {
   const [confirmation, setConfirmation] = useState('');
   const [resetting, setResetting] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<CatalogResetResult | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<CatalogCleanupResult | null>(null);
 
-  const canReset = confirmation.trim() === CONFIRMATION_LABEL && !resetting;
+  const canReset = confirmation.trim() === CONFIRMATION_LABEL && !resetting && !cleaning;
+
+  const cleanupProfile = async (): Promise<void> => {
+    if (cleaning || resetting) return;
+
+    const confirmed = window.confirm(
+      'Supprimer uniquement les offres clairement hors profil ? Les candidatures non envoyées liées à ces offres seront supprimées. Les candidatures déjà traitées (envoyées, entretiens, réponses, refus, etc.) sont protégées.',
+    );
+    if (!confirmed) return;
+
+    setCleaning(true);
+    setError('');
+    setCleanupResult(null);
+
+    try {
+      const response = await api<CatalogCleanupResult>('/job-search/cleanup-profile', {
+        method: 'POST',
+        body: JSON.stringify({ confirmation: CLEANUP_API_CONFIRMATION }),
+      });
+      setCleanupResult(response);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const resetCatalog = async (): Promise<void> => {
     if (!canReset) return;
@@ -65,17 +109,71 @@ export function CatalogResetPanel() {
 
   return (
     <section className={styles.panel} aria-labelledby="catalog-reset-title">
+      <div className={styles.cleanupBox}>
+        <div className={styles.heading}>
+          <div>
+            <div className={styles.cleanupEyebrow}>Nettoyage sélectif</div>
+            <h2>Nettoyer les offres hors profil</h2>
+          </div>
+          <span className={styles.cleanupBadge}>Recommandé</span>
+        </div>
+
+        <p className={styles.description}>
+          Analyse le catalogue déjà présent et supprime seulement les offres clairement classées hors profil. Les offres
+          ambiguës, les matchs possibles et les candidatures déjà traitées sont conservés.
+        </p>
+
+        <div className={styles.keepGrid}>
+          <div>
+            <strong>Peut être supprimé</strong>
+            <span>Offres marquées « ne correspond pas » ou NO_MATCH IA à forte confiance, avec preuve concrète.</span>
+          </div>
+          <div>
+            <strong>Protégé</strong>
+            <span>Matchs, REVIEW, faible confiance et toute offre avec une candidature déjà réellement traitée.</span>
+          </div>
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            className={styles.cleanupButton}
+            type="button"
+            disabled={cleaning || resetting}
+            onClick={() => void cleanupProfile()}
+          >
+            {cleaning ? 'Nettoyage en cours…' : 'Nettoyer les offres hors profil'}
+          </button>
+          <span>Le cache et l’analyse IA existante sont réutilisés avant tout nouvel appel fournisseur.</span>
+        </div>
+
+        {cleanupResult && (
+          <div className={styles.success} role="status" data-testid="cleanup-result">
+            <strong>{cleanupResult.message}</strong>
+            <div className={styles.metrics}>
+              <span>{cleanupResult.cleanup.scannedOffers} offres analysées</span>
+              <span>{cleanupResult.cleanup.deletedOffers} hors profil supprimées</span>
+              <span>{cleanupResult.cleanup.deletedApplications} candidatures locales supprimées</span>
+              <span>{cleanupResult.cleanup.protectedHistoryOffers} historiques protégés</span>
+              <span>{cleanupResult.cleanup.keptOffers} offres conservées</span>
+            </div>
+            <a href="/offres">Voir le catalogue nettoyé →</a>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.divider} />
+
       <div className={styles.heading}>
         <div>
           <div className={styles.eyebrow}>Zone dangereuse</div>
-          <h2 id="catalog-reset-title">Réinitialiser les offres</h2>
+          <h2 id="catalog-reset-title">Réinitialiser toutes les offres</h2>
         </div>
         <span className={styles.badge}>Destructif</span>
       </div>
 
       <p className={styles.description}>
         Supprime le catalogue actuel puis relance immédiatement une recherche forcée sur toutes les sources activées,
-        configurées et autorisées. Le nouveau filtre de matching IA s’appliquera aux offres récupérées.
+        configurées et autorisées. Utilise cette action seulement si tu veux réellement repartir de zéro.
       </p>
 
       <div className={styles.keepGrid}>
@@ -100,7 +198,7 @@ export function CatalogResetPanel() {
           autoComplete="off"
           aria-label="Confirmation de réinitialisation des offres"
           placeholder={CONFIRMATION_LABEL}
-          disabled={resetting}
+          disabled={resetting || cleaning}
           onChange={(event) => {
             setConfirmation(event.target.value);
             setError('');

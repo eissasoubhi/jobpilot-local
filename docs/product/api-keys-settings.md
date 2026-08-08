@@ -8,7 +8,9 @@ Gemini reste le provider IA réellement utilisé pour le test V1. L’interface 
 
 - l’activation du matching IA ;
 - le modèle Gemini utilisé ;
-- la clé API Gemini.
+- la clé API Gemini ;
+- les limites RPM, TPM et RPD du modèle actif ;
+- le pourcentage maximum du quota que JobPilot est autorisé à consommer.
 
 La configuration enregistrée depuis l’interface prend le dessus sur les variables d’environnement existantes :
 
@@ -16,9 +18,47 @@ La configuration enregistrée depuis l’interface prend le dessus sur les varia
 AI_MATCHING_ENABLED=
 GEMINI_MATCHING_MODEL=
 GEMINI_API_KEY=
+GEMINI_QUOTA_RPM=15
+GEMINI_QUOTA_TPM=250000
+GEMINI_QUOTA_RPD=500
+AI_QUOTA_SAFETY_PERCENT=80
 ```
 
+Les valeurs `15 RPM / 250 000 TPM / 500 RPD` sont les limites affichées pour le projet de test Gemini 3.5 Flash-Lite au moment de cette intégration. Elles ne sont pas considérées comme universelles : elles doivent être vérifiées dans Google AI Studio lors d’un changement de modèle, de projet ou de tier.
+
 Le matcher résout la configuration effective à chaque analyse. Une modification depuis l’interface est donc utilisée par les prochains matchings sans redémarrage du conteneur. Les erreurs Gemini, quotas et réponses invalides continuent de basculer vers le matcher déterministe existant.
+
+## Quota manager IA
+
+JobPilot possède un garde-fou local provider + modèle avant tout appel au provider IA actif.
+
+Pour Gemini, trois dimensions sont suivies :
+
+- **RPM** : requêtes effectuées pendant les 60 dernières secondes ;
+- **TPM** : tokens d’entrée consommés pendant les 60 dernières secondes ;
+- **RPD** : requêtes du jour, avec remise à zéro à minuit dans le fuseau `America/Los_Angeles`, conformément au fonctionnement du quota journalier Gemini.
+
+Le compteur local est stocké dans :
+
+```text
+var/private/ai-quota-usage.json
+```
+
+Avant l’appel, JobPilot réserve une requête et une estimation conservative des tokens d’entrée. Cette estimation évite d’effectuer un appel `countTokens` supplémentaire uniquement pour contrôler le quota. Lorsque la réponse Interactions API contient `usage.total_input_tokens`, la réservation est corrigée avec la consommation réelle.
+
+Le pourcentage de sécurité est appliqué aux trois limites. Par exemple, avec les limites de test actuelles et `80 %`, JobPilot s’arrête localement à :
+
+- 12 RPM ;
+- 200 000 TPM ;
+- 400 RPD.
+
+Si l’une de ces limites sûres serait dépassée, **aucun appel Gemini n’est envoyé** et le matcher déterministe prend immédiatement le relais.
+
+Le quota manager est générique et indexe l’usage par `provider + model`. Les futurs providers OpenAI, Mistral et Anthropic pourront donc utiliser leurs propres limites sans partager les compteurs Gemini.
+
+### Limite du compteur local
+
+Les quotas Gemini sont appliqués au projet côté Google. JobPilot ne peut pas connaître les appels faits au même projet depuis AI Studio ou une autre application. Le pourcentage de sécurité sert donc aussi à réserver une marge pour cette consommation externe. Pour une utilisation partagée importante, il faut soit diminuer ce pourcentage, soit utiliser un projet dédié à JobPilot.
 
 ## Coffre partagé pour les autres APIs
 
@@ -30,7 +70,7 @@ La même page gère maintenant les configurations suivantes :
 - Mistral : modèle + clé API ;
 - Anthropic : modèle + clé API.
 
-Ces valeurs sont déjà stockées de manière sûre pour permettre une future bascule de provider, mais elles ne déclenchent pas encore d’appel vers ces fournisseurs. Chaque provider sera activé dans une livraison séparée avec son client API, ses tests de sortie structurée et son fallback.
+Ces valeurs sont déjà stockées de manière sûre pour permettre une future bascule de provider, mais elles ne déclenchent pas encore d’appel vers ces fournisseurs. Chaque provider sera activé dans une livraison séparée avec son client API, ses tests de sortie structurée, ses limites propres et son fallback.
 
 ### Connecteurs API actifs
 
@@ -93,6 +133,6 @@ Les variables existantes Adzuna, France Travail et SmartRecruiters restent compa
 
 ## Sécurité et conformité
 
-Cette interface ne modifie pas les politiques des connecteurs, les quotas, les endpoints réglementés, les règles robots/CAPTCHA ni les comportements de soumission de candidature.
+Cette interface ne modifie pas les politiques des connecteurs, les endpoints réglementés, les règles robots/CAPTCHA ni les comportements de soumission de candidature.
 
 Pendant les tests Gemini free tier, JobPilot conserve la minimisation introduite avec le matching IA : seuls les critères de matching et les champs nécessaires de l’offre sont envoyés. Le CV complet, le nom, les e-mails, Gmail et les identifiants des autres connecteurs ne sont pas transmis à Gemini.

@@ -26,18 +26,28 @@ type AiSettings = {
   };
 };
 
-export const GEMINI_PAID_BALANCED_PRESET: AiQuota = {
-  rpm: 60,
-  tpm: 1_000_000,
-  rpd: 2_000,
+export const GEMINI_PAID_TIER1_MODEL = 'gemini-3.5-flash-lite';
+
+/**
+ * Active Tier 1 limits shown by Google AI Studio for the user's
+ * gemini-3.5-flash-lite project on 2026-08-09.
+ *
+ * These are provider ceilings, not a promise that Google will keep the same
+ * values forever. JobPilot still applies its local safety percentage before
+ * allowing a provider call.
+ */
+export const GEMINI_PAID_TIER1_PRESET: AiQuota = {
+  rpm: 4_000,
+  tpm: 4_000_000,
+  rpd: 10_000,
   safetyPercent: 80,
 };
 
 function isPaidPreset(quota: AiQuota): boolean {
-  return quota.rpm === GEMINI_PAID_BALANCED_PRESET.rpm
-    && quota.tpm === GEMINI_PAID_BALANCED_PRESET.tpm
-    && quota.rpd === GEMINI_PAID_BALANCED_PRESET.rpd
-    && quota.safetyPercent === GEMINI_PAID_BALANCED_PRESET.safetyPercent;
+  return quota.rpm === GEMINI_PAID_TIER1_PRESET.rpm
+    && quota.tpm === GEMINI_PAID_TIER1_PRESET.tpm
+    && quota.rpd === GEMINI_PAID_TIER1_PRESET.rpd
+    && quota.safetyPercent === GEMINI_PAID_TIER1_PRESET.safetyPercent;
 }
 
 function formatNumber(value: number): string {
@@ -71,6 +81,8 @@ export function GeminiPaidQuotaPresetPanel() {
   }, []);
 
   const applyPaidPreset = async (): Promise<void> => {
+    if (settings === null || settings.model !== GEMINI_PAID_TIER1_MODEL) return;
+
     setSaving(true);
     setError('');
     setMessage('');
@@ -79,14 +91,14 @@ export function GeminiPaidQuotaPresetPanel() {
       const response = await api<AiSettings>('/settings/ai', {
         method: 'PUT',
         body: JSON.stringify({
-          quotaRpm: GEMINI_PAID_BALANCED_PRESET.rpm,
-          quotaTpm: GEMINI_PAID_BALANCED_PRESET.tpm,
-          quotaRpd: GEMINI_PAID_BALANCED_PRESET.rpd,
-          quotaSafetyPercent: GEMINI_PAID_BALANCED_PRESET.safetyPercent,
+          quotaRpm: GEMINI_PAID_TIER1_PRESET.rpm,
+          quotaTpm: GEMINI_PAID_TIER1_PRESET.tpm,
+          quotaRpd: GEMINI_PAID_TIER1_PRESET.rpd,
+          quotaSafetyPercent: GEMINI_PAID_TIER1_PRESET.safetyPercent,
         }),
       });
       setSettings(response);
-      setMessage('Profil Gemini payant appliqué. Les prochains appels utiliseront immédiatement ces garde-fous locaux.');
+      setMessage('Limites Tier 1 Gemini 3.5 Flash-Lite appliquées. Les prochains appels utilisent immédiatement ces garde-fous locaux.');
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
@@ -94,35 +106,46 @@ export function GeminiPaidQuotaPresetPanel() {
     }
   };
 
-  const active = settings !== null && isPaidPreset(settings.quota);
+  const modelMatches = settings?.model === GEMINI_PAID_TIER1_MODEL;
+  const active = settings !== null && modelMatches && isPaidPreset(settings.quota);
+  const usableRpm = Math.floor(GEMINI_PAID_TIER1_PRESET.rpm * GEMINI_PAID_TIER1_PRESET.safetyPercent / 100);
+  const usableTpm = Math.floor(GEMINI_PAID_TIER1_PRESET.tpm * GEMINI_PAID_TIER1_PRESET.safetyPercent / 100);
+  const usableRpd = Math.floor(GEMINI_PAID_TIER1_PRESET.rpd * GEMINI_PAID_TIER1_PRESET.safetyPercent / 100);
 
   return (
     <div style={{ marginTop: 18 }}>
       <Card>
         <div className="actions" style={{ justifyContent: 'space-between' }}>
           <div>
-            <h2 className="section-title" style={{ marginBottom: 6 }}>Gemini payant — profil de quota JobPilot</h2>
+            <h2 className="section-title" style={{ marginBottom: 6 }}>Gemini Tier 1 — Gemini 3.5 Flash-Lite</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Augmente le débit local autorisé pour le matching et le filtrage des offres, tout en gardant une marge de sécurité.
+              Aligne JobPilot sur les limites actives visibles dans AI Studio pour ce modèle, tout en conservant une marge locale.
             </p>
           </div>
-          <Badge tone={active ? 'good' : 'neutral'}>
-            {active ? 'Profil payant actif' : 'Profil disponible'}
+          <Badge tone={active ? 'good' : modelMatches ? 'neutral' : 'warn'}>
+            {active ? 'Tier 1 actif' : modelMatches ? 'Preset disponible' : 'Modèle différent'}
           </Badge>
         </div>
 
         <div className="stack" style={{ marginTop: 16 }}>
           <div className="notice">
-            <strong>Preset équilibré :</strong>{' '}
-            {GEMINI_PAID_BALANCED_PRESET.rpm} RPM · {formatNumber(GEMINI_PAID_BALANCED_PRESET.tpm)} TPM ·{' '}
-            {formatNumber(GEMINI_PAID_BALANCED_PRESET.rpd)} RPD · marge {GEMINI_PAID_BALANCED_PRESET.safetyPercent} %.
-            JobPilot utilisera au maximum 48 RPM, 800 000 TPM et 1 600 RPD.
+            <strong>Limites AI Studio observées :</strong>{' '}
+            {formatNumber(GEMINI_PAID_TIER1_PRESET.rpm)} RPM · {formatNumber(GEMINI_PAID_TIER1_PRESET.tpm)} TPM ·{' '}
+            {formatNumber(GEMINI_PAID_TIER1_PRESET.rpd)} RPD.
+            Avec la marge JobPilot de {GEMINI_PAID_TIER1_PRESET.safetyPercent} %, le plafond local devient{' '}
+            {formatNumber(usableRpm)} RPM · {formatNumber(usableTpm)} TPM · {formatNumber(usableRpd)} RPD.
           </div>
 
           <div className="notice warning">
-            <strong>Ce preset n’est pas le quota contractuel Google.</strong> Les limites Gemini réelles varient selon le modèle, le projet et le tier.
-            Si AI Studio affiche une limite plus basse pour ton projet, recopie cette valeur dans les champs de quota au-dessus.
+            <strong>Preset lié au modèle et au tier actuels.</strong> Google peut modifier les limites selon le projet, le modèle ou le tier.
+            Si AI Studio change, mets à jour les champs RPM/TPM/RPD ou ce preset avant de l’utiliser.
           </div>
+
+          {settings !== null && !modelMatches && (
+            <div className="notice warning" role="alert">
+              Le modèle actif est <code>{settings.model}</code>. Ce preset est réservé à <code>{GEMINI_PAID_TIER1_MODEL}</code> et ne sera pas appliqué automatiquement.
+            </div>
+          )}
 
           {settings !== null && (
             <div className="small muted">
@@ -139,10 +162,16 @@ export function GeminiPaidQuotaPresetPanel() {
             <button
               className="btn"
               type="button"
-              disabled={loading || saving || active}
+              disabled={loading || saving || active || !modelMatches}
               onClick={() => void applyPaidPreset()}
             >
-              {saving ? 'Application…' : active ? 'Profil payant déjà actif' : 'Appliquer le profil payant recommandé'}
+              {saving
+                ? 'Application…'
+                : active
+                  ? 'Limites Tier 1 déjà actives'
+                  : modelMatches
+                    ? 'Appliquer les limites Tier 1 observées'
+                    : 'Preset indisponible pour ce modèle'}
             </button>
             <span className="small muted">Le cache IA et le fallback déterministe restent inchangés.</span>
           </div>

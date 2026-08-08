@@ -7,6 +7,16 @@ use App\Entity\UserSettings;
 
 final class MatchingScoreService
 {
+    private const PRIMARY_STACK_CONFLICT_CAP = 45;
+
+    /** @var array<string, list<string>> */
+    private const BACKEND_STACK_PATTERNS = [
+        'PHP/Symfony' => ['php', 'symfony', 'laravel'],
+        'Java/Spring' => ['java', 'spring', 'spring boot', 'quarkus'],
+        'Python' => ['python', 'django', 'fastapi', 'flask'],
+        '.NET/C#' => ['.net', 'dotnet', 'c#', 'asp.net'],
+    ];
+
     public function evaluate(JobOffer $job, UserSettings $settings): array
     {
         $text = mb_strtolower($job->getTitle().' '.$job->getDescription());
@@ -43,7 +53,98 @@ final class MatchingScoreService
         $reasons[] = "Contrat : {$contractScore}/5";
         $reasons[] = "Fraîcheur : {$freshnessScore}/2";
 
+        $primaryStacks = $this->detectPrimaryBackendStacks($job);
+        if ($primaryStacks !== []) {
+            $reasons[] = 'Stack principale détectée : '.implode(' ou ', $primaryStacks);
+
+            $preferredStacks = $this->detectPreferredBackendStacks($settings);
+            if ($preferredStacks !== [] && array_intersect($primaryStacks, $preferredStacks) === []) {
+                $score = min($score, self::PRIMARY_STACK_CONFLICT_CAP);
+                $reasons[] = 'Conflit de stack principale avec le profil : score plafonné à '.self::PRIMARY_STACK_CONFLICT_CAP.'/100';
+            }
+        }
+
         return ['score' => $score, 'reasons' => $reasons, 'hardRejected' => false];
+    }
+
+    /** @return list<string> */
+    private function detectPrimaryBackendStacks(JobOffer $job): array
+    {
+        $title = mb_strtolower($job->getTitle());
+        $description = mb_strtolower($job->getDescription());
+        $openingDescription = mb_substr($description, 0, 800);
+        $scores = [];
+
+        foreach (self::BACKEND_STACK_PATTERNS as $stack => $patterns) {
+            $score = 0;
+            foreach ($patterns as $pattern) {
+                if ($this->containsTechnology($title, $pattern)) {
+                    $score += 4;
+                }
+                if ($this->containsTechnology($openingDescription, $pattern)) {
+                    $score += 2;
+                }
+                if ($this->containsTechnology($description, $pattern)) {
+                    $score += 1;
+                }
+            }
+            if ($score > 0) {
+                $scores[$stack] = $score;
+            }
+        }
+
+        if ($scores === []) {
+            return [];
+        }
+
+        $highest = max($scores);
+        if ($highest < 3) {
+            return [];
+        }
+
+        return array_keys(array_filter($scores, static fn(int $score): bool => $score === $highest));
+    }
+
+    /** @return list<string> */
+    private function detectPreferredBackendStacks(UserSettings $settings): array
+    {
+        $scores = [];
+
+        foreach (self::BACKEND_STACK_PATTERNS as $stack => $patterns) {
+            $score = 0;
+            foreach ($settings->getTargetJobs() as $target) {
+                foreach ($patterns as $pattern) {
+                    if ($this->containsTechnology(mb_strtolower($target), $pattern)) {
+                        $score += 3;
+                    }
+                }
+            }
+            foreach ($settings->getSkills() as $skill) {
+                foreach ($patterns as $pattern) {
+                    if ($this->containsTechnology(mb_strtolower($skill), $pattern)) {
+                        $score += 1;
+                    }
+                }
+            }
+            if ($score > 0) {
+                $scores[$stack] = $score;
+            }
+        }
+
+        if ($scores === []) {
+            return [];
+        }
+
+        $highest = max($scores);
+
+        return array_keys(array_filter($scores, static fn(int $score): bool => $score === $highest));
+    }
+
+    private function containsTechnology(string $text, string $technology): bool
+    {
+        $quoted = preg_quote($technology, '/');
+
+        return preg_match('/(?<![\pL\pN])'.$quoted.'(?![\pL\pN])/iu', $text) === 1;
     }
 
     private function tokens(string $value): array

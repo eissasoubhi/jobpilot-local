@@ -62,11 +62,8 @@ final class MatchingScoreServiceAiTest extends TestCase
 
     public function testExplicitExclusionStillWinsBeforeAi(): void
     {
-        $calls = 0;
-        $analyzer = new class($calls) implements AiJobMatchAnalyzerInterface {
-            public function __construct(private int &$calls)
-            {
-            }
+        $analyzer = new class implements AiJobMatchAnalyzerInterface {
+            public int $calls = 0;
 
             public function analyze(JobOffer $job, UserSettings $settings): ?AiJobMatchAnalysis
             {
@@ -86,7 +83,7 @@ final class MatchingScoreServiceAiTest extends TestCase
 
         self::assertSame(0, $result['score']);
         self::assertTrue($result['hardRejected']);
-        self::assertSame(0, $calls);
+        self::assertSame(0, $analyzer->calls);
     }
 
     private function job(): JobOffer

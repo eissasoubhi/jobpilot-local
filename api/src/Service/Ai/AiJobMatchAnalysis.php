@@ -89,6 +89,24 @@ final readonly class AiJobMatchAnalysis
         );
     }
 
+    /** @return array<string, mixed> */
+    public function toArray(): array
+    {
+        return [
+            'score' => $this->score,
+            'confidence' => $this->confidence,
+            'decision' => $this->decision,
+            'primaryRole' => $this->primaryRole,
+            'primaryStack' => $this->primaryStack,
+            'secondaryStack' => $this->secondaryStack,
+            'mustHaves' => $this->mustHaves,
+            'niceToHaves' => $this->niceToHaves,
+            'missingMustHaves' => $this->missingMustHaves,
+            'conflicts' => $this->conflicts,
+            'explanation' => $this->explanation,
+        ];
+    }
+
     /** @return list<string> */
     public function toScoreReasons(): array
     {

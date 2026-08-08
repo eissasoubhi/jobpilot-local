@@ -82,3 +82,37 @@ textarea { min-height:115px; resize:vertical; }.form-grid { display:grid; grid-t
 .checkbox-label { display:flex; grid-template-columns:none; flex-direction:row; align-items:center; gap:9px; }
 .checkbox-label input { width:auto; }
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline:3px solid rgba(62,92,230,.35); outline-offset:2px; }
+
+/* Review Queue viewport-first UX */
+.review-queue-page { margin-top:-14px; }
+.review-queue-compact-header { min-height:38px; display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.review-queue-compact-title { min-width:0; display:flex; align-items:baseline; gap:10px; }
+.review-queue-compact-title h1 { margin:0; font-size:18px; line-height:1.2; }
+.review-queue-compact-title span { color:var(--muted); font-size:12px; }
+.review-queue-back-link { display:inline-flex; align-items:center; border:1px solid #d8deea; border-radius:8px; padding:6px 9px; background:white; color:#46536a; font-size:12px; font-weight:700; }
+.review-queue-back-link:hover { border-color:#b9c3d4; color:#26344b; }
+.review-queue-workspace { gap:10px; padding-bottom:82px; }
+.review-queue-slider { position:fixed; top:auto; bottom:14px; left:286px; right:34px; max-width:1432px; margin:0 auto; z-index:35; grid-template-columns:auto minmax(150px,1fr) auto; gap:12px; padding:9px 11px; border-radius:12px; box-shadow:0 12px 34px rgba(25,39,77,.16); }
+.review-queue-slider-center { gap:5px; }
+.review-queue-slider-label { justify-content:center; gap:14px; font-size:12px; }
+.review-queue-keyboard-hint { color:#8a94a6; font-size:10px; font-weight:600; }
+.review-queue-slider-track { height:4px; }
+.review-queue-nav-button { min-width:116px; min-height:38px; gap:6px; }
+.review-queue-card { min-height:calc(100vh - 105px); gap:14px; padding:20px; border-radius:16px; }
+.review-queue-card-header { gap:18px; padding-bottom:12px; }
+.review-queue-card-title-block h2 { margin:3px 0 7px; font-size:26px; }
+.review-queue-card-meta { gap:5px 12px; font-size:12px; }.review-queue-card-meta span:not(:last-child)::after { margin-left:12px; }
+.review-queue-card-badges { gap:5px; }
+.review-queue-readiness { gap:6px; }.review-queue-readiness span { padding:6px 8px; }
+.review-queue-actions-panel { justify-content:space-between; align-items:end; gap:10px 18px; padding:10px 11px; }
+.review-queue-primary-actions { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.review-queue-status-inline { margin-left:auto; display:flex; align-items:end; gap:7px; }
+.review-queue-status-control { min-width:180px; max-width:220px; gap:4px; font-size:11px; }.review-queue-status-control select { min-height:34px; padding:7px 9px; font-size:12px; }
+.review-queue-mission { gap:8px; min-height:220px; }
+.review-queue-section-heading h3,.review-queue-score-summary h3 { font-size:17px; }
+.review-queue-description { padding:14px 16px; font-size:13px; line-height:1.65; }
+.review-queue-score-panel { gap:16px; padding:14px 16px; }
+.review-queue-score-value { width:64px; height:64px; border-radius:18px; font-size:21px; }
+.review-queue-score-reasons { gap:5px; font-size:12px; }
+@media (max-width:950px){ .review-queue-page{margin-top:-8px}.review-queue-slider{position:fixed;left:22px;right:22px;bottom:12px;max-width:none}.review-queue-workspace{padding-bottom:82px}.review-queue-card{min-height:0}.review-queue-actions-panel{display:grid}.review-queue-status-inline{margin-left:0}.review-queue-primary-actions{width:100%} }
+@media (max-width:650px){ .review-queue-page{margin-top:0}.review-queue-compact-header{margin-bottom:8px}.review-queue-compact-title{display:grid;gap:2px}.review-queue-compact-title h1{font-size:16px}.review-queue-back-link{padding:5px 8px}.review-queue-slider{left:16px;right:16px;bottom:10px;grid-template-columns:auto minmax(80px,1fr) auto;padding:8px}.review-queue-nav-button{min-width:42px;padding:7px 9px}.review-queue-nav-text{display:none}.review-queue-keyboard-hint{display:none}.review-queue-slider-label{justify-content:center}.review-queue-card{padding:14px;gap:12px}.review-queue-card-title-block h2{font-size:22px}.review-queue-primary-actions{display:grid;grid-template-columns:1fr 1fr}.review-queue-primary-actions>*{width:100%}.review-queue-status-inline{display:grid;grid-template-columns:1fr auto;align-items:end}.review-queue-status-control{min-width:0;max-width:none}.review-queue-score-panel{padding:12px}.review-queue-score-value{width:56px;height:56px;border-radius:16px;font-size:18px} }

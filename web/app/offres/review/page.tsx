@@ -4,16 +4,23 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
-import { Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { matchesOfferInboxView } from '@/lib/offer-inbox';
 import {
   clampReviewQueueIndex,
   currentReviewQueueItem,
+  isReadyToSubmitReviewItem,
   nextReviewQueueIndexAfterDecision,
 } from '@/lib/review-queue';
 import type { Application } from '@/lib/types';
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  return target.isContentEditable
+    || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName);
+}
 
 export default function ReviewQueuePage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
@@ -36,7 +43,7 @@ export default function ReviewQueuePage() {
   }, [load]);
 
   const queue = useMemo(
-    () => (applications ?? []).filter((application) => matchesOfferInboxView(application, 'actionable')),
+    () => (applications ?? []).filter(isReadyToSubmitReviewItem),
     [applications],
   );
 
@@ -44,9 +51,38 @@ export default function ReviewQueuePage() {
   const current = currentReviewQueueItem(queue, currentIndex);
   const progress = queue.length > 0 ? ((currentIndex + 1) / queue.length) * 100 : 0;
 
+  const goPrevious = useCallback((): void => {
+    if (currentIndex > 0) setIndex(currentIndex - 1);
+  }, [currentIndex]);
+
+  const goNext = useCallback((): void => {
+    if (currentIndex < queue.length - 1) setIndex(currentIndex + 1);
+  }, [currentIndex, queue.length]);
+
+  useEffect(() => {
+    const navigateWithKeyboard = (event: KeyboardEvent): void => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === 'ArrowLeft' && currentIndex > 0) {
+        event.preventDefault();
+        goPrevious();
+      }
+
+      if (event.key === 'ArrowRight' && currentIndex < queue.length - 1) {
+        event.preventDefault();
+        goNext();
+      }
+    };
+
+    window.addEventListener('keydown', navigateWithKeyboard);
+    return () => window.removeEventListener('keydown', navigateWithKeyboard);
+  }, [currentIndex, goNext, goPrevious, queue.length]);
+
   const updateApplication = useCallback((updated: Application): void => {
     const completedCurrentDecision = current?.id === updated.id
-      && !matchesOfferInboxView(updated, 'actionable');
+      && !isReadyToSubmitReviewItem(updated);
 
     if (completedCurrentDecision) {
       setIndex(nextReviewQueueIndexAfterDecision(currentIndex, queue.length));
@@ -58,12 +94,16 @@ export default function ReviewQueuePage() {
   }, [current?.id, currentIndex, queue.length]);
 
   return (
-    <>
-      <PageHeader
-        title="Review Queue"
-        description="Décide rapidement, une offre à la fois, avec tout le contexte visible sans ouvrir un panneau secondaire."
-        actions={<Link className="btn secondary" href="/offres">Retour aux offres</Link>}
-      />
+    <div className="review-queue-page">
+      <header className="review-queue-compact-header">
+        <div className="review-queue-compact-title">
+          <h1>Review Queue</h1>
+          <span aria-live="polite">
+            {applications === null ? 'Chargement' : `${queue.length} prête${queue.length > 1 ? 's' : ''} à envoyer`}
+          </span>
+        </div>
+        <Link className="review-queue-back-link" href="/offres">← Offres</Link>
+      </header>
 
       {error !== '' && <ErrorBox message={error} />}
 
@@ -71,51 +111,54 @@ export default function ReviewQueuePage() {
         <Card><Loading /></Card>
       ) : queue.length === 0 ? (
         <Card>
-          <Empty>Aucune offre à traiter dans la Review Queue.</Empty>
+          <Empty>Aucune candidature prête à envoyer dans la Review Queue.</Empty>
         </Card>
       ) : current ? (
         <div className="review-queue-workspace">
-          <nav className="review-queue-slider" aria-label="Navigation dans la Review Queue">
-            <button
-              className="btn secondary small"
-              type="button"
-              aria-label="Précédente"
-              disabled={currentIndex === 0}
-              onClick={() => setIndex(currentIndex - 1)}
-            >
-              ← Précédente
-            </button>
-
-            <div className="review-queue-slider-center">
-              <div className="review-queue-slider-label">
-                <strong>Offre {currentIndex + 1}</strong>
-                <span>sur {queue.length}</span>
-              </div>
-              <div className="review-queue-slider-track" aria-hidden="true">
-                <span style={{ width: `${progress}%` }} />
-              </div>
-              <div className="review-queue-slider-hint">
-                Une décision finale retire l’offre de la queue et ouvre automatiquement la suivante.
-              </div>
-            </div>
-
-            <button
-              className="btn secondary small"
-              type="button"
-              aria-label="Suivante"
-              disabled={currentIndex >= queue.length - 1}
-              onClick={() => setIndex(currentIndex + 1)}
-            >
-              Suivante →
-            </button>
-          </nav>
-
           <ReviewQueueApplicationCard
             application={current}
             onApplicationUpdated={updateApplication}
           />
+
+          <nav className="review-queue-slider" aria-label="Navigation dans la Review Queue">
+            <button
+              className="btn secondary small review-queue-nav-button"
+              type="button"
+              aria-label="Précédente"
+              aria-keyshortcuts="ArrowLeft"
+              title="Précédente — flèche gauche"
+              disabled={currentIndex === 0}
+              onClick={goPrevious}
+            >
+              <span aria-hidden="true">←</span>
+              <span className="review-queue-nav-text">Précédente</span>
+            </button>
+
+            <div className="review-queue-slider-center">
+              <div className="review-queue-slider-label">
+                <strong>{currentIndex + 1} / {queue.length}</strong>
+                <span className="review-queue-keyboard-hint">Clavier : ← →</span>
+              </div>
+              <div className="review-queue-slider-track" aria-hidden="true">
+                <span style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+
+            <button
+              className="btn secondary small review-queue-nav-button"
+              type="button"
+              aria-label="Suivante"
+              aria-keyshortcuts="ArrowRight"
+              title="Suivante — flèche droite"
+              disabled={currentIndex >= queue.length - 1}
+              onClick={goNext}
+            >
+              <span className="review-queue-nav-text">Suivante</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </nav>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

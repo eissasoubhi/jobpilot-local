@@ -3,10 +3,22 @@ import { describe, expect, it } from 'vitest';
 import {
   clampReviewQueueIndex,
   currentReviewQueueItem,
+  isReadyToSubmitReviewItem,
   nextReviewQueueIndexAfterDecision,
 } from '@/lib/review-queue';
+import type { Application } from '@/lib/types';
 
 describe('Review Queue helpers', () => {
+  it('keeps only applications that are ready to submit', () => {
+    const application = (status: string) => ({ status }) as Application;
+
+    expect(isReadyToSubmitReviewItem(application('READY_TO_SUBMIT'))).toBe(true);
+    expect(isReadyToSubmitReviewItem(application('SUBMITTED'))).toBe(false);
+    expect(isReadyToSubmitReviewItem(application('INTERVIEW'))).toBe(false);
+    expect(isReadyToSubmitReviewItem(application('REJECTED'))).toBe(false);
+    expect(isReadyToSubmitReviewItem(application('IGNORED_NOT_MATCH'))).toBe(false);
+  });
+
   it('keeps the current index inside queue bounds', () => {
     expect(clampReviewQueueIndex(-1, 3)).toBe(0);
     expect(clampReviewQueueIndex(1, 3)).toBe(1);

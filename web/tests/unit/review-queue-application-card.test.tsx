@@ -55,7 +55,7 @@ describe('ReviewQueueApplicationCard', () => {
     apiMock.mockReset();
   });
 
-  it('shows mission, contract, actions and score immediately without the prepared message body', () => {
+  it('shows mission, compact decisions, contract and score without the prepared message body', () => {
     render(<ReviewQueueApplicationCard application={application()} />);
 
     expect(screen.getByRole('article', { name: /Développeur Front-end React/ })).toBeInTheDocument();
@@ -66,8 +66,10 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByText('88%')).toBeInTheDocument();
     expect(screen.getByText('Pourquoi ce score ?')).toBeInTheDocument();
     expect(screen.getByText('React correspond à un poste cible.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ne correspond pas à mon profil' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ne correspond pas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'J’ai envoyé' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Statut de suivi dans JobPilot' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Appliquer' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Ouvrir la plateforme' })).toHaveAttribute('href', 'https://example.test/jobs/7');
     expect(screen.getByRole('link', { name: 'Ouvrir le CV' })).toHaveAttribute('href', '/api/cvs/3/download');
     expect(screen.queryByText('Ce message préparé ne doit pas occuper la Review Queue.')).not.toBeInTheDocument();
@@ -85,7 +87,7 @@ describe('ReviewQueueApplicationCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ne correspond pas à mon profil' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ne correspond pas' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42', {
       method: 'PATCH',
@@ -99,16 +101,28 @@ describe('ReviewQueueApplicationCard', () => {
     expect(onApplicationUpdated).toHaveBeenCalledWith(ignored);
   });
 
-  it('persists a selected tracking status from the inline action bar', async () => {
+  it('keeps a selected status local until Apply is clicked', async () => {
     const interview = application({ status: 'INTERVIEW' });
+    const onApplicationUpdated = vi.fn();
     apiMock.mockResolvedValueOnce(interview);
 
-    render(<ReviewQueueApplicationCard application={application()} />);
+    render(
+      <ReviewQueueApplicationCard
+        application={application()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
 
+    expect(screen.getByText('PRÊTE À ENVOYER')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: 'Statut de suivi dans JobPilot' }), {
       target: { value: 'INTERVIEW' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le statut' }));
+
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(screen.getByText('PRÊTE À ENVOYER')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Appliquer' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Appliquer' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42', {
       method: 'PATCH',
@@ -119,6 +133,7 @@ describe('ReviewQueueApplicationCard', () => {
         compensationAnswer: '55 000 € brut annuel',
       }),
     }));
+    expect(onApplicationUpdated).toHaveBeenCalledWith(interview);
     expect(await screen.findByRole('status')).toHaveTextContent('Statut de suivi enregistré dans JobPilot.');
   });
 });

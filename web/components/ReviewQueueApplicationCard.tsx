@@ -29,12 +29,14 @@ export function ReviewQueueApplicationCard({
   onApplicationUpdated,
 }: ReviewQueueApplicationCardProps) {
   const [currentApplication, setCurrentApplication] = useState(application);
+  const [selectedStatus, setSelectedStatus] = useState(application.status);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     setCurrentApplication(application);
+    setSelectedStatus(application.status);
     setNotice('');
     setError('');
   }, [application]);
@@ -58,6 +60,7 @@ export function ReviewQueueApplicationCard({
         }),
       });
       setCurrentApplication(updated);
+      setSelectedStatus(updated.status);
       onApplicationUpdated?.(updated);
       setNotice(successMessage);
     } catch (caughtError: unknown) {
@@ -78,7 +81,8 @@ export function ReviewQueueApplicationCard({
   };
 
   const saveTrackingStatus = async (): Promise<void> => {
-    await saveApplication(currentApplication.status, 'Statut de suivi enregistré dans JobPilot.');
+    if (selectedStatus === currentApplication.status) return;
+    await saveApplication(selectedStatus, 'Statut de suivi enregistré dans JobPilot.');
   };
 
   const job = currentApplication.jobOffer;
@@ -92,7 +96,7 @@ export function ReviewQueueApplicationCard({
     <article className="review-queue-card" aria-label={`Offre à examiner : ${job.title}`}>
       <header className="review-queue-card-header">
         <div className="review-queue-card-title-block">
-          <div className="review-queue-eyebrow">Offre à examiner</div>
+          <div className="review-queue-eyebrow">Prête à envoyer</div>
           <h2>{job.title}</h2>
           <div className="review-queue-card-meta">
             <span>{job.company || 'Entreprise non renseignée'}</span>
@@ -121,60 +125,64 @@ export function ReviewQueueApplicationCard({
       </div>
 
       <section className="review-queue-actions-panel" aria-label="Actions sur la candidature">
-        <button
-          className="btn danger"
-          type="button"
-          disabled={saving || currentApplication.status === 'IGNORED_NOT_MATCH'}
-          onClick={() => void markIgnoredNotMatch()}
-        >
-          {currentApplication.status === 'IGNORED_NOT_MATCH'
-            ? 'Ne correspond pas au profil'
-            : 'Ne correspond pas à mon profil'}
-        </button>
+        <div className="review-queue-primary-actions">
+          {job.sourceUrl && (
+            <a className="btn small" href={job.sourceUrl} target="_blank" rel="noreferrer">
+              Ouvrir la plateforme
+            </a>
+          )}
 
-        <label className="review-queue-status-control">
-          Statut
-          <select
-            aria-label="Statut de suivi dans JobPilot"
-            value={currentApplication.status}
-            disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
-            onChange={(event) => setCurrentApplication({ ...currentApplication, status: event.target.value })}
+          <button
+            className="btn secondary small"
+            type="button"
+            disabled={saving || currentApplication.status === 'SUBMITTED'}
+            onClick={() => void markSubmitted()}
           >
-            {TRACKING_STATUSES.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+            {currentApplication.status === 'SUBMITTED' ? 'Déjà envoyée' : 'J’ai envoyé'}
+          </button>
 
-        <button
-          className="btn secondary"
-          type="button"
-          disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
-          onClick={() => void saveTrackingStatus()}
-        >
-          {saving ? 'Enregistrement…' : 'Enregistrer le statut'}
-        </button>
+          <button
+            className="btn danger small"
+            type="button"
+            disabled={saving || currentApplication.status === 'IGNORED_NOT_MATCH'}
+            onClick={() => void markIgnoredNotMatch()}
+          >
+            Ne correspond pas
+          </button>
 
-        <button
-          className="btn secondary"
-          type="button"
-          disabled={saving || currentApplication.status === 'SUBMITTED'}
-          onClick={() => void markSubmitted()}
-        >
-          {currentApplication.status === 'SUBMITTED' ? 'Déjà envoyée' : 'J’ai envoyé la candidature'}
-        </button>
+          {currentApplication.cvDocument && (
+            <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
+              Ouvrir le CV
+            </a>
+          )}
+        </div>
 
-        {currentApplication.cvDocument && (
-          <a className="btn secondary" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
-            Ouvrir le CV
-          </a>
-        )}
+        <div className="review-queue-status-inline">
+          <label className="review-queue-status-control">
+            Changer le statut
+            <select
+              aria-label="Statut de suivi dans JobPilot"
+              value={selectedStatus}
+              disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+              onChange={(event) => setSelectedStatus(event.target.value)}
+            >
+              {TRACKING_STATUSES.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
 
-        {job.sourceUrl && (
-          <a className="btn" href={job.sourceUrl} target="_blank" rel="noreferrer">
-            Ouvrir la plateforme
-          </a>
-        )}
+          <button
+            className="btn secondary small"
+            type="button"
+            disabled={saving
+              || currentApplication.status === 'SUBMISSION_PENDING'
+              || selectedStatus === currentApplication.status}
+            onClick={() => void saveTrackingStatus()}
+          >
+            {saving ? 'Enregistrement…' : 'Appliquer'}
+          </button>
+        </div>
       </section>
 
       {notice !== '' && <div className="success-box review-queue-feedback" role="status">{notice}</div>}

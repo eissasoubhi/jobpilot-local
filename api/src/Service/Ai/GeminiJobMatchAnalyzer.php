@@ -13,6 +13,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
 {
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+    private const CACHE_VERSION = 'job-match-v1';
 
     private const RESPONSE_SCHEMA = [
         'type' => 'object',
@@ -176,6 +177,15 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
     public function lastInputTokens(): ?int
     {
         return $this->lastInputTokens;
+    }
+
+    public function cacheFingerprint(JobOffer $job, UserSettings $settings): string
+    {
+        return hash('sha256', json_encode([
+            'version' => self::CACHE_VERSION,
+            'prompt' => $this->buildPrompt($job, $settings),
+            'responseSchema' => self::RESPONSE_SCHEMA,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function buildPrompt(JobOffer $job, UserSettings $settings): string

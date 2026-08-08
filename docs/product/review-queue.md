@@ -22,6 +22,8 @@ It currently:
 
 A preparation edit or tracking update that leaves the application actionable does not advance the queue. Automatic advancement is tied only to a persisted status update that removes the current application from the actionable inbox, such as `SUBMITTED` or `IGNORED_NOT_MATCH`.
 
+Automatic advancement is local Review Queue UI behavior: it never submits to, mutates, or navigates an external source on the user's behalf.
+
 ## Safety and compatibility
 
 This behavior adds no database schema, API contract, connector or external-submission behavior. It does not bypass authentication, CAPTCHA, quotas, robots/compliance policy or source restrictions. Existing Offers and Applications pages remain available.

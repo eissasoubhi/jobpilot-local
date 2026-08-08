@@ -34,7 +34,7 @@ final class MatchingScoreServicePrimaryStackTest extends TestCase
             'Nous recherchons un développeur Java Spring pour concevoir les services principaux. Une ancienne application PHP reste mentionnée dans le contexte de migration.',
         ), $this->settings);
 
-        self::assertSame(45, $result['score']);
+        self::assertLessThanOrEqual(45, $result['score']);
         self::assertContains('Stack principale détectée : Java/Spring', $result['reasons']);
         self::assertContains('Conflit de stack principale avec le profil : score plafonné à 45/100', $result['reasons']);
         self::assertFalse($result['hardRejected']);

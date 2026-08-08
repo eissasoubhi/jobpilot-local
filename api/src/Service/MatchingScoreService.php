@@ -18,6 +18,41 @@ final class MatchingScoreService
         '.NET/C#' => ['.net', 'dotnet', 'c#', 'asp.net'],
     ];
 
+    /**
+     * Generic role/seniority words help describe a title but do not identify the
+     * candidate's requested technology stack. They must never create a strong
+     * title match on their own.
+     *
+     * @var list<string>
+     */
+    private const GENERIC_ROLE_TOKENS = [
+        'developer',
+        'developpeur',
+        'développeur',
+        'engineer',
+        'ingenieur',
+        'ingénieur',
+        'backend',
+        'back',
+        'end',
+        'frontend',
+        'front',
+        'fullstack',
+        'full',
+        'stack',
+        'web',
+        'api',
+        'software',
+        'senior',
+        'lead',
+        'tech',
+        'expert',
+        'experte',
+        'confirme',
+        'confirmé',
+        'native',
+    ];
+
     public function __construct(private readonly ?AiJobMatchAnalyzerInterface $aiAnalyzer = null)
     {
     }
@@ -42,11 +77,10 @@ final class MatchingScoreService
             ];
         }
 
+        $jobTitle = mb_strtolower($job->getTitle());
         $titleScore = 0;
         foreach ($settings->getTargetJobs() as $target) {
-            $tokens = $this->tokens($target);
-            $matches = count(array_filter($tokens, static fn(string $token): bool => str_contains($text, $token)));
-            if ($tokens !== []) $titleScore = max($titleScore, (int) round(($matches / count($tokens)) * 35));
+            $titleScore = max($titleScore, $this->titleCompatibilityScore($jobTitle, $target));
         }
         if ($titleScore > 0) $reasons[] = "Compatibilité intitulé : {$titleScore}/35";
 
@@ -79,6 +113,48 @@ final class MatchingScoreService
         }
 
         return ['score' => $score, 'reasons' => $reasons, 'hardRejected' => false];
+    }
+
+    private function titleCompatibilityScore(string $jobTitle, string $target): int
+    {
+        $tokens = $this->tokens($target);
+        if ($tokens === []) {
+            return 0;
+        }
+
+        $specificTokens = array_values(array_filter(
+            $tokens,
+            static fn(string $token): bool => !in_array($token, self::GENERIC_ROLE_TOKENS, true),
+        ));
+        $genericTokens = array_values(array_filter(
+            $tokens,
+            static fn(string $token): bool => in_array($token, self::GENERIC_ROLE_TOKENS, true),
+        ));
+
+        if ($specificTokens === []) {
+            return $this->tokenMatchScore($jobTitle, $genericTokens, 10);
+        }
+
+        return min(
+            35,
+            $this->tokenMatchScore($jobTitle, $specificTokens, 30)
+            + $this->tokenMatchScore($jobTitle, $genericTokens, 5),
+        );
+    }
+
+    /** @param list<string> $tokens */
+    private function tokenMatchScore(string $text, array $tokens, int $maximum): int
+    {
+        if ($tokens === []) {
+            return 0;
+        }
+
+        $matches = count(array_filter(
+            $tokens,
+            fn(string $token): bool => $this->containsTechnology($text, $token),
+        ));
+
+        return (int) round(($matches / count($tokens)) * $maximum);
     }
 
     /** @return list<string> */

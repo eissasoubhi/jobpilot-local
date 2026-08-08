@@ -33,14 +33,15 @@ export const GEMINI_PAID_TIER1_MODEL = 'gemini-3.5-flash-lite';
  * gemini-3.5-flash-lite project on 2026-08-09.
  *
  * These are provider ceilings, not a promise that Google will keep the same
- * values forever. JobPilot still applies its local safety percentage before
- * allowing a provider call.
+ * values forever. JobPilot intentionally uses only 20% of them by default so
+ * a paid tier removes the free-tier bottleneck without turning the provider
+ * ceiling into JobPilot's operating target.
  */
 export const GEMINI_PAID_TIER1_PRESET: AiQuota = {
   rpm: 4_000,
   tpm: 4_000_000,
-  rpd: 10_000,
-  safetyPercent: 80,
+  rpd: 100_000,
+  safetyPercent: 20,
 };
 
 function isPaidPreset(quota: AiQuota): boolean {
@@ -98,7 +99,7 @@ export function GeminiPaidQuotaPresetPanel() {
         }),
       });
       setSettings(response);
-      setMessage('Limites Tier 1 Gemini 3.5 Flash-Lite appliquées. Les prochains appels utilisent immédiatement ces garde-fous locaux.');
+      setMessage('Limites Tier 1 Gemini 3.5 Flash-Lite appliquées avec le garde-fou JobPilot à 20 %.');
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
@@ -119,7 +120,7 @@ export function GeminiPaidQuotaPresetPanel() {
           <div>
             <h2 className="section-title" style={{ marginBottom: 6 }}>Gemini Tier 1 — Gemini 3.5 Flash-Lite</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Aligne JobPilot sur les limites actives visibles dans AI Studio pour ce modèle, tout en conservant une marge locale.
+              Aligne les plafonds fournisseur sur ceux visibles dans AI Studio, avec un garde-fou JobPilot volontairement plus bas.
             </p>
           </div>
           <Badge tone={active ? 'good' : modelMatches ? 'neutral' : 'warn'}>
@@ -132,8 +133,17 @@ export function GeminiPaidQuotaPresetPanel() {
             <strong>Limites AI Studio observées :</strong>{' '}
             {formatNumber(GEMINI_PAID_TIER1_PRESET.rpm)} RPM · {formatNumber(GEMINI_PAID_TIER1_PRESET.tpm)} TPM ·{' '}
             {formatNumber(GEMINI_PAID_TIER1_PRESET.rpd)} RPD.
-            Avec la marge JobPilot de {GEMINI_PAID_TIER1_PRESET.safetyPercent} %, le plafond local devient{' '}
-            {formatNumber(usableRpm)} RPM · {formatNumber(usableTpm)} TPM · {formatNumber(usableRpd)} RPD.
+          </div>
+
+          <div className="notice">
+            <strong>Plafond opérationnel JobPilot :</strong>{' '}
+            {formatNumber(usableRpm)} RPM · {formatNumber(usableTpm)} TPM · {formatNumber(usableRpd)} RPD,
+            soit {GEMINI_PAID_TIER1_PRESET.safetyPercent} % des plafonds fournisseur.
+          </div>
+
+          <div className="notice warning">
+            <strong>Pourquoi seulement 20 % ?</strong> Le tier payant est assez élevé pour que JobPilot n’ait pas besoin de viser le plafond Google.
+            Cette marge protège contre une boucle accidentelle et laisse de la capacité aux autres usages du même projet.
           </div>
 
           <div className="notice warning">

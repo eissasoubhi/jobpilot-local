@@ -174,7 +174,7 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
             'workMode' => $job->getWorkMode(),
         ];
 
-        return <<<'PROMPT'
+        $prompt = <<<'PROMPT'
 You are the semantic job matching engine for JobPilot.
 
 Assess whether the job genuinely fits the candidate profile. Read the complete job description and identify the primary requested role and stack before assigning a score. Do not award a high score merely because generic words such as backend, web, API or developer overlap.
@@ -188,15 +188,16 @@ __CANDIDATE__
 
 Job offer:
 __OFFER__
-PROMPT
-            |> str_replace(
-                ['__CANDIDATE__', '__OFFER__'],
-                [
-                    json_encode($candidate, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                    json_encode($offer, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                ],
-                $this,
-            );
+PROMPT;
+
+        return str_replace(
+            ['__CANDIDATE__', '__OFFER__'],
+            [
+                json_encode($candidate, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                json_encode($offer, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ],
+            $prompt,
+        );
     }
 
     /** @param array<string, mixed> $payload */

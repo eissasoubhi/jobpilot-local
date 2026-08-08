@@ -54,9 +54,21 @@ final readonly class ConfiguredSmartRecruitersJobProvider implements GovernedJob
 
     public function configurationMessage(): ?string
     {
-        return $this->isConfigured()
-            ? null
-            : 'Renseigne le token API et les identifiants d’entreprise SmartRecruiters dans Configuration & clés API ou dans le fichier .env.';
+        $credentials = $this->configuration->effective('smartrecruiters');
+        $hasToken = trim($credentials['apiToken'] ?? '') !== '';
+        $hasCompanies = trim($credentials['companyIdentifiers'] ?? '') !== '';
+
+        if ($hasToken && $hasCompanies) {
+            return null;
+        }
+        if (!$hasToken && !$hasCompanies) {
+            return 'Renseigne SMARTRECRUITERS_API_TOKEN et SMARTRECRUITERS_COMPANY_IDENTIFIERS dans Configuration & clés API ou dans le fichier .env.';
+        }
+        if (!$hasToken) {
+            return 'Renseigne SMARTRECRUITERS_API_TOKEN dans Configuration & clés API ou dans le fichier .env.';
+        }
+
+        return 'Renseigne au moins un identifiant valide dans SMARTRECRUITERS_COMPANY_IDENTIFIERS via Configuration & clés API ou le fichier .env.';
     }
 
     public function search(array $targetJobs, array $skills): array

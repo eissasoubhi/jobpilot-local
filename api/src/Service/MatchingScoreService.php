@@ -10,6 +10,8 @@ final class MatchingScoreService
 {
     private const PRIMARY_STACK_CONFLICT_CAP = 45;
     private const MIXED_REQUIRED_CAP = 60;
+    private const STACK_RELATION_ALTERNATIVE = 'ALTERNATIVE';
+    private const STACK_RELATION_MIXED_REQUIRED = 'MIXED_REQUIRED';
 
     /** @var array<string, list<string>> */
     private const BACKEND_STACK_PATTERNS = [
@@ -121,12 +123,31 @@ final class MatchingScoreService
         $reasons[] = "Contrat : {$contractScore}/5";
         $reasons[] = "Fraîcheur : {$freshnessScore}/2";
 
-        $primaryStacks = $this->detectPrimaryBackendStacks($job);
+        $stackRelation = $this->detectExplicitStackRelation($job);
+        $primaryStacks = $stackRelation['stacks'] ?? $this->detectPrimaryBackendStacks($job);
         if ($primaryStacks !== []) {
             $reasons[] = 'Stack principale détectée : '.implode(' ou ', $primaryStacks);
             $reasons[] = in_array('PHP/Symfony', $primaryStacks, true)
                 ? 'Profil PHP détecté : PHP fait partie des stacks principales'
                 : 'Profil PHP détecté : non-PHP principal';
+
+            if ($stackRelation !== null) {
+                $reasons[] = $stackRelation['mode'] === self::STACK_RELATION_ALTERNATIVE
+                    ? 'Relation des stacks détectée : alternatives explicites'
+                    : 'Relation des stacks détectée : exigences cumulatives obligatoires';
+            }
+
+            if (
+                $stackRelation !== null
+                && $stackRelation['mode'] === self::STACK_RELATION_MIXED_REQUIRED
+                && $this->candidateTargetsPhpBackend($settings)
+                && in_array('PHP/Symfony', $primaryStacks, true)
+                && count($primaryStacks) > 1
+                && !$this->candidateExplicitlyTargetsAllStacks($settings, $primaryStacks)
+            ) {
+                $score = min($score, self::MIXED_REQUIRED_CAP);
+                $reasons[] = 'PHP requis avec une autre stack principale : score plafonné à '.self::MIXED_REQUIRED_CAP.'/100';
+            }
 
             $preferredStacks = $this->detectPreferredBackendStacks($settings);
             if (
@@ -145,6 +166,35 @@ final class MatchingScoreService
     private function candidateTargetsPhpBackend(UserSettings $settings): bool
     {
         return in_array('PHP/Symfony', $this->detectPreferredBackendStacks($settings), true);
+    }
+
+    /** @param list<string> $stacks */
+    private function candidateExplicitlyTargetsAllStacks(UserSettings $settings, array $stacks): bool
+    {
+        foreach ($settings->getTargetJobs() as $target) {
+            $normalizedTarget = mb_strtolower($target);
+            $matchesAll = true;
+
+            foreach ($stacks as $stack) {
+                $stackMatched = false;
+                foreach (self::BACKEND_STACK_PATTERNS[$stack] ?? [] as $pattern) {
+                    if ($this->containsTechnology($normalizedTarget, $pattern)) {
+                        $stackMatched = true;
+                        break;
+                    }
+                }
+                if (!$stackMatched) {
+                    $matchesAll = false;
+                    break;
+                }
+            }
+
+            if ($matchesAll) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function roleMatchesExplicitNonPhpTarget(string $role, UserSettings $settings): bool
@@ -218,6 +268,71 @@ final class MatchingScoreService
         ));
 
         return (int) round(($matches / count($tokens)) * $maximum);
+    }
+
+    /**
+     * @return array{mode: self::STACK_RELATION_*, stacks: list<string>}|null
+     */
+    private function detectExplicitStackRelation(JobOffer $job): ?array
+    {
+        $text = $job->getTitle()."\n".mb_substr($job->getDescription(), 0, 1800);
+        $segments = preg_split('/(?<=[.!?;])\s+|\R+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $alternative = null;
+        $mixedRequired = null;
+
+        foreach ($segments as $segment) {
+            $stacks = $this->detectStacksInText($segment, true);
+            if (count($stacks) < 2 || !in_array('PHP/Symfony', $stacks, true)) {
+                continue;
+            }
+
+            if (preg_match('/nice[- ]?to[- ]?have|optional|optionnel|facultatif|bonus|un plus|atout|appr[eé]ci[eé]e?s?|souhait[eé]e?s?|legacy|ancien(?:ne)?|migration/iu', $segment) === 1) {
+                continue;
+            }
+
+            $hasAlternativeCue = preg_match('/\b(?:or|ou|either)\b|au choix|one of|l[’\']un ou l[’\']autre|l[’\']une ou l[’\']autre/iu', $segment) === 1;
+            $hasCumulativeCue = preg_match('/\b(?:and|et|both)\b|ainsi que|les deux|tous les deux|&|\+/iu', $segment) === 1;
+            $hasRequiredCue = preg_match('/\b(?:required|mandatory|must|requires?|requis(?:e|es|s)?|obligatoire(?:s)?|indispensable(?:s)?|exig[eé]e?s?)\b/iu', $segment) === 1;
+
+            if ($hasCumulativeCue && $hasRequiredCue) {
+                $mixedRequired = [
+                    'mode' => self::STACK_RELATION_MIXED_REQUIRED,
+                    'stacks' => $stacks,
+                ];
+                continue;
+            }
+
+            if ($hasAlternativeCue) {
+                $alternative = [
+                    'mode' => self::STACK_RELATION_ALTERNATIVE,
+                    'stacks' => $stacks,
+                ];
+            }
+        }
+
+        return $mixedRequired ?? $alternative;
+    }
+
+    /** @return list<string> */
+    private function detectStacksInText(string $text, bool $relationshipContext = false): array
+    {
+        $normalized = mb_strtolower($text);
+        $detected = [];
+
+        foreach (self::BACKEND_STACK_PATTERNS as $stack => $patterns) {
+            foreach ($patterns as $pattern) {
+                if ($this->containsTechnology($normalized, $pattern)) {
+                    $detected[] = $stack;
+                    continue 2;
+                }
+            }
+
+            if ($relationshipContext && $stack === 'Go' && $this->containsTechnology($normalized, 'go')) {
+                $detected[] = $stack;
+            }
+        }
+
+        return $detected;
     }
 
     /** @return list<string> */

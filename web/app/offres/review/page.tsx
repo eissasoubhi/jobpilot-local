@@ -15,6 +15,8 @@ import {
 } from '@/lib/review-queue';
 import type { Application } from '@/lib/types';
 
+import styles from './review.module.css';
+
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -22,10 +24,14 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName);
 }
 
+type ReviewDecision = 'IGNORED_NOT_MATCH' | 'SUBMITTED';
+
 export default function ReviewQueuePage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [index, setIndex] = useState(0);
   const [error, setError] = useState('');
+  const [decisionSaving, setDecisionSaving] = useState<ReviewDecision | null>(null);
+  const [decisionError, setDecisionError] = useState('');
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -93,6 +99,31 @@ export default function ReviewQueuePage() {
     )) ?? items);
   }, [current?.id, currentIndex, queue.length]);
 
+  const persistDecision = useCallback(async (status: ReviewDecision): Promise<void> => {
+    if (!current || decisionSaving !== null) return;
+
+    setDecisionSaving(status);
+    setDecisionError('');
+
+    try {
+      const updated = await api<Application>(`/applications/${current.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status,
+          message: current.message,
+          coverLetter: current.coverLetter,
+          compensationAnswer: current.compensationAnswer,
+          confirmationRef: current.confirmationRef,
+        }),
+      });
+      updateApplication(updated);
+    } catch (caughtError: unknown) {
+      setDecisionError(getErrorMessage(caughtError));
+    } finally {
+      setDecisionSaving(null);
+    }
+  }, [current, decisionSaving, updateApplication]);
+
   return (
     <div className="review-queue-page">
       <header className="review-queue-compact-header">
@@ -120,42 +151,66 @@ export default function ReviewQueuePage() {
             onApplicationUpdated={updateApplication}
           />
 
-          <nav className="review-queue-slider" aria-label="Navigation dans la Review Queue">
+          <nav className={styles.decisionBar} aria-label="Décision et navigation dans la Review Queue">
             <button
-              className="btn secondary small review-queue-nav-button"
+              className={`${styles.decisionButton} ${styles.rejectButton}`}
               type="button"
-              aria-label="Précédente"
-              aria-keyshortcuts="ArrowLeft"
-              title="Précédente — flèche gauche"
-              disabled={currentIndex === 0}
-              onClick={goPrevious}
+              disabled={decisionSaving !== null}
+              onClick={() => void persistDecision('IGNORED_NOT_MATCH')}
             >
-              <span aria-hidden="true">←</span>
-              <span className="review-queue-nav-text">Précédente</span>
+              <span aria-hidden="true">✕</span>
+              <span>{decisionSaving === 'IGNORED_NOT_MATCH' ? 'Enregistrement…' : 'Ne correspond pas'}</span>
             </button>
 
-            <div className="review-queue-slider-center">
-              <div className="review-queue-slider-label">
-                <strong>{currentIndex + 1} / {queue.length}</strong>
-                <span className="review-queue-keyboard-hint">Clavier : ← →</span>
+            <div className={styles.secondaryNavigation}>
+              <button
+                className={styles.navButton}
+                type="button"
+                aria-label="Précédente"
+                aria-keyshortcuts="ArrowLeft"
+                title="Précédente — flèche gauche"
+                disabled={currentIndex === 0 || decisionSaving !== null}
+                onClick={goPrevious}
+              >
+                ← <span>Préc.</span>
+              </button>
+
+              <div className={styles.progressBlock}>
+                <div className={styles.progressLabel}>
+                  <strong>{currentIndex + 1} / {queue.length}</strong>
+                  <span>← →</span>
+                </div>
+                <div className={styles.progressTrack} aria-hidden="true">
+                  <span style={{ width: `${progress}%` }} />
+                </div>
               </div>
-              <div className="review-queue-slider-track" aria-hidden="true">
-                <span style={{ width: `${progress}%` }} />
-              </div>
+
+              <button
+                className={styles.navButton}
+                type="button"
+                aria-label="Suivante"
+                aria-keyshortcuts="ArrowRight"
+                title="Suivante — flèche droite"
+                disabled={currentIndex >= queue.length - 1 || decisionSaving !== null}
+                onClick={goNext}
+              >
+                <span>Suiv.</span> →
+              </button>
             </div>
 
             <button
-              className="btn secondary small review-queue-nav-button"
+              className={`${styles.decisionButton} ${styles.sentButton}`}
               type="button"
-              aria-label="Suivante"
-              aria-keyshortcuts="ArrowRight"
-              title="Suivante — flèche droite"
-              disabled={currentIndex >= queue.length - 1}
-              onClick={goNext}
+              disabled={decisionSaving !== null}
+              onClick={() => void persistDecision('SUBMITTED')}
             >
-              <span className="review-queue-nav-text">Suivante</span>
-              <span aria-hidden="true">→</span>
+              <span aria-hidden="true">✓</span>
+              <span>{decisionSaving === 'SUBMITTED' ? 'Enregistrement…' : 'Envoyée'}</span>
             </button>
+
+            {decisionError !== '' && (
+              <div className={styles.decisionError} role="alert">{decisionError}</div>
+            )}
           </nav>
         </div>
       ) : null}

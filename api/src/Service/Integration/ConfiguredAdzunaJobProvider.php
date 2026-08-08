@@ -50,7 +50,7 @@ final readonly class ConfiguredAdzunaJobProvider implements GovernedJobSourceCon
     {
         return $this->isConfigured()
             ? null
-            : 'Renseigne l’App ID et l’App key Adzuna dans Configuration & clés API ou dans le fichier .env.';
+            : 'Renseigne ADZUNA_APP_ID et ADZUNA_APP_KEY dans Configuration & clés API ou dans le fichier .env.';
     }
 
     public function search(array $targetJobs, array $skills): array

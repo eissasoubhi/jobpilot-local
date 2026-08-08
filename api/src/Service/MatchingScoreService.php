@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\JobOffer;
 use App\Entity\UserSettings;
+use App\Service\Ai\AiJobMatchAnalyzerInterface;
 
 final class MatchingScoreService
 {
@@ -17,6 +18,10 @@ final class MatchingScoreService
         '.NET/C#' => ['.net', 'dotnet', 'c#', 'asp.net'],
     ];
 
+    public function __construct(private readonly ?AiJobMatchAnalyzerInterface $aiAnalyzer = null)
+    {
+    }
+
     public function evaluate(JobOffer $job, UserSettings $settings): array
     {
         $text = mb_strtolower($job->getTitle().' '.$job->getDescription());
@@ -26,6 +31,15 @@ final class MatchingScoreService
             if ($excluded !== '' && str_contains($text, mb_strtolower($excluded))) {
                 return ['score' => 0, 'reasons' => ['Exclusion détectée : '.$excluded], 'hardRejected' => true];
             }
+        }
+
+        $aiAnalysis = $this->aiAnalyzer?->analyze($job, $settings);
+        if ($aiAnalysis !== null) {
+            return [
+                'score' => $aiAnalysis->score,
+                'reasons' => $aiAnalysis->toScoreReasons(),
+                'hardRejected' => false,
+            ];
         }
 
         $titleScore = 0;

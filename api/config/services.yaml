@@ -25,6 +25,9 @@ parameters:
   env(CONNECTOR_ALERT_WEBHOOK_URL): ''
   env(CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST): ''
   env(CONNECTOR_ALERT_WEBHOOK_SECRET): ''
+  env(AI_MATCHING_ENABLED): '0'
+  env(GEMINI_API_KEY): ''
+  env(GEMINI_MATCHING_MODEL): 'gemini-3.5-flash-lite'
 
 services:
   _defaults:
@@ -84,6 +87,14 @@ services:
   App\Service\SymfonyJobsRssProvider:
     arguments:
       $enabled: '%env(bool:SYMFONY_JOBS_RSS_ENABLED)%'
+
+  App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\GeminiJobMatchAnalyzer'
+
+  App\Service\Ai\GeminiJobMatchAnalyzer:
+    arguments:
+      $enabled: '%env(bool:AI_MATCHING_ENABLED)%'
+      $apiKey: '%env(GEMINI_API_KEY)%'
+      $model: '%env(GEMINI_MATCHING_MODEL)%'
 
   App\JobDiscovery\Application\ConnectorRegistry:
     arguments:

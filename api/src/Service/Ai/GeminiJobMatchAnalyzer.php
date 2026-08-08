@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
+final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
 {
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
@@ -89,17 +89,21 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
         'additionalProperties' => false,
     ];
 
+    private ?int $lastInputTokens = null;
+
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private LoggerInterface $logger,
-        private bool $enabled,
-        private string $apiKey,
-        private string $model,
+        private readonly HttpClientInterface $httpClient,
+        private readonly LoggerInterface $logger,
+        private readonly bool $enabled,
+        private readonly string $apiKey,
+        private readonly string $model,
     ) {
     }
 
     public function analyze(JobOffer $job, UserSettings $settings): ?AiJobMatchAnalysis
     {
+        $this->lastInputTokens = null;
+
         if (!$this->enabled || trim($this->apiKey) === '') {
             return null;
         }
@@ -133,6 +137,11 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
             }
 
             $payload = $response->toArray(false);
+            $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : [];
+            if (is_numeric($usage['total_input_tokens'] ?? null)) {
+                $this->lastInputTokens = max(1, (int) $usage['total_input_tokens']);
+            }
+
             $text = $this->extractOutputText($payload);
             if ($text === null || trim($text) === '') {
                 $this->logger->warning('Gemini matching response did not contain a model text output.', [
@@ -157,6 +166,16 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
 
             return null;
         }
+    }
+
+    public function estimatedInputTokens(JobOffer $job, UserSettings $settings, AiQuotaManager $quotaManager): int
+    {
+        return $quotaManager->estimateTextInputTokens($this->buildPrompt($job, $settings));
+    }
+
+    public function lastInputTokens(): ?int
+    {
+        return $this->lastInputTokens;
     }
 
     private function buildPrompt(JobOffer $job, UserSettings $settings): string

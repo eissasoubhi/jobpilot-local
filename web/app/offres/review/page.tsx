@@ -8,7 +8,11 @@ import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { matchesOfferInboxView } from '@/lib/offer-inbox';
-import { clampReviewQueueIndex, currentReviewQueueItem } from '@/lib/review-queue';
+import {
+  clampReviewQueueIndex,
+  currentReviewQueueItem,
+  nextReviewQueueIndexAfterDecision,
+} from '@/lib/review-queue';
 import type { Application } from '@/lib/types';
 
 export default function ReviewQueuePage() {
@@ -40,10 +44,17 @@ export default function ReviewQueuePage() {
   const current = currentReviewQueueItem(queue, currentIndex);
 
   const updateApplication = useCallback((updated: Application): void => {
+    const completedCurrentDecision = current?.id === updated.id
+      && !matchesOfferInboxView(updated, 'actionable');
+
+    if (completedCurrentDecision) {
+      setIndex(nextReviewQueueIndexAfterDecision(currentIndex, queue.length));
+    }
+
     setApplications((items) => items?.map((application) => (
       application.id === updated.id ? updated : application
     )) ?? items);
-  }, []);
+  }, [current?.id, currentIndex, queue.length]);
 
   return (
     <>
@@ -89,7 +100,7 @@ export default function ReviewQueuePage() {
               </div>
             </div>
             <div className="small muted" style={{ marginTop: 8 }}>
-              La queue utilise uniquement les candidatures encore actionnables. Une candidature envoyée ou ignorée quitte cette vue dès que son statut est enregistré.
+              Une candidature envoyée ou ignorée quitte la queue dès que son statut est enregistré, puis JobPilot ouvre automatiquement la prochaine offre encore actionnable.
             </div>
           </Card>
 

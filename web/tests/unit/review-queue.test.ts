@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampReviewQueueIndex, currentReviewQueueItem } from '@/lib/review-queue';
+import {
+  clampReviewQueueIndex,
+  currentReviewQueueItem,
+  nextReviewQueueIndexAfterDecision,
+} from '@/lib/review-queue';
 
 describe('Review Queue helpers', () => {
   it('keeps the current index inside queue bounds', () => {
@@ -17,5 +21,15 @@ describe('Review Queue helpers', () => {
     expect(currentReviewQueueItem(offers, 2)).toBe('third');
     expect(currentReviewQueueItem(offers, 99)).toBe('third');
     expect(currentReviewQueueItem([], 0)).toBeUndefined();
+  });
+
+  it('keeps the shifted next item selected after a decision', () => {
+    expect(nextReviewQueueIndexAfterDecision(0, 3)).toBe(0);
+    expect(nextReviewQueueIndexAfterDecision(1, 3)).toBe(1);
+  });
+
+  it('wraps to the first remaining item after deciding the last one', () => {
+    expect(nextReviewQueueIndexAfterDecision(2, 3)).toBe(0);
+    expect(nextReviewQueueIndexAfterDecision(0, 1)).toBe(0);
   });
 });

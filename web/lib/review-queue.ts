@@ -7,3 +7,12 @@ export function currentReviewQueueItem<T>(items: T[], index: number): T | undefi
   if (items.length === 0) return undefined;
   return items[clampReviewQueueIndex(index, items.length)];
 }
+
+export function nextReviewQueueIndexAfterDecision(index: number, lengthBeforeDecision: number): number {
+  const remainingLength = Math.max(lengthBeforeDecision - 1, 0);
+
+  if (remainingLength === 0) return 0;
+  if (index < remainingLength) return index;
+
+  return 0;
+}

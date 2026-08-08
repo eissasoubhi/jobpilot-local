@@ -79,6 +79,7 @@ export default function ReviewQueuePage() {
             <button
               className="btn secondary small"
               type="button"
+              aria-label="Précédente"
               disabled={currentIndex === 0}
               onClick={() => setIndex(currentIndex - 1)}
             >
@@ -101,6 +102,7 @@ export default function ReviewQueuePage() {
             <button
               className="btn secondary small"
               type="button"
+              aria-label="Suivante"
               disabled={currentIndex >= queue.length - 1}
               onClick={() => setIndex(currentIndex + 1)}
             >

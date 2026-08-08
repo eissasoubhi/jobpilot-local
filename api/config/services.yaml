@@ -28,6 +28,12 @@ parameters:
   env(AI_MATCHING_ENABLED): '0'
   env(GEMINI_API_KEY): ''
   env(GEMINI_MATCHING_MODEL): 'gemini-3.5-flash-lite'
+  env(OPENAI_API_KEY): ''
+  env(OPENAI_MATCHING_MODEL): ''
+  env(MISTRAL_API_KEY): ''
+  env(MISTRAL_MATCHING_MODEL): ''
+  env(ANTHROPIC_API_KEY): ''
+  env(ANTHROPIC_MATCHING_MODEL): ''
 
 services:
   _defaults:
@@ -44,6 +50,9 @@ services:
       - '../src/DependencyInjection/'
       - '../src/Entity/'
       - '../src/Kernel.php'
+      - '../src/Service/AdzunaJobProvider.php'
+      - '../src/Service/FranceTravailJobProvider.php'
+      - '../src/Service/SmartRecruitersJobProvider.php'
 
   App\Service\CvStorage:
     arguments:
@@ -59,27 +68,21 @@ services:
       $enabled: '%env(bool:ARBEITNOW_ENABLED)%'
       $pages: '%env(int:ARBEITNOW_PAGES)%'
 
-  App\Service\AdzunaJobProvider:
+  App\Service\Integration\ConfiguredAdzunaJobProvider:
     arguments:
-      $appId: '%env(ADZUNA_APP_ID)%'
-      $appKey: '%env(ADZUNA_APP_KEY)%'
       $country: '%env(ADZUNA_COUNTRY)%'
       $where: '%env(ADZUNA_WHERE)%'
       $resultsPerQuery: '%env(int:ADZUNA_RESULTS_PER_QUERY)%'
 
-  App\Service\FranceTravailJobProvider:
+  App\Service\Integration\ConfiguredFranceTravailJobProvider:
     arguments:
-      $clientId: '%env(FRANCE_TRAVAIL_CLIENT_ID)%'
-      $clientSecret: '%env(FRANCE_TRAVAIL_CLIENT_SECRET)%'
       $scope: '%env(FRANCE_TRAVAIL_SCOPE)%'
       $tokenEndpoint: '%env(FRANCE_TRAVAIL_TOKEN_ENDPOINT)%'
       $searchEndpoint: '%env(FRANCE_TRAVAIL_SEARCH_ENDPOINT)%'
       $resultsPerQuery: '%env(int:FRANCE_TRAVAIL_RESULTS_PER_QUERY)%'
 
-  App\Service\SmartRecruitersJobProvider:
+  App\Service\Integration\ConfiguredSmartRecruitersJobProvider:
     arguments:
-      $apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
-      $companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
       $pages: '%env(int:SMARTRECRUITERS_PAGES)%'
       $resultsPerPage: '%env(int:SMARTRECRUITERS_RESULTS_PER_PAGE)%'
       $maxDetails: '%env(int:SMARTRECRUITERS_MAX_DETAILS)%'
@@ -103,6 +106,30 @@ services:
       $enabled: '%env(bool:AI_MATCHING_ENABLED)%'
       $apiKey: '%env(GEMINI_API_KEY)%'
       $model: '%env(GEMINI_MATCHING_MODEL)%'
+
+  App\Service\Integration\ExternalIntegrationConfigurationStore:
+    arguments:
+      $privateDir: '%private_dir%'
+      $encryptionKey: '%env(APP_ENCRYPTION_KEY)%'
+      $environment:
+        openai:
+          apiKey: '%env(OPENAI_API_KEY)%'
+          model: '%env(OPENAI_MATCHING_MODEL)%'
+        mistral:
+          apiKey: '%env(MISTRAL_API_KEY)%'
+          model: '%env(MISTRAL_MATCHING_MODEL)%'
+        anthropic:
+          apiKey: '%env(ANTHROPIC_API_KEY)%'
+          model: '%env(ANTHROPIC_MATCHING_MODEL)%'
+        adzuna:
+          appId: '%env(ADZUNA_APP_ID)%'
+          appKey: '%env(ADZUNA_APP_KEY)%'
+        france-travail:
+          clientId: '%env(FRANCE_TRAVAIL_CLIENT_ID)%'
+          clientSecret: '%env(FRANCE_TRAVAIL_CLIENT_SECRET)%'
+        smartrecruiters:
+          apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
+          companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
 
   App\JobDiscovery\Application\ConnectorRegistry:
     arguments:

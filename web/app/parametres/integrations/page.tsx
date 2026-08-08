@@ -6,23 +6,185 @@ import { Badge, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
+type ConfigurationSource = 'interface' | 'environment' | 'none';
+
 type AiSettings = {
   provider: 'gemini';
   enabled: boolean;
   model: string;
   apiKeyConfigured: boolean;
-  apiKeySource: 'interface' | 'environment' | 'none';
+  apiKeySource: ConfigurationSource;
   hasInterfaceOverrides: boolean;
 };
 
-function sourceLabel(source: AiSettings['apiKeySource']): string {
-  if (source === 'interface') return 'Clé enregistrée dans JobPilot';
-  if (source === 'environment') return 'Clé fournie par .env';
-  return 'Aucune clé configurée';
+type IntegrationField = {
+  label: string;
+  secret: boolean;
+  configured: boolean;
+  source: ConfigurationSource;
+  value: string | null;
+};
+
+type ExternalIntegration = {
+  id: string;
+  label: string;
+  category: 'ai' | 'connector';
+  runtimeActive: boolean;
+  note: string;
+  fields: Record<string, IntegrationField>;
+};
+
+function sourceLabel(source: ConfigurationSource): string {
+  if (source === 'interface') return 'Enregistré dans JobPilot';
+  if (source === 'environment') return 'Fourni par .env';
+  return 'Non configuré';
+}
+
+function ExternalIntegrationCard({
+  integration,
+  onUpdated,
+}: {
+  integration: ExternalIntegration;
+  onUpdated: (configuration: ExternalIntegration) => void;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const nextValues: Record<string, string> = {};
+    for (const [field, configuration] of Object.entries(integration.fields)) {
+      if (!configuration.secret) nextValues[field] = configuration.value ?? '';
+    }
+    setValues(nextValues);
+    setSecrets({});
+  }, [integration]);
+
+  const save = async (): Promise<void> => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const secretPayload: Record<string, string> = {};
+      for (const [field, value] of Object.entries(secrets)) {
+        if (value.trim() !== '') secretPayload[field] = value.trim();
+      }
+
+      const response = await api<ExternalIntegration>(`/settings/integrations/${integration.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ values, secrets: secretPayload }),
+      });
+      onUpdated(response);
+      setSecrets({});
+      setMessage(`${integration.label} enregistré.`);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clearSecret = async (field: string): Promise<void> => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await api<ExternalIntegration>(`/settings/integrations/${integration.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ clearSecrets: [field] }),
+      });
+      onUpdated(response);
+      setSecrets((current) => ({ ...current, [field]: '' }));
+      setMessage(
+        response.fields[field]?.source === 'environment'
+          ? `${integration.fields[field].label} supprimé de JobPilot. La valeur .env est de nouveau utilisée.`
+          : `${integration.fields[field].label} supprimé de JobPilot.`,
+      );
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fullyConfigured = Object.values(integration.fields).every((field) => field.configured);
+
+  return (
+    <Card>
+      <div className="actions" style={{ justifyContent: 'space-between' }}>
+        <div>
+          <h2 className="section-title" style={{ marginBottom: 6 }}>{integration.label}</h2>
+          <p className="muted" style={{ margin: 0 }}>{integration.note}</p>
+        </div>
+        <div className="actions">
+          <Badge tone={integration.runtimeActive ? 'blue' : 'neutral'}>
+            {integration.runtimeActive ? 'Utilisé par JobPilot' : 'Prêt pour future bascule'}
+          </Badge>
+          <Badge tone={fullyConfigured ? 'good' : 'warn'}>
+            {fullyConfigured ? 'Configuré' : 'À compléter'}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="stack" style={{ marginTop: 18 }}>
+        {Object.entries(integration.fields).map(([field, configuration]) => (
+          <div className="stack" key={field} style={{ gap: 6 }}>
+            <label>
+              {configuration.label}
+              <input
+                aria-label={`${integration.label} — ${configuration.label}`}
+                type={configuration.secret ? 'password' : 'text'}
+                value={configuration.secret ? (secrets[field] ?? '') : (values[field] ?? '')}
+                onChange={(event) => {
+                  if (configuration.secret) {
+                    setSecrets((current) => ({ ...current, [field]: event.target.value }));
+                  } else {
+                    setValues((current) => ({ ...current, [field]: event.target.value }));
+                  }
+                }}
+                placeholder={configuration.secret && configuration.configured ? '••••••••••••••••' : ''}
+                autoComplete={configuration.secret ? 'new-password' : 'off'}
+              />
+            </label>
+            <div className="small muted">
+              {sourceLabel(configuration.source)}.
+              {configuration.secret && ' Une valeur vide conserve le secret actuel ; sa valeur n’est jamais renvoyée au navigateur.'}
+            </div>
+            {configuration.secret && configuration.source === 'interface' && (
+              <div>
+                <button
+                  className="btn secondary small"
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void clearSecret(field)}
+                >
+                  Supprimer {configuration.label.toLocaleLowerCase('fr')}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {error !== '' && <ErrorBox message={error} />}
+        {message !== '' && <div className="notice">{message}</div>}
+
+        <div className="actions">
+          <button className="btn" type="button" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Enregistrement…' : `Enregistrer ${integration.label}`}
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 export default function IntegrationSettingsPage() {
   const [settings, setSettings] = useState<AiSettings | null>(null);
+  const [integrations, setIntegrations] = useState<ExternalIntegration[] | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [model, setModel] = useState('gemini-3.5-flash-lite');
   const [apiKey, setApiKey] = useState('');
@@ -33,12 +195,16 @@ export default function IntegrationSettingsPage() {
   useEffect(() => {
     let active = true;
 
-    void api<AiSettings>('/settings/ai')
-      .then((response) => {
+    void Promise.all([
+      api<AiSettings>('/settings/ai'),
+      api<ExternalIntegration[]>('/settings/integrations'),
+    ])
+      .then(([aiSettings, externalIntegrations]) => {
         if (!active) return;
-        setSettings(response);
-        setEnabled(response.enabled);
-        setModel(response.model);
+        setSettings(aiSettings);
+        setEnabled(aiSettings.enabled);
+        setModel(aiSettings.model);
+        setIntegrations(externalIntegrations);
       })
       .catch((caughtError: unknown) => {
         if (active) setError(getErrorMessage(caughtError));
@@ -49,7 +215,11 @@ export default function IntegrationSettingsPage() {
     };
   }, []);
 
-  const save = async (): Promise<void> => {
+  const updateIntegration = (configuration: ExternalIntegration): void => {
+    setIntegrations((current) => current?.map((item) => item.id === configuration.id ? configuration : item) ?? [configuration]);
+  };
+
+  const saveGemini = async (): Promise<void> => {
     setSaving(true);
     setError('');
     setMessage('');
@@ -74,7 +244,7 @@ export default function IntegrationSettingsPage() {
     }
   };
 
-  const clearStoredKey = async (): Promise<void> => {
+  const clearGeminiKey = async (): Promise<void> => {
     setSaving(true);
     setError('');
     setMessage('');
@@ -88,7 +258,7 @@ export default function IntegrationSettingsPage() {
       setApiKey('');
       setMessage(
         response.apiKeySource === 'environment'
-          ? 'Clé enregistrée dans JobPilot supprimée. La clé .env est de nouveau utilisée.'
+          ? 'Clé Gemini enregistrée dans JobPilot supprimée. La clé .env est de nouveau utilisée.'
           : 'Clé Gemini enregistrée supprimée.',
       );
     } catch (caughtError: unknown) {
@@ -98,13 +268,16 @@ export default function IntegrationSettingsPage() {
     }
   };
 
-  if (settings === null && error === '') return <Loading />;
+  if ((settings === null || integrations === null) && error === '') return <Loading />;
+
+  const aiProviders = integrations?.filter((integration) => integration.category === 'ai') ?? [];
+  const connectors = integrations?.filter((integration) => integration.category === 'connector') ?? [];
 
   return (
     <>
       <PageHeader
         title="Configuration & clés API"
-        description="Gère les fournisseurs externes et leurs secrets depuis l’interface locale, sans exposer les clés après enregistrement."
+        description="Gère les fournisseurs IA et connecteurs externes depuis un coffre local chiffré, sans réafficher les secrets après enregistrement."
       />
 
       {message !== '' && <div className="notice">{message}</div>}
@@ -116,8 +289,8 @@ export default function IntegrationSettingsPage() {
           <Card>
             <div className="actions" style={{ justifyContent: 'space-between' }}>
               <div>
-                <h2 className="section-title" style={{ marginBottom: 6 }}>Gemini — matching IA</h2>
-                <p className="muted" style={{ margin: 0 }}>Provider actif pour le premier test IA de JobPilot.</p>
+                <h2 className="section-title" style={{ marginBottom: 6 }}>Gemini — matching IA actif</h2>
+                <p className="muted" style={{ margin: 0 }}>Provider utilisé actuellement pour le test de matching sémantique.</p>
               </div>
               <Badge tone={settings.apiKeyConfigured ? 'good' : 'warn'}>
                 {settings.apiKeyConfigured ? 'Clé configurée' : 'Clé requise'}
@@ -161,12 +334,12 @@ export default function IntegrationSettingsPage() {
               </div>
 
               <div className="actions">
-                <button className="btn" type="button" disabled={saving || model.trim() === ''} onClick={() => void save()}>
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
+                <button className="btn" type="button" disabled={saving || model.trim() === ''} onClick={() => void saveGemini()}>
+                  {saving ? 'Enregistrement…' : 'Enregistrer Gemini'}
                 </button>
                 {settings.apiKeySource === 'interface' && (
-                  <button className="btn secondary" type="button" disabled={saving} onClick={() => void clearStoredKey()}>
-                    Supprimer la clé enregistrée
+                  <button className="btn secondary" type="button" disabled={saving} onClick={() => void clearGeminiKey()}>
+                    Supprimer la clé Gemini
                   </button>
                 )}
               </div>
@@ -174,33 +347,46 @@ export default function IntegrationSettingsPage() {
           </Card>
 
           <Card>
-            <h2 className="section-title">Sécurité et mode test</h2>
+            <h2 className="section-title">Sécurité et priorité</h2>
             <div className="stack">
               <div className="notice">
-                Les clés enregistrées depuis l’interface sont chiffrées dans le volume privé local de JobPilot avec <code>APP_ENCRYPTION_KEY</code>.
+                Les secrets enregistrés ici sont chiffrés dans le volume privé local avec <code>APP_ENCRYPTION_KEY</code>. Ils ne sont pas stockés dans Doctrine ni dans Git.
               </div>
               <div className="notice warning">
-                <strong>Gemini free tier :</strong> pour cette phase de test, JobPilot continue d’envoyer uniquement les critères de matching minimisés et les données de l’offre. Le CV complet, le nom, les e-mails et Gmail ne sont pas envoyés.
+                <strong>Gemini free tier :</strong> JobPilot continue d’envoyer uniquement les critères de matching minimisés et les données de l’offre. Le CV complet, le nom, les e-mails et Gmail ne sont pas envoyés pendant ce test.
               </div>
               <div className="small muted">
-                Ordre de priorité : configuration enregistrée dans l’interface, puis variables <code>.env</code>. En cas d’erreur ou de quota Gemini, le matcher déterministe reste le fallback.
+                Priorité : valeur enregistrée dans l’interface, puis variable <code>.env</code>. Supprimer une valeur de l’interface réactive automatiquement le fallback <code>.env</code> lorsqu’il existe.
               </div>
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="section-title">Autres fournisseurs</h2>
-            <p className="muted">
-              Cette page constitue le coffre de configuration initial. Les prochaines intégrations pourront ajouter OpenAI, Mistral, Anthropic, France Travail, Adzuna et les autres connecteurs sans exposer leurs secrets dans l’interface.
-            </p>
-            <div className="actions">
-              <Badge>OpenAI — à venir</Badge>
-              <Badge>Mistral — à venir</Badge>
-              <Badge>Anthropic — à venir</Badge>
-              <Badge>Connecteurs — à venir</Badge>
             </div>
           </Card>
         </div>
+      )}
+
+      {aiProviders.length > 0 && (
+        <>
+          <div style={{ height: 22 }} />
+          <h2>Fournisseurs IA alternatifs</h2>
+          <p className="muted">Tu peux déjà enregistrer leurs clés et modèles. Ils ne deviennent pas le moteur de matching tant que leur provider JobPilot dédié n’est pas activé dans une PR séparée.</p>
+          <div className="grid cols-2">
+            {aiProviders.map((integration) => (
+              <ExternalIntegrationCard key={integration.id} integration={integration} onUpdated={updateIntegration} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {connectors.length > 0 && (
+        <>
+          <div style={{ height: 22 }} />
+          <h2>Connecteurs API</h2>
+          <p className="muted">Les identifiants enregistrés ici prennent effet à chaud pour les connecteurs concernés. Les règles de quotas, politiques et conformité restent inchangées.</p>
+          <div className="grid cols-2">
+            {connectors.map((integration) => (
+              <ExternalIntegrationCard key={integration.id} integration={integration} onUpdated={updateIntegration} />
+            ))}
+          </div>
+        </>
       )}
     </>
   );

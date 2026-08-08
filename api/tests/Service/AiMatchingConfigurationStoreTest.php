@@ -67,6 +67,33 @@ final class AiMatchingConfigurationStoreTest extends TestCase
         self::assertSame('ui-secret-key', $store->effective()['apiKey']);
     }
 
+    public function testQuotaLimitsCanBeOverriddenFromTheInterface(): void
+    {
+        $store = $this->store();
+
+        $public = $store->save([
+            'quotaRpm' => 15,
+            'quotaTpm' => 250000,
+            'quotaRpd' => 500,
+            'quotaSafetyPercent' => 80,
+        ]);
+
+        self::assertSame([
+            'rpm' => 15,
+            'tpm' => 250000,
+            'rpd' => 500,
+            'safetyPercent' => 80,
+        ], $public['quota']);
+        self::assertSame($public['quota'], $store->effective()['quota']);
+    }
+
+    public function testInvalidQuotaIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->store()->save(['quotaSafetyPercent' => 101]);
+    }
+
     private function store(): AiMatchingConfigurationStore
     {
         return new AiMatchingConfigurationStore(
@@ -75,6 +102,10 @@ final class AiMatchingConfigurationStoreTest extends TestCase
             false,
             'env-secret-key',
             'gemini-env-model',
+            20,
+            300000,
+            600,
+            90,
         );
     }
 }

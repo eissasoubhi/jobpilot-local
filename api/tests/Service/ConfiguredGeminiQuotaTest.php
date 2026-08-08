@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\Entity\JobOffer;
 use App\Entity\UserSettings;
+use App\Service\Ai\AiMatchingCache;
 use App\Service\Ai\AiMatchingConfigurationStore;
 use App\Service\Ai\AiQuotaManager;
 use App\Service\Ai\ConfiguredGeminiJobMatchAnalyzer;
@@ -57,6 +58,7 @@ final class ConfiguredGeminiQuotaTest extends TestCase
             new NullLogger(),
             $configuration,
             $quotaManager,
+            new AiMatchingCache($this->directory),
         );
 
         self::assertNull($analyzer->analyze($this->job(), $this->settings()));

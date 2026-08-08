@@ -60,7 +60,7 @@ The skills score remains separate: a generic title can still become a good match
 
 ## PHP relevance in the AI path
 
-Gemini now returns an explicit `phpRelevance` classification in every valid structured matching analysis:
+Gemini returns an explicit `phpRelevance` classification in every valid structured matching analysis:
 
 - `PRIMARY`: PHP is genuinely core to the role;
 - `ALTERNATIVE`: PHP is one equivalent primary option, such as `Java OR PHP`;
@@ -76,9 +76,23 @@ This guard is local and deterministic after the AI response. It prevents a contr
 
 ## Alternatives and cumulative requirements
 
-The AI prompt explicitly distinguishes equivalent alternatives from cumulative requirements. `Java OR PHP` can be a valid PHP route, while `Java AND PHP required` is treated as materially weaker for a PHP-only backend profile.
+The deterministic fallback now distinguishes common explicit alternatives from clearly cumulative mandatory requirements when PHP and another backend family appear in the same requirement statement.
 
-The deterministic fallback can detect multiple dominant stacks, but it does not yet fully parse natural-language conjunction semantics. Its regression fixtures remain intentionally conservative while the AI path handles the richer distinction.
+Alternative cues include forms such as `PHP or Python`, `PHP ou Java`, `either PHP or .NET` and `au choix`. These stacks are exposed as genuine alternatives and PHP remains a valid route when it matches the configured profile.
+
+Cumulative classification is deliberately stricter. A conjunction such as `and`, `et`, `both`, `ainsi que`, `&` or `+` is treated as cumulative only when the same statement also contains a mandatory cue such as `required`, `mandatory`, `must`, `requis`, `obligatoire` or `indispensable`. For a PHP-oriented profile, a PHP + another mandatory backend stack combination is capped at `60/100` unless a configured target job explicitly targets all of those stacks.
+
+Secondary wording such as `nice-to-have`, `optional`, `bonus`, `apprécié`, `souhaité`, `legacy` or migration context is ignored by this relationship classifier so it cannot override the actual dominant stack.
+
+The score explanation exposes the relationship, for example:
+
+```text
+Stack principale détectée : PHP/Symfony ou .NET/C#
+Relation des stacks détectée : exigences cumulatives obligatoires
+PHP requis avec une autre stack principale : score plafonné à 60/100
+```
+
+This parser is intentionally conservative. Ambiguous conjunctions without a clear mandatory or alternative cue fall back to the normal dominant-stack weighting instead of guessing.
 
 A weaker secondary or contextual mention does not override the dominant stack. A Symfony/PHP role that merely mentions Java as useful integration knowledge remains a PHP/Symfony match.
 

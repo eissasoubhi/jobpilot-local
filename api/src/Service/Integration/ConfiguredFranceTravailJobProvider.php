@@ -15,7 +15,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class ConfiguredFranceTravailJobProvider implements GovernedJobSourceConnector, SearchDiagnosticsConnector, VersionedJobSourceConnector
 {
     /** @var array<string, mixed> */
-    private array $lastSearchDiagnostics = [];
+    private array $lastSearchDiagnostics = [
+        'requestedQueries' => 0,
+        'completedQueries' => 0,
+        'queriesWithResults' => 0,
+        'queriesWithoutResults' => 0,
+        'received' => 0,
+        'uniqueOffers' => 0,
+        'queries' => [],
+    ];
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,

@@ -13,6 +13,41 @@ describe('CatalogResetPanel', () => {
     vi.restoreAllMocks();
   });
 
+  it('cleans only non-matching offers after a simple confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    apiMock.mockResolvedValueOnce({
+      message: '38 offre(s) hors profil supprimée(s). 91 offre(s) conservée(s).',
+      cleanup: {
+        busy: false,
+        scannedOffers: 129,
+        deletedOffers: 38,
+        deletedApplications: 31,
+        deletedOccurrences: 42,
+        deletedMarkedNotMatch: 7,
+        deletedStoredAiNoMatch: 25,
+        deletedAiNoMatch: 6,
+        protectedHistoryOffers: 4,
+        keptOffers: 91,
+      },
+    });
+
+    render(<CatalogResetPanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Nettoyer les offres hors profil' }));
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('uniquement les offres clairement hors profil'));
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/job-search/cleanup-profile', {
+      method: 'POST',
+      body: JSON.stringify({ confirmation: 'CLEAN_NO_MATCH' }),
+    }));
+
+    const result = await screen.findByTestId('cleanup-result');
+    expect(result).toHaveTextContent('129 offres analysées');
+    expect(result).toHaveTextContent('38 hors profil supprimées');
+    expect(result).toHaveTextContent('4 historiques protégés');
+    expect(result).toHaveTextContent('91 offres conservées');
+    expect(screen.getByRole('link', { name: 'Voir le catalogue nettoyé →' })).toHaveAttribute('href', '/offres');
+  });
+
   it('keeps the destructive action locked until the explicit phrase is entered', () => {
     render(<CatalogResetPanel />);
 

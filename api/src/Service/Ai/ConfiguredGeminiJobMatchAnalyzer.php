@@ -34,12 +34,22 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
             return $analyzer->analyze($job, $settings);
         }
 
-        $reservationId = $this->quotaManager->reserve(
-            'gemini',
-            $configuration['model'],
-            $analyzer->estimatedInputTokens($job, $settings, $this->quotaManager),
-            $configuration['quota'],
-        );
+        try {
+            $reservationId = $this->quotaManager->reserve(
+                'gemini',
+                $configuration['model'],
+                $analyzer->estimatedInputTokens($job, $settings, $this->quotaManager),
+                $configuration['quota'],
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('Gemini matching skipped because local quota accounting failed.', [
+                'model' => $configuration['model'],
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
 
         if ($reservationId === null) {
             $this->logger->notice('Gemini matching skipped because the local quota guard reached its safe limit.', [
@@ -53,7 +63,15 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
         $analysis = $analyzer->analyze($job, $settings);
         $actualInputTokens = $analyzer->lastInputTokens();
         if ($actualInputTokens !== null) {
-            $this->quotaManager->reconcile($reservationId, $actualInputTokens);
+            try {
+                $this->quotaManager->reconcile($reservationId, $actualInputTokens);
+            } catch (\Throwable $exception) {
+                $this->logger->warning('Gemini quota reconciliation failed after the matching response.', [
+                    'model' => $configuration['model'],
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $analysis;

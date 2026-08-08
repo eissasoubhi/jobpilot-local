@@ -88,7 +88,15 @@ services:
     arguments:
       $enabled: '%env(bool:SYMFONY_JOBS_RSS_ENABLED)%'
 
-  App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\GeminiJobMatchAnalyzer'
+  App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\ConfiguredGeminiJobMatchAnalyzer'
+
+  App\Service\Ai\AiMatchingConfigurationStore:
+    arguments:
+      $privateDir: '%private_dir%'
+      $encryptionKey: '%env(APP_ENCRYPTION_KEY)%'
+      $environmentEnabled: '%env(bool:AI_MATCHING_ENABLED)%'
+      $environmentApiKey: '%env(GEMINI_API_KEY)%'
+      $environmentModel: '%env(GEMINI_MATCHING_MODEL)%'
 
   App\Service\Ai\GeminiJobMatchAnalyzer:
     arguments:

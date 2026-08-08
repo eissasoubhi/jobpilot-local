@@ -1,3 +1,7 @@
+.workspace {
+  padding-bottom: 90px;
+}
+
 .decisionBar {
   position: fixed;
   left: 286px;
@@ -145,6 +149,10 @@
 }
 
 @media (max-width: 650px) {
+  .workspace {
+    padding-bottom: 132px;
+  }
+
   .decisionBar {
     left: 12px;
     right: 12px;

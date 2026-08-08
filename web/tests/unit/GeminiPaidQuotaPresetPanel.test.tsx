@@ -18,10 +18,10 @@ const legacySettings = {
   quotaUsage: { rpmLimit: 12, tpmLimit: 200000, rpdLimit: 400 },
 };
 
-const paidSettings = {
+const tier1Settings = {
   ...legacySettings,
-  quota: { rpm: 60, tpm: 1000000, rpd: 2000, safetyPercent: 80 },
-  quotaUsage: { rpmLimit: 48, tpmLimit: 800000, rpdLimit: 1600 },
+  quota: { rpm: 4000, tpm: 4000000, rpd: 10000, safetyPercent: 80 },
+  quotaUsage: { rpmLimit: 3200, tpmLimit: 3200000, rpdLimit: 8000 },
 };
 
 describe('GeminiPaidQuotaPresetPanel', () => {
@@ -29,15 +29,18 @@ describe('GeminiPaidQuotaPresetPanel', () => {
     mockedApi.mockReset();
   });
 
-  it('applies the balanced paid preset immediately', async () => {
+  it('applies the observed Tier 1 Flash-Lite limits immediately', async () => {
     mockedApi
       .mockResolvedValueOnce(legacySettings)
-      .mockResolvedValueOnce(paidSettings);
+      .mockResolvedValueOnce(tier1Settings);
 
     const user = userEvent.setup();
     render(<GeminiPaidQuotaPresetPanel />);
 
-    const button = await screen.findByRole('button', { name: 'Appliquer le profil payant recommandé' });
+    expect(await screen.findByText(/4[\s\u202f]?000 RPM/)).toBeInTheDocument();
+    expect(screen.getByText(/3[\s\u202f]?200 RPM/)).toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Appliquer les limites Tier 1 observées' });
     await user.click(button);
 
     await waitFor(() => expect(mockedApi).toHaveBeenCalledTimes(2));
@@ -45,24 +48,38 @@ describe('GeminiPaidQuotaPresetPanel', () => {
     const init = mockedApi.mock.calls[1][1] as RequestInit;
     expect(init.method).toBe('PUT');
     expect(JSON.parse(String(init.body))).toEqual({
-      quotaRpm: 60,
-      quotaTpm: 1000000,
-      quotaRpd: 2000,
+      quotaRpm: 4000,
+      quotaTpm: 4000000,
+      quotaRpd: 10000,
       quotaSafetyPercent: 80,
     });
 
-    expect(await screen.findByText('Profil payant actif')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Profil Gemini payant appliqué');
-    expect(screen.getByRole('button', { name: 'Profil payant déjà actif' })).toBeDisabled();
+    expect(await screen.findByText('Tier 1 actif')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Limites Tier 1 Gemini 3.5 Flash-Lite appliquées');
+    expect(screen.getByRole('button', { name: 'Limites Tier 1 déjà actives' })).toBeDisabled();
   });
 
   it('does not offer to reapply the preset when it is already active', async () => {
-    mockedApi.mockResolvedValueOnce(paidSettings);
+    mockedApi.mockResolvedValueOnce(tier1Settings);
 
     render(<GeminiPaidQuotaPresetPanel />);
 
-    expect(await screen.findByText('Profil payant actif')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Profil payant déjà actif' })).toBeDisabled();
+    expect(await screen.findByText('Tier 1 actif')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Limites Tier 1 déjà actives' })).toBeDisabled();
+    expect(mockedApi).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to apply Flash-Lite limits to a different Gemini model', async () => {
+    mockedApi.mockResolvedValueOnce({
+      ...legacySettings,
+      model: 'gemini-3.6-flash',
+    });
+
+    render(<GeminiPaidQuotaPresetPanel />);
+
+    expect(await screen.findByText('Modèle différent')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('gemini-3.6-flash');
+    expect(screen.getByRole('button', { name: 'Preset indisponible pour ce modèle' })).toBeDisabled();
     expect(mockedApi).toHaveBeenCalledTimes(1);
   });
 });

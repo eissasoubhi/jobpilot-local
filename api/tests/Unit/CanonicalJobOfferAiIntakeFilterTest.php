@@ -16,7 +16,7 @@ use App\Service\Ai\AiMatchingConfigurationStore;
 use App\Service\Ai\AiOfferIntakeFilter;
 use App\Service\JobProcessor;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ObjectRepository;
+use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 
 final class CanonicalJobOfferAiIntakeFilterTest extends TestCase
@@ -35,14 +35,14 @@ final class CanonicalJobOfferAiIntakeFilterTest extends TestCase
 
     public function testHighConfidenceNoMatchIsDiscardedBeforeAnyPersistence(): void
     {
-        $repository = $this->createMock(ObjectRepository::class);
+        $repository = $this->createMock(EntityRepository::class);
         $repository->method('findOneBy')->willReturn(null);
         $repository->method('findBy')->willReturn([]);
 
         $em = $this->createMock(EntityManagerInterface::class);
         $em->method('getRepository')->willReturn($repository);
-        $em->expects(self::never())->method('persist');
-        $em->expects(self::never())->method('flush');
+        $em->expects($this->never())->method('persist');
+        $em->expects($this->never())->method('flush');
 
         $analysis = new AiJobMatchAnalysis(
             14,

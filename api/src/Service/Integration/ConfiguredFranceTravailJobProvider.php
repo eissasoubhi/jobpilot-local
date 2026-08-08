@@ -69,7 +69,7 @@ final class ConfiguredFranceTravailJobProvider implements GovernedJobSourceConne
     {
         return $this->isConfigured()
             ? null
-            : 'Renseigne le client ID et le client secret France Travail dans Configuration & clés API ou dans le fichier .env.';
+            : 'Renseigne FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET dans Configuration & clés API ou dans le fichier .env.';
     }
 
     public function search(array $targetJobs, array $skills): array

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { AiSidebarStatus } from '@/components/AiSidebarStatus';
 import { CatalogResetPanel } from '@/components/CatalogResetPanel';
+import { ProfileCleanupPanel } from '@/components/ProfileCleanupPanel';
 
 type NavigationLink = readonly [href: string, label: string, icon: string];
 
@@ -94,7 +95,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="main">
         {children}
-        {pathname === '/parametres' && <CatalogResetPanel />}
+        {pathname === '/parametres' && (
+          <>
+            <ProfileCleanupPanel />
+            <CatalogResetPanel />
+          </>
+        )}
       </main>
     </div>
   );

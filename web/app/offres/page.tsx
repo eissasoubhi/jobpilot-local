@@ -144,49 +144,68 @@ export default function JobsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
 
-  const load = useCallback(async (): Promise<void> => {
-    const [jobsResult, applicationsResult] = await Promise.allSettled([
-      api<Job[]>('/jobs'),
-      api<Application[]>('/applications'),
-    ]);
-
-    if (jobsResult.status === 'rejected') {
-      setError(getErrorMessage(jobsResult.reason));
-      return;
+  const loadJobs = useCallback(async (): Promise<void> => {
+    try {
+      const result = await api<Job[]>('/jobs');
+      setJobs(result);
+    } catch (caughtError: unknown) {
+      setJobs((current) => current ?? []);
+      setError(getErrorMessage(caughtError));
     }
-
-    setJobs(jobsResult.value);
-
-    if (applicationsResult.status === 'fulfilled') {
-      setApplications(applicationsResult.value);
-      setError('');
-      return;
-    }
-
-    setApplications([]);
-    setError(`Les offres sont chargées, mais les préparations de candidature sont indisponibles : ${getErrorMessage(applicationsResult.reason)}`);
   }, []);
+
+  const loadApplications = useCallback(async (): Promise<void> => {
+    try {
+      const result = await api<Application[]>('/applications');
+      setApplications(result);
+    } catch (caughtError: unknown) {
+      setApplications((current) => current ?? []);
+      setError(`Les offres restent disponibles, mais les préparations de candidature sont indisponibles : ${getErrorMessage(caughtError)}`);
+    }
+  }, []);
+
+  const refreshWorkspace = useCallback(async (): Promise<void> => {
+    await Promise.all([loadJobs(), loadApplications()]);
+  }, [loadApplications, loadJobs]);
 
   const syncJobs = useCallback(async (force: boolean): Promise<void> => {
     setSyncing(true);
+    if (force) setError('');
 
     try {
       const result = await api<SyncResult>(`/job-search/sync${force ? '?force=1' : ''}`, {
         method: 'POST',
       });
       setSyncInfo(result);
-      await load();
+
+      // Keep the already rendered local catalog visible while the refreshed catalog
+      // is fetched. New or updated offers replace the list only when the request ends.
+      await loadJobs();
+      void loadApplications();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
       setSyncing(false);
     }
-  }, [load]);
+  }, [loadApplications, loadJobs]);
 
   useEffect(() => {
-    void load();
-    void syncJobs(false);
-  }, [load, syncJobs]);
+    let active = true;
+
+    void (async () => {
+      // The local catalog is the first paint. Applications and connector sync are
+      // intentionally started only after those already synchronized offers render.
+      await loadJobs();
+      if (!active) return;
+
+      void loadApplications();
+      void syncJobs(false);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [loadApplications, loadJobs, syncJobs]);
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -202,12 +221,13 @@ export default function JobsPage() {
           tjmFixed: nullableNumber(form.tjmFixed),
           tjmMin: nullableNumber(form.tjmMin),
           tjmMax: nullableNumber(form.tjmMax),
+          proposedTjm: undefined,
           publishedAt: form.publishedAt || null,
         }),
       });
       setForm(initialForm);
       setShow(false);
-      await load();
+      await refreshWorkspace();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     }
@@ -216,7 +236,7 @@ export default function JobsPage() {
   const prepare = async (id: number): Promise<void> => {
     try {
       await api(`/jobs/${id}/prepare`, { method: 'POST' });
-      await load();
+      await refreshWorkspace();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     }
@@ -281,11 +301,17 @@ export default function JobsPage() {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
-            <strong>Recherche automatique</strong>
-            <div className="muted small" style={{ marginTop: 5 }}>
+            <div className="actions" style={{ alignItems: 'center' }}>
+              <strong>Recherche automatique</strong>
+              <Badge tone={syncing ? 'blue' : 'good'}>
+                {syncing ? 'Mise à jour en arrière-plan' : 'Données locales affichées'}
+              </Badge>
+              {applications === null && <Badge>Suivi candidatures en cours…</Badge>}
+            </div>
+            <div className="muted small" style={{ marginTop: 7 }}>
               {syncing
-                ? 'JobPilot consulte les connecteurs actifs, normalise puis fusionne les occurrences.'
-                : syncInfo?.message ?? 'Initialisation de la recherche automatique…'}
+                ? 'Les offres déjà synchronisées restent visibles pendant que JobPilot consulte les connecteurs actifs, normalise et fusionne les nouvelles occurrences.'
+                : syncInfo?.message ?? 'Les offres locales sont affichées en premier. La recherche automatique complète ensuite la liste sans bloquer la page.'}
             </div>
           </div>
           <div className="small muted">
@@ -367,7 +393,7 @@ export default function JobsPage() {
       </div>
 
       <Card>
-        {jobs === null || (syncing && jobs.length === 0) ? (
+        {jobs === null ? (
           <Loading />
         ) : displayed.length === 0 ? (
           <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>

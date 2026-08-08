@@ -57,6 +57,7 @@ final class GeminiJobMatchAnalyzerTest extends TestCase
                             'primaryRole' => 'Senior Java Backend Developer',
                             'primaryStack' => ['Java', 'Spring Boot'],
                             'secondaryStack' => ['PHP'],
+                            'phpRelevance' => 'CONTEXTUAL',
                             'mustHaves' => ['Java', 'Spring Boot'],
                             'niceToHaves' => ['PHP'],
                             'missingMustHaves' => ['Java', 'Spring Boot'],
@@ -82,13 +83,21 @@ final class GeminiJobMatchAnalyzerTest extends TestCase
         self::assertSame('NO_MATCH', $analysis->decision);
         self::assertSame(['Java', 'Spring Boot'], $analysis->primaryStack);
         self::assertSame(['PHP'], $analysis->secondaryStack);
+        self::assertSame('CONTEXTUAL', $analysis->phpRelevance);
         self::assertSame(321, $analyzer->lastInputTokens());
         self::assertIsArray($requestBody);
         self::assertSame('gemini-3.5-flash-lite', $requestBody['model']);
         self::assertSame('application/json', $requestBody['response_format']['mime_type']);
         self::assertSame('object', $requestBody['response_format']['schema']['type']);
+        self::assertContains('phpRelevance', $requestBody['response_format']['schema']['required']);
+        self::assertSame(
+            ['PRIMARY', 'ALTERNATIVE', 'MIXED_REQUIRED', 'SECONDARY', 'CONTEXTUAL', 'ABSENT', 'UNCLEAR'],
+            $requestBody['response_format']['schema']['properties']['phpRelevance']['enum'],
+        );
         self::assertStringContainsString('Senior PHP Symfony Developer', $requestBody['input']);
         self::assertStringContainsString('Senior Backend Java Developer', $requestBody['input']);
+        self::assertStringContainsString('distinguish a genuine PHP profile from other profiles', $requestBody['input']);
+        self::assertStringContainsString('Do not treat every non-PHP job as a mismatch automatically', $requestBody['input']);
     }
 
     public function testInvalidAiPayloadFallsBackToNull(): void

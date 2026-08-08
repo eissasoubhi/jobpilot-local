@@ -12,6 +12,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
 {
+    private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+
     private const RESPONSE_SCHEMA = [
         'type' => 'object',
         'properties' => [
@@ -93,7 +95,6 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
         private bool $enabled,
         private string $apiKey,
         private string $model,
-        private string $endpoint,
     ) {
     }
 
@@ -104,7 +105,7 @@ final readonly class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterfa
         }
 
         try {
-            $response = $this->httpClient->request('POST', $this->endpoint, [
+            $response = $this->httpClient->request('POST', self::ENDPOINT, [
                 'headers' => [
                     'x-goog-api-key' => $this->apiKey,
                     'Content-Type' => 'application/json',

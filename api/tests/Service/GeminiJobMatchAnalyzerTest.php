@@ -41,6 +41,11 @@ final class GeminiJobMatchAnalyzerTest extends TestCase
 
             return new MockResponse(json_encode([
                 'id' => 'int_test',
+                'usage' => [
+                    'total_input_tokens' => 321,
+                    'total_output_tokens' => 80,
+                    'total_tokens' => 401,
+                ],
                 'steps' => [[
                     'type' => 'model_output',
                     'content' => [[
@@ -77,6 +82,7 @@ final class GeminiJobMatchAnalyzerTest extends TestCase
         self::assertSame('NO_MATCH', $analysis->decision);
         self::assertSame(['Java', 'Spring Boot'], $analysis->primaryStack);
         self::assertSame(['PHP'], $analysis->secondaryStack);
+        self::assertSame(321, $analyzer->lastInputTokens());
         self::assertIsArray($requestBody);
         self::assertSame('gemini-3.5-flash-lite', $requestBody['model']);
         self::assertSame('application/json', $requestBody['response_format']['mime_type']);

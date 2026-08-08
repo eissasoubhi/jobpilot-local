@@ -14,6 +14,10 @@ final class AiMatchingConfigurationStore
         private readonly bool $environmentEnabled,
         private readonly string $environmentApiKey,
         private readonly string $environmentModel,
+        private readonly int $environmentQuotaRpm = 15,
+        private readonly int $environmentQuotaTpm = 250000,
+        private readonly int $environmentQuotaRpd = 500,
+        private readonly int $environmentQuotaSafetyPercent = 80,
     ) {
         if (!is_dir($privateDir)) {
             @mkdir($privateDir, 0700, true);
@@ -22,7 +26,7 @@ final class AiMatchingConfigurationStore
         $this->file = rtrim($privateDir, '/').'/ai-matching-config.enc';
     }
 
-    /** @return array{provider: string, enabled: bool, model: string, apiKey: string} */
+    /** @return array{provider: string, enabled: bool, model: string, apiKey: string, quota: array{rpm: int, tpm: int, rpd: int, safetyPercent: int}} */
     public function effective(): array
     {
         $overrides = $this->readOverrides();
@@ -38,10 +42,22 @@ final class AiMatchingConfigurationStore
             'apiKey' => isset($overrides['apiKey']) && is_string($overrides['apiKey']) && trim($overrides['apiKey']) !== ''
                 ? trim($overrides['apiKey'])
                 : trim($this->environmentApiKey),
+            'quota' => [
+                'rpm' => $this->positiveIntegerOverride($overrides, 'quotaRpm', $this->environmentQuotaRpm),
+                'tpm' => $this->positiveIntegerOverride($overrides, 'quotaTpm', $this->environmentQuotaTpm),
+                'rpd' => $this->positiveIntegerOverride($overrides, 'quotaRpd', $this->environmentQuotaRpd),
+                'safetyPercent' => $this->boundedIntegerOverride(
+                    $overrides,
+                    'quotaSafetyPercent',
+                    $this->environmentQuotaSafetyPercent,
+                    1,
+                    100,
+                ),
+            ],
         ];
     }
 
-    /** @return array{provider: string, enabled: bool, model: string, apiKeyConfigured: bool, apiKeySource: string, hasInterfaceOverrides: bool} */
+    /** @return array{provider: string, enabled: bool, model: string, apiKeyConfigured: bool, apiKeySource: string, hasInterfaceOverrides: bool, quota: array{rpm: int, tpm: int, rpd: int, safetyPercent: int}} */
     public function publicConfiguration(): array
     {
         $overrides = $this->readOverrides();
@@ -56,6 +72,7 @@ final class AiMatchingConfigurationStore
             'apiKeyConfigured' => $effective['apiKey'] !== '',
             'apiKeySource' => $interfaceKey ? 'interface' : ($environmentKey ? 'environment' : 'none'),
             'hasInterfaceOverrides' => $overrides !== [],
+            'quota' => $effective['quota'],
         ];
     }
 
@@ -64,7 +81,7 @@ final class AiMatchingConfigurationStore
      * to remove only the UI-stored secret and fall back to the environment.
      *
      * @param array<string, mixed> $input
-     * @return array{provider: string, enabled: bool, model: string, apiKeyConfigured: bool, apiKeySource: string, hasInterfaceOverrides: bool}
+     * @return array{provider: string, enabled: bool, model: string, apiKeyConfigured: bool, apiKeySource: string, hasInterfaceOverrides: bool, quota: array{rpm: int, tpm: int, rpd: int, safetyPercent: int}}
      */
     public function save(array $input): array
     {
@@ -82,6 +99,28 @@ final class AiMatchingConfigurationStore
             $overrides['model'] = $model;
         }
 
+        foreach ([
+            'quotaRpm' => [1, 100000],
+            'quotaTpm' => [1, 1000000000],
+            'quotaRpd' => [1, 10000000],
+            'quotaSafetyPercent' => [1, 100],
+        ] as $field => [$minimum, $maximum]) {
+            if (!array_key_exists($field, $input)) {
+                continue;
+            }
+
+            if (!is_numeric($input[$field])) {
+                throw new \InvalidArgumentException(sprintf('La valeur %s doit être numérique.', $field));
+            }
+
+            $value = (int) $input[$field];
+            if ($value < $minimum || $value > $maximum) {
+                throw new \InvalidArgumentException(sprintf('La valeur %s doit être comprise entre %d et %d.', $field, $minimum, $maximum));
+            }
+
+            $overrides[$field] = $value;
+        }
+
         if (($input['clearApiKey'] ?? false) === true) {
             unset($overrides['apiKey']);
         } elseif (array_key_exists('apiKey', $input)) {
@@ -97,6 +136,22 @@ final class AiMatchingConfigurationStore
         $this->writeOverrides($overrides);
 
         return $this->publicConfiguration();
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function positiveIntegerOverride(array $overrides, string $key, int $fallback): int
+    {
+        return $this->boundedIntegerOverride($overrides, $key, max(1, $fallback), 1, PHP_INT_MAX);
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function boundedIntegerOverride(array $overrides, string $key, int $fallback, int $minimum, int $maximum): int
+    {
+        if (!isset($overrides[$key]) || !is_numeric($overrides[$key])) {
+            return max($minimum, min($maximum, $fallback));
+        }
+
+        return max($minimum, min($maximum, (int) $overrides[$key]));
     }
 
     /** @return array<string, mixed> */

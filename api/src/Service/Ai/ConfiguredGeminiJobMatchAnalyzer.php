@@ -15,6 +15,7 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
         private AiMatchingConfigurationStore $configuration,
+        private AiQuotaManager $quotaManager,
     ) {
     }
 
@@ -29,6 +30,50 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
             $configuration['model'],
         );
 
-        return $analyzer->analyze($job, $settings);
+        if (!$configuration['enabled'] || trim($configuration['apiKey']) === '') {
+            return $analyzer->analyze($job, $settings);
+        }
+
+        try {
+            $reservationId = $this->quotaManager->reserve(
+                'gemini',
+                $configuration['model'],
+                $analyzer->estimatedInputTokens($job, $settings, $this->quotaManager),
+                $configuration['quota'],
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('Gemini matching skipped because local quota accounting failed.', [
+                'model' => $configuration['model'],
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        if ($reservationId === null) {
+            $this->logger->notice('Gemini matching skipped because the local quota guard reached its safe limit.', [
+                'model' => $configuration['model'],
+                'quota' => $configuration['quota'],
+            ]);
+
+            return null;
+        }
+
+        $analysis = $analyzer->analyze($job, $settings);
+        $actualInputTokens = $analyzer->lastInputTokens();
+        if ($actualInputTokens !== null) {
+            try {
+                $this->quotaManager->reconcile($reservationId, $actualInputTokens);
+            } catch (\Throwable $exception) {
+                $this->logger->warning('Gemini quota reconciliation failed after the matching response.', [
+                    'model' => $configuration['model'],
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $analysis;
     }
 }

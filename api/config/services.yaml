@@ -28,6 +28,10 @@ parameters:
   env(AI_MATCHING_ENABLED): '0'
   env(GEMINI_API_KEY): ''
   env(GEMINI_MATCHING_MODEL): 'gemini-3.5-flash-lite'
+  env(GEMINI_QUOTA_RPM): '15'
+  env(GEMINI_QUOTA_TPM): '250000'
+  env(GEMINI_QUOTA_RPD): '500'
+  env(AI_QUOTA_SAFETY_PERCENT): '80'
   env(OPENAI_API_KEY): ''
   env(OPENAI_MATCHING_MODEL): ''
   env(MISTRAL_API_KEY): ''
@@ -100,6 +104,14 @@ services:
       $environmentEnabled: '%env(bool:AI_MATCHING_ENABLED)%'
       $environmentApiKey: '%env(GEMINI_API_KEY)%'
       $environmentModel: '%env(GEMINI_MATCHING_MODEL)%'
+      $environmentQuotaRpm: '%env(int:GEMINI_QUOTA_RPM)%'
+      $environmentQuotaTpm: '%env(int:GEMINI_QUOTA_TPM)%'
+      $environmentQuotaRpd: '%env(int:GEMINI_QUOTA_RPD)%'
+      $environmentQuotaSafetyPercent: '%env(int:AI_QUOTA_SAFETY_PERCENT)%'
+
+  App\Service\Ai\AiQuotaManager:
+    arguments:
+      $privateDir: '%private_dir%'
 
   App\Service\Ai\GeminiJobMatchAnalyzer:
     arguments:

@@ -7,8 +7,8 @@ import type { Application } from '@/lib/types';
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({ api: apiMock }));
-vi.mock('@/components/OfferApplicationSummary', () => ({
-  OfferApplicationSummary: ({
+vi.mock('@/components/ReviewQueueApplicationCard', () => ({
+  ReviewQueueApplicationCard: ({
     application,
     onApplicationUpdated,
   }: {
@@ -16,7 +16,7 @@ vi.mock('@/components/OfferApplicationSummary', () => ({
     onApplicationUpdated?: (application: Application) => void;
   }) => (
     <div>
-      <div>Résumé {application.jobOffer.title}</div>
+      <div>Carte complète {application.jobOffer.title}</div>
       <button
         type="button"
         onClick={() => onApplicationUpdated?.({ ...application, status: 'IGNORED_NOT_MATCH' })}
@@ -59,7 +59,7 @@ describe('ReviewQueuePage', () => {
     apiMock.mockReset();
   });
 
-  it('shows actionable applications one at a time with previous and next navigation', async () => {
+  it('shows one full review card at a time with slider navigation', async () => {
     apiMock.mockResolvedValueOnce([
       application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
       application(2, 'Already sent role', 'SUBMITTED'),
@@ -68,16 +68,19 @@ describe('ReviewQueuePage', () => {
 
     render(<ReviewQueuePage />);
 
-    await waitFor(() => expect(screen.getByText('First Symfony role')).toBeInTheDocument());
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
+    expect(screen.getByRole('navigation', { name: 'Navigation dans la Review Queue' })).toBeInTheDocument();
+    expect(screen.getByText('Offre 1')).toBeInTheDocument();
+    expect(screen.getByText('sur 2')).toBeInTheDocument();
     expect(screen.queryByText('Already sent role')).not.toBeInTheDocument();
-    expect(screen.queryByText('Second Symfony role')).not.toBeInTheDocument();
+    expect(screen.queryByText('Carte complète Second Symfony role')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Précédente' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Suivante' }));
 
-    expect(screen.getByText('Second Symfony role')).toBeInTheDocument();
-    expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Offre 2')).toBeInTheDocument();
+    expect(screen.getByText('sur 2')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suivante' })).toBeDisabled();
   });
 
@@ -90,12 +93,13 @@ describe('ReviewQueuePage', () => {
 
     render(<ReviewQueuePage />);
 
-    await waitFor(() => expect(screen.getByText('First Symfony role')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Décider First Symfony role' }));
 
-    expect(screen.queryByText('First Symfony role')).not.toBeInTheDocument();
-    expect(screen.getByText('Second Symfony role')).toBeInTheDocument();
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.queryByText('Carte complète First Symfony role')).not.toBeInTheDocument();
+    expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Offre 1')).toBeInTheDocument();
+    expect(screen.getByText('sur 2')).toBeInTheDocument();
   });
 
   it('wraps to the first remaining offer after deciding the last queue item', async () => {
@@ -107,15 +111,16 @@ describe('ReviewQueuePage', () => {
 
     render(<ReviewQueuePage />);
 
-    await waitFor(() => expect(screen.getByText('First Symfony role')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Suivante' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suivante' }));
-    expect(screen.getByText('Third Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Carte complète Third Symfony role')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Décider Third Symfony role' }));
 
-    expect(screen.queryByText('Third Symfony role')).not.toBeInTheDocument();
-    expect(screen.getByText('First Symfony role')).toBeInTheDocument();
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.queryByText('Carte complète Third Symfony role')).not.toBeInTheDocument();
+    expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Offre 1')).toBeInTheDocument();
+    expect(screen.getByText('sur 2')).toBeInTheDocument();
   });
 });

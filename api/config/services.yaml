@@ -50,6 +50,9 @@ services:
       - '../src/DependencyInjection/'
       - '../src/Entity/'
       - '../src/Kernel.php'
+      - '../src/Service/AdzunaJobProvider.php'
+      - '../src/Service/FranceTravailJobProvider.php'
+      - '../src/Service/SmartRecruitersJobProvider.php'
 
   App\Service\CvStorage:
     arguments:
@@ -65,27 +68,21 @@ services:
       $enabled: '%env(bool:ARBEITNOW_ENABLED)%'
       $pages: '%env(int:ARBEITNOW_PAGES)%'
 
-  App\Service\AdzunaJobProvider:
+  App\Service\Integration\ConfiguredAdzunaJobProvider:
     arguments:
-      $appId: '%env(ADZUNA_APP_ID)%'
-      $appKey: '%env(ADZUNA_APP_KEY)%'
       $country: '%env(ADZUNA_COUNTRY)%'
       $where: '%env(ADZUNA_WHERE)%'
       $resultsPerQuery: '%env(int:ADZUNA_RESULTS_PER_QUERY)%'
 
-  App\Service\FranceTravailJobProvider:
+  App\Service\Integration\ConfiguredFranceTravailJobProvider:
     arguments:
-      $clientId: '%env(FRANCE_TRAVAIL_CLIENT_ID)%'
-      $clientSecret: '%env(FRANCE_TRAVAIL_CLIENT_SECRET)%'
       $scope: '%env(FRANCE_TRAVAIL_SCOPE)%'
       $tokenEndpoint: '%env(FRANCE_TRAVAIL_TOKEN_ENDPOINT)%'
       $searchEndpoint: '%env(FRANCE_TRAVAIL_SEARCH_ENDPOINT)%'
       $resultsPerQuery: '%env(int:FRANCE_TRAVAIL_RESULTS_PER_QUERY)%'
 
-  App\Service\SmartRecruitersJobProvider:
+  App\Service\Integration\ConfiguredSmartRecruitersJobProvider:
     arguments:
-      $apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
-      $companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
       $pages: '%env(int:SMARTRECRUITERS_PAGES)%'
       $resultsPerPage: '%env(int:SMARTRECRUITERS_RESULTS_PER_PAGE)%'
       $maxDetails: '%env(int:SMARTRECRUITERS_MAX_DETAILS)%'

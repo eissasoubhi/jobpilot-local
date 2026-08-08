@@ -145,7 +145,7 @@ export default function ReviewQueuePage() {
           <Empty>Aucune candidature prête à envoyer dans la Review Queue.</Empty>
         </Card>
       ) : current ? (
-        <div className="review-queue-workspace">
+        <div className={`review-queue-workspace ${styles.workspace}`}>
           <ReviewQueueApplicationCard
             application={current}
             onApplicationUpdated={updateApplication}

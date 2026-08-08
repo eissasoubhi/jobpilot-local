@@ -80,7 +80,7 @@ final class MatchingScoreService
             $score = $aiAnalysis->score;
             $reasons = $aiAnalysis->toScoreReasons();
 
-            if ($this->candidateTargetsPhpBackend($settings) && !$this->roleMatchesExplicitTarget($aiAnalysis->primaryRole, $settings)) {
+            if ($this->candidateTargetsPhpBackend($settings) && !$this->roleMatchesExplicitNonPhpTarget($aiAnalysis->primaryRole, $settings)) {
                 if (in_array($aiAnalysis->phpRelevance, ['SECONDARY', 'CONTEXTUAL', 'ABSENT'], true)) {
                     $score = min($score, self::PRIMARY_STACK_CONFLICT_CAP);
                     $reasons[] = 'Profil principal non-PHP : score IA plafonné à '.self::PRIMARY_STACK_CONFLICT_CAP.'/100';
@@ -147,7 +147,7 @@ final class MatchingScoreService
         return in_array('PHP/Symfony', $this->detectPreferredBackendStacks($settings), true);
     }
 
-    private function roleMatchesExplicitTarget(string $role, UserSettings $settings): bool
+    private function roleMatchesExplicitNonPhpTarget(string $role, UserSettings $settings): bool
     {
         if (trim($role) === '') {
             return false;
@@ -155,7 +155,22 @@ final class MatchingScoreService
 
         $normalizedRole = mb_strtolower($role);
         foreach ($settings->getTargetJobs() as $target) {
+            if ($this->targetIsPhp($target)) {
+                continue;
+            }
             if ($this->titleCompatibilityScore($normalizedRole, $target) >= 25) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function targetIsPhp(string $target): bool
+    {
+        $normalizedTarget = mb_strtolower($target);
+        foreach (self::BACKEND_STACK_PATTERNS['PHP/Symfony'] as $pattern) {
+            if ($this->containsTechnology($normalizedTarget, $pattern)) {
                 return true;
             }
         }

@@ -3,16 +3,59 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const links = [
-  ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/offres/review', 'Review Queue', '▶'],
-  ['/connecteurs', 'Connecteurs', '⛓'], ['/criteres-recherche', 'Critères de recherche', '⌕'],
-  ['/candidatures', 'Candidatures', '✓'], ['/parcours-candidatures', 'Parcours candidatures', '↝'],
-  ['/reporting', 'Reporting', '▥'],
-  ['/crm', 'CRM', '◇'], ['/crm/contacts', 'Contacts CRM', '♙'],
-  ['/crm/follow-ups', 'Relances CRM', '◷'], ['/reporting/sources', 'Conversion par source', '▥'],
-  ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'],
-  ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
-  ['/parametres/integrations', 'Configuration & clés API', '◇'],
+import { AiSidebarStatus } from '@/components/AiSidebarStatus';
+
+type NavigationLink = readonly [href: string, label: string, icon: string];
+
+type NavigationGroup = {
+  label: string;
+  links: readonly NavigationLink[];
+};
+
+const navigation: readonly NavigationGroup[] = [
+  {
+    label: 'Travail',
+    links: [
+      ['/', 'Tableau de bord', '⌂'],
+      ['/offres', 'Offres', '◎'],
+      ['/offres/review', 'Review Queue', '▶'],
+      ['/candidatures', 'Candidatures', '✓'],
+    ],
+  },
+  {
+    label: 'Recherche',
+    links: [
+      ['/connecteurs', 'Connecteurs', '⛓'],
+      ['/criteres-recherche', 'Critères de recherche', '⌕'],
+    ],
+  },
+  {
+    label: 'CRM & suivi',
+    links: [
+      ['/parcours-candidatures', 'Parcours candidatures', '↝'],
+      ['/positionnements', 'Positionnements', '⇄'],
+      ['/messages', 'Messagerie', '✉'],
+      ['/crm', 'CRM', '◇'],
+      ['/crm/contacts', 'Contacts CRM', '♙'],
+      ['/crm/follow-ups', 'Relances CRM', '◷'],
+    ],
+  },
+  {
+    label: 'Analyse',
+    links: [
+      ['/reporting', 'Reporting', '▥'],
+      ['/reporting/sources', 'Conversion par source', '▥'],
+    ],
+  },
+  {
+    label: 'Configuration',
+    links: [
+      ['/parametres/integrations', 'Configuration & clés API', '⚙'],
+      ['/cv', 'Mes CV', '▤'],
+      ['/profil', 'Profil', '◉'],
+      ['/parametres', 'Paramètres', '☷'],
+    ],
+  },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -25,13 +68,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span className="brand-mark">JP</span>
           <div><strong>JobPilot</strong><small>Local</small></div>
         </div>
-        <nav>
-          {links.map(([href, label, icon]) => (
-            <Link key={href} href={href} className={pathname === href ? 'active' : ''}>
-              <span>{icon}</span>{label}
-            </Link>
+        <nav className="sidebar-nav" aria-label="Navigation principale">
+          {navigation.map((group) => (
+            <div className="sidebar-nav-group" key={group.label}>
+              <div className="sidebar-nav-title">{group.label}</div>
+              <div className="sidebar-nav-links">
+                {group.links.map(([href, label, icon]) => (
+                  <Link key={href} href={href} className={pathname === href ? 'active' : ''}>
+                    <span>{icon}</span>{label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
+        <AiSidebarStatus />
         <div className="sidebar-footer">
           <div className="local-badge">● Données locales</div>
           <div className="job-source-links" aria-label="Sources des offres">

@@ -1,0 +1,9 @@
+export function clampReviewQueueIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return Math.min(Math.max(index, 0), length - 1);
+}
+
+export function currentReviewQueueItem<T>(items: T[], index: number): T | undefined {
+  if (items.length === 0) return undefined;
+  return items[clampReviewQueueIndex(index, items.length)];
+}

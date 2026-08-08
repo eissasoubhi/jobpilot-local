@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/connecteurs', 'Connecteurs', '⛓'],
-  ['/criteres-recherche', 'Critères de recherche', '⌕'],
+  ['/', 'Tableau de bord', '⌂'], ['/offres', 'Offres', '◎'], ['/offres/review', 'Review Queue', '▶'],
+  ['/connecteurs', 'Connecteurs', '⛓'], ['/criteres-recherche', 'Critères de recherche', '⌕'],
   ['/candidatures', 'Candidatures', '✓'], ['/parcours-candidatures', 'Parcours candidatures', '↝'],
   ['/reporting', 'Reporting', '▥'],
   ['/crm', 'CRM', '◇'], ['/crm/contacts', 'Contacts CRM', '♙'],

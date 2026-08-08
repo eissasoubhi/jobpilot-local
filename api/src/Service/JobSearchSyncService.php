@@ -8,6 +8,7 @@ use App\Entity\ConnectorSyncRun;
 use App\Entity\SourceConnector;
 use App\JobCatalog\Application\CanonicalJobImportResult;
 use App\JobCatalog\Application\CanonicalJobOfferService;
+use App\JobCatalog\Application\ProfileFilteredJobOffer;
 use App\JobDiscovery\Application\ConnectorHealthAnalyzer;
 use App\JobDiscovery\Application\ConnectorPayloadQualityAnalyzer;
 use App\JobDiscovery\Application\ConnectorRegistry;
@@ -175,6 +176,7 @@ final class JobSearchSyncService
             $imported = 0;
             $merged = 0;
             $duplicates = 0;
+            $profileFiltered = 0;
             $failed = 0;
             $received = 0;
             $connectorResults = [];
@@ -191,6 +193,7 @@ final class JobSearchSyncService
                 $connectorImported = 0;
                 $connectorMerged = 0;
                 $connectorDuplicates = 0;
+                $connectorProfileFiltered = 0;
                 $connectorFailed = 0;
                 $connectorReceived = 0;
                 $connectorError = null;
@@ -220,6 +223,7 @@ final class JobSearchSyncService
                                 $connector->mode()->value,
                                 $settings,
                                 $profile,
+                                true,
                             );
 
                             if ($result->outcome() === CanonicalJobImportResult::IMPORTED) {
@@ -232,6 +236,9 @@ final class JobSearchSyncService
                                 ++$duplicates;
                                 ++$connectorDuplicates;
                             }
+                        } catch (ProfileFilteredJobOffer) {
+                            ++$profileFiltered;
+                            ++$connectorProfileFiltered;
                         } catch (\Throwable $exception) {
                             ++$failed;
                             ++$connectorFailed;
@@ -250,7 +257,7 @@ final class JobSearchSyncService
                     }
                 }
 
-                $normalized = $connectorImported + $connectorMerged + $connectorDuplicates;
+                $normalized = $connectorImported + $connectorMerged + $connectorDuplicates + $connectorProfileFiltered;
                 $normalizationRate = $connectorReceived > 0
                     ? round($normalized * 100 / $connectorReceived, 1)
                     : null;
@@ -283,6 +290,7 @@ final class JobSearchSyncService
                         'zeroResults' => $connectorReceived === 0,
                         'fieldQuality' => $fieldQuality,
                         'searchDiagnostics' => $searchDiagnostics,
+                        'profileFiltered' => $connectorProfileFiltered,
                     ],
                 );
                 $this->em->flush();
@@ -299,6 +307,7 @@ final class JobSearchSyncService
                     'imported' => $connectorImported,
                     'merged' => $connectorMerged,
                     'duplicates' => $connectorDuplicates,
+                    'profileFiltered' => $connectorProfileFiltered,
                     'failed' => $connectorFailed,
                     'error' => $connectorError,
                 ];
@@ -309,6 +318,7 @@ final class JobSearchSyncService
                 'imported' => $imported,
                 'merged' => $merged,
                 'duplicates' => $duplicates,
+                'profileFiltered' => $profileFiltered,
                 'failed' => $failed,
                 'providers' => $connectorResults,
                 'connectorResults' => $connectorResults,
@@ -316,9 +326,10 @@ final class JobSearchSyncService
                 'busy' => false,
                 'skipped' => false,
                 'message' => sprintf(
-                    '%d nouvelle(s) offre(s), %d nouvelle(s) source(s) fusionnée(s).',
+                    '%d nouvelle(s) offre(s), %d nouvelle(s) source(s) fusionnée(s), %d offre(s) hors profil non enregistrée(s).',
                     $imported,
                     $merged,
+                    $profileFiltered,
                 ),
             ]);
         } finally {
@@ -389,6 +400,7 @@ final class JobSearchSyncService
             'health' => $this->healthAnalyzer->analyze($history),
             'fieldQuality' => $fieldQuality,
             'searchDiagnostics' => $searchDiagnostics,
+            'profileFiltered' => max(0, (int) ($latestDetails['profileFiltered'] ?? 0)),
         ];
     }
 

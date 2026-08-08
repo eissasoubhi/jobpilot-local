@@ -8,6 +8,7 @@ use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
 use App\Entity\JobSourceOccurrence;
 use App\Entity\UserSettings;
+use App\Service\Ai\AiOfferIntakeFilter;
 use App\Service\JobProcessor;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -17,6 +18,7 @@ final class CanonicalJobOfferService
         private EntityManagerInterface $em,
         private CanonicalJobMatcher $matcher,
         private JobProcessor $processor,
+        private AiOfferIntakeFilter $intakeFilter,
     ) {
     }
 
@@ -30,6 +32,7 @@ final class CanonicalJobOfferService
         string $mode,
         UserSettings $settings,
         CandidateProfile $profile,
+        bool $filterNewOfferByProfile = false,
     ): CanonicalJobImportResult {
         $sourceCode = $this->normalizeSourceCode($sourceCode, $sourceName);
         $sourceName = trim($sourceName) !== '' ? trim($sourceName) : $sourceCode;
@@ -95,6 +98,13 @@ final class CanonicalJobOfferService
         $job = (new JobOffer())->fill($payload);
         if ($job->getTitle() === '' || $job->getDescription() === '') {
             throw new \InvalidArgumentException('Offre sans titre ou description.');
+        }
+
+        if ($filterNewOfferByProfile) {
+            $rejection = $this->intakeFilter->rejection($job, $settings);
+            if ($rejection !== null) {
+                throw new ProfileFilteredJobOffer($rejection->score, $rejection->confidence);
+            }
         }
 
         $this->processor->process($job, $settings, $profile);

@@ -39,6 +39,28 @@ Sans clé, avec `AI_MATCHING_ENABLED=0`, lorsqu'un quota est atteint, si Gemini 
 
 Les exclusions explicites configurées dans JobPilot restent prioritaires et sont vérifiées avant tout appel IA.
 
+## Filtre IA pendant la synchronisation
+
+Lorsque le matching IA est activé **et** qu'une clé effective est disponible, les nouvelles offres issues des connecteurs passent par un filtre de profil avant leur première persistance dans le catalogue.
+
+L'ordre est volontairement :
+
+1. recevoir l'offre depuis le connecteur ;
+2. vérifier les occurrences/doublons et les fusions canoniques déjà connues ;
+3. uniquement si une nouvelle offre canonique allait être créée, lancer l'analyse IA ;
+4. ne pas enregistrer l'offre si Gemini retourne `NO_MATCH` avec une confiance d'au moins `85 %` et un signal concret de mismatch (score sous le seuil configuré, prérequis obligatoire manquant ou conflit explicite) ;
+5. sinon conserver l'offre et poursuivre le traitement normal.
+
+Cette règle est volontairement conservatrice : `MATCH`, `REVIEW`, les réponses peu confiantes et les réponses incohérentes restent dans JobPilot pour éviter les faux négatifs.
+
+Le filtre est **fail-open**. Si Gemini n'est pas disponible, si le quota local est atteint, si le cache/quota manager échoue ou si l'API ne renvoie pas d'analyse exploitable, JobPilot conserve l'offre au lieu de la perdre. Le moteur déterministe continue ensuite à calculer son score normal.
+
+Le résultat IA passe par le cache existant avant la réservation de quota. Une offre identique déjà analysée ne consomme donc pas un nouvel appel Gemini. Les doublons exacts ou les occurrences fusionnées sont également traités avant le filtre afin d'éviter des appels IA inutiles.
+
+Les offres écartées par ce filtre ne créent ni `JobOffer`, ni occurrence source, ni candidature préparée. Seul le **compteur** `profileFiltered` est conservé dans le diagnostic de synchronisation ; le contenu de l'offre rejetée n'est pas stocké par ce mécanisme.
+
+Les imports manuels et les offres ajoutées explicitement par l'utilisateur ne sont pas concernés par ce filtre de synchronisation.
+
 ## Données envoyées pendant cette phase de test
 
 Pour limiter les données personnelles envoyées au free tier, le prompt Gemini reçoit uniquement :
@@ -78,11 +100,10 @@ Les limites exactes de requêtes du free tier sont gérées par Google et peuven
 
 Le code métier dépend de `AiJobMatchAnalyzerInterface`, pas directement de Gemini. `GeminiJobMatchAnalyzer` est le premier adaptateur. Cette séparation permettra de comparer ou remplacer ultérieurement Gemini par OpenAI, Mistral, Anthropic, un modèle local ou un autre fournisseur sans réécrire le moteur de matching.
 
-## Portée de cette première livraison
+## Portée de cette livraison
 
-Cette phase introduit uniquement le matching IA opt-in et son fallback. Elle ne modifie pas :
+Cette phase introduit le matching IA opt-in, son fallback et le filtre conservateur des **nouvelles offres synchronisées** avant persistance. Elle ne modifie pas :
 
-- les connecteurs de collecte ;
 - les règles d'authentification des sources ;
 - les CAPTCHA, quotas ou règles de scraping ;
 - l'envoi externe des candidatures ;

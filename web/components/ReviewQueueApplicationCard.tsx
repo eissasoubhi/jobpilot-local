@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import { Badge } from '@/components/UI';
 import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
@@ -76,6 +77,9 @@ export function ReviewQueueApplicationCard({
   };
 
   const job = currentApplication.jobOffer;
+  const profileComparison = (currentApplication as Application & {
+    profileComparison?: JobProfileComparison;
+  }).profileComparison;
   const contractLabel = job.contractType?.trim() || 'Non renseigné';
   const isCdi = /(^|\W)cdi($|\W)/i.test(contractLabel);
   const hasCoverLetter = currentApplication.coverLetter.trim() !== '';
@@ -113,6 +117,8 @@ export function ReviewQueueApplicationCard({
         <span><strong>Lettre</strong> {hasCoverLetter ? 'prête' : 'non préparée'}</span>
         <span><strong>Rémunération</strong> {hasCompensation ? currentApplication.compensationAnswer : 'non préparée'}</span>
       </div>
+
+      <ReviewQueueTechnologyComparison comparison={profileComparison} />
 
       <section className="review-queue-actions-panel" aria-label="Actions secondaires sur la candidature">
         <div className="review-queue-primary-actions">

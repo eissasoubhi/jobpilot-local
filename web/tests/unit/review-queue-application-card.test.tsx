@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
+import type { JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import type { Application } from '@/lib/types';
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
@@ -50,13 +51,31 @@ function application(overrides: Partial<Application> = {}): Application {
   };
 }
 
+function applicationWithComparison(): Application {
+  const item = application() as Application & { profileComparison?: JobProfileComparison };
+  item.profileComparison = {
+    source: 'AI_REUSED',
+    aiDecision: 'MATCH',
+    aiConfidence: 94,
+    technologies: ['React', 'Next.js', 'TypeScript', 'Kubernetes'],
+    primaryTechnologies: ['React', 'TypeScript'],
+    secondaryTechnologies: ['Next.js', 'Kubernetes'],
+    matchingTechnologies: ['React', 'Next.js', 'TypeScript'],
+    missingTechnologies: ['Kubernetes'],
+    missingMustHaves: ['Kubernetes'],
+    missingNiceToHaves: [],
+  };
+
+  return item;
+}
+
 describe('ReviewQueueApplicationCard', () => {
   beforeEach(() => {
     apiMock.mockReset();
   });
 
   it('keeps mission context and secondary actions in the card while primary decisions live in the bottom bar', () => {
-    render(<ReviewQueueApplicationCard application={application()} />);
+    render(<ReviewQueueApplicationCard application={applicationWithComparison()} />);
 
     expect(screen.getByRole('article', { name: /Développeur Front-end React/ })).toBeInTheDocument();
     expect(screen.getByText('Description de la mission')).toBeInTheDocument();
@@ -66,6 +85,14 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByText('88%')).toBeInTheDocument();
     expect(screen.getByText('Pourquoi ce score ?')).toBeInTheDocument();
     expect(screen.getByText('React correspond à un poste cible.')).toBeInTheDocument();
+    expect(screen.getByText('Adéquation technique')).toBeInTheDocument();
+    expect(screen.getByText('Analyse IA réutilisée')).toBeInTheDocument();
+    expect(screen.getByText('MATCH · 94%')).toBeInTheDocument();
+    expect(screen.getByText('En commun avec mon profil')).toBeInTheDocument();
+    expect(screen.getByText('Manques obligatoires')).toBeInTheDocument();
+    expect(screen.getAllByText('React').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TypeScript').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Kubernetes').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Ne correspond pas' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'J’ai envoyé' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Envoyée' })).not.toBeInTheDocument();

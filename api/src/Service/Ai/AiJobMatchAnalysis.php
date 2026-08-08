@@ -6,6 +6,17 @@ namespace App\Service\Ai;
 
 final readonly class AiJobMatchAnalysis
 {
+    /** @var list<string> */
+    private const PHP_RELEVANCE_VALUES = [
+        'PRIMARY',
+        'ALTERNATIVE',
+        'MIXED_REQUIRED',
+        'SECONDARY',
+        'CONTEXTUAL',
+        'ABSENT',
+        'UNCLEAR',
+    ];
+
     /**
      * @param list<string> $primaryStack
      * @param list<string> $secondaryStack
@@ -26,6 +37,7 @@ final readonly class AiJobMatchAnalysis
         public array $missingMustHaves,
         public array $conflicts,
         public string $explanation,
+        public string $phpRelevance = 'UNCLEAR',
     ) {
         if ($score < 0 || $score > 100) {
             throw new \InvalidArgumentException('AI matching score must be between 0 and 100.');
@@ -35,6 +47,9 @@ final readonly class AiJobMatchAnalysis
         }
         if (!in_array($decision, ['MATCH', 'REVIEW', 'NO_MATCH'], true)) {
             throw new \InvalidArgumentException('Unsupported AI matching decision.');
+        }
+        if (!in_array($phpRelevance, self::PHP_RELEVANCE_VALUES, true)) {
+            throw new \InvalidArgumentException('Unsupported PHP relevance classification.');
         }
     }
 
@@ -56,6 +71,12 @@ final readonly class AiJobMatchAnalysis
                 throw new \InvalidArgumentException('AI matching field must be a string: '.$field);
             }
         }
+
+        $phpRelevance = $data['phpRelevance'] ?? 'UNCLEAR';
+        if (!is_string($phpRelevance)) {
+            throw new \InvalidArgumentException('AI matching field must be a string: phpRelevance');
+        }
+        $phpRelevance = strtoupper(trim($phpRelevance));
 
         $lists = [];
         foreach (['primaryStack', 'secondaryStack', 'mustHaves', 'niceToHaves', 'missingMustHaves', 'conflicts'] as $field) {
@@ -86,6 +107,7 @@ final readonly class AiJobMatchAnalysis
             $lists['missingMustHaves'],
             $lists['conflicts'],
             trim($data['explanation']),
+            $phpRelevance,
         );
     }
 
@@ -104,6 +126,7 @@ final readonly class AiJobMatchAnalysis
             'missingMustHaves' => $this->missingMustHaves,
             'conflicts' => $this->conflicts,
             'explanation' => $this->explanation,
+            'phpRelevance' => $this->phpRelevance,
         ];
     }
 
@@ -122,6 +145,7 @@ final readonly class AiJobMatchAnalysis
         if ($this->primaryStack !== []) {
             $reasons[] = 'Stack principale détectée par IA : '.implode(', ', $this->primaryStack);
         }
+        $reasons[] = 'Positionnement PHP détecté par IA : '.$this->phpRelevanceLabel();
         if ($this->missingMustHaves !== []) {
             $reasons[] = 'Prérequis principaux manquants : '.implode(', ', $this->missingMustHaves);
         }
@@ -133,5 +157,18 @@ final readonly class AiJobMatchAnalysis
         }
 
         return $reasons;
+    }
+
+    private function phpRelevanceLabel(): string
+    {
+        return match ($this->phpRelevance) {
+            'PRIMARY' => 'principal',
+            'ALTERNATIVE' => 'alternative principale',
+            'MIXED_REQUIRED' => 'requis avec une autre stack principale',
+            'SECONDARY' => 'secondaire',
+            'CONTEXTUAL' => 'contextuel / legacy',
+            'ABSENT' => 'absent',
+            default => 'indéterminé',
+        };
     }
 }

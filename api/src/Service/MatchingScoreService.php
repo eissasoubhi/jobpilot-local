@@ -9,6 +9,7 @@ use App\Service\Ai\AiJobMatchAnalyzerInterface;
 final class MatchingScoreService
 {
     private const PRIMARY_STACK_CONFLICT_CAP = 45;
+    private const MIXED_REQUIRED_CAP = 60;
 
     /** @var array<string, list<string>> */
     private const BACKEND_STACK_PATTERNS = [
@@ -16,6 +17,12 @@ final class MatchingScoreService
         'Java/Spring' => ['java', 'spring', 'spring boot', 'quarkus'],
         'Python' => ['python', 'django', 'fastapi', 'flask'],
         '.NET/C#' => ['.net', 'dotnet', 'c#', 'asp.net'],
+        'Node.js/NestJS' => ['node.js', 'nodejs', 'nestjs', 'nest.js', 'express.js', 'expressjs'],
+        'Ruby/Rails' => ['ruby', 'ruby on rails', 'rails'],
+        'Go' => ['golang', 'go developer', 'go engineer', 'développeur go', 'developpeur go', 'ingénieur go', 'ingenieur go'],
+        'Rust' => ['rust'],
+        'Kotlin/Scala' => ['kotlin', 'scala'],
+        'C/C++' => ['c++', 'cpp'],
     ];
 
     /**
@@ -70,9 +77,22 @@ final class MatchingScoreService
 
         $aiAnalysis = $this->aiAnalyzer?->analyze($job, $settings);
         if ($aiAnalysis !== null) {
+            $score = $aiAnalysis->score;
+            $reasons = $aiAnalysis->toScoreReasons();
+
+            if ($this->candidateTargetsPhpBackend($settings) && !$this->roleMatchesExplicitNonPhpTarget($aiAnalysis->primaryRole, $settings)) {
+                if (in_array($aiAnalysis->phpRelevance, ['SECONDARY', 'CONTEXTUAL', 'ABSENT'], true)) {
+                    $score = min($score, self::PRIMARY_STACK_CONFLICT_CAP);
+                    $reasons[] = 'Profil principal non-PHP : score IA plafonné à '.self::PRIMARY_STACK_CONFLICT_CAP.'/100';
+                } elseif ($aiAnalysis->phpRelevance === 'MIXED_REQUIRED') {
+                    $score = min($score, self::MIXED_REQUIRED_CAP);
+                    $reasons[] = 'PHP requis avec une autre stack principale : score IA plafonné à '.self::MIXED_REQUIRED_CAP.'/100';
+                }
+            }
+
             return [
-                'score' => $aiAnalysis->score,
-                'reasons' => $aiAnalysis->toScoreReasons(),
+                'score' => $score,
+                'reasons' => $reasons,
                 'hardRejected' => false,
             ];
         }
@@ -104,15 +124,58 @@ final class MatchingScoreService
         $primaryStacks = $this->detectPrimaryBackendStacks($job);
         if ($primaryStacks !== []) {
             $reasons[] = 'Stack principale détectée : '.implode(' ou ', $primaryStacks);
+            $reasons[] = in_array('PHP/Symfony', $primaryStacks, true)
+                ? 'Profil PHP détecté : PHP fait partie des stacks principales'
+                : 'Profil PHP détecté : non-PHP principal';
 
             $preferredStacks = $this->detectPreferredBackendStacks($settings);
-            if ($preferredStacks !== [] && array_intersect($primaryStacks, $preferredStacks) === []) {
+            if (
+                $titleScore < 25
+                && $preferredStacks !== []
+                && array_intersect($primaryStacks, $preferredStacks) === []
+            ) {
                 $score = min($score, self::PRIMARY_STACK_CONFLICT_CAP);
                 $reasons[] = 'Conflit de stack principale avec le profil : score plafonné à '.self::PRIMARY_STACK_CONFLICT_CAP.'/100';
             }
         }
 
         return ['score' => $score, 'reasons' => $reasons, 'hardRejected' => false];
+    }
+
+    private function candidateTargetsPhpBackend(UserSettings $settings): bool
+    {
+        return in_array('PHP/Symfony', $this->detectPreferredBackendStacks($settings), true);
+    }
+
+    private function roleMatchesExplicitNonPhpTarget(string $role, UserSettings $settings): bool
+    {
+        if (trim($role) === '') {
+            return false;
+        }
+
+        $normalizedRole = mb_strtolower($role);
+        foreach ($settings->getTargetJobs() as $target) {
+            if ($this->targetIsPhp($target)) {
+                continue;
+            }
+            if ($this->titleCompatibilityScore($normalizedRole, $target) >= 25) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function targetIsPhp(string $target): bool
+    {
+        $normalizedTarget = mb_strtolower($target);
+        foreach (self::BACKEND_STACK_PATTERNS['PHP/Symfony'] as $pattern) {
+            if ($this->containsTechnology($normalizedTarget, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function titleCompatibilityScore(string $jobTitle, string $target): int

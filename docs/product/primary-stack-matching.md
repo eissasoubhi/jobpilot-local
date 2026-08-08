@@ -6,12 +6,20 @@ JobPilot must not treat incidental technology mentions as evidence that an offer
 
 `MatchingScoreService` identifies a dominant backend stack from the offer before allowing the existing deterministic score to remain a strong match.
 
-The V1 guard recognizes these backend families:
+The V1 fallback currently recognizes these backend families:
 
 - PHP/Symfony (`php`, `symfony`, `laravel`)
 - Java/Spring (`java`, `spring`, `spring boot`, `quarkus`)
 - Python (`python`, `django`, `fastapi`, `flask`)
 - .NET/C# (`.net`, `dotnet`, `c#`, `asp.net`)
+- Node.js/NestJS
+- Ruby/Rails
+- Go/Golang
+- Rust
+- Kotlin/Scala
+- C/C++
+
+The product rule is broader than this deterministic list: the goal is to determine whether an offer is genuinely a PHP-oriented profile or primarily another profile. The optional AI path handles arbitrary technologies semantically; the deterministic list is only the local fallback.
 
 Signals are weighted deliberately:
 
@@ -23,10 +31,13 @@ The candidate's preferred backend stack is inferred from configured `targetJobs`
 
 When an offer has a detected primary backend stack and none of those primary alternatives overlaps the candidate's preferred backend stack, the final score is capped at `45/100`. The offer is not hard-rejected: it remains visible and reviewable.
 
-The score reasons expose the detected primary stack and any conflict cap, for example:
+A strong explicit configured target title can bypass that backend conflict cap. This prevents a legitimate non-PHP target such as an explicitly configured frontend role from being rejected merely because the description mentions a separate backend stack.
+
+The score reasons expose the detected primary stack and PHP profile classification, for example:
 
 ```text
-Stack principale détectée : Java/Spring
+Stack principale détectée : Ruby/Rails
+Profil PHP détecté : non-PHP principal
 Conflit de stack principale avec le profil : score plafonné à 45/100
 ```
 
@@ -34,7 +45,7 @@ Conflit de stack principale avec le profil : score plafonné à 45/100
 
 The deterministic fallback no longer searches target-job title words across the full offer description when calculating `Compatibilité intitulé`.
 
-Title compatibility is now calculated from the actual offer title only. This prevents a technology mentioned in narrative, legacy or contextual text from pretending that the offer title matches a configured target role.
+Title compatibility is calculated from the actual offer title only. This prevents a technology mentioned in narrative, legacy or contextual text from pretending that the offer title matches a configured target role.
 
 Target-title tokens are split into two groups:
 
@@ -47,17 +58,33 @@ This means a title such as `Senior Web Backend Developer` cannot become a strong
 
 The skills score remains separate: a generic title can still become a good match when the offer contains enough genuine configured skills and no contradictory primary-stack signal.
 
-## Alternatives and secondary technologies
+## PHP relevance in the AI path
 
-If two stacks receive the same strongest primary signal, both are considered genuine primary alternatives. Therefore an offer such as `Java or PHP` is not penalized when PHP is a preferred stack.
+Gemini now returns an explicit `phpRelevance` classification in every valid structured matching analysis:
+
+- `PRIMARY`: PHP is genuinely core to the role;
+- `ALTERNATIVE`: PHP is one equivalent primary option, such as `Java OR PHP`;
+- `MIXED_REQUIRED`: PHP and another primary backend stack are both mandatory;
+- `SECONDARY`: PHP is useful but not core;
+- `CONTEXTUAL`: PHP appears only in legacy, migration, integration or incidental context;
+- `ABSENT`: PHP is not part of the requested role;
+- `UNCLEAR`: there is insufficient evidence.
+
+For a PHP-oriented backend profile, `SECONDARY`, `CONTEXTUAL` and `ABSENT` cannot support an AI score above `45/100` unless the AI-detected role itself strongly matches another explicitly configured `targetJob`. `MIXED_REQUIRED` is capped at `60/100`, because satisfying PHP alone is not sufficient when another backend stack is also mandatory.
+
+This guard is local and deterministic after the AI response. It prevents a contradictory model score from overriding the product rule.
+
+## Alternatives and cumulative requirements
+
+The AI prompt explicitly distinguishes equivalent alternatives from cumulative requirements. `Java OR PHP` can be a valid PHP route, while `Java AND PHP required` is treated as materially weaker for a PHP-only backend profile.
+
+The deterministic fallback can detect multiple dominant stacks, but it does not yet fully parse natural-language conjunction semantics. Its regression fixtures remain intentionally conservative while the AI path handles the richer distinction.
 
 A weaker secondary or contextual mention does not override the dominant stack. A Symfony/PHP role that merely mentions Java as useful integration knowledge remains a PHP/Symfony match.
 
-## AI path
+## Cache behavior
 
-When the opt-in AI matcher returns a valid structured analysis, that semantic score is used instead of the deterministic fallback. The AI prompt has the same product rule: generic backend/web/API/developer words must not be enough for a high score, and the primary role/stack must be identified first.
-
-If AI is disabled, unavailable, quota-limited or returns an invalid response, the deterministic rules documented above remain the fallback.
+Changing the AI prompt and response schema increments the matching cache fingerprint version. Existing cached analyses are therefore not reused after this PHP-relevance classification is introduced; the next valid analysis is stored under the new fingerprint.
 
 ## Safety boundary
 

@@ -62,19 +62,28 @@ export function AiSidebarStatus() {
   const maxPercent = Math.max(rpmPercent, tpmPercent, rpdPercent);
   const aiActive = Boolean(settings?.enabled && settings.apiKeyConfigured);
   const needsKey = Boolean(settings?.enabled && !settings.apiKeyConfigured);
+  const quotaReached = aiActive && maxPercent >= 100;
 
   const label = unavailable
     ? 'État IA indisponible'
+    : quotaReached
+      ? 'IA active · quota atteint'
+      : aiActive
+        ? 'IA active'
+        : needsKey
+          ? 'IA activée · clé manquante'
+          : 'IA désactivée';
+
+  const stateClass = quotaReached || needsKey
+    ? 'is-warning'
     : aiActive
-      ? 'IA active'
-      : needsKey
-        ? 'IA activée · clé manquante'
-        : 'IA désactivée';
+      ? 'is-active'
+      : 'is-inactive';
 
   return (
     <Link
       href="/parametres/integrations"
-      className={`ai-sidebar-status ${aiActive ? 'is-active' : needsKey ? 'is-warning' : 'is-inactive'}`}
+      className={`ai-sidebar-status ${stateClass}`}
       aria-label={`${label}. Ouvrir la configuration IA`}
       title={usage
         ? `RPM ${usage.rpmUsed}/${usage.rpmLimit} · TPM ${usage.tpmUsed}/${usage.tpmLimit} · RPD ${usage.rpdUsed}/${usage.rpdLimit}`

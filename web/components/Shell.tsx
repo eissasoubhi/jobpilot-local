@@ -12,6 +12,7 @@ const links = [
   ['/crm/follow-ups', 'Relances CRM', '◷'], ['/reporting/sources', 'Conversion par source', '▥'],
   ['/positionnements', 'Positionnements', '⇄'], ['/messages', 'Messagerie', '✉'],
   ['/cv', 'Mes CV', '▤'], ['/profil', 'Profil', '◉'], ['/parametres', 'Paramètres', '⚙'],
+  ['/parametres/integrations', 'Configuration & clés API', '◇'],
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

@@ -21,6 +21,9 @@ parameters:
   env(ARBEITNOW_ENABLED): '1'
   env(ARBEITNOW_PAGES): '3'
   env(SYMFONY_JOBS_RSS_ENABLED): '1'
+  env(LE_STUDIO_TECH_ENABLED): '1'
+  env(LE_STUDIO_TECH_PAGES): '8'
+  env(LE_STUDIO_TECH_MAX_DETAILS): '20'
   env(JOB_SYNC_INTERVAL_SECONDS): '21600'
   env(CONNECTOR_ALERT_WEBHOOK_URL): ''
   env(CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST): ''
@@ -94,6 +97,12 @@ services:
   App\Service\SymfonyJobsRssProvider:
     arguments:
       $enabled: '%env(bool:SYMFONY_JOBS_RSS_ENABLED)%'
+
+  App\Service\LeStudioTechJobProvider:
+    arguments:
+      $enabled: '%env(bool:LE_STUDIO_TECH_ENABLED)%'
+      $pages: '%env(int:LE_STUDIO_TECH_PAGES)%'
+      $maxDetails: '%env(int:LE_STUDIO_TECH_MAX_DETAILS)%'
 
   App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\ConfiguredGeminiJobMatchAnalyzer'
 

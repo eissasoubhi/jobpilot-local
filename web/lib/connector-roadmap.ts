@@ -4,7 +4,7 @@ export type ConnectorRoadmapStatus =
   | 'UNDER_REVIEW'
   | 'EMAIL_OR_EXTENSION_ONLY';
 
-export type ConnectorRoadmapMode = 'API' | 'GMAIL' | 'EXTENSION';
+export type ConnectorRoadmapMode = 'API' | 'SCRAPING_HTTP' | 'GMAIL' | 'EXTENSION';
 
 export interface ConnectorRoadmapEntry {
   code: string;
@@ -122,7 +122,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     nextStep: 'Configurer une liste bornée d’entreprises, puis surveiller la qualité des champs et les quotas.',
   },
   underReview('getyourjob', 'GetYourJob'),
-  underReview('le-studio-tech', 'Le Studio Tech'),
+  {
+    code: 'le-studio-tech',
+    name: 'Le Studio Tech',
+    status: 'OPERATIONAL',
+    modes: ['SCRAPING_HTTP'],
+    note: 'Les missions publiques sont collectées sans session via le transport HTTP contrôlé. Le connecteur respecte robots.txt, les quotas locaux et conserve le lien vers la plateforme.',
+    nextStep: 'Surveiller la stabilité du parseur HTML, la qualité des champs et les éventuelles évolutions des règles de collecte.',
+  },
   underReview('meteojob', 'Meteojob'),
   underReview('michael-page', 'Michael Page'),
   {

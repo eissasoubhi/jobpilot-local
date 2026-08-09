@@ -66,6 +66,15 @@ describe('platform acquisition matrix', () => {
     }
   });
 
+  it('marks Le Studio Tech as the operational public HTTP scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'le-studio-tech');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('OPERATIONAL');
+    expect(connector?.modes).toEqual(['SCRAPING_HTTP']);
+    expect(connector?.note).toContain('robots.txt');
+  });
+
   it('keeps LinkedIn, Indeed and Free-Work restricted to user-authorized channels', () => {
     for (const code of ['linkedin', 'indeed', 'free-work']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);

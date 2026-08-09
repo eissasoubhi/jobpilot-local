@@ -82,6 +82,11 @@ final class CustomScraperSourceApiTest extends WebTestCase
         $diagnosticBlocked = $this->decode($client->getResponse()->getContent());
         self::assertStringContainsString('autorisation', (string) ($diagnosticBlocked['error'] ?? ''));
 
+        $client->request('POST', sprintf('/api/custom-scrapers/%d/extract-preview', $id));
+        self::assertResponseStatusCodeSame(400);
+        $previewBlocked = $this->decode($client->getResponse()->getContent());
+        self::assertStringContainsString('autorisation', (string) ($previewBlocked['error'] ?? ''));
+
         $client->jsonRequest('PATCH', sprintf('/api/custom-scrapers/%d', $id), [
             'enabled' => true,
         ]);

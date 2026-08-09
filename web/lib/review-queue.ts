@@ -1,7 +1,28 @@
-import type { Application } from '@/lib/types';
+import type { Application, Job } from '@/lib/types';
 
 export function isReadyToSubmitReviewItem(application: Application): boolean {
   return application.status === 'READY_TO_SUBMIT';
+}
+
+export function buildReviewQueue(applications: Application[], jobs: Job[]): Application[] {
+  const jobOrder = new Map(jobs.map((job, index) => [job.id, index]));
+
+  return applications
+    .map((application, originalIndex) => ({ application, originalIndex }))
+    .filter(({ application }) => isReadyToSubmitReviewItem(application))
+    .sort((left, right) => {
+      const leftOrder = jobOrder.get(left.application.jobOffer.id);
+      const rightOrder = jobOrder.get(right.application.jobOffer.id);
+
+      if (leftOrder === undefined && rightOrder === undefined) {
+        return left.originalIndex - right.originalIndex;
+      }
+      if (leftOrder === undefined) return 1;
+      if (rightOrder === undefined) return -1;
+
+      return leftOrder - rightOrder || left.originalIndex - right.originalIndex;
+    })
+    .map(({ application }) => application);
 }
 
 export function clampReviewQueueIndex(index: number, length: number): number {

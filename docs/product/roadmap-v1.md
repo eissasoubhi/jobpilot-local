@@ -188,15 +188,24 @@ Transformer le reporting existant en informations actionnables basées sur des �
 
 ### Objectif
 
-Ne jamais rater une opportunité sur les sources configurées sans contourner les règles d’accès.
+Ne jamais rater une opportunité sur les sources configurées et **exploiter systématiquement les job boards publics accessibles sans authentification lorsque la collecte automatisée y est autorisée**.
 
-### Plan d’action
+La priorité produit n’est plus limitée aux API. Un site qui expose publiquement ses offres doit être évalué explicitement comme candidat au scraping HTTP ou navigateur. En revanche, l’absence de login ne suffit pas à autoriser la réutilisation automatisée : robots, CGU, restrictions d’extraction et limites techniques restent des garde-fous obligatoires.
 
-1. continuer d’ajouter les API, RSS, Gmail et imports assistés autorisés ;
-2. n’ajouter un scraper HTML qu’après validation explicite de la source et du mode de collecte ;
-3. utiliser Playwright uniquement pour des pages publiques lorsque nécessaire et autorisé ;
-4. conserver quotas, backoff, circuit breakers, santé et fraîcheur des connecteurs ;
-5. ne jamais contourner login, CAPTCHA, 401/403/429, robots policy opérationnelle ou limitation contractuelle.
+### Plan d’action prioritaire
+
+1. auditer **toutes les plateformes de la matrice d’acquisition**, pas seulement quelques sources pilotes ;
+2. pour chaque source, vérifier l’existence d’une liste d’offres publique accessible sans session et enregistrer la date de cette revue ;
+3. préférer API/RSS lorsqu’un canal officiel couvre correctement les mêmes offres ;
+4. sinon, développer un scraper HTTP statique lorsque les pages sont publiques, stables et que ce mode est autorisé ;
+5. utiliser Playwright dans un worker isolé lorsque les offres publiques nécessitent un rendu JavaScript et que cette automatisation est autorisée ;
+6. livrer **une plateforme par PR** avec parseur versionné, fixtures HTML locales, idempotence, quotas, délais, backoff, cache, circuit breaker et diagnostics de santé ;
+7. faire passer chaque entrée `UNDER_REVIEW` vers une décision explicite : `API`, `RSS`, `SCRAPING_HTTP`, `SCRAPING_BROWSER`, `GMAIL/EXTENSION` ou `BLOCKED`, avec justification ;
+8. conserver Gmail/extension/import assisté lorsqu’un scraper planifié n’est pas autorisé ;
+9. ne jamais contourner login, cookies privés, CAPTCHA, 401/403/429, restrictions robots ou limitation contractuelle ;
+10. continuer l’ajout progressif jusqu’à ce que **chaque plateforme listée** possède soit un connecteur exploitable, soit une raison documentée expliquant pourquoi la collecte automatisée n’est pas activée.
+
+La liste de référence est `docs/connectors/acquisition-matrix.md` et comprend notamment LinkedIn, Malt, Free-Work, Apec, Collective.work, Crème de la Crème, FreelanceRepublik, Comet, Cherry Pick, LeHibou, Mindquest, WeLoveDevs, Sept Lieues, Jean-Michel.io, Welcome to the Jungle, Cadremploi, HelloWork, Jobijoba, EURES, Freelance-Informatique, Indeed, Adzuna, Kicklox, Talent.com, SmartRecruiters, GetYourJob, Le Studio Tech, Meteojob, Michael Page, France Travail et LesJeudis.
 
 ## Epic 7 — Productivité et UX
 

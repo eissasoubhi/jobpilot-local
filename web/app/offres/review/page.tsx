@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
 import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
@@ -34,6 +34,8 @@ export default function ReviewQueuePage() {
   const [error, setError] = useState('');
   const [decisionSaving, setDecisionSaving] = useState<ReviewDecision | null>(null);
   const [decisionError, setDecisionError] = useState('');
+  const offerHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousCurrentIdRef = useRef<number | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -64,6 +66,22 @@ export default function ReviewQueuePage() {
   const currentIndex = clampReviewQueueIndex(index, queue.length);
   const current = currentReviewQueueItem(queue, currentIndex);
   const progress = queue.length > 0 ? ((currentIndex + 1) / queue.length) * 100 : 0;
+  const currentId = current?.id ?? null;
+
+  useEffect(() => {
+    const previousCurrentId = previousCurrentIdRef.current;
+    previousCurrentIdRef.current = currentId;
+
+    if (previousCurrentId === null || currentId === null || previousCurrentId === currentId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      offerHeadingRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentId]);
 
   const goPrevious = useCallback((): void => {
     if (currentIndex > 0) setIndex(currentIndex - 1);
@@ -132,6 +150,12 @@ export default function ReviewQueuePage() {
     }
   }, [current, decisionSaving, updateApplication]);
 
+  const accessibleQueueStatus = loading
+    ? 'Chargement de la Review Queue.'
+    : current
+      ? `Offre ${currentIndex + 1} sur ${queue.length} : ${current.jobOffer.title}`
+      : 'Aucune candidature prête à envoyer dans la Review Queue.';
+
   return (
     <div className="review-queue-page">
       <header className="review-queue-compact-header">
@@ -143,6 +167,10 @@ export default function ReviewQueuePage() {
         </div>
         <Link className="review-queue-back-link" href="/offres">← Offres</Link>
       </header>
+
+      <div className={styles.screenReaderStatus} role="status" aria-live="polite" aria-atomic="true">
+        {accessibleQueueStatus}
+      </div>
 
       {error !== '' && <ErrorBox message={error} />}
 
@@ -156,6 +184,7 @@ export default function ReviewQueuePage() {
         <div className={`review-queue-workspace ${styles.workspace}`}>
           <ReviewQueueApplicationCard
             application={current}
+            headingRef={offerHeadingRef}
             onApplicationUpdated={updateApplication}
           />
 

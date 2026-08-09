@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ReviewQueuePage from '@/app/offres/review/page';
-import type { Application } from '@/lib/types';
+import type { Application, Job } from '@/lib/types';
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
@@ -55,23 +55,40 @@ function application(id: number, title: string, status: string): Application {
   } as Application;
 }
 
+function jobsInOrder(applications: Application[], order?: number[]): Job[] {
+  const byId = new Map(applications.map((item) => [item.jobOffer.id, item.jobOffer]));
+  const ids = order ?? applications.map((item) => item.jobOffer.id);
+
+  return ids.flatMap((id) => {
+    const job = byId.get(id);
+    return job ? [job] : [];
+  });
+}
+
+function mockInitialLoad(applications: Application[], order?: number[]): void {
+  apiMock
+    .mockResolvedValueOnce(applications)
+    .mockResolvedValueOnce(jobsInOrder(applications, order));
+}
+
 describe('ReviewQueuePage', () => {
   beforeEach(() => {
     apiMock.mockReset();
   });
 
-  it('shows only ready-to-submit applications with primary decision buttons and secondary navigation', async () => {
-    apiMock.mockResolvedValueOnce([
+  it('shows only ready-to-submit applications in the exact relative order of the Offers page', async () => {
+    const applications = [
       application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
       application(2, 'Already sent role', 'SUBMITTED'),
       application(3, 'Interview role', 'INTERVIEW'),
       application(4, 'Rejected role', 'REJECTED'),
       application(5, 'Second Symfony role', 'READY_TO_SUBMIT'),
-    ]);
+    ];
+    mockInitialLoad(applications, [5, 2, 1, 3, 4]);
 
     render(<ReviewQueuePage />);
 
-    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument());
     expect(screen.getByText('2 prêtes à envoyer')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Décision et navigation dans la Review Queue' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ne correspond pas' })).toBeInTheDocument();
@@ -83,17 +100,17 @@ describe('ReviewQueuePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Suivante' }));
 
-    expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument();
     expect(screen.getByText('2 / 2')).toBeInTheDocument();
   });
 
   it('marks the current application as submitted and immediately advances to the next ready item', async () => {
-    apiMock
-      .mockResolvedValueOnce([
-        application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
-        application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
-      ])
-      .mockResolvedValueOnce(application(1, 'First Symfony role', 'SUBMITTED'));
+    const applications = [
+      application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
+      application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
+    ];
+    mockInitialLoad(applications);
+    apiMock.mockResolvedValueOnce(application(1, 'First Symfony role', 'SUBMITTED'));
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
@@ -114,12 +131,12 @@ describe('ReviewQueuePage', () => {
   });
 
   it('marks the current application as not matching and immediately advances to the next ready item', async () => {
-    apiMock
-      .mockResolvedValueOnce([
-        application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
-        application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
-      ])
-      .mockResolvedValueOnce(application(1, 'First Symfony role', 'IGNORED_NOT_MATCH'));
+    const applications = [
+      application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
+      application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
+    ];
+    mockInitialLoad(applications);
+    apiMock.mockResolvedValueOnce(application(1, 'First Symfony role', 'IGNORED_NOT_MATCH'));
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
@@ -140,10 +157,11 @@ describe('ReviewQueuePage', () => {
   });
 
   it('navigates with left and right arrow keys outside interactive controls', async () => {
-    apiMock.mockResolvedValueOnce([
+    const applications = [
       application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
       application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
-    ]);
+    ];
+    mockInitialLoad(applications);
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
@@ -161,11 +179,12 @@ describe('ReviewQueuePage', () => {
   });
 
   it('removes an application from the ready queue after another persisted status change', async () => {
-    apiMock.mockResolvedValueOnce([
+    const applications = [
       application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
       application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
       application(3, 'Third Symfony role', 'READY_TO_SUBMIT'),
-    ]);
+    ];
+    mockInitialLoad(applications);
 
     render(<ReviewQueuePage />);
 

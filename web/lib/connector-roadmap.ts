@@ -75,7 +75,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     nextStep: 'Confirmer une API, un export ou un flux officiel avant d’activer une collecte en arrière-plan.',
   }),
   underReview('mindquest', 'Mindquest'),
-  underReview('we-love-devs', 'WeLoveDevs'),
+  {
+    code: 'we-love-devs',
+    name: 'WeLoveDevs',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
+    modes: ['GMAIL', 'EXTENSION'],
+    note: 'Les offres sont visibles publiquement, mais les CGU actuelles restreignent la copie, le stockage et les usages détournant la plateforme de sa finalité. Aucun scraping planifié JobPilot n’est activé.',
+    nextStep: 'Obtenir une autorisation écrite ou un canal officiel réutilisable avant toute collecte automatique en arrière-plan.',
+  },
   underReview('sept-lieues', 'Sept Lieues'),
   underReview('jean-michel', 'Jean-Michel.io'),
   underReview('welcome-to-the-jungle', 'Welcome to the Jungle', {

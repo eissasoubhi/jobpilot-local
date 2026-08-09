@@ -1,5 +1,6 @@
 'use client';
 
+import type { Ref } from 'react';
 import { useEffect, useState } from 'react';
 
 import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
@@ -11,6 +12,7 @@ import type { Application } from '@/lib/types';
 
 type ReviewQueueApplicationCardProps = {
   application: Application;
+  headingRef?: Ref<HTMLHeadingElement>;
   onApplicationUpdated?: (application: Application) => void;
 };
 
@@ -27,6 +29,7 @@ const TRACKING_STATUSES = [
 
 export function ReviewQueueApplicationCard({
   application,
+  headingRef,
   onApplicationUpdated,
 }: ReviewQueueApplicationCardProps) {
   const [currentApplication, setCurrentApplication] = useState(application);
@@ -91,7 +94,7 @@ export function ReviewQueueApplicationCard({
       <header className="review-queue-card-header">
         <div className="review-queue-card-title-block">
           <div className="review-queue-eyebrow">Prête à envoyer</div>
-          <h2>{job.title}</h2>
+          <h2 ref={headingRef} tabIndex={-1}>{job.title}</h2>
           <div className="review-queue-card-meta">
             <span>{job.company || 'Entreprise non renseignée'}</span>
             <span>{job.location || 'Lieu non renseigné'}</span>

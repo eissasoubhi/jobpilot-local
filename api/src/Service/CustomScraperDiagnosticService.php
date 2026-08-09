@@ -24,7 +24,7 @@ final class CustomScraperDiagnosticService
     {
         $data = $source->toArray();
         if (($data['authorizationConfirmed'] ?? false) !== true) {
-            throw new \InvalidArgumentException('La collecte doit être autorisée et confirmée avant de tester ce site.');
+            throw new \InvalidArgumentException('L’autorisation de collecte doit être confirmée avant de tester ce site.');
         }
 
         $listingUrl = (string) ($data['listingUrl'] ?? '');

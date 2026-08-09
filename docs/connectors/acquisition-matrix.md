@@ -10,6 +10,32 @@ Une entrée de cette matrice ne crée jamais automatiquement :
 - un droit de réutiliser les données d’une plateforme ;
 - un bouton d’activation ou de test.
 
+## Décision produit : audit exhaustif du scraping public
+
+La V1 doit désormais évaluer **toutes les plateformes de cette matrice** comme candidates potentielles à la collecte automatisée des offres publiques.
+
+Pour chaque plateforme, la revue doit répondre explicitement aux questions suivantes :
+
+1. la liste des offres est-elle visible sans compte, sans session et sans cookie privé ?
+2. les pages de détail sont-elles également publiques ?
+3. existe-t-il une API, un flux RSS/Atom ou un export officiel couvrant les mêmes offres ?
+4. si aucun canal officiel équivalent n’existe, un scraper HTTP statique est-il techniquement suffisant ?
+5. sinon, un rendu Playwright est-il nécessaire ?
+6. les conditions d’utilisation, règles de réutilisation et `robots.txt` permettent-ils une collecte planifiée ?
+7. quels quotas, délais et limites de pagination doivent être imposés ?
+8. quelle est la date de la dernière revue de cette décision ?
+
+L’absence de connexion requise rend une plateforme **candidate techniquement** au scraping, mais ne suffit pas à rendre ce scraping autorisé. La décision finale de JobPilot doit être l’un des modes suivants :
+
+- `API` ;
+- `RSS` ;
+- `SCRAPING_HTTP` ;
+- `SCRAPING_BROWSER` ;
+- `GMAIL/EXTENSION` ;
+- `BLOCKED` avec une raison documentée.
+
+L’objectif est qu’aucune plateforme ne reste durablement dans un état vague. Toute source `UNDER_REVIEW` doit progressivement obtenir une décision de collecte explicite. Lorsqu’un scraper est autorisé, il doit être implémenté **une plateforme par PR** avec fixtures locales et sans dépendre du site réel dans la CI.
+
 ## Statuts
 
 ### `OPERATIONAL`
@@ -54,11 +80,13 @@ Aucun canal réutilisable n’est encore confirmé. La source reste visible pour
 La revue doit vérifier au minimum :
 
 1. l’existence d’une API, d’un flux ou d’un export officiel ;
-2. les conditions d’utilisation et de réutilisation ;
-3. l’authentification et les quotas ;
-4. les règles `robots.txt` lorsqu’un accès HTTP public est envisagé ;
-5. la stabilité du format et la disponibilité des champs obligatoires ;
-6. la nécessité éventuelle d’un accord partenaire.
+2. l’existence de listes et détails d’offres publics sans authentification ;
+3. les conditions d’utilisation et de réutilisation ;
+4. l’authentification et les quotas ;
+5. les règles `robots.txt` lorsqu’un accès HTTP public est envisagé ;
+6. la stabilité du format et la disponibilité des champs obligatoires ;
+7. la nécessité éventuelle d’un accord partenaire ;
+8. la décision finale entre API/RSS, scraping HTTP, scraping navigateur, Gmail/extension ou blocage documenté.
 
 ## EURES
 
@@ -82,6 +110,8 @@ LesJeudis est conservé en complément, car les alertes de cette source font dé
 Chaque nouvelle source opérationnelle doit être livrée dans une PR séparée comprenant :
 
 - sa politique et son statut de conformité ;
+- son mode de collecte explicite ;
+- la date de revue des règles de collecte ;
 - des limites de requêtes explicites ;
 - un timeout ;
 - une normalisation vers l’offre canonique ;
@@ -89,3 +119,13 @@ Chaque nouvelle source opérationnelle doit être livrée dans une PR séparée 
 - des tests sans appel au service externe ;
 - des diagnostics de santé et de qualité des champs ;
 - une documentation de configuration et de désactivation.
+
+Pour un scraper, ajouter en plus :
+
+- fixtures HTML locales anonymisées ;
+- version du parseur ;
+- tests de sélecteurs/champs manquants ;
+- pagination maximale ;
+- délai minimal entre requêtes ;
+- arrêt sur refus d’accès répétés ;
+- aucun login automatisé, CAPTCHA bypass, proxy rotatif ou mode stealth.

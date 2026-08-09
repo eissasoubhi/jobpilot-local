@@ -47,15 +47,17 @@ Nouvelle offre
 Analyse automatique
     ↓
 Préparation automatique
-(CV + message + rémunération + lettre si explicitement demandée)
+(CV + message + rémunération + lettre de motivation)
     ↓
-Offres
+Offres / Review Queue
     ↓
-Review / Postuler / Ignorer / Archiver / Modifier / Marquer envoyée
+Review / Postuler / Ignorer / Modifier / Marquer envoyée
     ↓
 Suivi
 (réponses Gmail + statut + relances + timeline)
 ```
+
+La lettre de motivation est maintenant toujours préparée. Le fait qu’une offre exige explicitement une lettre reste une métadonnée distincte et ne conditionne plus son existence.
 
 ## Epic 1 — Unified Offers Workspace
 
@@ -68,20 +70,21 @@ Faire de `Offres` le workspace principal et supprimer progressivement la nécess
 - préparation automatique de chaque offre valide ;
 - aucune soumission automatique dans le flux normal ;
 - action « J’ai envoyé la candidature » sans confirmation navigateur ;
-- score et explication de matching déjà visibles ;
-- filtres par source et gestion multi-sources existants.
+- score et explication de matching visibles ;
+- filtres par source et gestion multi-sources ;
+- statut de candidature et éléments préparés visibles depuis Offres ;
+- CV sélectionné, message, rémunération et lettre disponibles dans les flux de revue/édition ;
+- `ReviewDrawer` en place pour examiner une offre sans perdre le contexte ;
+- édition des éléments préparés depuis le workspace ;
+- décisions `Envoyée` et `Ne correspond pas` persistées sans action externe silencieuse ;
+- vues distinctes pour les offres à traiter, envoyées et ignorées.
 
-### Plan d’action
+### Plan d’action restant
 
-1. afficher sur chaque offre le statut de candidature et les éléments préparés ;
-2. afficher CV sélectionné, message, rémunération et lettre lorsqu’elle est demandée ;
-3. ajouter un `ReviewDrawer` latéral sans navigation de page ;
-4. déplacer dans `Offres` les actions aujourd’hui disponibles dans `Candidatures` ;
-5. permettre l’édition des éléments préparés depuis le workspace ;
-6. fournir `Postuler`, `Ignorer`, `Archiver`, `Marquer envoyée` au même endroit ;
-7. utiliser des mises à jour instantanées avec toast et `Undo` lorsqu’elles sont réversibles ;
-8. conserver `Candidatures` comme fallback tant que la parité fonctionnelle n’est pas atteinte ;
-9. rediriger ou retirer `Candidatures` seulement après couverture fonctionnelle et E2E complète.
+1. ajouter un mécanisme `Undo` uniquement pour les transitions réellement réversibles et sûres ;
+2. conserver `Candidatures` comme fallback tant que la parité fonctionnelle complète n’est pas explicitement validée ;
+3. rediriger ou retirer `Candidatures` seulement après couverture fonctionnelle et E2E complète ;
+4. ajouter `Archiver` uniquement après définition d’un statut métier clair et de sa récupération.
 
 ## Epic 2 — Review Queue
 
@@ -89,14 +92,29 @@ Faire de `Offres` le workspace principal et supprimer progressivement la nécess
 
 Permettre de traiter rapidement les nouvelles offres déjà préparées, une par une, sans navigation inutile.
 
-### Plan d’action
+### Déjà livré
 
-1. ajouter une vue ou un mode `Review Queue` ;
-2. prioriser les offres nécessitant une décision ;
-3. ouvrir automatiquement l’offre suivante après une décision ;
-4. supporter `Next`, `Previous`, `Apply`, `Ignore`, `Archive` et `Mark sent` ;
-5. ajouter ensuite les raccourcis clavier lorsque le comportement est stabilisé ;
-6. mesurer le temps moyen de review d’une offre.
+- vue dédiée `/offres/review` ;
+- queue limitée aux candidatures `READY_TO_SUBMIT` ;
+- ordre identique à la page Offres pour les candidatures présentes dans la queue ;
+- carte pleine page exploitant l’espace disponible avec mission, contrat, contexte, score et raisons ;
+- comparaison environnement/profil : stack principale, technologies en commun, must-haves manquants et autres écarts ;
+- réutilisation des métadonnées IA existantes sans nouvel appel Gemini pour afficher la comparaison ;
+- deux décisions principales toujours visibles : `Ne correspond pas` et `Envoyée` ;
+- `Ne correspond pas` persisté comme `IGNORED_NOT_MATCH` ;
+- `Envoyée` persisté comme `SUBMITTED` sans soumission externe ;
+- auto-avance vers la prochaine candidature prête après une décision ;
+- `Précédente` / `Suivante` conservés comme navigation secondaire ;
+- raccourcis clavier `ArrowLeft` / `ArrowRight` hors contrôles interactifs ;
+- focus clavier transféré au titre de la nouvelle offre après navigation ou décision ;
+- progression annoncée aux technologies d’assistance ;
+- statut manuel conservé comme interaction en deux étapes (`sélection` puis `Appliquer`).
+
+### Plan d’action restant
+
+1. mesurer le temps moyen de review uniquement après définition d’événements métier horodatés fiables ;
+2. ajouter une priorisation explicite seulement si l’ordre Offres actuel ne suffit plus dans l’usage réel ;
+3. ajouter d’autres décisions rapides uniquement lorsqu’un statut métier associé est défini et réversible.
 
 ## Epic 3 — Timeline métier fiable
 
@@ -186,14 +204,22 @@ Ne jamais rater une opportunité sur les sources configurées sans contourner le
 
 Rendre le workflow rapide, calme, évident et cohérent.
 
+### Déjà livré
+
+- navigation clavier dans la Review Queue ;
+- focus conservé sur l’offre active après navigation/décision ;
+- annonces accessibles de la progression ;
+- barre de décision principale toujours visible dans la Review Queue ;
+- affichage local des offres avant synchronisation arrière-plan.
+
 ### Plan d’action
 
 1. filtres instantanés : source, score, remote/hybride/site, contrat, rémunération, date, envoyé/non envoyé, archivé ;
 2. recherche globale lorsque les modèles de recherche sont stabilisés ;
 3. bulk actions seulement pour des opérations sûres et réversibles ;
-4. raccourcis clavier après stabilisation des actions ;
+4. étendre les raccourcis clavier uniquement aux actions dont le risque d’erreur est maîtrisé ;
 5. command palette après stabilisation de la navigation ;
-6. loading skeletons, états vides utiles, responsive et accessibilité ;
+6. poursuivre loading skeletons, états vides utiles, responsive et accessibilité ;
 7. design system progressif (`PageHeader`, `OfferCard`, `ReviewDrawer`, `FilterBar`, `StatusBadge`, `ActionToolbar`, etc.) ;
 8. introduire les bibliothèques frontend uniquement lorsqu’un besoin concret les justifie, sans refonte big-bang.
 

@@ -46,7 +46,8 @@ Plateformes actuellement représentées dans la matrice :
 
 - Adzuna, via son API ;
 - France Travail, via l’API officielle Offres d’emploi v2 ;
-- SmartRecruiters, via la Posting API officielle et une liste bornée d’entreprises configurées par l’utilisateur.
+- SmartRecruiters, via la Posting API officielle et une liste bornée d’entreprises configurées par l’utilisateur ;
+- Le Studio Tech, via les pages publiques de missions en `SCRAPING_HTTP` contrôlé.
 
 Un connecteur opérationnel peut rester en **configuration requise** tant que ses identifiants ou paramètres obligatoires sont absents. Dans ce cas, aucune requête externe n’est exécutée.
 
@@ -87,6 +88,22 @@ La revue doit vérifier au minimum :
 6. la stabilité du format et la disponibilité des champs obligatoires ;
 7. la nécessité éventuelle d’un accord partenaire ;
 8. la décision finale entre API/RSS, scraping HTTP, scraping navigateur, Gmail/extension ou blocage documenté.
+
+## Le Studio Tech
+
+Le Studio Tech est le premier scraper HTML public opérationnel de cette matrice.
+
+Décision revue le **9 août 2026** :
+
+- liste de missions accessible sans compte ;
+- fiches mission accessibles sans session privée ;
+- mode `SCRAPING_HTTP` suffisant ;
+- `robots.txt` vérifié obligatoirement au runtime ;
+- pagination et enrichissement des fiches bornés ;
+- aucune candidature ou authentification automatisée ;
+- usage limité à la recherche personnelle et conservation du lien source.
+
+La documentation détaillée est disponible dans [`le-studio-tech.md`](le-studio-tech.md).
 
 ## EURES
 

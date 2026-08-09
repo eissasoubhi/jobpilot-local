@@ -96,9 +96,6 @@ final class CustomScraperSource
 
         if (array_key_exists('authorizationConfirmed', $data)) {
             $this->authorizationConfirmed = (bool) $data['authorizationConfirmed'];
-            if ($this->authorizationConfirmed && $this->authorizationCheckedAt === null) {
-                $this->authorizationCheckedAt = new \DateTimeImmutable('today');
-            }
             if (!$this->authorizationConfirmed) {
                 $this->enabled = false;
             }
@@ -122,6 +119,10 @@ final class CustomScraperSource
         }
         if (array_key_exists('maxDetails', $data)) {
             $this->maxDetails = min(100, max(0, (int) $data['maxDetails']));
+        }
+
+        if ($this->authorizationConfirmed && $this->authorizationCheckedAt === null) {
+            $this->authorizationCheckedAt = new \DateTimeImmutable('today');
         }
 
         if (array_key_exists('enabled', $data)) {

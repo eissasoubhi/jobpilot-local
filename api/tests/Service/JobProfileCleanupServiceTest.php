@@ -8,9 +8,6 @@ use App\Entity\Application;
 use App\Entity\JobOffer;
 use App\Entity\JobSourceOccurrence;
 use App\Entity\UserSettings;
-use App\Service\Ai\AiJobMatchAnalyzerInterface;
-use App\Service\Ai\AiMatchingConfigurationStore;
-use App\Service\Ai\AiOfferIntakeFilter;
 use App\Service\JobProfileCleanupService;
 use App\Service\LocalDataService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,24 +28,13 @@ final class JobProfileCleanupServiceTest extends TestCase
         }
     }
 
-    public function testManualNoMatchIsDeletedWithoutCallingAi(): void
+    public function testManualNoMatchIsDeletedWithoutAnyAiCheck(): void
     {
         $offer = (new JobOffer())->fill(['title' => 'Backend Developer', 'description' => 'Legacy role']);
         $application = (new Application($offer))->fill(['status' => 'IGNORED_NOT_MATCH']);
         $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
 
-        [$service, $em] = $this->service(
-            [$offer],
-            [$application],
-            [],
-            $settings,
-            new class implements AiJobMatchAnalyzerInterface {
-                public function analyze(JobOffer $job, UserSettings $settings): ?\App\Service\Ai\AiJobMatchAnalysis
-                {
-                    throw new \RuntimeException('AI must not be called for a manually rejected offer.');
-                }
-            },
-        );
+        [$service, $em] = $this->service([$offer], [$application], [], $settings);
 
         $em->expects($this->exactly(2))->method('remove');
         $em->expects($this->once())->method('flush');
@@ -69,18 +55,7 @@ final class JobProfileCleanupServiceTest extends TestCase
         $application = (new Application($offer))->fill(['status' => 'SUBMITTED']);
         $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
 
-        [$service, $em] = $this->service(
-            [$offer],
-            [$application],
-            [],
-            $settings,
-            new class implements AiJobMatchAnalyzerInterface {
-                public function analyze(JobOffer $job, UserSettings $settings): ?\App\Service\Ai\AiJobMatchAnalysis
-                {
-                    throw new \RuntimeException('AI must not be called for protected application history.');
-                }
-            },
-        );
+        [$service, $em] = $this->service([$offer], [$application], [], $settings);
 
         $em->expects($this->never())->method('remove');
         $em->expects($this->once())->method('flush');
@@ -94,7 +69,7 @@ final class JobProfileCleanupServiceTest extends TestCase
         self::assertSame(0, $result['aiChecks']);
     }
 
-    public function testStoredHighConfidenceAiNoMatchIsReusedWithoutNewAiCheck(): void
+    public function testStoredHighConfidenceAiNoMatchIsReusedWithoutProviderCall(): void
     {
         $offer = (new JobOffer())->fill([
             'title' => 'Python Backend Engineer',
@@ -107,18 +82,7 @@ final class JobProfileCleanupServiceTest extends TestCase
         ], null, null, 'DISCOVERED', null);
         $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
 
-        [$service, $em] = $this->service(
-            [$offer],
-            [],
-            [],
-            $settings,
-            new class implements AiJobMatchAnalyzerInterface {
-                public function analyze(JobOffer $job, UserSettings $settings): ?\App\Service\Ai\AiJobMatchAnalysis
-                {
-                    throw new \RuntimeException('Stored high-confidence NO_MATCH must be reused.');
-                }
-            },
-        );
+        [$service, $em] = $this->service([$offer], [], [], $settings);
 
         $em->expects($this->once())->method('remove')->with($offer);
         $em->expects($this->once())->method('flush');
@@ -131,21 +95,55 @@ final class JobProfileCleanupServiceTest extends TestCase
         self::assertSame(0, $result['aiChecks']);
     }
 
+    public function testOfferWithoutStoredSafeRejectionIsKeptInsteadOfTriggeringFreshAi(): void
+    {
+        $offer = (new JobOffer())->fill([
+            'title' => 'Java Developer',
+            'description' => 'Java and Spring Boot are mandatory.',
+        ]);
+        $offer->setEvaluation('fr', 35, [
+            'Stack principale détectée : Java / Spring',
+        ], null, null, 'DISCOVERED', null);
+        $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
+
+        [$service, $em] = $this->service([$offer], [], [], $settings);
+
+        $em->expects($this->never())->method('remove');
+        $em->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('clear');
+
+        $result = $service->cleanup(JobProfileCleanupService::CONFIRMATION);
+
+        self::assertSame(0, $result['deletedOffers']);
+        self::assertSame(1, $result['kept']);
+        self::assertSame(0, $result['aiChecks']);
+    }
+
+    public function testLowConfidenceStoredNoMatchIsKept(): void
+    {
+        $offer = (new JobOffer())->fill([
+            'title' => 'Python Backend Engineer',
+            'description' => 'Python and Django.',
+        ]);
+        $offer->setEvaluation('fr', 20, [
+            'Analyse IA : NO_MATCH · confiance 70%',
+            'Conflits détectés : stack principale hors profil',
+        ], null, null, 'DISCOVERED', null);
+        $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
+
+        [$service, $em] = $this->service([$offer], [], [], $settings);
+
+        $em->expects($this->never())->method('remove');
+        $result = $service->cleanup(JobProfileCleanupService::CONFIRMATION);
+
+        self::assertSame(0, $result['deletedOffers']);
+        self::assertSame(1, $result['kept']);
+    }
+
     public function testInvalidConfirmationDoesNothing(): void
     {
         $settings = (new UserSettings())->fill(['matchingThreshold' => 50]);
-        [$service, $em] = $this->service(
-            [],
-            [],
-            [],
-            $settings,
-            new class implements AiJobMatchAnalyzerInterface {
-                public function analyze(JobOffer $job, UserSettings $settings): ?\App\Service\Ai\AiJobMatchAnalysis
-                {
-                    return null;
-                }
-            },
-        );
+        [$service, $em] = $this->service([], [], [], $settings);
 
         $em->expects($this->never())->method('remove');
         $em->expects($this->never())->method('flush');
@@ -165,7 +163,6 @@ final class JobProfileCleanupServiceTest extends TestCase
         array $applications,
         array $occurrences,
         UserSettings $settings,
-        AiJobMatchAnalyzerInterface $analyzer,
     ): array {
         $offerRepository = $this->createMock(EntityRepository::class);
         $offerRepository->method('findAll')->willReturn($offers);
@@ -207,16 +204,8 @@ final class JobProfileCleanupServiceTest extends TestCase
 
         $this->directory = sys_get_temp_dir().'/jobpilot-profile-cleanup-'.bin2hex(random_bytes(6));
         mkdir($this->directory, 0700, true);
-        $configuration = new AiMatchingConfigurationStore(
-            $this->directory,
-            'test-encryption-key',
-            true,
-            'gemini-test-key',
-            'gemini-3.5-flash-lite',
-        );
-        $filter = new AiOfferIntakeFilter($configuration, $analyzer);
         $data = new LocalDataService($em);
 
-        return [new JobProfileCleanupService($em, $data, $filter, $this->directory), $em];
+        return [new JobProfileCleanupService($em, $data, $this->directory), $em];
     }
 }

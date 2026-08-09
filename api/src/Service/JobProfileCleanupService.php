@@ -27,13 +27,21 @@ final class JobProfileCleanupService
     public function __construct(
         private EntityManagerInterface $em,
         private LocalDataService $data,
-        private AiOfferIntakeFilter $aiFilter,
         #[Autowire('%private_dir%')]
         private string $privateDir,
     ) {
     }
 
     /**
+     * Selectively removes only offers for which JobPilot already has enough
+     * persisted evidence to decide that they are out of profile.
+     *
+     * This endpoint deliberately never calls the AI provider. A catalog can
+     * contain hundreds of offers; doing provider calls synchronously here used
+     * to keep the local HTTP server busy for a long time, consume quota, and
+     * eventually make the cleanup request (and concurrent /settings/ai calls)
+     * fail with HTTP 500/timeouts.
+     *
      * @return array{
      *   busy: bool,
      *   scanned: int,
@@ -87,7 +95,6 @@ final class JobProfileCleanupService
             $deletedOccurrences = 0;
             $manuallyRejected = 0;
             $reusedStoredAi = 0;
-            $aiChecks = 0;
             $protectedHistory = 0;
             $kept = 0;
 
@@ -107,25 +114,18 @@ final class JobProfileCleanupService
                     continue;
                 }
 
-                $manualNoMatch = array_any(
-                    $applications,
-                    static fn (Application $application): bool => $application->getStatus() === 'IGNORED_NOT_MATCH',
-                );
+                $manualNoMatch = $this->hasManualNoMatch($applications);
+                $storedAiNoMatch = !$manualNoMatch && $this->hasReusableStoredAiRejection($offer, $settings);
 
-                $shouldDelete = $manualNoMatch;
-                if ($manualNoMatch) {
-                    ++$manuallyRejected;
-                } elseif ($this->hasReusableStoredAiRejection($offer, $settings)) {
-                    $shouldDelete = true;
-                    ++$reusedStoredAi;
-                } else {
-                    ++$aiChecks;
-                    $shouldDelete = $this->aiFilter->rejection($offer, $settings) !== null;
-                }
-
-                if (!$shouldDelete) {
+                if (!$manualNoMatch && !$storedAiNoMatch) {
                     ++$kept;
                     continue;
+                }
+
+                if ($manualNoMatch) {
+                    ++$manuallyRejected;
+                } else {
+                    ++$reusedStoredAi;
                 }
 
                 $occurrences = array_values(array_filter(
@@ -156,7 +156,8 @@ final class JobProfileCleanupService
                 'deletedOccurrences' => $deletedOccurrences,
                 'manuallyRejected' => $manuallyRejected,
                 'reusedStoredAi' => $reusedStoredAi,
-                'aiChecks' => $aiChecks,
+                // Kept for API compatibility. Cleanup no longer performs fresh AI calls.
+                'aiChecks' => 0,
                 'protectedHistory' => $protectedHistory,
                 'kept' => $kept,
             ];
@@ -171,6 +172,18 @@ final class JobProfileCleanupService
     {
         foreach ($applications as $application) {
             if (!in_array($application->getStatus(), self::DELETABLE_APPLICATION_STATUSES, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param list<Application> $applications */
+    private function hasManualNoMatch(array $applications): bool
+    {
+        foreach ($applications as $application) {
+            if ($application->getStatus() === 'IGNORED_NOT_MATCH') {
                 return true;
             }
         }

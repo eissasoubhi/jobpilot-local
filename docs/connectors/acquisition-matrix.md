@@ -64,7 +64,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed et Free-Work sont placés dans cet état.
+LinkedIn, Indeed, Free-Work et WeLoveDevs sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -73,6 +73,19 @@ La visibilité publique d’une page ne constitue pas une autorisation de scrape
 Référence officielle : <https://www.free-work.com/fr/terms>
 
 JobPilot ne doit donc pas ajouter de scraper HTTP ou navigateur planifié pour Free-Work sans autorisation écrite ou canal officiel distinct. Le connecteur Gmail et l’import assisté restent les voies sûres déjà prévues.
+
+#### Cas WeLoveDevs
+
+Décision revue le **9 août 2026**. Les listes d’offres et des fiches de poste WeLoveDevs peuvent être consultées publiquement sans session privée, ce qui rend la source techniquement accessible. Cette visibilité ne suffit toutefois pas à autoriser une collecte planifiée.
+
+Les CGU développeur actuellement publiées par WeLoveDevs encadrent strictement l’usage de la plateforme. Elles restreignent les actes de copie ou reproduction de la plateforme, y compris dans un contexte de stockage, interdisent plus généralement l’usage des services à des fins autres que celles prévues et demandent de ne pas imposer de charge disproportionnée à l’infrastructure. Elles prévoient qu’un usage pour une autre finalité doit faire l’objet d’une demande auprès de l’éditeur.
+
+Références officielles :
+
+- <https://welovedevs.com/fr/legal-notes/>
+- <https://welovedevs.com/wp-content/uploads/2025/05/CGU.Developpeur.V.3.4.docx.pdf>
+
+JobPilot classe donc WeLoveDevs en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou navigateur planifié n’est ajouté. Une collecte automatique ne pourra être envisagée qu’après autorisation écrite ou identification d’un canal officiel réutilisable. Les alertes reconnues et l’import explicitement déclenché par l’utilisateur restent les voies admises.
 
 ### `UNDER_REVIEW`
 

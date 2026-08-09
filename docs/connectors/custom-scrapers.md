@@ -24,30 +24,50 @@ La page **Paramètres > Scraping personnalisé** enregistre pour chaque source :
 - date de vérification ;
 - référence ou note CGU facultative.
 
-Une source ne peut pas être activée si l’utilisateur retire sa confirmation d’autorisation.
+Une source ne peut pas être activée ou testée si l’utilisateur retire sa confirmation d’autorisation.
+
+## Tester le site
+
+Le bouton **Tester le site** effectue un diagnostic manuel et borné. Il ne crée aucune offre et ne lance aucune synchronisation.
+
+Le diagnostic :
+
+1. vérifie que l’autorisation est toujours confirmée ;
+2. passe par le client HTTP de scraping contrôlé déjà utilisé par JobPilot ;
+3. vérifie `robots.txt` avant la page cible ;
+4. utilise zéro retry, un timeout de 10 secondes, une réponse maximale de 3 Mo, une requête cible maximale par diagnostic et un quota journalier dédié ;
+5. analyse uniquement la réponse HTML reçue ;
+6. renvoie le statut HTTP, la taille de réponse, les signaux détectés et le mode recommandé.
+
+La CI utilise uniquement des réponses HTTP synthétiques locales : aucun test automatisé ne dépend d’un site réel.
 
 ## Choix du mode
 
-`AUTO` est le mode recommandé.
+`AUTO` reste le mode recommandé.
 
-Le comportement cible est :
+Le diagnostic recherche plusieurs signaux : données structurées `JobPosting`, liens ressemblant à des fiches d’offres, quantité de texte visible, termes liés aux offres, nombre de scripts, conteneurs d’application vides et marqueurs React/Next/Nuxt/Angular.
 
-1. tenter un téléchargement HTTP contrôlé ;
-2. analyser le HTML reçu et vérifier si la liste des offres est exploitable ;
-3. conserver HTTP lorsque le DOM serveur contient les données nécessaires ;
-4. basculer vers Browser/Playwright uniquement lorsque les offres dépendent réellement de JavaScript ;
-5. ne jamais utiliser Browser pour contourner une authentification, un CAPTCHA ou une restriction d’accès.
+Le résultat suit ces règles :
 
-`HTTP` peut être forcé pour un catalogue HTML classique. `BROWSER` peut être forcé lorsqu’un site public autorisé dépend systématiquement d’un rendu JavaScript.
+1. si les offres ou des signaux forts sont déjà présents dans le HTML serveur, `HTTP` est recommandé ;
+2. si la réponse ressemble clairement à une coquille JavaScript presque vide, `BROWSER` est recommandé ;
+3. si le résultat reste ambigu, HTTP reste le point de départ le plus léger et le diagnostic indique qu’une vérification Browser sera nécessaire ;
+4. un mode forcé par l’utilisateur reste prioritaire sur la recommandation ;
+5. Browser ne doit jamais servir à contourner une authentification, un CAPTCHA ou une restriction d’accès.
 
-## Limites du registre initial
+Le diagnostic actuel ne lance pas encore Chromium. La vérification Browser/Playwright réelle arrivera dans une étape séparée et isolée.
 
-Le registre persistant et son API n’exécutent pas encore eux-mêmes de requête vers les sites personnalisés. L’exécution sera branchée progressivement sur le transport HTTP contrôlé, puis sur l’analyse DOM/Gemini et enfin sur un worker Browser/Playwright isolé.
+## Étapes suivantes
 
-Cette séparation permet de livrer et tester le modèle d’autorisation avant toute collecte réelle.
+Le registre et le diagnostic HTTP sont maintenant branchés. Les prochains incréments prévus sont :
+
+- extraction générique des offres depuis le DOM avec une sortie structurée et contrôlée ;
+- utilisation de Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
+- worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis ;
+- intégration des offres extraites dans le pipeline normal de normalisation, déduplication et matching.
 
 ## Sécurité
 
 Le registre accepte uniquement des URL HTTPS sans identifiants intégrés. L’URL d’exemple de détail doit utiliser le même domaine que la liste des offres.
 
-Le moteur d’exécution devra en plus conserver les protections déjà utilisées par JobPilot : résolution réseau sûre, blocage des adresses privées, contrôle `robots.txt` lorsqu’il s’applique, quotas, délais, timeout, redirections bornées, backoff, circuit breaker et absence de dépendance au site réel dans la CI.
+Le diagnostic réutilise les protections du transport contrôlé : blocage des URL locales/privées explicites, contrôle `robots.txt`, quotas, délai minimal, timeout, redirections bornées, circuit breaker, cache HTTP et taille de réponse maximale. Aucun login, cookie de session privé, CAPTCHA bypass, proxy furtif ou contournement de 401/403/429 n’est ajouté.

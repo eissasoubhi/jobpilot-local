@@ -32,7 +32,7 @@ export function ProfileCleanupPanel() {
 
   const cleanup = async (): Promise<void> => {
     const confirmed = window.confirm(
-      'Supprimer uniquement les offres clairement hors profil encore à traiter ? Les candidatures déjà envoyées, en entretien, refusées ou avec un historique traité seront conservées.',
+      'Supprimer uniquement les offres déjà identifiées comme clairement hors profil ? Les candidatures déjà envoyées, en entretien, refusées ou avec un historique traité seront conservées. Aucun nouvel appel Gemini ne sera effectué.',
     );
     if (!confirmed) return;
 
@@ -64,22 +64,22 @@ export function ProfileCleanupPanel() {
       </div>
 
       <p className={styles.description}>
-        Analyse le catalogue actuel et supprime uniquement les offres que JobPilot peut classer comme hors profil avec un niveau de confiance suffisant. Les cas ambigus restent en base.
+        Nettoie le catalogue à partir des décisions déjà enregistrées. Cette action ne lance aucune nouvelle analyse Gemini : les cas sans décision sûre restent en base.
       </p>
 
       <div className={styles.keepGrid}>
         <div>
           <strong>Supprimé</strong>
-          <span>Offres marquées « Ne correspond pas » ou NO_MATCH à haute confiance, tant qu’elles ne portent pas un historique de candidature traité.</span>
+          <span>Offres marquées « Ne correspond pas » ou NO_MATCH IA déjà enregistré avec au moins 85 % de confiance et une preuve concrète, tant qu’elles ne portent pas un historique traité.</span>
         </div>
         <div>
           <strong>Conservé</strong>
-          <span>MATCH, REVIEW, faible confiance, doute/quota indisponible, et toute candidature déjà envoyée ou suivie.</span>
+          <span>MATCH, REVIEW, faible confiance, offres sans décision IA sûre, et toute candidature déjà envoyée ou suivie.</span>
         </div>
       </div>
 
       <div className={styles.warning}>
-        Cette action ne relance pas la synchronisation. Les prochaines synchronisations continueront à utiliser le filtre IA avant enregistrement.
+        Aucun appel Gemini n’est effectué pendant ce nettoyage. Les prochaines synchronisations continueront, elles, à filtrer les nouvelles offres avec l’IA avant enregistrement.
       </div>
 
       <div className={styles.actions}>
@@ -89,9 +89,9 @@ export function ProfileCleanupPanel() {
           disabled={cleaning}
           onClick={() => void cleanup()}
         >
-          {cleaning ? 'Analyse et nettoyage…' : 'Nettoyer les offres hors profil'}
+          {cleaning ? 'Nettoyage…' : 'Nettoyer les offres hors profil'}
         </button>
-        <span>Les analyses déjà enregistrées sont réutilisées en priorité ; le cache/quota IA reste protégé.</span>
+        <span>Nettoyage local uniquement : pas de consommation RPM/TPM/RPD supplémentaire.</span>
       </div>
 
       {error !== '' && <div className={styles.error} role="alert">{error}</div>}
@@ -100,10 +100,10 @@ export function ProfileCleanupPanel() {
         <div className={styles.success} role="status">
           <strong>{result.message}</strong>
           <div className={styles.metrics}>
-            <span>{result.cleanup.scanned} offres analysées</span>
+            <span>{result.cleanup.scanned} offres examinées</span>
             <span>{result.cleanup.deletedOffers} offres supprimées</span>
             <span>{result.cleanup.manuallyRejected} rejetées manuellement</span>
-            <span>{result.cleanup.reusedStoredAi} analyses IA réutilisées</span>
+            <span>{result.cleanup.reusedStoredAi} décisions IA réutilisées</span>
             <span>{result.cleanup.protectedHistory} historiques protégés</span>
             <span>{result.cleanup.kept} conservées</span>
           </div>

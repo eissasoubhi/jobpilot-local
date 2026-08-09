@@ -66,7 +66,8 @@ final class CustomScraperSourceApiTest extends WebTestCase
             'detailExampleUrl' => 'https://other.example.net/job/123',
         ]);
         self::assertResponseStatusCodeSame(400);
-        self::assertStringContainsString('même domaine', $client->getResponse()->getContent());
+        $invalidDetail = $this->decode($client->getResponse()->getContent());
+        self::assertStringContainsString('même domaine', (string) ($invalidDetail['error'] ?? ''));
 
         $client->jsonRequest('PATCH', sprintf('/api/custom-scrapers/%d', $id), [
             'authorizationConfirmed' => false,

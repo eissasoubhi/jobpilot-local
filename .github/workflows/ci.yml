@@ -136,6 +136,7 @@ jobs:
       APP_ENCRYPTION_KEY: ""
       DATABASE_URL: postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot_e2e?serverVersion=17&charset=utf8
       ARBEITNOW_ENABLED: 0
+      LE_STUDIO_TECH_ENABLED: 0
       NEXT_PUBLIC_API_URL: /api
       API_INTERNAL_URL: http://127.0.0.1:8080
     steps:
@@ -188,6 +189,7 @@ jobs:
           APP_ENCRYPTION_KEY=
           DATABASE_URL=postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot_e2e?serverVersion=17&charset=utf8
           ARBEITNOW_ENABLED=0
+          LE_STUDIO_TECH_ENABLED=0
           ADZUNA_APP_ID=
           ADZUNA_APP_KEY=
           EOF

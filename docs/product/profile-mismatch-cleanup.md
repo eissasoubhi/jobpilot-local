@@ -2,18 +2,25 @@
 
 JobPilot propose deux opérations distinctes dans **Paramètres** :
 
-- **Nettoyer les offres hors profil** : supprime uniquement les offres actuelles dont le non-match est suffisamment sûr.
+- **Nettoyer les offres hors profil** : supprime uniquement les offres actuelles dont le non-match est déjà connu avec un niveau de confiance suffisant.
 - **Réinitialiser les offres** : supprime tout le catalogue et les candidatures liées, puis resynchronise les sources actives.
 
 ## Règle de suppression sélective
 
-Une offre ne peut être supprimée par le nettoyage ciblé que si elle ne porte pas un historique de candidature traité et qu'au moins une condition sûre est satisfaite :
+Une offre ne peut être supprimée par le nettoyage ciblé que si elle ne porte pas un historique de candidature traité et qu'au moins une condition sûre est déjà enregistrée :
 
 1. l'utilisateur l'a déjà marquée `IGNORED_NOT_MATCH` ;
-2. une analyse IA persistée indique `NO_MATCH` avec une confiance >= 85 % et une preuve concrète de mismatch ;
-3. le filtre d'entrée IA actuel retourne le même verdict sûr.
+2. une analyse IA persistée indique `NO_MATCH` avec une confiance >= 85 % et une preuve concrète de mismatch.
 
 La preuve concrète suit la même politique que le filtre de synchronisation : score sous le seuil configuré, prérequis obligatoire manquant ou conflit explicite.
+
+Le nettoyage ciblé **ne lance plus de nouvelle analyse Gemini**. Une offre sans décision persistée suffisamment sûre est conservée.
+
+## Pourquoi aucun appel IA pendant le nettoyage
+
+Le catalogue peut contenir plusieurs centaines d'offres. Lancer une analyse provider pour chaque offre dans une seule requête HTTP rendait l'opération longue, consommait inutilement RPM/TPM/RPD et pouvait monopoliser le serveur API local jusqu'à provoquer des timeouts/HTTP 500 sur le nettoyage et sur des appels concurrents comme `/api/settings/ai`.
+
+Les nouvelles offres sont déjà filtrées pendant la synchronisation avant persistance. Le nettoyage du catalogue existant est donc volontairement une opération locale fondée sur les décisions déjà stockées.
 
 ## Cas conservés
 
@@ -21,14 +28,16 @@ Le nettoyage conserve :
 
 - `MATCH` et `REVIEW` ;
 - les analyses à faible confiance ;
-- les cas où l'IA est désactivée, indisponible ou à court de quota, sauf rejet manuel déjà enregistré ;
+- les offres sans décision IA persistée suffisamment sûre ;
 - les offres qui ont une candidature dans un état traité, par exemple envoyée, en attente de soumission, entretien, réponse reçue, refus ou confirmation.
 
 Seuls les statuts de candidature non traités `DRAFT`, `MISSING_CV`, `READY_TO_SUBMIT` et `IGNORED_NOT_MATCH` peuvent être supprimés avec leur offre.
 
 ## Coût IA
 
-Le nettoyage réutilise d'abord les raisons de score IA déjà persistées. Pour les autres offres, il appelle le filtre IA existant, qui bénéficie du cache de matching et des garde-fous RPM/TPM/RPD. Si le quota ou le fournisseur n'est pas disponible, l'offre est conservée.
+Le nettoyage ciblé effectue **zéro nouvel appel provider** et ne réserve aucun quota RPM/TPM/RPD. Il réutilise uniquement les raisons de score IA déjà persistées.
+
+Le filtre IA reste actif au moment de la synchronisation des nouvelles offres, avec cache, quota local et comportement fail-open existants.
 
 ## Concurrence
 

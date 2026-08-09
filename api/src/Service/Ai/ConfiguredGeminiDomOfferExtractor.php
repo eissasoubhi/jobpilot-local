@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class ConfiguredGeminiDomOfferExtractor implements DomOfferExtractorInterface
 {
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
-    private const CACHE_VERSION = 'custom-scraper-dom-v1';
+    private const CACHE_VERSION = 'custom-scraper-dom-v2';
     private const MAX_OFFERS = 30;
 
     private const RESPONSE_SCHEMA = [
@@ -168,7 +168,12 @@ final class ConfiguredGeminiDomOfferExtractor implements DomOfferExtractorInterf
                 throw new \RuntimeException('La réponse Gemini ne contient pas un objet JSON valide.');
             }
 
-            $normalized = $this->normalizeResult($decoded, $domain, $pageUrl);
+            $normalized = $this->normalizeResult(
+                $decoded,
+                $domain,
+                $pageUrl,
+                $this->allowedSourceUrls($dom, $domain, $pageUrl),
+            );
             try {
                 $this->cache->put('gemini', $configuration['model'], $fingerprint, $normalized);
             } catch (\Throwable $exception) {
@@ -272,8 +277,12 @@ PROMPT;
         return null;
     }
 
-    /** @param array<string, mixed> $data @return array{offers: list<array<string, mixed>>, confidence: float, notes: list<string>} */
-    private function normalizeResult(array $data, string $domain, string $pageUrl): array
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, true> $allowedSourceUrls
+     * @return array{offers: list<array<string, mixed>>, confidence: float, notes: list<string>}
+     */
+    private function normalizeResult(array $data, string $domain, string $pageUrl, array $allowedSourceUrls): array
     {
         $confidence = is_numeric($data['confidence'] ?? null)
             ? max(0.0, min(1.0, (float) $data['confidence']))
@@ -302,7 +311,10 @@ PROMPT;
                 continue;
             }
 
-            $sourceUrl = $this->sourceUrl($candidate['sourceUrl'] ?? null, $domain, $pageUrl);
+            $candidateSourceUrl = $this->sourceUrl($candidate['sourceUrl'] ?? null, $domain, $pageUrl);
+            $sourceUrl = $candidateSourceUrl !== null && isset($allowedSourceUrls[$candidateSourceUrl])
+                ? $candidateSourceUrl
+                : null;
             $company = $this->text($candidate['company'] ?? null, 300);
             $location = $this->text($candidate['location'] ?? null, 300);
             $key = $sourceUrl ?? hash('sha256', strtolower(implode('|', [
@@ -357,6 +369,25 @@ PROMPT;
             'confidence' => $confidence,
             'notes' => $notes,
         ];
+    }
+
+    /** @return array<string, true> */
+    private function allowedSourceUrls(string $dom, string $domain, string $pageUrl): array
+    {
+        preg_match_all('/\bhref\s*=\s*(["\'])(.*?)\1/isu', $dom, $matches);
+        $allowed = [];
+        foreach ($matches[2] ?? [] as $href) {
+            $url = $this->sourceUrl(
+                html_entity_decode((string) $href, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                $domain,
+                $pageUrl,
+            );
+            if ($url !== null) {
+                $allowed[$url] = true;
+            }
+        }
+
+        return $allowed;
     }
 
     private function text(mixed $value, int $limit): ?string

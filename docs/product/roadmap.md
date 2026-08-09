@@ -98,9 +98,22 @@ La roadmap opérationnelle ci-dessous décrit l’état réel du projet et les p
 - Message de candidature concis et adapté à l’offre.
 - CV sélectionné sans inventer ni modifier son contenu approuvé.
 - Réponse de rémunération conservée séparément.
-- Lettre de motivation distincte et préparée uniquement lorsque l’offre la demande explicitement.
-- Exclusion des formulations indiquant que la lettre est facultative, non requise ou inutile.
-- Envoi Gmail limité au message concis et au CV ; aucune concaténation de la lettre.
+- Lettre de motivation distincte et **toujours préparée**, même lorsque l’offre ne l’exige pas explicitement.
+- Génération de lettre déterministe fondée uniquement sur les faits connus du profil et de l’offre, avec comportement FR/EN et sans compétence inventée.
+- `coverLetterRequired` conservé uniquement comme métadonnée indiquant qu’une plateforme ou une offre exige explicitement une lettre.
+- Envoi Gmail limité au message concis et au CV ; aucune concaténation silencieuse de la lettre.
+
+### Review Queue — livrée
+
+- Vue dédiée `/offres/review` limitée aux candidatures `READY_TO_SUBMIT`.
+- Ordre relatif identique à la page Offres, sans tri concurrent propre à la queue.
+- Carte de décision pleine page avec mission, contrat, contexte, score et raisons du matching.
+- Comparaison environnement/profil avec stack principale, technologies communes et technologies manquantes ; réutilisation des métadonnées IA existantes sans nouvel appel Gemini pour l’affichage.
+- Deux décisions principales persistantes dans la barre basse : `Ne correspond pas` → `IGNORED_NOT_MATCH` et `Envoyée` → `SUBMITTED`.
+- Auto-avance vers l’offre suivante après une décision persistée.
+- `Précédente` / `Suivante` disponibles comme navigation secondaire et raccourcis `ArrowLeft` / `ArrowRight` hors contrôles interactifs.
+- Focus clavier transféré au titre de la nouvelle offre après navigation/décision et progression annoncée aux technologies d’assistance.
+- Aucun bouton `Envoyée` ne soumet sur une plateforme externe : il enregistre uniquement le suivi JobPilot après l’envoi réel par l’utilisateur.
 
 ### Fondation CRM — livrée
 
@@ -134,6 +147,7 @@ La roadmap opérationnelle ci-dessous décrit l’état réel du projet et les p
 
 - Règles de fusion manuelle des organisations, après clarification du comportement produit.
 - Historique métier persistant des transitions de candidature, uniquement après définition des événements à conserver.
+- Mesure du temps de review uniquement lorsqu’un événement métier fiable de début/fin de revue sera défini.
 
 ## Phase 6 — Reporting — en cours
 

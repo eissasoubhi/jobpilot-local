@@ -25,6 +25,16 @@ type CustomScraperSource = {
   maxDetails: number;
 };
 
+type HttpDiagnostic = {
+  requestedUrl: string;
+  finalUrl: string;
+  statusCode: number;
+  contentType: string | null;
+  responseBytes: number;
+  networkRequests: number;
+  fromCache: boolean;
+};
+
 type ScraperDiagnostic = {
   configuredMode: ScraperMode;
   recommendedMode: Exclude<ScraperMode, 'AUTO'>;
@@ -41,15 +51,48 @@ type ScraperDiagnostic = {
     javascriptMarkers: number;
     emptyAppShell: boolean;
   };
-  http: {
-    requestedUrl: string;
-    finalUrl: string;
-    statusCode: number;
-    contentType: string | null;
-    responseBytes: number;
-    networkRequests: number;
-    fromCache: boolean;
+  http: HttpDiagnostic;
+};
+
+type ExtractedOffer = {
+  title: string;
+  company: string | null;
+  location: string | null;
+  contractType: string | null;
+  workMode: 'REMOTE' | 'HYBRID' | 'ONSITE' | 'UNKNOWN';
+  salaryMin: number | null;
+  salaryMax: number | null;
+  tjmMin: number | null;
+  tjmMax: number | null;
+  publishedAt: string | null;
+  description: string | null;
+  sourceUrl: string | null;
+  technologies: string[];
+};
+
+type ExtractionPreview = {
+  configuredMode: ScraperMode;
+  recommendedMode: Exclude<ScraperMode, 'AUTO'>;
+  effectiveMode: Exclude<ScraperMode, 'AUTO'>;
+  requiresBrowser: boolean;
+  modeConfidence: Confidence;
+  modeReason: string;
+  aiCalled: boolean;
+  ai: null | {
+    model: string;
+    cacheHit: boolean;
+    confidence: number;
+    notes: string[];
   };
+  dom: null | {
+    originalBytes: number;
+    compactedCharacters: number;
+    truncated: boolean;
+    structuredDataBlocks: number;
+  };
+  offers: ExtractedOffer[];
+  message: string;
+  http: HttpDiagnostic;
 };
 
 type NewSourceForm = {
@@ -98,11 +141,33 @@ function confidenceLabel(confidence: Confidence): string {
   return 'Confiance faible';
 }
 
+function extractionConfidence(value: number): string {
+  return `${Math.round(value * 100)} %`;
+}
+
+function compensationLabel(offer: ExtractedOffer): string | null {
+  if (offer.tjmMin !== null || offer.tjmMax !== null) {
+    const minimum = offer.tjmMin ?? offer.tjmMax;
+    const maximum = offer.tjmMax ?? offer.tjmMin;
+    return minimum === maximum ? `${minimum} € / j` : `${minimum}–${maximum} € / j`;
+  }
+  if (offer.salaryMin !== null || offer.salaryMax !== null) {
+    const minimum = offer.salaryMin ?? offer.salaryMax;
+    const maximum = offer.salaryMax ?? offer.salaryMin;
+    return minimum === maximum
+      ? `${minimum?.toLocaleString('fr-FR')} €`
+      : `${minimum?.toLocaleString('fr-FR')}–${maximum?.toLocaleString('fr-FR')} €`;
+  }
+  return null;
+}
+
 export default function CustomScrapingSettingsPage() {
   const [sources, setSources] = useState<CustomScraperSource[] | null>(null);
   const [form, setForm] = useState<NewSourceForm>(initialForm);
   const [diagnostics, setDiagnostics] = useState<Record<number, ScraperDiagnostic>>({});
+  const [previews, setPreviews] = useState<Record<number, ExtractionPreview>>({});
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [extractingId, setExtractingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -152,6 +217,19 @@ export default function CustomScrapingSettingsPage() {
     }
   };
 
+  const clearSourceResults = (sourceId: number): void => {
+    setDiagnostics((current) => {
+      const next = { ...current };
+      delete next[sourceId];
+      return next;
+    });
+    setPreviews((current) => {
+      const next = { ...current };
+      delete next[sourceId];
+      return next;
+    });
+  };
+
   const patchSource = async (source: CustomScraperSource, patch: Record<string, unknown>): Promise<void> => {
     setError('');
     setMessage('');
@@ -161,11 +239,7 @@ export default function CustomScrapingSettingsPage() {
         body: JSON.stringify(patch),
       });
       setSources((current) => (current ?? []).map((item) => item.id === updated.id ? updated : item));
-      setDiagnostics((current) => {
-        const next = { ...current };
-        delete next[source.id];
-        return next;
-      });
+      clearSourceResults(source.id);
       setMessage(`${updated.name} a été mis à jour.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
@@ -187,6 +261,21 @@ export default function CustomScrapingSettingsPage() {
     }
   };
 
+  const extractPreview = async (source: CustomScraperSource): Promise<void> => {
+    setExtractingId(source.id);
+    setError('');
+    setMessage('');
+    try {
+      const result = await api<ExtractionPreview>(`/custom-scrapers/${source.id}/extract-preview`, { method: 'POST' });
+      setPreviews((current) => ({ ...current, [source.id]: result }));
+      setMessage(result.message);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setExtractingId(null);
+    }
+  };
+
   const deleteSource = async (source: CustomScraperSource): Promise<void> => {
     if (!window.confirm(`Supprimer ${source.name} du registre de scraping ?`)) return;
 
@@ -195,11 +284,7 @@ export default function CustomScrapingSettingsPage() {
     try {
       await api<void>(`/custom-scrapers/${source.id}`, { method: 'DELETE' });
       setSources((current) => (current ?? []).filter((item) => item.id !== source.id));
-      setDiagnostics((current) => {
-        const next = { ...current };
-        delete next[source.id];
-        return next;
-      });
+      clearSourceResults(source.id);
       setMessage(`${source.name} a été supprimé.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
@@ -214,7 +299,7 @@ export default function CustomScrapingSettingsPage() {
     <>
       <PageHeader
         title="Scraping personnalisé"
-        description="Ajoute les sites dont tu as vérifié l’autorisation de collecte, puis teste le HTML public avant de choisir HTTP ou Browser."
+        description="Ajoute les sites autorisés, détecte HTTP ou Browser et prévisualise avec Gemini les offres présentes dans le DOM public."
       />
 
       {message !== '' && <div className="notice">{message}</div>}
@@ -247,7 +332,7 @@ export default function CustomScrapingSettingsPage() {
             </label>
             <div className="notice">
               <strong>Quel mode choisir ?</strong><br />
-              Laisse <strong>Auto</strong>. Après l’ajout, le bouton <strong>Tester le site</strong> analyse une seule réponse HTTP. Si les offres sont déjà présentes, HTTP est recommandé ; si la réponse ressemble à une coquille JavaScript vide, Browser/Playwright est recommandé.
+              Laisse <strong>Auto</strong>. Le test analyse une réponse HTTP. L’aperçu Gemini utilise ce DOM seulement s’il est exploitable ; si JavaScript est indispensable, JobPilot attend le rendu Browser/Playwright sans consommer de quota Gemini.
             </div>
             <div className="form-grid">
               <label>
@@ -286,13 +371,14 @@ export default function CustomScrapingSettingsPage() {
         </Card>
 
         <Card>
-          <h2 className="section-title">Comment fonctionne Auto ?</h2>
+          <h2 className="section-title">Pipeline d’analyse</h2>
           <div className="stack">
-            <p className="muted">Le moteur privilégie toujours la solution la plus légère et ne lance pas Chromium si le HTML serveur suffit.</p>
-            <div className="notice"><strong>1. Probe HTTP</strong><br />Un seul téléchargement contrôlé, avec robots.txt, timeout, quota et limite de taille.</div>
-            <div className="notice"><strong>2. Signaux</strong><br />JobPosting, liens d’offres, texte visible, scripts et marqueurs React/Next/Nuxt sont comparés.</div>
-            <div className="notice"><strong>3. Recommandation</strong><br />HTTP si le DOM est exploitable ; Browser si la page est manifestement rendue par JavaScript.</div>
-            <div className="notice warning"><strong>Important</strong><br />Le diagnostic ne contourne ni authentification, ni CAPTCHA, ni restriction d’accès. Browser n’est pas encore exécuté dans cette étape.</div>
+            <p className="muted">Le moteur privilégie la solution la plus légère et réduit le contenu envoyé à Gemini.</p>
+            <div className="notice"><strong>1. Probe HTTP</strong><br />Un téléchargement contrôlé avec robots.txt, timeout, quota et limite de taille.</div>
+            <div className="notice"><strong>2. Détection</strong><br />HTTP si le DOM est exploitable ; Browser si la page dépend réellement de JavaScript.</div>
+            <div className="notice"><strong>3. DOM compact</strong><br />Scripts, styles et bruit sont retirés ; le contenu est plafonné à 60 000 caractères et les JobPosting structurés sont conservés.</div>
+            <div className="notice"><strong>4. Gemini</strong><br />Gemini renvoie un JSON structuré. JobPilot revalide les champs et refuse les URL qui quittent le domaine déclaré.</div>
+            <div className="notice warning"><strong>Aperçu uniquement</strong><br />Cette étape ne crée encore aucune offre dans le catalogue et ne lance pas Playwright.</div>
           </div>
         </Card>
       </div>
@@ -306,6 +392,7 @@ export default function CustomScrapingSettingsPage() {
           <div className="stack">
             {sources.map((source) => {
               const diagnostic = diagnostics[source.id];
+              const preview = previews[source.id];
               return (
                 <div className="notice" key={source.id}>
                   <div className="actions" style={{ justifyContent: 'space-between' }}>
@@ -321,8 +408,11 @@ export default function CustomScrapingSettingsPage() {
                   </div>
                   {source.authorizationReference && <div className="muted" style={{ marginTop: 6 }}>{source.authorizationReference}</div>}
                   <div className="actions" style={{ marginTop: 10 }}>
-                    <button className="btn" type="button" disabled={testingId !== null} onClick={() => void diagnoseSource(source)}>
+                    <button className="btn" type="button" disabled={testingId !== null || extractingId !== null} onClick={() => void diagnoseSource(source)}>
                       {testingId === source.id ? 'Test en cours…' : 'Tester le site'}
+                    </button>
+                    <button className="btn" type="button" disabled={extractingId !== null || testingId !== null} onClick={() => void extractPreview(source)}>
+                      {extractingId === source.id ? 'Analyse Gemini…' : 'Analyser avec Gemini'}
                     </button>
                     <button className="btn secondary" type="button" onClick={() => void patchSource(source, { enabled: !source.enabled })}>
                       {source.enabled ? 'Désactiver' : 'Activer'}
@@ -348,6 +438,63 @@ export default function CustomScrapingSettingsPage() {
                       </div>
                       {diagnostic.browserVerificationRequired && (
                         <div className="muted" style={{ marginTop: 6 }}>Une vérification Browser/Playwright pourra confirmer ce résultat dans l’étape suivante.</div>
+                      )}
+                    </div>
+                  )}
+
+                  {preview && (
+                    <div className={preview.requiresBrowser ? 'notice warning' : 'notice'} style={{ marginTop: 12 }}>
+                      <div className="actions">
+                        <Badge tone={preview.requiresBrowser ? 'warn' : 'good'}>Mode : {preview.effectiveMode}</Badge>
+                        {preview.ai && <Badge tone="blue">Gemini : {preview.ai.model}</Badge>}
+                        {preview.ai?.cacheHit && <Badge>Cache IA</Badge>}
+                        {preview.ai && <Badge>Confiance extraction : {extractionConfidence(preview.ai.confidence)}</Badge>}
+                      </div>
+                      <p>{preview.message}</p>
+
+                      {preview.requiresBrowser ? (
+                        <div className="muted">Le DOM HTTP n’est pas suffisant. La prochaine étape ajoutera le rendu Playwright avant Gemini ; aucun appel Gemini n’a été effectué ici.</div>
+                      ) : (
+                        <>
+                          {preview.dom && (
+                            <div className="muted" style={{ marginBottom: 10 }}>
+                              DOM : {preview.dom.originalBytes.toLocaleString('fr-FR')} octets → {preview.dom.compactedCharacters.toLocaleString('fr-FR')} caractères envoyables · {preview.dom.structuredDataBlocks} JobPosting structuré(s){preview.dom.truncated ? ' · contenu tronqué à la limite sûre' : ''}
+                            </div>
+                          )}
+                          {preview.ai?.notes.map((note) => (
+                            <div className="muted" key={note}>• {note}</div>
+                          ))}
+                          <div style={{ height: 8 }} />
+                          {preview.offers.length === 0 ? (
+                            <div className="muted">Gemini n’a identifié aucune offre suffisamment explicite dans ce DOM.</div>
+                          ) : (
+                            <div className="stack">
+                              {preview.offers.map((offer, index) => {
+                                const compensation = compensationLabel(offer);
+                                return (
+                                  <div className="list-row" key={`${offer.sourceUrl ?? offer.title}-${index}`}>
+                                    <div style={{ flex: 1 }}>
+                                      <strong>{offer.title}</strong>
+                                      <div className="muted" style={{ marginTop: 4 }}>
+                                        {offer.company ?? 'Entreprise non indiquée'}
+                                        {offer.location ? ` · ${offer.location}` : ''}
+                                        {offer.contractType ? ` · ${offer.contractType}` : ''}
+                                        {offer.publishedAt ? ` · ${offer.publishedAt}` : ''}
+                                      </div>
+                                      <div className="actions" style={{ marginTop: 7 }}>
+                                        {offer.workMode !== 'UNKNOWN' && <Badge>{offer.workMode}</Badge>}
+                                        {compensation && <Badge tone="good">{compensation}</Badge>}
+                                        {offer.technologies.slice(0, 10).map((technology) => <Badge key={technology}>{technology}</Badge>)}
+                                      </div>
+                                      {offer.description && <p className="muted" style={{ marginBottom: 4 }}>{offer.description}</p>}
+                                      {offer.sourceUrl && <a href={offer.sourceUrl} target="_blank" rel="noreferrer">Voir l’offre source</a>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

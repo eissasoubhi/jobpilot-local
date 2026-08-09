@@ -10,6 +10,7 @@ use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore;
 use App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard;
 use App\Service\CustomScraperDiagnosticService;
+use App\Service\CustomScraperHttpPageFetcher;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -117,12 +118,14 @@ HTML;
 
     private function service(MockHttpClient $http): CustomScraperDiagnosticService
     {
+        $client = new ControlledHttpScrapingClient(
+            $http,
+            new HttpScrapingStateStore($this->directory.'/state'),
+            new RobotsTxtGuard($http, $this->directory.'/robots'),
+        );
+
         return new CustomScraperDiagnosticService(
-            new ControlledHttpScrapingClient(
-                $http,
-                new HttpScrapingStateStore($this->directory.'/state'),
-                new RobotsTxtGuard($http, $this->directory.'/robots'),
-            ),
+            new CustomScraperHttpPageFetcher($client),
             new GenericHtmlModeDetector(),
         );
     }

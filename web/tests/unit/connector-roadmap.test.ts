@@ -75,14 +75,23 @@ describe('platform acquisition matrix', () => {
     expect(connector?.note).toContain('robots.txt');
   });
 
-  it('keeps LinkedIn, Indeed and Free-Work restricted to user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work']) {
+  it('keeps sources with restricted automated collection on user-authorized channels', () => {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
       expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
       expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
     }
+  });
+
+  it('records why WeLoveDevs does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'we-love-devs');
+
+    expect(connector).toBeDefined();
+    expect(connector?.note).toContain('CGU');
+    expect(connector?.note).toContain('Aucun scraping planifié');
+    expect(connector?.nextStep).toContain('autorisation écrite');
   });
 
   it('describes SmartRecruiters as a configured official API connector', () => {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\CustomScraperSource;
-use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingException;
 use App\Service\CustomScraperDiagnosticService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -112,7 +111,7 @@ final class CustomScraperSourceController
             return new JsonResponse($this->diagnostics->diagnose($source));
         } catch (\InvalidArgumentException $exception) {
             return new JsonResponse(['error' => $exception->getMessage()], 400);
-        } catch (HttpScrapingException|\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             return new JsonResponse(['error' => $exception->getMessage()], 422);
         }
     }

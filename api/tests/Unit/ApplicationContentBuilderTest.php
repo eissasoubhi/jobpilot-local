@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ApplicationContentBuilderTest extends TestCase
 {
-    public function testKeepsTheApplicationEmailButOmitsAnUnrequestedCoverLetter(): void
+    public function testKeepsTheApplicationEmailAndPreparesALetterEvenWhenItIsNotRequired(): void
     {
         $job = (new JobOffer())->fill([
             'title' => 'Développeur PHP Symfony',
@@ -25,7 +25,8 @@ final class ApplicationContentBuilderTest extends TestCase
         $content = $this->builder()->build($job, $this->profile());
 
         self::assertFalse($content['coverLetterRequired']);
-        self::assertSame('', $content['coverLetter']);
+        self::assertStringStartsWith('Madame, Monsieur,', $content['coverLetter']);
+        self::assertStringContainsString('Développeur PHP Symfony', $content['coverLetter']);
         self::assertStringStartsWith('Bonjour,', $content['message']);
     }
 

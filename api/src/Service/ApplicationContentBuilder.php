@@ -12,6 +12,7 @@ final class ApplicationContentBuilder
     public function __construct(
         private ApplicationMessageBuilder $messageBuilder,
         private CoverLetterRequirementDetector $coverLetterRequirementDetector,
+        private ?GroundedCoverLetterBuilder $coverLetterBuilder = null,
     ) {
     }
 
@@ -24,10 +25,11 @@ final class ApplicationContentBuilder
         $coverLetterRequired = $this->coverLetterRequirementDetector->isRequired(
             $job->getTitle().' '.$job->getDescription(),
         );
+        $coverLetterBuilder = $this->coverLetterBuilder ?? new GroundedCoverLetterBuilder();
 
         return [
             'message' => $content['message'],
-            'coverLetter' => $coverLetterRequired ? $content['coverLetter'] : '',
+            'coverLetter' => $coverLetterBuilder->build($job, $profile),
             'coverLetterRequired' => $coverLetterRequired,
         ];
     }

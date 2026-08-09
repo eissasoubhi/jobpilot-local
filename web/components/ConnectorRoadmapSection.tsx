@@ -24,6 +24,7 @@ function statusTone(status: ConnectorRoadmapStatus): 'good' | 'blue' | 'warn' {
 function modeLabel(mode: ConnectorRoadmapMode): string {
   return {
     API: 'API officielle',
+    SCRAPING_HTTP: 'Scraping HTTP public',
     GMAIL: 'Alertes Gmail',
     EXTENSION: 'Import assisté',
   }[mode];

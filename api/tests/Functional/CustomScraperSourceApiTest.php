@@ -77,6 +77,11 @@ final class CustomScraperSourceApiTest extends WebTestCase
         self::assertFalse($disabled['authorizationConfirmed']);
         self::assertFalse($disabled['enabled']);
 
+        $client->request('POST', sprintf('/api/custom-scrapers/%d/diagnose', $id));
+        self::assertResponseStatusCodeSame(400);
+        $diagnosticBlocked = $this->decode($client->getResponse()->getContent());
+        self::assertStringContainsString('autorisation', (string) ($diagnosticBlocked['error'] ?? ''));
+
         $client->jsonRequest('PATCH', sprintf('/api/custom-scrapers/%d', $id), [
             'enabled' => true,
         ]);

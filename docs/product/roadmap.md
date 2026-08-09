@@ -85,11 +85,29 @@ La roadmap opérationnelle ci-dessous décrit l’état réel du projet et les p
 - Visibilité complète dans la page Connecteurs et son historique.
 - Catalogue visible des sources planifiées, en revue ou limitées à Gmail et à l’extension.
 
+### Priorité active — scraping public exhaustif
+
+La collecte des offres publiques devient une priorité V1. La matrice complète des plateformes doit être auditée source par source, y compris les plateformes pour lesquelles aucun connecteur n’existe aujourd’hui.
+
+Pour chaque plateforme listée dans `docs/connectors/acquisition-matrix.md`, JobPilot doit déterminer explicitement :
+
+1. si la liste des offres est accessible publiquement sans compte, cookie privé ni session authentifiée ;
+2. si un canal API/RSS officiel préférable existe ;
+3. si le scraping HTTP statique est autorisé et techniquement suffisant ;
+4. si un rendu navigateur Playwright est nécessaire et autorisé ;
+5. si `robots.txt` et les conditions de réutilisation permettent cette collecte planifiée ;
+6. sinon, pourquoi la source reste limitée à Gmail, extension ou import assisté.
+
+Une page visible sans connexion est un **signal technique**, pas à elle seule une autorisation de collecte. Aucune source ne doit rester indéfiniment `UNDER_REVIEW` : elle doit évoluer vers un mode concret (`API`, `RSS`, `SCRAPING_HTTP`, `SCRAPING_BROWSER`, `GMAIL/EXTENSION`) ou vers un état bloqué documenté.
+
 ### Prochaines livraisons
 
-- Premier scraper HTML pilote uniquement après identification d’une source qui autorise explicitement ce mode de collecte.
-- Worker navigateur Playwright isolé lorsque nécessaire.
-- Ajout progressif des plateformes disposant d’un canal autorisé.
+- auditer les 31 plateformes de la matrice pour identifier les listes d’offres publiques sans authentification et documenter une décision de collecte pour chacune ;
+- implémenter ensuite, **une source par PR**, les scrapers HTTP des plateformes publiques dont ce mode est autorisé ;
+- introduire un worker Playwright isolé pour les pages publiques rendues en JavaScript lorsque le scraping navigateur est nécessaire et autorisé ;
+- conserver API/RSS comme canal prioritaire lorsqu’un flux officiel équivalent ou meilleur existe ;
+- maintenir Gmail/extension/import assisté pour les sources dont la collecte automatisée n’est pas autorisée ;
+- appliquer à tous les scrapers les mêmes limites : quotas, délais, backoff, cache conditionnel, circuit breaker, parser versionné, fixtures locales, métriques de santé et zéro appel externe dans la CI.
 
 ## Phase 5 — Candidature et CRM — en cours
 

@@ -8,12 +8,13 @@ import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import {
+  buildReviewQueue,
   clampReviewQueueIndex,
   currentReviewQueueItem,
   isReadyToSubmitReviewItem,
   nextReviewQueueIndexAfterDecision,
 } from '@/lib/review-queue';
-import type { Application } from '@/lib/types';
+import type { Application, Job } from '@/lib/types';
 
 import styles from './review.module.css';
 
@@ -28,6 +29,7 @@ type ReviewDecision = 'IGNORED_NOT_MATCH' | 'SUBMITTED';
 
 export default function ReviewQueuePage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
+  const [jobs, setJobs] = useState<Job[] | null>(null);
   const [index, setIndex] = useState(0);
   const [error, setError] = useState('');
   const [decisionSaving, setDecisionSaving] = useState<ReviewDecision | null>(null);
@@ -35,11 +37,16 @@ export default function ReviewQueuePage() {
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      const result = await api<Application[]>('/applications');
-      setApplications(result);
+      const [applicationResult, jobResult] = await Promise.all([
+        api<Application[]>('/applications'),
+        api<Job[]>('/jobs'),
+      ]);
+      setApplications(applicationResult);
+      setJobs(jobResult);
       setError('');
     } catch (caughtError: unknown) {
       setApplications([]);
+      setJobs([]);
       setError(getErrorMessage(caughtError));
     }
   }, []);
@@ -49,10 +56,11 @@ export default function ReviewQueuePage() {
   }, [load]);
 
   const queue = useMemo(
-    () => (applications ?? []).filter(isReadyToSubmitReviewItem),
-    [applications],
+    () => buildReviewQueue(applications ?? [], jobs ?? []),
+    [applications, jobs],
   );
 
+  const loading = applications === null || jobs === null;
   const currentIndex = clampReviewQueueIndex(index, queue.length);
   const current = currentReviewQueueItem(queue, currentIndex);
   const progress = queue.length > 0 ? ((currentIndex + 1) / queue.length) * 100 : 0;
@@ -130,7 +138,7 @@ export default function ReviewQueuePage() {
         <div className="review-queue-compact-title">
           <h1>Review Queue</h1>
           <span aria-live="polite">
-            {applications === null ? 'Chargement' : `${queue.length} prête${queue.length > 1 ? 's' : ''} à envoyer`}
+            {loading ? 'Chargement' : `${queue.length} prête${queue.length > 1 ? 's' : ''} à envoyer`}
           </span>
         </div>
         <Link className="review-queue-back-link" href="/offres">← Offres</Link>
@@ -138,7 +146,7 @@ export default function ReviewQueuePage() {
 
       {error !== '' && <ErrorBox message={error} />}
 
-      {applications === null ? (
+      {loading ? (
         <Card><Loading /></Card>
       ) : queue.length === 0 ? (
         <Card>

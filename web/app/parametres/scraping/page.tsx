@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
 type ScraperMode = 'AUTO' | 'HTTP' | 'BROWSER';
+type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
 type CustomScraperSource = {
   id: number;
@@ -22,6 +23,33 @@ type CustomScraperSource = {
   syncIntervalMinutes: number;
   maxPages: number;
   maxDetails: number;
+};
+
+type ScraperDiagnostic = {
+  configuredMode: ScraperMode;
+  recommendedMode: Exclude<ScraperMode, 'AUTO'>;
+  effectiveMode: Exclude<ScraperMode, 'AUTO'>;
+  confidence: Confidence;
+  reason: string;
+  browserVerificationRequired: boolean;
+  signals: {
+    visibleTextCharacters: number;
+    jobStructuredData: number;
+    jobLikeLinks: number;
+    jobKeywordHits: number;
+    scriptTags: number;
+    javascriptMarkers: number;
+    emptyAppShell: boolean;
+  };
+  http: {
+    requestedUrl: string;
+    finalUrl: string;
+    statusCode: number;
+    contentType: string | null;
+    responseBytes: number;
+    networkRequests: number;
+    fromCache: boolean;
+  };
 };
 
 type NewSourceForm = {
@@ -64,9 +92,17 @@ function intervalLabel(minutes: number): string {
   return `Toutes les ${minutes} min`;
 }
 
+function confidenceLabel(confidence: Confidence): string {
+  if (confidence === 'HIGH') return 'Confiance élevée';
+  if (confidence === 'MEDIUM') return 'Confiance moyenne';
+  return 'Confiance faible';
+}
+
 export default function CustomScrapingSettingsPage() {
   const [sources, setSources] = useState<CustomScraperSource[] | null>(null);
   const [form, setForm] = useState<NewSourceForm>(initialForm);
+  const [diagnostics, setDiagnostics] = useState<Record<number, ScraperDiagnostic>>({});
+  const [testingId, setTestingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -125,9 +161,29 @@ export default function CustomScrapingSettingsPage() {
         body: JSON.stringify(patch),
       });
       setSources((current) => (current ?? []).map((item) => item.id === updated.id ? updated : item));
+      setDiagnostics((current) => {
+        const next = { ...current };
+        delete next[source.id];
+        return next;
+      });
       setMessage(`${updated.name} a été mis à jour.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    }
+  };
+
+  const diagnoseSource = async (source: CustomScraperSource): Promise<void> => {
+    setTestingId(source.id);
+    setError('');
+    setMessage('');
+    try {
+      const result = await api<ScraperDiagnostic>(`/custom-scrapers/${source.id}/diagnose`, { method: 'POST' });
+      setDiagnostics((current) => ({ ...current, [source.id]: result }));
+      setMessage(`Diagnostic terminé pour ${source.name} : ${result.recommendedMode} recommandé.`);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setTestingId(null);
     }
   };
 
@@ -139,6 +195,11 @@ export default function CustomScrapingSettingsPage() {
     try {
       await api<void>(`/custom-scrapers/${source.id}`, { method: 'DELETE' });
       setSources((current) => (current ?? []).filter((item) => item.id !== source.id));
+      setDiagnostics((current) => {
+        const next = { ...current };
+        delete next[source.id];
+        return next;
+      });
       setMessage(`${source.name} a été supprimé.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
@@ -153,7 +214,7 @@ export default function CustomScrapingSettingsPage() {
     <>
       <PageHeader
         title="Scraping personnalisé"
-        description="Ajoute les sites dont tu as vérifié l’autorisation de collecte. JobPilot enregistrera leur mode et leurs limites avant toute exécution."
+        description="Ajoute les sites dont tu as vérifié l’autorisation de collecte, puis teste le HTML public avant de choisir HTTP ou Browser."
       />
 
       {message !== '' && <div className="notice">{message}</div>}
@@ -186,7 +247,7 @@ export default function CustomScrapingSettingsPage() {
             </label>
             <div className="notice">
               <strong>Quel mode choisir ?</strong><br />
-              Laisse <strong>Auto</strong> dans la majorité des cas. JobPilot essaiera d’abord HTTP. Si les offres ne sont disponibles qu’après exécution JavaScript, le moteur pourra basculer vers Browser/Playwright. Force HTTP pour un site HTML classique ; force Browser uniquement pour un site réellement rendu côté navigateur.
+              Laisse <strong>Auto</strong>. Après l’ajout, le bouton <strong>Tester le site</strong> analyse une seule réponse HTTP. Si les offres sont déjà présentes, HTTP est recommandé ; si la réponse ressemble à une coquille JavaScript vide, Browser/Playwright est recommandé.
             </div>
             <div className="form-grid">
               <label>
@@ -227,13 +288,11 @@ export default function CustomScrapingSettingsPage() {
         <Card>
           <h2 className="section-title">Comment fonctionne Auto ?</h2>
           <div className="stack">
-            <p className="muted">
-              Le moteur générique privilégie toujours la solution la plus légère. Une page HTML exploitable n’a aucune raison de lancer Chromium.
-            </p>
-            <div className="notice"><strong>1. HTTP</strong><br />Téléchargement contrôlé du HTML, puis recherche des offres dans le DOM reçu.</div>
-            <div className="notice"><strong>2. Vérification</strong><br />Si le DOM contient suffisamment de contenu exploitable, HTTP reste le mode retenu.</div>
-            <div className="notice"><strong>3. Browser</strong><br />Si la page dépend de JavaScript pour faire apparaître les offres, Browser/Playwright devient nécessaire.</div>
-            <div className="notice warning"><strong>Important</strong><br />Le choix Browser ne doit pas servir à contourner une authentification, un CAPTCHA ou une restriction d’accès.</div>
+            <p className="muted">Le moteur privilégie toujours la solution la plus légère et ne lance pas Chromium si le HTML serveur suffit.</p>
+            <div className="notice"><strong>1. Probe HTTP</strong><br />Un seul téléchargement contrôlé, avec robots.txt, timeout, quota et limite de taille.</div>
+            <div className="notice"><strong>2. Signaux</strong><br />JobPosting, liens d’offres, texte visible, scripts et marqueurs React/Next/Nuxt sont comparés.</div>
+            <div className="notice"><strong>3. Recommandation</strong><br />HTTP si le DOM est exploitable ; Browser si la page est manifestement rendue par JavaScript.</div>
+            <div className="notice warning"><strong>Important</strong><br />Le diagnostic ne contourne ni authentification, ni CAPTCHA, ni restriction d’accès. Browser n’est pas encore exécuté dans cette étape.</div>
           </div>
         </Card>
       </div>
@@ -245,35 +304,56 @@ export default function CustomScrapingSettingsPage() {
           <p className="muted">Aucune source personnalisée pour le moment.</p>
         ) : (
           <div className="stack">
-            {sources.map((source) => (
-              <div className="notice" key={source.id}>
-                <div className="actions" style={{ justifyContent: 'space-between' }}>
-                  <div>
-                    <strong>{source.name}</strong> — <code>{source.domain}</code>
+            {sources.map((source) => {
+              const diagnostic = diagnostics[source.id];
+              return (
+                <div className="notice" key={source.id}>
+                  <div className="actions" style={{ justifyContent: 'space-between' }}>
+                    <div><strong>{source.name}</strong> — <code>{source.domain}</code></div>
+                    <div className="actions">
+                      <Badge tone={source.enabled ? 'good' : 'warn'}>{source.enabled ? 'Actif' : 'Désactivé'}</Badge>
+                      <Badge tone="blue">{modeLabel(source.mode)}</Badge>
+                    </div>
                   </div>
-                  <div className="actions">
-                    <Badge tone={source.enabled ? 'good' : 'warn'}>{source.enabled ? 'Actif' : 'Désactivé'}</Badge>
-                    <Badge tone="blue">{modeLabel(source.mode)}</Badge>
+                  <div style={{ marginTop: 8 }}><a href={source.listingUrl} target="_blank" rel="noreferrer">{source.listingUrl}</a></div>
+                  <div className="muted" style={{ marginTop: 8 }}>
+                    {intervalLabel(source.syncIntervalMinutes)} · {source.maxPages} pages max · {source.maxDetails} fiches max · autorisation vérifiée {source.authorizationCheckedAt ?? 'à la date d’ajout'}
                   </div>
+                  {source.authorizationReference && <div className="muted" style={{ marginTop: 6 }}>{source.authorizationReference}</div>}
+                  <div className="actions" style={{ marginTop: 10 }}>
+                    <button className="btn" type="button" disabled={testingId !== null} onClick={() => void diagnoseSource(source)}>
+                      {testingId === source.id ? 'Test en cours…' : 'Tester le site'}
+                    </button>
+                    <button className="btn secondary" type="button" onClick={() => void patchSource(source, { enabled: !source.enabled })}>
+                      {source.enabled ? 'Désactiver' : 'Activer'}
+                    </button>
+                    <select value={source.mode} onChange={(event) => void patchSource(source, { mode: event.target.value })} aria-label={`Mode ${source.name}`}>
+                      <option value="AUTO">Auto</option>
+                      <option value="HTTP">HTTP</option>
+                      <option value="BROWSER">Browser</option>
+                    </select>
+                    <button className="btn secondary" type="button" onClick={() => void deleteSource(source)}>Supprimer</button>
+                  </div>
+
+                  {diagnostic && (
+                    <div className="notice" style={{ marginTop: 12 }}>
+                      <div className="actions">
+                        <Badge tone={diagnostic.recommendedMode === 'HTTP' ? 'good' : 'warn'}>Recommandé : {diagnostic.recommendedMode}</Badge>
+                        <Badge tone="blue">{confidenceLabel(diagnostic.confidence)}</Badge>
+                        {source.mode !== 'AUTO' && <Badge tone="warn">Mode forcé : {diagnostic.effectiveMode}</Badge>}
+                      </div>
+                      <p style={{ marginBottom: 6 }}>{diagnostic.reason}</p>
+                      <div className="muted">
+                        HTTP {diagnostic.http.statusCode} · {diagnostic.http.responseBytes.toLocaleString('fr-FR')} octets · {diagnostic.signals.visibleTextCharacters.toLocaleString('fr-FR')} caractères visibles · {diagnostic.signals.jobLikeLinks} liens d’offres · {diagnostic.signals.jobStructuredData} JobPosting · {diagnostic.signals.javascriptMarkers} marqueurs JS
+                      </div>
+                      {diagnostic.browserVerificationRequired && (
+                        <div className="muted" style={{ marginTop: 6 }}>Une vérification Browser/Playwright pourra confirmer ce résultat dans l’étape suivante.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div style={{ marginTop: 8 }}><a href={source.listingUrl} target="_blank" rel="noreferrer">{source.listingUrl}</a></div>
-                <div className="muted" style={{ marginTop: 8 }}>
-                  {intervalLabel(source.syncIntervalMinutes)} · {source.maxPages} pages max · {source.maxDetails} fiches max · autorisation vérifiée {source.authorizationCheckedAt ?? 'à la date d’ajout'}
-                </div>
-                {source.authorizationReference && <div className="muted" style={{ marginTop: 6 }}>{source.authorizationReference}</div>}
-                <div className="actions" style={{ marginTop: 10 }}>
-                  <button className="btn secondary" type="button" onClick={() => void patchSource(source, { enabled: !source.enabled })}>
-                    {source.enabled ? 'Désactiver' : 'Activer'}
-                  </button>
-                  <select value={source.mode} onChange={(event) => void patchSource(source, { mode: event.target.value })} aria-label={`Mode ${source.name}`}>
-                    <option value="AUTO">Auto</option>
-                    <option value="HTTP">HTTP</option>
-                    <option value="BROWSER">Browser</option>
-                  </select>
-                  <button className="btn secondary" type="button" onClick={() => void deleteSource(source)}>Supprimer</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>

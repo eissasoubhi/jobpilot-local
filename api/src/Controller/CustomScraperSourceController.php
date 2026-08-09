@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\CustomScraperSource;
+use App\Service\CustomScraperDiagnosticService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,8 +14,10 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/custom-scrapers')]
 final class CustomScraperSourceController
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CustomScraperDiagnosticService $diagnostics,
+    ) {
     }
 
     #[Route('', methods: ['GET'])]
@@ -65,7 +68,7 @@ final class CustomScraperSourceController
         return new JsonResponse($source->toArray(), 201);
     }
 
-    #[Route('/{id}', requirements: ['id' => '\\d+'], methods: ['PATCH'])]
+    #[Route('/{id}', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
         $source = $this->em->find(CustomScraperSource::class, $id);
@@ -96,7 +99,24 @@ final class CustomScraperSourceController
         return new JsonResponse($source->toArray());
     }
 
-    #[Route('/{id}', requirements: ['id' => '\\d+'], methods: ['DELETE'])]
+    #[Route('/{id}/diagnose', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function diagnose(int $id): JsonResponse
+    {
+        $source = $this->em->find(CustomScraperSource::class, $id);
+        if (!$source instanceof CustomScraperSource) {
+            return new JsonResponse(['error' => 'Source de scraping introuvable.'], 404);
+        }
+
+        try {
+            return new JsonResponse($this->diagnostics->diagnose($source));
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 400);
+        } catch (\RuntimeException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 422);
+        }
+    }
+
+    #[Route('/{id}', requirements: ['id' => '\d+'], methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $source = $this->em->find(CustomScraperSource::class, $id);

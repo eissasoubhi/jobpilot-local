@@ -54,6 +54,7 @@ const navigation: readonly NavigationGroup[] = [
     label: 'Configuration',
     links: [
       ['/parametres/integrations', 'Configuration & clés API', '⚙'],
+      ['/parametres/scraping', 'Scraping personnalisé', '⌘'],
       ['/cv', 'Mes CV', '▤'],
       ['/profil', 'Profil', '◉'],
       ['/parametres', 'Paramètres', '☷'],

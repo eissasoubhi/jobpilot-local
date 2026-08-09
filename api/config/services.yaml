@@ -105,6 +105,7 @@ services:
       $maxDetails: '%env(int:LE_STUDIO_TECH_MAX_DETAILS)%'
 
   App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\ConfiguredGeminiJobMatchAnalyzer'
+  App\Service\Ai\DomOfferExtractorInterface: '@App\Service\Ai\ConfiguredGeminiDomOfferExtractor'
 
   App\Service\Ai\AiMatchingConfigurationStore:
     arguments:
@@ -123,6 +124,10 @@ services:
       $privateDir: '%private_dir%'
 
   App\Service\Ai\AiMatchingCache:
+    arguments:
+      $privateDir: '%private_dir%'
+
+  App\Service\Ai\CustomScraperAiExtractionCache:
     arguments:
       $privateDir: '%private_dir%'
 

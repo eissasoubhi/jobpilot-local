@@ -94,7 +94,7 @@ final class GmailMessageAnalysisTest extends TestCase
             'Nouvelles offres Symfony',
             'Alertes <alerts@example.com>',
             '',
-            '<a href="https://www.free-work.com/fr/tech-it/jobs/developpeur-symfony/paris">Développeur Symfony chez Acme</a>'
+            '<a href="https://www.free-work.com/fr/tech-it/job-mission/developpeur-php-symfony-laravel-drupal/developpeur-php-symfony-lille-8">Développeur Symfony chez Acme</a>'
                 .'<a href="https://lesjeudis.com/fr/job/lead-developer-php">Lead Developer PHP chez Beta</a>'
                 .'<a href="https://www.welcometothejungle.com/fr/pages/terms">Conditions</a>',
             new \DateTimeImmutable('2026-08-10T12:00:00+02:00'),

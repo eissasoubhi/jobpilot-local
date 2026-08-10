@@ -49,6 +49,23 @@ final class CustomScraperSourceApiTest extends WebTestCase
         self::assertSame(20, $created['maxDetails']);
 
         $id = $created['id'];
+        $client->request('GET', '/api/connectors');
+        self::assertResponseIsSuccessful();
+        $connectors = $this->decode($client->getResponse()->getContent());
+        $dynamic = null;
+        foreach ($connectors as $connector) {
+            if (is_array($connector) && ($connector['code'] ?? null) === 'custom-scraper-'.$id) {
+                $dynamic = $connector;
+                break;
+            }
+        }
+        self::assertIsArray($dynamic);
+        self::assertSame('Example Jobs', $dynamic['name']);
+        self::assertSame('SCRAPING_HTTP', $dynamic['mode']);
+        self::assertTrue($dynamic['configured']);
+        self::assertTrue($dynamic['collectionAllowed']);
+        self::assertSame('custom-generic-html-v1', $dynamic['parserVersion']);
+
         $client->jsonRequest('PATCH', sprintf('/api/custom-scrapers/%d', $id), [
             'mode' => 'BROWSER',
             'syncIntervalMinutes' => 30,

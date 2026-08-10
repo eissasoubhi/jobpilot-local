@@ -81,6 +81,24 @@ Un simple lien de type `JOB_LINK` sans description ne peut pas devenir fiable. U
 
 Ce garde-fou ne décide pas si l’offre correspond au profil PHP/Symfony ou à un autre profil candidat : ce contrôle reste effectué ensuite par le pipeline normal de matching de JobPilot.
 
+## Synchronisation dans JobPilot
+
+Chaque source personnalisée active et autorisée devient un connecteur dynamique distinct, avec un code stable `custom-scraper-{id}`. Elle dispose donc de son propre état de synchronisation, historique, diagnostics, parser et origine dans le catalogue.
+
+Pour cette première version de synchronisation générique :
+
+1. une seule page de liste est lue par cycle ;
+2. jusqu’à 10 fiches détail sont enrichies selon la configuration de la source ;
+3. seuls les candidats `rawData.quality.reliable=true` sont retournés par le connecteur ;
+4. ces candidats entrent ensuite dans le pipeline canonique existant : déduplication multi-sources, filtre profil/IA éventuel, scoring et préparation ;
+5. les candidats non fiables ne sont pas persistés comme offres ;
+6. la fréquence `syncIntervalMinutes` de chaque source est respectée sans ajouter de colonne en base ;
+7. les connecteurs classiques sans fréquence spécifique continuent d’utiliser l’intervalle global JobPilot.
+
+Le champ `maxPages` reste conservé dans la configuration mais n’est pas encore utilisé pour parcourir plusieurs pages : la pagination générique devra être détectée explicitement avant d’être activée. JobPilot ne fabrique pas automatiquement des URL `?page=N` pour un domaine inconnu.
+
+Une source forcée en `BROWSER` reste non synchronisable tant que le worker Playwright isolé n’est pas livré. En mode `AUTO`, une page détectée comme nécessitant Browser ne produit aucune offre HTTP.
+
 ## Choix du mode
 
 `AUTO` reste le mode recommandé.
@@ -99,11 +117,10 @@ Le diagnostic et la prévisualisation actuels ne lancent pas encore Chromium. La
 
 ## Étapes suivantes
 
-Le registre, le diagnostic HTTP, l’extraction de liste, l’enrichissement borné des fiches, l’interface de prévisualisation et le garde-fou de qualité sont maintenant branchés dans la chaîne en cours de livraison. Les prochains incréments prévus sont :
+Le registre, le diagnostic HTTP, l’extraction de liste, l’enrichissement borné des fiches, l’interface de prévisualisation, le garde-fou de qualité et le connecteur dynamique sont maintenant branchés dans la chaîne en cours de livraison. Les prochains incréments prévus sont :
 
 - exposer la fiabilité dans l’interface de prévisualisation ;
-- brancher uniquement les candidats `reliable=true` sur le pipeline normal de normalisation, déduplication et matching ;
-- gérer les sources personnalisées comme des connecteurs dynamiques séparés afin de conserver leur historique et leur filtre de source ;
+- ajouter une détection de pagination générique sûre ;
 - utiliser Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
 - worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis.
 

@@ -16,7 +16,7 @@ Pour une source personnalisée autorisée :
 docker compose exec -T api php bin/console app:connectors:smoke-test custom-scraper-42 --live
 ```
 
-L'option `--live` est obligatoire. Sans elle, la commande s'arrête avant tout appel réseau. Cette barrière est volontaire afin qu'un test, un script local ou une CI ne contacte jamais une source réelle par accident.
+L'option `--live` est obligatoire. Sans elle, la commande s'arrête avant tout appel réseau. En plus, la commande refuse systématiquement l'exécution lorsque `CI` ou `GITHUB_ACTIONS` est actif, même si `--live` a été fourni. Ces barrières empêchent un test ou workflow de contacter une source réelle par accident.
 
 ## Ce que le smoke test fait réellement
 
@@ -79,7 +79,7 @@ La fréquence doit rester faible et cohérente avec les quotas de la source. Un 
 
 ## Interdiction en GitHub Actions
 
-Cette commande ne doit pas être ajoutée au workflow GitHub Actions. La CI doit continuer à utiliser :
+Cette commande ne doit pas être ajoutée au workflow GitHub Actions. La commande elle-même refuse aussi de démarrer si `CI` ou `GITHUB_ACTIONS` est actif. La CI doit continuer à utiliser :
 
 - fixtures HTML locales ;
 - `MockHttpClient` ;

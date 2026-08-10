@@ -82,6 +82,55 @@ final class ControlledHttpScrapingClientTest extends TestCase
         self::assertTrue($second->fromCache);
     }
 
+    public function testRetryAfterZeroAllowsImmediateRetryAfterRateLimit(): void
+    {
+        $http = new MockHttpClient([
+            new MockResponse('rate limited', [
+                'http_code' => 429,
+                'response_headers' => ['retry-after: 0'],
+            ]),
+            new MockResponse('ok-after-retry', ['http_code' => 200]),
+        ]);
+        $client = $this->client($http);
+
+        $result = $client->fetch(new HttpScrapingRequest(
+            'retry-after-source',
+            'https://jobs.example.test/offers',
+            $this->allowedPolicy(maxRequestsPerSync: 5, dailyQuota: 10),
+            maxRetries: 1,
+            initialBackoffMilliseconds: 5_000,
+        ));
+
+        self::assertSame(200, $result->statusCode);
+        self::assertSame('ok-after-retry', $result->body);
+        self::assertSame(2, $result->attempts);
+    }
+
+    public function testPerSynchronizationRequestLimitBlocksBeforeAdditionalNetworkCall(): void
+    {
+        $client = $this->client(new MockHttpClient([
+            new MockResponse('first-page', ['http_code' => 200]),
+        ]));
+        $policy = $this->allowedPolicy(maxRequestsPerSync: 1, dailyQuota: 10);
+
+        $first = $client->fetch(new HttpScrapingRequest(
+            'sync-limit-source',
+            'https://jobs.example.test/offers?page=1',
+            $policy,
+            maxRetries: 0,
+        ));
+        self::assertSame('first-page', $first->body);
+
+        $this->expectException(HttpScrapingException::class);
+        $this->expectExceptionMessage('limite de 1 requêtes pour cette synchronisation');
+        $client->fetch(new HttpScrapingRequest(
+            'sync-limit-source',
+            'https://jobs.example.test/offers?page=2',
+            $policy,
+            maxRetries: 0,
+        ));
+    }
+
     public function testDailyQuotaIsPersistedAcrossClientInstances(): void
     {
         $policy = $this->allowedPolicy(maxRequestsPerSync: 5, dailyQuota: 1);
@@ -102,6 +151,39 @@ final class ControlledHttpScrapingClientTest extends TestCase
         $secondClient->fetch(new HttpScrapingRequest(
             'quota-source',
             'https://jobs.example.test/offers?page=2',
+            $policy,
+            maxRetries: 0,
+        ));
+    }
+
+    public function testThreeGenericFailuresOpenCircuitBreaker(): void
+    {
+        $client = $this->client(new MockHttpClient([
+            new MockResponse('error-1', ['http_code' => 500]),
+            new MockResponse('error-2', ['http_code' => 500]),
+            new MockResponse('error-3', ['http_code' => 500]),
+        ]));
+        $policy = $this->allowedPolicy(maxRequestsPerSync: 5, dailyQuota: 10);
+
+        for ($attempt = 1; $attempt <= 3; ++$attempt) {
+            try {
+                $client->fetch(new HttpScrapingRequest(
+                    'failure-threshold-source',
+                    'https://jobs.example.test/offers?attempt='.$attempt,
+                    $policy,
+                    maxRetries: 0,
+                ));
+                self::fail('Chaque réponse 500 doit faire échouer la collecte.');
+            } catch (HttpScrapingException $exception) {
+                self::assertStringContainsString('statut HTTP 500', $exception->getMessage());
+            }
+        }
+
+        $this->expectException(HttpScrapingException::class);
+        $this->expectExceptionMessage('circuit breaker');
+        $client->fetch(new HttpScrapingRequest(
+            'failure-threshold-source',
+            'https://jobs.example.test/offers?attempt=4',
             $policy,
             maxRetries: 0,
         ));
@@ -135,6 +217,24 @@ final class ControlledHttpScrapingClientTest extends TestCase
             'https://jobs.example.test/another-page',
             $policy,
             maxRetries: 0,
+        ));
+    }
+
+    public function testOversizedResponseIsRejected(): void
+    {
+        $client = $this->client(new MockHttpClient(new MockResponse(
+            str_repeat('x', 32),
+            ['http_code' => 200],
+        )));
+
+        $this->expectException(HttpScrapingException::class);
+        $this->expectExceptionMessage('dépasse la limite de 16 octets');
+        $client->fetch(new HttpScrapingRequest(
+            'response-limit-source',
+            'https://jobs.example.test/offers',
+            $this->allowedPolicy(),
+            maxRetries: 0,
+            maxResponseBytes: 16,
         ));
     }
 

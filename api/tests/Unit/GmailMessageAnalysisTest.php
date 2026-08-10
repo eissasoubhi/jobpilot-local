@@ -81,7 +81,30 @@ final class GmailMessageAnalysisTest extends TestCase
         self::assertSame('Développeur PHP Symfony', $offers[0]['title']);
         self::assertSame('Example', $offers[0]['company']);
         self::assertSame('APEC', $offers[0]['rawData']['alertPlatform']);
+        self::assertSame('apec', $offers[0]['rawData']['alertPlatformCode']);
         self::assertStringNotContainsString('utm_source', $offers[0]['sourceUrl']);
+    }
+
+    public function testExtractorRecognizesCurrentAssistedPlatformUrlVariants(): void
+    {
+        $extractor = new GmailJobAlertExtractor();
+        $offers = $extractor->extract(
+            'gmail-3',
+            'JOB_ALERT',
+            'Nouvelles offres Symfony',
+            'Alertes <alerts@example.com>',
+            '',
+            '<a href="https://www.free-work.com/fr/tech-it/jobs/developpeur-symfony/paris">Développeur Symfony chez Acme</a>'
+                .'<a href="https://lesjeudis.com/fr/job/lead-developer-php">Lead Developer PHP chez Beta</a>'
+                .'<a href="https://www.welcometothejungle.com/fr/pages/terms">Conditions</a>',
+            new \DateTimeImmutable('2026-08-10T12:00:00+02:00'),
+        );
+
+        self::assertCount(2, $offers);
+        self::assertSame('free-work', $offers[0]['rawData']['alertPlatformCode']);
+        self::assertSame('Free-Work', $offers[0]['rawData']['alertPlatform']);
+        self::assertSame('lesjeudis', $offers[1]['rawData']['alertPlatformCode']);
+        self::assertSame('LesJeudis', $offers[1]['rawData']['alertPlatform']);
     }
 
     private function encode(string $value): string

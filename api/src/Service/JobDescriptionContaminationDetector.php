@@ -43,7 +43,7 @@ final class JobDescriptionContaminationDetector
                 }
 
                 if (preg_match('~/(?:comm/)?jobs/view/[^/?#]+|/emplois/[^/?#]+|/emploi/detail-offre/[^/?#]+|/detail-offre/[^/?#]+|/companies/[^/]+/jobs/[^/?#]+|/tech-it/job-mission/[^/]+/[^/?#]+|/job/[^/?#]+|/missions?/[^/?#]+~iu', $path) === 1) {
-                    $jobUrls[strtolower($url)] = true;
+                    $jobUrls[$path] = true;
                     if (count($jobUrls) >= 2) {
                         return true;
                     }

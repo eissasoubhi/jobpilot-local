@@ -8,9 +8,7 @@ use App\Entity\CustomScraperSource;
 use App\JobDiscovery\Application\DynamicJobSourceConnectorProvider;
 use App\Service\CustomScraperExtractionService;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
-#[AsDecorator(decorates: AiRecoveryCustomScraperConnectorProvider::class, priority: 20)]
 final class BrowserAwareCustomScraperConnectorProvider implements DynamicJobSourceConnectorProvider
 {
     public function __construct(
@@ -23,7 +21,14 @@ final class BrowserAwareCustomScraperConnectorProvider implements DynamicJobSour
 
     public function connectors(): iterable
     {
-        $sources = $this->em->getRepository(CustomScraperSource::class)->findBy([], ['name' => 'ASC']);
+        $sources = $this->em->getRepository(CustomScraperSource::class)->findBy(
+            [
+                'enabled' => true,
+                'authorizationConfirmed' => true,
+            ],
+            ['name' => 'ASC'],
+        );
+
         foreach ($sources as $source) {
             if (!$source instanceof CustomScraperSource) {
                 continue;

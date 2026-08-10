@@ -132,13 +132,19 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
                 return ($quality['reliable'] ?? false) === true;
             },
         ));
+        $pagination = is_array($preview['pagination'] ?? null) ? $preview['pagination'] : [];
+        $nextPageUrl = is_string($pagination['nextUrl'] ?? null) ? $pagination['nextUrl'] : null;
 
         $this->diagnostics = [
             'sourceId' => $this->data()['id'] ?? null,
             'listingUrl' => $this->data()['listingUrl'] ?? null,
             'pagesFetched' => 1,
             'configuredMaxPages' => (int) ($this->data()['maxPages'] ?? 1),
-            'paginationStrategy' => 'SINGLE_PAGE_UNTIL_GENERIC_PAGINATION_IS_DETECTED',
+            'paginationStrategy' => 'SINGLE_PAGE_WITH_SAFE_NEXT_DETECTION',
+            'nextPageDetected' => $nextPageUrl !== null,
+            'nextPageUrl' => $nextPageUrl,
+            'paginationDetectionStrategy' => is_string($pagination['strategy'] ?? null) ? $pagination['strategy'] : null,
+            'paginationDetectionConfidence' => is_string($pagination['confidence'] ?? null) ? $pagination['confidence'] : null,
             'candidateCount' => count($candidates),
             'reliableCount' => count($reliable),
             'filteredByExtractionQuality' => max(0, count($candidates) - count($reliable)),

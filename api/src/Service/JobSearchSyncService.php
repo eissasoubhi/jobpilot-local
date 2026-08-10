@@ -9,6 +9,7 @@ use App\Entity\SourceConnector;
 use App\JobCatalog\Application\CanonicalJobImportResult;
 use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\JobCatalog\Application\ProfileFilteredJobOffer;
+use App\JobDiscovery\Application\ConnectorDeadLetterService;
 use App\JobDiscovery\Application\ConnectorHealthAnalyzer;
 use App\JobDiscovery\Application\ConnectorPayloadQualityAnalyzer;
 use App\JobDiscovery\Application\ConnectorRegistry;
@@ -26,6 +27,7 @@ final class JobSearchSyncService
         private CanonicalJobOfferService $canonicalJobs,
         private ConnectorHealthAnalyzer $healthAnalyzer,
         private ConnectorPayloadQualityAnalyzer $payloadQualityAnalyzer,
+        private ConnectorDeadLetterService $deadLetters,
         private string $privateDir,
         private int $intervalSeconds = 21600,
     ) {
@@ -171,6 +173,7 @@ final class JobSearchSyncService
                 ]);
             }
 
+            $this->deadLetters->pruneStaleTracking();
             $settings = $this->data->settings();
             $profile = $this->data->profile();
             $imported = 0;
@@ -202,6 +205,7 @@ final class JobSearchSyncService
 
                 try {
                     $offers = $connector->search($settings->getTargetJobs(), $settings->getSkills());
+                    $this->deadLetters->resolveConnectorSearch($sourceCode);
                     $connectorReceived = count($offers);
                     $fieldQuality = $this->payloadQualityAnalyzer->analyze($offers);
                     $received += $connectorReceived;
@@ -211,6 +215,7 @@ final class JobSearchSyncService
                         if ($externalId === '') {
                             ++$failed;
                             ++$connectorFailed;
+                            $this->deadLetters->recordMissingExternalId($sourceCode, $payload);
                             $connectorErrors[] = 'Offre ignorée car son identifiant externe est vide.';
                             continue;
                         }
@@ -225,6 +230,7 @@ final class JobSearchSyncService
                                 $profile,
                                 true,
                             );
+                            $this->deadLetters->resolvePayload($sourceCode, $payload);
 
                             if ($result->outcome() === CanonicalJobImportResult::IMPORTED) {
                                 ++$imported;
@@ -237,11 +243,13 @@ final class JobSearchSyncService
                                 ++$connectorDuplicates;
                             }
                         } catch (ProfileFilteredJobOffer) {
+                            $this->deadLetters->resolvePayload($sourceCode, $payload);
                             ++$profileFiltered;
                             ++$connectorProfileFiltered;
                         } catch (\Throwable $exception) {
                             ++$failed;
                             ++$connectorFailed;
+                            $this->deadLetters->recordPayloadFailure($sourceCode, $payload, $exception);
                             if (count($connectorErrors) < 5) {
                                 $connectorErrors[] = $exception->getMessage();
                             }
@@ -250,6 +258,7 @@ final class JobSearchSyncService
                 } catch (\Throwable $exception) {
                     ++$failed;
                     ++$connectorFailed;
+                    $this->deadLetters->recordConnectorFailure($sourceCode, $exception);
                     $connectorError = $exception->getMessage();
                     $connectorErrors[] = $connectorError;
                     if (count($errors) < 5) {
@@ -401,6 +410,7 @@ final class JobSearchSyncService
             'fieldQuality' => $fieldQuality,
             'searchDiagnostics' => $searchDiagnostics,
             'profileFiltered' => max(0, (int) ($latestDetails['profileFiltered'] ?? 0)),
+            'deadLetterOpen' => $this->deadLetters->openCount($state->getCode()),
         ];
     }
 

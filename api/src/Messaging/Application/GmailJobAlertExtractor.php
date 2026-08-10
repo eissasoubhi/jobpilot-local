@@ -6,6 +6,9 @@ namespace App\Messaging\Application;
 
 final class GmailJobAlertExtractor
 {
+    private const MAX_DESCRIPTION_LENGTH = 8_000;
+    private const MAX_LINK_CONTEXT_LENGTH = 2_500;
+
     private AssistedJobPlatformCatalog $platforms;
 
     public function __construct(?AssistedJobPlatformCatalog $platforms = null)
@@ -29,32 +32,24 @@ final class GmailJobAlertExtractor
             return [];
         }
 
-        $links = $this->links($plainBody, $htmlBody);
+        $preparedLinks = $this->prepareEligibleLinks($this->links($plainBody, $htmlBody), $category);
+        $eligibleLinkCount = count($preparedLinks);
         $offers = [];
         $seen = [];
-        $description = trim($plainBody) !== '' ? trim($plainBody) : trim(strip_tags($htmlBody));
-        $description = mb_substr($description, 0, 8_000);
+        $globalDescription = $this->cleanText(trim($plainBody) !== '' ? $plainBody : strip_tags($htmlBody));
+        $globalDescription = mb_substr($globalDescription, 0, self::MAX_DESCRIPTION_LENGTH);
         $senderEmail = $this->emailFromHeader($sender);
 
-        foreach ($links as $link) {
-            $url = $this->normalizeUrl($link['url']);
-            if ($url === null || isset($seen[$url])) {
+        foreach ($preparedLinks as $prepared) {
+            $url = $prepared['url'];
+            if (isset($seen[$url])) {
                 continue;
             }
 
-            $source = $this->platforms->forUrl($url);
-            if ($source === null && $category !== 'RECRUITER_OPPORTUNITY') {
-                continue;
-            }
-            if ($source === null && !$this->looksLikeJobUrl($url)) {
-                continue;
-            }
-
+            $link = $prepared['link'];
+            $source = $prepared['source'];
             $title = $this->cleanTitle($link['label']);
-            if ($title === null) {
-                if (count($links) !== 1) {
-                    continue;
-                }
+            if ($title === null && $eligibleLinkCount === 1) {
                 $title = $this->fallbackTitle($subject);
             }
             if ($title === null) {
@@ -65,6 +60,13 @@ final class GmailJobAlertExtractor
             $platform = $source['name'] ?? 'Site recruteur';
             $company = $this->companyFromTitle($title) ?? $platform;
             $title = $this->titleWithoutCompany($title);
+            [$description, $descriptionScope] = $this->descriptionForLink(
+                $link,
+                $title,
+                $subject,
+                $globalDescription,
+                $eligibleLinkCount,
+            );
 
             $payload = [
                 'externalId' => 'gmail-'.sha1($url),
@@ -74,7 +76,7 @@ final class GmailJobAlertExtractor
                 'location' => '',
                 'contractType' => '',
                 'workMode' => '',
-                'description' => $description !== '' ? $description : $subject,
+                'description' => $description,
                 'publishedAt' => $receivedAt->format(DATE_ATOM),
                 'rawData' => [
                     'gmailMessageId' => $gmailMessageId,
@@ -83,6 +85,8 @@ final class GmailJobAlertExtractor
                     'alertPlatformCode' => $source['code'] ?? null,
                     'sender' => $sender,
                     'anchorLabel' => $link['label'],
+                    'descriptionScope' => $descriptionScope,
+                    'eligibleLinkCount' => $eligibleLinkCount,
                 ],
             ];
 
@@ -103,7 +107,41 @@ final class GmailJobAlertExtractor
     }
 
     /**
-     * @return list<array{url: string, label: string}>
+     * @param list<array{url: string, label: string, context: string}> $links
+     * @return list<array{url: string, link: array{url: string, label: string, context: string}, source: array{code: string, name: string}|null}>
+     */
+    private function prepareEligibleLinks(array $links, string $category): array
+    {
+        $prepared = [];
+        $seen = [];
+
+        foreach ($links as $link) {
+            $url = $this->normalizeUrl($link['url']);
+            if ($url === null || isset($seen[$url])) {
+                continue;
+            }
+
+            $source = $this->platforms->forUrl($url);
+            if ($source === null && $category !== 'RECRUITER_OPPORTUNITY') {
+                continue;
+            }
+            if ($source === null && !$this->looksLikeJobUrl($url)) {
+                continue;
+            }
+
+            $seen[$url] = true;
+            $prepared[] = [
+                'url' => $url,
+                'link' => $link,
+                'source' => $source,
+            ];
+        }
+
+        return $prepared;
+    }
+
+    /**
+     * @return list<array{url: string, label: string, context: string}>
      */
     private function links(string $plainBody, string $htmlBody): array
     {
@@ -120,7 +158,8 @@ final class GmailJobAlertExtractor
                 }
                 $links[] = [
                     'url' => $href,
-                    'label' => trim(preg_replace('/\s+/u', ' ', $anchor->textContent) ?? $anchor->textContent),
+                    'label' => $this->cleanText($anchor->textContent),
+                    'context' => $this->htmlLinkContext($anchor),
                 ];
             }
             libxml_clear_errors();
@@ -129,11 +168,74 @@ final class GmailJobAlertExtractor
 
         if (preg_match_all('~https?://[^\s<>"\']+~iu', $plainBody, $matches) === 1 || !empty($matches[0])) {
             foreach ($matches[0] ?? [] as $url) {
-                $links[] = ['url' => rtrim($url, '.,;)\]'), 'label' => ''];
+                $cleanUrl = rtrim($url, '.,;)\]');
+                $links[] = [
+                    'url' => $cleanUrl,
+                    'label' => '',
+                    'context' => $this->plainLinkContext($plainBody, $cleanUrl),
+                ];
             }
         }
 
         return $links;
+    }
+
+    private function htmlLinkContext(\DOMElement $anchor): string
+    {
+        $node = $anchor->parentNode;
+        $depth = 0;
+        while ($node instanceof \DOMElement && $depth < 6) {
+            $tag = mb_strtolower($node->tagName);
+            if (in_array($tag, ['li', 'tr', 'td', 'article', 'section', 'div', 'p'], true)) {
+                $text = $this->cleanText($node->textContent);
+                $linkCount = $node->getElementsByTagName('a')->length;
+                if (mb_strlen($text) >= 20 && mb_strlen($text) <= self::MAX_LINK_CONTEXT_LENGTH && $linkCount <= 2) {
+                    return $text;
+                }
+            }
+            $node = $node->parentNode;
+            ++$depth;
+        }
+
+        return $this->cleanText($anchor->textContent);
+    }
+
+    private function plainLinkContext(string $plainBody, string $url): string
+    {
+        foreach (preg_split('/\R/u', $plainBody) ?: [] as $line) {
+            if (!str_contains($line, $url)) {
+                continue;
+            }
+
+            return mb_substr($this->cleanText(str_replace($url, ' ', $line)), 0, self::MAX_LINK_CONTEXT_LENGTH);
+        }
+
+        return '';
+    }
+
+    /**
+     * @param array{url: string, label: string, context: string} $link
+     * @return array{string, string}
+     */
+    private function descriptionForLink(
+        array $link,
+        string $title,
+        string $subject,
+        string $globalDescription,
+        int $eligibleLinkCount,
+    ): array {
+        $context = $this->cleanText($link['context']);
+        if ($context !== '' && mb_strlen($context) >= max(20, mb_strlen($title))) {
+            return [mb_substr($context, 0, self::MAX_DESCRIPTION_LENGTH), 'LINK_CONTEXT'];
+        }
+
+        if ($eligibleLinkCount === 1 && $globalDescription !== '') {
+            return [$globalDescription, 'MESSAGE_BODY'];
+        }
+
+        $fallback = $this->cleanText($title.' — '.$subject);
+
+        return [mb_substr($fallback !== '' ? $fallback : $title, 0, self::MAX_DESCRIPTION_LENGTH), 'TITLE_SUBJECT'];
     }
 
     private function normalizeUrl(string $url): ?string
@@ -192,7 +294,7 @@ final class GmailJobAlertExtractor
 
     private function cleanTitle(string $label): ?string
     {
-        $label = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($label), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? $label);
+        $label = $this->cleanText($label);
         if ($label === '' || mb_strlen($label) < 6 || mb_strlen($label) > 220) {
             return null;
         }
@@ -234,6 +336,13 @@ final class GmailJobAlertExtractor
         $title = preg_replace('/\s+[–—|]\s+[^–—|]{2,100}$/u', '', $title) ?? $title;
 
         return trim($title);
+    }
+
+    private function cleanText(string $value): string
+    {
+        $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     private function emailFromHeader(string $sender): ?string

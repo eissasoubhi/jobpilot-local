@@ -70,8 +70,9 @@ HTML;
         self::assertSame('custom-scraper-42', $connector->code());
         self::assertSame('Example Jobs', $connector->name());
         self::assertSame(ConnectorMode::SCRAPING_HTTP, $connector->mode());
-        self::assertSame('custom-generic-html-v1', $connector->parserVersion());
+        self::assertSame('custom-generic-html-v2', $connector->parserVersion());
         self::assertSame(21_600, $connector->syncIntervalSeconds());
+        self::assertSame(6, $connector->policy()->maxRequestsPerSync);
         self::assertTrue($connector->isConfigured());
         self::assertCount(1, $offers);
         self::assertSame('Senior Symfony Developer', $offers[0]['title']);
@@ -83,6 +84,57 @@ HTML;
         self::assertSame(1, $diagnostics['reliableCount']);
         self::assertSame(1, $diagnostics['filteredByExtractionQuality']);
         self::assertSame(1, $diagnostics['pagesFetched']);
+        self::assertSame('NO_NEXT_PAGE', $diagnostics['paginationStopReason']);
+        self::assertSame(2, $diagnostics['networkRequests']);
+    }
+
+    public function testFollowsDetectedPaginationUpToTheAvailableNextPage(): void
+    {
+        $source = $this->source(51);
+        $source->fill(['maxPages' => 3, 'maxDetails' => 0]);
+        $pageOne = <<<'HTML'
+<html><body>
+<script type="application/ld+json">{
+  "@type":"JobPosting",
+  "identifier":{"value":"P1"},
+  "title":"Symfony Backend Developer",
+  "url":"https://jobs.example.test/jobs/symfony-backend",
+  "hiringOrganization":{"name":"Acme One"},
+  "description":"Mission backend Symfony sur une plateforme métier avec API Platform, PostgreSQL, tests automatisés et revue de code en équipe produit."
+}</script>
+<a rel="next" href="?page=2">Suivant</a>
+</body></html>
+HTML;
+        $pageTwo = <<<'HTML'
+<html><body>
+<script type="application/ld+json">{
+  "@type":"JobPosting",
+  "identifier":{"value":"P2"},
+  "title":"PHP API Developer",
+  "url":"https://jobs.example.test/jobs/php-api",
+  "hiringOrganization":{"name":"Acme Two"},
+  "description":"Mission PHP API sur une application métier avec architecture hexagonale, tests automatisés, PostgreSQL et collaboration avec une équipe produit."
+}</script>
+</body></html>
+HTML;
+        $connector = new CustomScraperJobConnector(
+            $source,
+            $this->extraction(new MockHttpClient([
+                new MockResponse('', ['http_code' => 404]),
+                new MockResponse($pageOne, ['http_code' => 200]),
+                new MockResponse($pageTwo, ['http_code' => 200]),
+            ])),
+        );
+
+        $offers = $connector->search(['Symfony Developer'], ['PHP', 'Symfony']);
+
+        self::assertCount(2, $offers);
+        self::assertSame(['P1', 'P2'], array_column($offers, 'externalId'));
+        $diagnostics = $connector->searchDiagnostics();
+        self::assertSame(2, $diagnostics['pagesFetched']);
+        self::assertSame(3, $diagnostics['effectivePageLimit']);
+        self::assertSame('NO_NEXT_PAGE', $diagnostics['paginationStopReason']);
+        self::assertFalse($diagnostics['paginationLoopDetected']);
         self::assertSame(2, $diagnostics['networkRequests']);
     }
 

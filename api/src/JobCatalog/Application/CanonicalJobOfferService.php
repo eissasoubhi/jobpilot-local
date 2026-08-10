@@ -9,22 +9,21 @@ use App\Entity\JobOffer;
 use App\Entity\JobSourceOccurrence;
 use App\Entity\UserSettings;
 use App\Service\Ai\AiOfferIntakeFilter;
-use App\Service\JobDescriptionContaminationDetector;
 use App\Service\JobProcessor;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class CanonicalJobOfferService
 {
-    private JobDescriptionContaminationDetector $descriptionContamination;
+    private ContaminatedJobDescriptionRepairer $descriptionRepairer;
 
     public function __construct(
         private EntityManagerInterface $em,
         private CanonicalJobMatcher $matcher,
         private JobProcessor $processor,
         private AiOfferIntakeFilter $intakeFilter,
-        ?JobDescriptionContaminationDetector $descriptionContamination = null,
+        ?ContaminatedJobDescriptionRepairer $descriptionRepairer = null,
     ) {
-        $this->descriptionContamination = $descriptionContamination ?? new JobDescriptionContaminationDetector();
+        $this->descriptionRepairer = $descriptionRepairer ?? new ContaminatedJobDescriptionRepairer();
     }
 
     /**
@@ -63,7 +62,7 @@ final class CanonicalJobOfferService
         if ($existingOccurrence instanceof JobSourceOccurrence) {
             $job = $existingOccurrence->getJobOffer();
             $existingOccurrence->touch($payload);
-            $descriptionRepaired = $this->repairContaminatedGmailDescription($job, $payload, $sourceCode);
+            $descriptionRepaired = $this->descriptionRepairer->repair($job, $payload, $sourceCode);
             $job->enrichFromOccurrence($payload);
 
             if ($descriptionRepaired && $this->canReprocessAutomatically($job)) {
@@ -140,30 +139,6 @@ final class CanonicalJobOfferService
             100,
             ['Première occurrence de cette offre canonique.'],
         );
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function repairContaminatedGmailDescription(JobOffer $job, array $payload, string $sourceCode): bool
-    {
-        if ($sourceCode !== 'gmail') {
-            return false;
-        }
-
-        $currentDescription = trim($job->getDescription());
-        $candidateDescription = trim((string) ($payload['description'] ?? ''));
-        if ($currentDescription === '' || $candidateDescription === '' || $currentDescription === $candidateDescription) {
-            return false;
-        }
-        if (!$this->descriptionContamination->isMultiOfferDigest($currentDescription)) {
-            return false;
-        }
-        if ($this->descriptionContamination->isMultiOfferDigest($candidateDescription)) {
-            return false;
-        }
-
-        $job->fill(['description' => $candidateDescription]);
-
-        return true;
     }
 
     private function canReprocessAutomatically(JobOffer $job): bool

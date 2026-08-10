@@ -54,7 +54,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/integrations/gmail/callback}
       WEB_URL: ${WEB_URL:-http://localhost:3000}
-      GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d}"
+      GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR emploi OR offre OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d}"
       GMAIL_MAX_RESULTS: ${GMAIL_MAX_RESULTS:-100}
       GMAIL_MAX_PAGES: ${GMAIL_MAX_PAGES:-3}
       ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
@@ -123,7 +123,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/integrations/gmail/callback}
       WEB_URL: ${WEB_URL:-http://localhost:3000}
-      GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d}"
+      GMAIL_SEARCH_QUERY: "${GMAIL_SEARCH_QUERY:-(job OR emploi OR offre OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d}"
       GMAIL_MAX_RESULTS: ${GMAIL_MAX_RESULTS:-100}
       GMAIL_MAX_PAGES: ${GMAIL_MAX_PAGES:-3}
       ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}

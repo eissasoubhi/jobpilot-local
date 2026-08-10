@@ -65,4 +65,26 @@ final class ConnectorDeadLetterTest extends TestCase
         self::assertArrayNotHasKey('rawData', $data);
         self::assertArrayNotHasKey('payload', $data);
     }
+
+    public function testErrorMessagesRedactTrackingUrlsAndCredentials(): void
+    {
+        $entry = new ConnectorDeadLetter(
+            'source',
+            ConnectorDeadLetter::STAGE_SEARCH,
+            str_repeat('c', 64),
+            \RuntimeException::class,
+            'GET https://jobs.example.test/jobs/42?trackingId=secret-token#fragment failed; '
+                .'Bearer abc.def.ghi token=super-secret password=hunter2',
+        );
+
+        $message = (string) $entry->toArray()['errorMessage'];
+        self::assertStringContainsString('https://jobs.example.test/jobs/42', $message);
+        self::assertStringNotContainsString('trackingId', $message);
+        self::assertStringNotContainsString('secret-token', $message);
+        self::assertStringContainsString('Bearer [REDACTED]', $message);
+        self::assertStringContainsString('token=[REDACTED]', $message);
+        self::assertStringContainsString('password=[REDACTED]', $message);
+        self::assertStringNotContainsString('abc.def.ghi', $message);
+        self::assertStringNotContainsString('hunter2', $message);
+    }
 }

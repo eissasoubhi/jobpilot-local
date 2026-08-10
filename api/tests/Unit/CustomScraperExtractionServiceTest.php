@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
@@ -49,9 +50,11 @@ HTML;
         self::assertSame('HTTP', $preview['effectiveMode']);
         self::assertFalse($preview['requiresBrowser']);
         self::assertSame(1, $preview['candidateCount']);
+        self::assertSame(0, $preview['reliableCount']);
         self::assertSame(0, $preview['detailEnriched']);
         self::assertSame('S-10', $preview['candidates'][0]['externalId']);
         self::assertSame('Senior Symfony Developer', $preview['candidates'][0]['title']);
+        self::assertFalse($preview['candidates'][0]['rawData']['quality']['reliable']);
         self::assertSame(200, $preview['http']['statusCode']);
     }
 
@@ -74,7 +77,7 @@ HTML;
   "hiringOrganization":{"name":"Acme France"},
   "url":"https://jobs.example.test/jobs/symfony",
   "employmentType":"FREELANCE",
-  "description":"Mission Symfony 6.4, API Platform et PostgreSQL.",
+  "description":"Mission Symfony 6.4 et API Platform sur une plateforme métier, avec PostgreSQL, tests automatisés et travail en équipe produit.",
   "baseSalary":{"value":{"minValue":450,"maxValue":500,"unitText":"DAY"}}
 }</script>
 </body></html>
@@ -87,16 +90,20 @@ HTML;
         ]))->preview($source);
 
         self::assertSame(2, $preview['candidateCount']);
+        self::assertSame(1, $preview['reliableCount']);
         self::assertSame(1, $preview['detailLimit']);
         self::assertSame(1, $preview['detailEnriched']);
         self::assertNull($preview['detailError']);
         self::assertSame(2, $preview['http']['networkRequests']);
         self::assertSame('Acme France', $preview['candidates'][0]['company']);
-        self::assertSame('Mission Symfony 6.4, API Platform et PostgreSQL.', $preview['candidates'][0]['description']);
+        self::assertStringContainsString('plateforme métier', $preview['candidates'][0]['description']);
         self::assertSame(450, $preview['candidates'][0]['tjmMin']);
         self::assertSame(500, $preview['candidates'][0]['tjmMax']);
         self::assertTrue($preview['candidates'][0]['rawData']['detailEnriched']);
         self::assertSame('JSON_LD', $preview['candidates'][0]['rawData']['detailExtractionMethod']);
+        self::assertTrue($preview['candidates'][0]['rawData']['quality']['reliable']);
+        self::assertGreaterThanOrEqual(70, $preview['candidates'][0]['rawData']['quality']['score']);
+        self::assertFalse($preview['candidates'][1]['rawData']['quality']['reliable']);
         self::assertSame('link-', substr((string) $preview['candidates'][0]['externalId'], 0, 5));
     }
 
@@ -113,6 +120,7 @@ HTML;
         self::assertSame('BROWSER', $preview['effectiveMode']);
         self::assertTrue($preview['requiresBrowser']);
         self::assertSame(0, $preview['candidateCount']);
+        self::assertSame(0, $preview['reliableCount']);
         self::assertSame([], $preview['candidates']);
     }
 
@@ -169,6 +177,7 @@ HTML;
             new GenericHtmlModeDetector(),
             $listingExtractor,
             new GenericJobDetailExtractor($listingExtractor),
+            new CustomScraperOfferQualityEvaluator(),
         );
     }
 

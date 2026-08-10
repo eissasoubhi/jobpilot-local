@@ -26,21 +26,22 @@ final class AssistedJobPlatformCatalogTest extends TestCase
         yield 'apec' => ['https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/123', 'apec', 'APEC'];
         yield 'hellowork' => ['https://www.hellowork.com/fr-fr/emplois/123456.html', 'hellowork', 'Hellowork'];
         yield 'welcome to the jungle' => ['https://www.welcometothejungle.com/fr/companies/acme/jobs/developpeur-symfony_paris', 'welcome-to-the-jungle', 'Welcome to the Jungle'];
-        yield 'free-work jobs' => ['https://www.free-work.com/fr/tech-it/jobs/developpeur-symfony/paris', 'free-work', 'Free-Work'];
-        yield 'free-work missions' => ['https://www.free-work.com/fr/tech-it/missions/lead-developer-php', 'free-work', 'Free-Work'];
-        yield 'lesjeudis singular job' => ['https://lesjeudis.com/fr/job/developpeur-php-symfony', 'lesjeudis', 'LesJeudis'];
+        yield 'free-work current detail shape' => ['https://www.free-work.com/fr/tech-it/job-mission/developpeur-php-symfony-laravel-drupal/developpeur-php-symfony-lille-8', 'free-work', 'Free-Work'];
+        yield 'lesjeudis current detail shape' => ['https://lesjeudis.com/fr/job/developpeur-phpsymfony-hf-448784', 'lesjeudis', 'LesJeudis'];
         yield 'lehibou mission' => ['https://www.lehibou.com/mission/developpeur-symfony', 'lehibou', 'Le Hibou'];
-        yield 'lehibou public freelance page' => ['https://www.lehibou.com/freelance/digital-informatique-industrielle-embarque/developpeur-symfony', 'lehibou', 'Le Hibou'];
         yield 'france travail' => ['https://candidat.francetravail.fr/offres/recherche/detail/123ABC', 'france-travail', 'France Travail'];
     }
 
-    public function testRejectsNonJobAndLookalikeDomains(): void
+    public function testRejectsNonJobSearchPagesAndLookalikeDomains(): void
     {
         $catalog = new AssistedJobPlatformCatalog();
 
         self::assertNull($catalog->forUrl('https://www.welcometothejungle.com/fr/pages/terms'));
+        self::assertNull($catalog->forUrl('https://www.welcometothejungle.com/fr/jobs?query=symfony'));
         self::assertNull($catalog->forUrl('https://fake-linkedin.com/jobs/view/123'));
-        self::assertNull($catalog->forUrl('https://www.free-work.com/fr/terms'));
+        self::assertNull($catalog->forUrl('https://www.free-work.com/fr/tech-it/jobs/symfony'));
+        self::assertNull($catalog->forUrl('https://lesjeudis.com/fr/jobs/developpeur-php'));
+        self::assertNull($catalog->forUrl('https://www.lehibou.com/freelance/digital-informatique-industrielle-embarque/developpeur-symfony'));
     }
 
     public function testTextRecognitionUsesTheSameStablePlatformNames(): void

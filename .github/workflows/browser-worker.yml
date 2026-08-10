@@ -1,0 +1,48 @@
+name: Browser worker CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'browser-worker/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.override.yml'
+      - '.github/workflows/browser-worker.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'browser-worker/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.override.yml'
+      - '.github/workflows/browser-worker.yml'
+
+concurrency:
+  group: browser-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  browser-worker:
+    name: Browser worker tests and image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install worker dependencies
+        working-directory: browser-worker
+        run: npm install --no-audit --no-fund
+
+      - name: Run worker policy tests
+        working-directory: browser-worker
+        run: npm test
+
+      - name: Build isolated worker image
+        run: docker build --tag jobpilot-browser-worker:ci browser-worker

@@ -63,6 +63,7 @@ services:
       - '../src/Service/Ai/GeminiCustomScraperExtractor.php'
       - '../src/JobDiscovery/Infrastructure/CustomScraping/CustomScraperJobConnector.php'
       - '../src/JobDiscovery/Infrastructure/CustomScraping/AiRecoveryCustomScraperJobConnector.php'
+      - '../src/JobDiscovery/Infrastructure/CustomScraping/BrowserAwareCustomScraperJobConnector.php'
 
   App\Service\CvStorage:
     arguments:
@@ -165,7 +166,7 @@ services:
           apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
           companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
 
-  App\JobDiscovery\Infrastructure\CustomScraping\AiRecoveryCustomScraperConnectorProvider:
+  App\JobDiscovery\Infrastructure\CustomScraping\BrowserAwareCustomScraperConnectorProvider:
     tags: ['app.dynamic_job_source_connector_provider']
 
   App\JobDiscovery\Application\ConnectorRegistry:

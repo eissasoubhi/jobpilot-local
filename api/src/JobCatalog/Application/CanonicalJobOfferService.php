@@ -9,17 +9,22 @@ use App\Entity\JobOffer;
 use App\Entity\JobSourceOccurrence;
 use App\Entity\UserSettings;
 use App\Service\Ai\AiOfferIntakeFilter;
+use App\Service\JobDescriptionContaminationDetector;
 use App\Service\JobProcessor;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class CanonicalJobOfferService
 {
+    private JobDescriptionContaminationDetector $descriptionContamination;
+
     public function __construct(
         private EntityManagerInterface $em,
         private CanonicalJobMatcher $matcher,
         private JobProcessor $processor,
         private AiOfferIntakeFilter $intakeFilter,
+        ?JobDescriptionContaminationDetector $descriptionContamination = null,
     ) {
+        $this->descriptionContamination = $descriptionContamination ?? new JobDescriptionContaminationDetector();
     }
 
     /**
@@ -56,17 +61,26 @@ final class CanonicalJobOfferService
             'externalId' => $externalId,
         ]);
         if ($existingOccurrence instanceof JobSourceOccurrence) {
+            $job = $existingOccurrence->getJobOffer();
             $existingOccurrence->touch($payload);
-            $existingOccurrence->getJobOffer()->enrichFromOccurrence($payload);
-            $this->em->flush();
+            $descriptionRepaired = $this->repairContaminatedGmailDescription($job, $payload, $sourceCode);
+            $job->enrichFromOccurrence($payload);
+
+            if ($descriptionRepaired && $this->canReprocessAutomatically($job)) {
+                $this->processor->process($job, $settings, $profile);
+            } else {
+                $this->em->flush();
+            }
 
             return new CanonicalJobImportResult(
-                $existingOccurrence->getJobOffer(),
+                $job,
                 $existingOccurrence,
                 CanonicalJobImportResult::DUPLICATE,
                 'EXACT_SOURCE_ID',
                 100,
-                ['Même identifiant externe déjà importé pour cette source.'],
+                $descriptionRepaired
+                    ? ['Même identifiant externe déjà importé ; description Gmail polluée réparée depuis la nouvelle occurrence.']
+                    : ['Même identifiant externe déjà importé pour cette source.'],
             );
         }
 
@@ -126,6 +140,35 @@ final class CanonicalJobOfferService
             100,
             ['Première occurrence de cette offre canonique.'],
         );
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function repairContaminatedGmailDescription(JobOffer $job, array $payload, string $sourceCode): bool
+    {
+        if ($sourceCode !== 'gmail') {
+            return false;
+        }
+
+        $currentDescription = trim($job->getDescription());
+        $candidateDescription = trim((string) ($payload['description'] ?? ''));
+        if ($currentDescription === '' || $candidateDescription === '' || $currentDescription === $candidateDescription) {
+            return false;
+        }
+        if (!$this->descriptionContamination->isMultiOfferDigest($currentDescription)) {
+            return false;
+        }
+        if ($this->descriptionContamination->isMultiOfferDigest($candidateDescription)) {
+            return false;
+        }
+
+        $job->fill(['description' => $candidateDescription]);
+
+        return true;
+    }
+
+    private function canReprocessAutomatically(JobOffer $job): bool
+    {
+        return in_array($job->getStatus(), ['DISCOVERED', 'PREPARED', 'REJECTED_BY_FILTER'], true);
     }
 
     /** @param array<string, mixed> $payload */

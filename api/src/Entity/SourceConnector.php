@@ -8,6 +8,7 @@ use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
 use App\JobDiscovery\Domain\Connector\JobSourceConnector;
+use App\JobDiscovery\Domain\Connector\ScheduledJobSourceConnector;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -92,6 +93,8 @@ final class SourceConnector
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
+    private ?int $definitionIntervalSeconds = null;
+
     public function __construct(JobSourceConnector $connector)
     {
         $now = new \DateTimeImmutable();
@@ -149,7 +152,7 @@ final class SourceConnector
             return false;
         }
 
-        $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', max(900, $intervalSeconds)));
+        $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', $this->effectiveIntervalSeconds($intervalSeconds)));
 
         return $nextSyncAt === null || $nextSyncAt <= new \DateTimeImmutable();
     }
@@ -159,6 +162,9 @@ final class SourceConnector
         $this->name = trim($connector->name());
         $this->mode = $connector->mode()->value;
         $this->configured = $connector->isConfigured();
+        $this->definitionIntervalSeconds = $connector instanceof ScheduledJobSourceConnector
+            ? max(900, $connector->syncIntervalSeconds())
+            : null;
         $message = trim((string) $connector->configurationMessage());
         $this->configurationMessage = $message === '' ? null : $message;
         $this->applyPolicy(
@@ -219,7 +225,8 @@ final class SourceConnector
     /** @return array<string, mixed> */
     public function toArray(int $intervalSeconds): array
     {
-        $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', max(900, $intervalSeconds)));
+        $effectiveIntervalSeconds = $this->effectiveIntervalSeconds($intervalSeconds);
+        $nextSyncAt = $this->lastSyncedAt?->modify(sprintf('+%d seconds', $effectiveIntervalSeconds));
         $policy = new ConnectorPolicy(
             ConnectorComplianceStatus::tryFrom($this->complianceStatus) ?? ConnectorComplianceStatus::UNDER_REVIEW,
             $this->complianceReviewedAt,
@@ -245,6 +252,7 @@ final class SourceConnector
             'lastSuccessfulAt' => $this->lastSuccessfulAt?->format(DATE_ATOM),
             'nextSyncAt' => $nextSyncAt?->format(DATE_ATOM),
             'due' => $this->isDue($intervalSeconds),
+            'intervalSeconds' => $effectiveIntervalSeconds,
             'lastResult' => [
                 'received' => $this->lastReceived,
                 'imported' => $this->lastImported,
@@ -286,5 +294,10 @@ final class SourceConnector
         }
 
         return $this->status;
+    }
+
+    private function effectiveIntervalSeconds(int $fallback): int
+    {
+        return $this->definitionIntervalSeconds ?? max(900, $fallback);
     }
 }

@@ -96,6 +96,20 @@ Sont rejetés : les liens hors domaine, les schémas non HTTP, les URLs avec ide
 
 Pendant une synchronisation, JobPilot suit uniquement cette chaîne de liens détectés. Toutes les URLs déjà visitées sont mémorisées pour stopper immédiatement une boucle.
 
+## Priorité des fiches détail
+
+Le nombre de fiches détail est volontairement borné. JobPilot évite donc de dépenser ce budget uniquement selon l’ordre arbitraire du site.
+
+Pendant une synchronisation automatique, les candidats qui ont encore besoin d’une fiche détail sont classés en fonction des `targetJobs` et `skills` configurés :
+
+- une correspondance dans le titre reçoit le poids le plus fort ;
+- une correspondance déjà visible dans une description courte reçoit un poids secondaire ;
+- les termes génériques comme `developer`, `senior`, `backend`, `frontend`, `fullstack` ou `web` ne suffisent pas à donner une priorité ;
+- les technologies et expressions plus discriminantes comme Symfony, PHP, React, Java ou API Platform font la différence ;
+- l’ordre original du site est conservé en cas d’égalité.
+
+Cette priorité **ne filtre aucune offre** et ne remplace pas le matching candidat. Elle détermine seulement quelles fiches utilisent en premier le budget HTTP limité. La prévisualisation manuelle, qui n’applique pas le profil, conserve l’ordre source.
+
 ## Synchronisation dans JobPilot
 
 Chaque source personnalisée active et autorisée devient un connecteur dynamique distinct, avec un code stable `custom-scraper-{id}`. Elle dispose donc de son propre état de synchronisation, historique, diagnostics, parser et origine dans le catalogue.
@@ -105,12 +119,13 @@ Pour la synchronisation générique HTTP :
 1. JobPilot suit les pages suivantes explicitement détectées, jusqu’à `maxPages` avec une limite dure de **10 pages par cycle** ;
 2. la collecte s’arrête sur absence de page suivante, limite atteinte, boucle détectée, erreur de page ou besoin de rendu Browser ;
 3. jusqu’à `maxDetails` fiches sont enrichies, avec une limite dure de **30 fiches par cycle** ;
-4. le budget HTTP affiché et appliqué est borné par `pages + fiches détail` ;
-5. seuls les candidats `rawData.quality.reliable=true` sont retournés par le connecteur ;
-6. ces candidats entrent ensuite dans le pipeline canonique existant : déduplication multi-sources, filtre profil/IA éventuel, scoring et préparation ;
-7. les candidats non fiables ne sont pas persistés comme offres ;
-8. la fréquence `syncIntervalMinutes` de chaque source est respectée sans ajouter de colonne en base ;
-9. les connecteurs classiques sans fréquence spécifique continuent d’utiliser l’intervalle global JobPilot.
+4. les fiches détail correspondant le mieux aux critères `targetJobs` / `skills` sont enrichies en premier ;
+5. le budget HTTP affiché et appliqué est borné par `pages + fiches détail` ;
+6. seuls les candidats `rawData.quality.reliable=true` sont retournés par le connecteur ;
+7. ces candidats entrent ensuite dans le pipeline canonique existant : déduplication multi-sources, filtre profil/IA éventuel, scoring et préparation ;
+8. les candidats non fiables ne sont pas persistés comme offres ;
+9. la fréquence `syncIntervalMinutes` de chaque source est respectée sans ajouter de colonne en base ;
+10. les connecteurs classiques sans fréquence spécifique continuent d’utiliser l’intervalle global JobPilot.
 
 Une source forcée en `BROWSER` reste non synchronisable tant que le worker Playwright isolé n’est pas livré. En mode `AUTO`, une page détectée comme nécessitant Browser arrête la chaîne HTTP sans tentative de contournement.
 
@@ -132,12 +147,11 @@ Le diagnostic et la prévisualisation actuels ne lancent pas encore Chromium. La
 
 ## Étapes suivantes
 
-Le chemin HTTP générique possède maintenant le registre, le diagnostic, la prévisualisation, l’extraction de liste, l’enrichissement des fiches, le garde-fou de qualité, le connecteur dynamique, la fréquence par source et la pagination détectée bornée.
+Le chemin HTTP générique possède maintenant le registre, le diagnostic, la prévisualisation, l’extraction de liste, l’enrichissement priorisé des fiches, le garde-fou de qualité, le connecteur dynamique, la fréquence par source et la pagination détectée bornée.
 
 Les prochains incréments prévus sont :
 
 - exposer la fiabilité et le score d’extraction dans l’interface de prévisualisation ;
-- améliorer la priorité des fiches détail à enrichir selon les critères de recherche du profil ;
 - utiliser Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
 - worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis.
 

@@ -64,7 +64,7 @@ final class CustomScraperSourceApiTest extends WebTestCase
         self::assertSame('SCRAPING_HTTP', $dynamic['mode']);
         self::assertTrue($dynamic['configured']);
         self::assertTrue($dynamic['collectionAllowed']);
-        self::assertSame('custom-generic-html-v1', $dynamic['parserVersion']);
+        self::assertSame('custom-generic-html-v2', $dynamic['parserVersion']);
 
         $client->jsonRequest('PATCH', sprintf('/api/custom-scrapers/%d', $id), [
             'mode' => 'BROWSER',

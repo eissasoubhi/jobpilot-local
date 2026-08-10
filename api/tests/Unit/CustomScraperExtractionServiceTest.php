@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperDetailPriority;
 use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
@@ -53,6 +54,7 @@ HTML;
         self::assertSame(1, $preview['candidateCount']);
         self::assertSame(0, $preview['reliableCount']);
         self::assertSame(0, $preview['detailEnriched']);
+        self::assertFalse($preview['detailPriorityApplied']);
         self::assertNull($preview['pagination']['nextUrl']);
         self::assertSame('S-10', $preview['candidates'][0]['externalId']);
         self::assertSame('Senior Symfony Developer', $preview['candidates'][0]['title']);
@@ -116,6 +118,7 @@ HTML;
         self::assertSame(1, $preview['reliableCount']);
         self::assertSame(1, $preview['detailLimit']);
         self::assertSame(1, $preview['detailEnriched']);
+        self::assertFalse($preview['detailPriorityApplied']);
         self::assertNull($preview['detailError']);
         self::assertSame(2, $preview['http']['networkRequests']);
         self::assertSame('Acme France', $preview['candidates'][0]['company']);
@@ -203,6 +206,7 @@ HTML;
             new GenericJobDetailExtractor($listingExtractor),
             new CustomScraperOfferQualityEvaluator(),
             new GenericPaginationDetector(),
+            new CustomScraperDetailPriority(),
         );
     }
 

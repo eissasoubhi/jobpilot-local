@@ -52,6 +52,45 @@ type ScraperDiagnostic = {
   };
 };
 
+type ScrapedCandidate = {
+  sourceUrl: string;
+  externalId: string;
+  title: string;
+  company: string;
+  location: string;
+  contractType: string;
+  workMode: string;
+  language: string;
+  description: string;
+  publishedAt: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  tjmMin: number | null;
+  tjmMax: number | null;
+  rawData: Record<string, unknown>;
+};
+
+type ScraperPreview = {
+  configuredMode: ScraperMode;
+  recommendedMode: Exclude<ScraperMode, 'AUTO'>;
+  effectiveMode: Exclude<ScraperMode, 'AUTO'>;
+  requiresBrowser: boolean;
+  candidateCount: number;
+  detailLimit: number;
+  detailEnriched: number;
+  detailError: string | null;
+  candidates: ScrapedCandidate[];
+  signals: Record<string, unknown>;
+  http: {
+    requestedUrl: string;
+    finalUrl: string;
+    statusCode: number;
+    responseBytes: number;
+    networkRequests: number;
+    fromCache: boolean;
+  };
+};
+
 type NewSourceForm = {
   name: string;
   listingUrl: string;
@@ -98,11 +137,33 @@ function confidenceLabel(confidence: Confidence): string {
   return 'Confiance faible';
 }
 
+function tjmLabel(candidate: ScrapedCandidate): string | null {
+  if (candidate.tjmMin === null && candidate.tjmMax === null) return null;
+  if (candidate.tjmMin !== null && candidate.tjmMax !== null && candidate.tjmMin !== candidate.tjmMax) {
+    return `TJM ${candidate.tjmMin}–${candidate.tjmMax} €`;
+  }
+  return `TJM ${candidate.tjmMin ?? candidate.tjmMax} €`;
+}
+
+function extractionLabel(candidate: ScrapedCandidate): string {
+  const detailMethod = typeof candidate.rawData.detailExtractionMethod === 'string'
+    ? candidate.rawData.detailExtractionMethod
+    : null;
+  const method = detailMethod ?? (typeof candidate.rawData.extractionMethod === 'string' ? candidate.rawData.extractionMethod : 'HTTP');
+
+  if (method === 'JSON_LD') return 'JobPosting';
+  if (method === 'DOM') return 'DOM détail';
+  if (method === 'JOB_LINK') return 'Lien détecté';
+  return method;
+}
+
 export default function CustomScrapingSettingsPage() {
   const [sources, setSources] = useState<CustomScraperSource[] | null>(null);
   const [form, setForm] = useState<NewSourceForm>(initialForm);
   const [diagnostics, setDiagnostics] = useState<Record<number, ScraperDiagnostic>>({});
+  const [previews, setPreviews] = useState<Record<number, ScraperPreview>>({});
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [previewingId, setPreviewingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -166,6 +227,11 @@ export default function CustomScrapingSettingsPage() {
         delete next[source.id];
         return next;
       });
+      setPreviews((current) => {
+        const next = { ...current };
+        delete next[source.id];
+        return next;
+      });
       setMessage(`${updated.name} a été mis à jour.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
@@ -187,6 +253,21 @@ export default function CustomScrapingSettingsPage() {
     }
   };
 
+  const previewSource = async (source: CustomScraperSource): Promise<void> => {
+    setPreviewingId(source.id);
+    setError('');
+    setMessage('');
+    try {
+      const result = await api<ScraperPreview>(`/custom-scrapers/${source.id}/preview`, { method: 'POST' });
+      setPreviews((current) => ({ ...current, [source.id]: result }));
+      setMessage(`${result.candidateCount} candidat(s) détecté(s) pour ${source.name}.`);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
   const deleteSource = async (source: CustomScraperSource): Promise<void> => {
     if (!window.confirm(`Supprimer ${source.name} du registre de scraping ?`)) return;
 
@@ -196,6 +277,11 @@ export default function CustomScrapingSettingsPage() {
       await api<void>(`/custom-scrapers/${source.id}`, { method: 'DELETE' });
       setSources((current) => (current ?? []).filter((item) => item.id !== source.id));
       setDiagnostics((current) => {
+        const next = { ...current };
+        delete next[source.id];
+        return next;
+      });
+      setPreviews((current) => {
         const next = { ...current };
         delete next[source.id];
         return next;
@@ -214,7 +300,7 @@ export default function CustomScrapingSettingsPage() {
     <>
       <PageHeader
         title="Scraping personnalisé"
-        description="Ajoute les sites dont tu as vérifié l’autorisation de collecte, puis teste le HTML public avant de choisir HTTP ou Browser."
+        description="Ajoute les sites dont tu as vérifié l’autorisation de collecte, puis teste et prévisualise les offres publiques avant toute importation."
       />
 
       {message !== '' && <div className="notice">{message}</div>}
@@ -247,7 +333,7 @@ export default function CustomScrapingSettingsPage() {
             </label>
             <div className="notice">
               <strong>Quel mode choisir ?</strong><br />
-              Laisse <strong>Auto</strong>. Après l’ajout, le bouton <strong>Tester le site</strong> analyse une seule réponse HTTP. Si les offres sont déjà présentes, HTTP est recommandé ; si la réponse ressemble à une coquille JavaScript vide, Browser/Playwright est recommandé.
+              Laisse <strong>Auto</strong>. Après l’ajout, <strong>Tester le site</strong> analyse le rendu disponible et <strong>Prévisualiser les offres</strong> montre ce que JobPilot peut réellement extraire sans enregistrer de candidature.
             </div>
             <div className="form-grid">
               <label>
@@ -289,9 +375,9 @@ export default function CustomScrapingSettingsPage() {
           <h2 className="section-title">Comment fonctionne Auto ?</h2>
           <div className="stack">
             <p className="muted">Le moteur privilégie toujours la solution la plus légère et ne lance pas Chromium si le HTML serveur suffit.</p>
-            <div className="notice"><strong>1. Probe HTTP</strong><br />Un seul téléchargement contrôlé, avec robots.txt, timeout, quota et limite de taille.</div>
+            <div className="notice"><strong>1. Probe HTTP</strong><br />Un téléchargement contrôlé, avec robots.txt, timeout, quota et limite de taille.</div>
             <div className="notice"><strong>2. Signaux</strong><br />JobPosting, liens d’offres, texte visible, scripts et marqueurs React/Next/Nuxt sont comparés.</div>
-            <div className="notice"><strong>3. Recommandation</strong><br />HTTP si le DOM est exploitable ; Browser si la page est manifestement rendue par JavaScript.</div>
+            <div className="notice"><strong>3. Prévisualisation</strong><br />Les candidats HTTP sont affichés sans persistance ; quelques fiches détail peuvent être enrichies de façon bornée.</div>
             <div className="notice warning"><strong>Important</strong><br />Le diagnostic ne contourne ni authentification, ni CAPTCHA, ni restriction d’accès. Browser n’est pas encore exécuté dans cette étape.</div>
           </div>
         </Card>
@@ -306,6 +392,7 @@ export default function CustomScrapingSettingsPage() {
           <div className="stack">
             {sources.map((source) => {
               const diagnostic = diagnostics[source.id];
+              const preview = previews[source.id];
               return (
                 <div className="notice" key={source.id}>
                   <div className="actions" style={{ justifyContent: 'space-between' }}>
@@ -321,8 +408,11 @@ export default function CustomScrapingSettingsPage() {
                   </div>
                   {source.authorizationReference && <div className="muted" style={{ marginTop: 6 }}>{source.authorizationReference}</div>}
                   <div className="actions" style={{ marginTop: 10 }}>
-                    <button className="btn" type="button" disabled={testingId !== null} onClick={() => void diagnoseSource(source)}>
+                    <button className="btn" type="button" disabled={testingId !== null || previewingId !== null} onClick={() => void diagnoseSource(source)}>
                       {testingId === source.id ? 'Test en cours…' : 'Tester le site'}
+                    </button>
+                    <button className="btn secondary" type="button" disabled={testingId !== null || previewingId !== null} onClick={() => void previewSource(source)}>
+                      {previewingId === source.id ? 'Prévisualisation…' : 'Prévisualiser les offres'}
                     </button>
                     <button className="btn secondary" type="button" onClick={() => void patchSource(source, { enabled: !source.enabled })}>
                       {source.enabled ? 'Désactiver' : 'Activer'}
@@ -348,6 +438,53 @@ export default function CustomScrapingSettingsPage() {
                       </div>
                       {diagnostic.browserVerificationRequired && (
                         <div className="muted" style={{ marginTop: 6 }}>Une vérification Browser/Playwright pourra confirmer ce résultat dans l’étape suivante.</div>
+                      )}
+                    </div>
+                  )}
+
+                  {preview && (
+                    <div className="notice" style={{ marginTop: 12 }}>
+                      <div className="actions">
+                        <Badge tone={preview.requiresBrowser ? 'warn' : 'good'}>{preview.candidateCount} candidat(s)</Badge>
+                        <Badge tone="blue">Mode : {preview.effectiveMode}</Badge>
+                        {preview.detailLimit > 0 && <Badge tone="blue">{preview.detailEnriched}/{preview.detailLimit} fiche(s) enrichie(s)</Badge>}
+                      </div>
+                      <div className="muted" style={{ marginTop: 6 }}>
+                        {preview.http.networkRequests} requête(s) cible · HTTP {preview.http.statusCode} · aucune offre enregistrée
+                      </div>
+                      {preview.requiresBrowser && (
+                        <div className="notice warning" style={{ marginTop: 10 }}>Le HTML serveur ne suffit pas. Cette source devra passer par le worker Browser/Playwright lorsqu’il sera disponible.</div>
+                      )}
+                      {preview.detailError && (
+                        <div className="notice warning" style={{ marginTop: 10 }}>Enrichissement arrêté : {preview.detailError}</div>
+                      )}
+                      {preview.candidates.length === 0 && !preview.requiresBrowser && (
+                        <p className="muted" style={{ marginTop: 10 }}>Aucune offre suffisamment identifiable dans cette réponse HTTP.</p>
+                      )}
+                      {preview.candidates.length > 0 && (
+                        <div className="stack" style={{ marginTop: 12 }}>
+                          {preview.candidates.slice(0, 10).map((candidate) => {
+                            const details = [candidate.company, candidate.contractType, candidate.location, candidate.workMode, tjmLabel(candidate)]
+                              .filter((value): value is string => Boolean(value));
+                            const description = candidate.description.trim();
+                            const shortDescription = description.length > 320 ? `${description.slice(0, 320)}…` : description;
+
+                            return (
+                              <div className="notice" key={candidate.externalId}>
+                                <div className="actions" style={{ justifyContent: 'space-between' }}>
+                                  <strong>{candidate.title}</strong>
+                                  <Badge tone="blue">{extractionLabel(candidate)}</Badge>
+                                </div>
+                                {details.length > 0 && <div className="muted" style={{ marginTop: 6 }}>{details.join(' · ')}</div>}
+                                {shortDescription !== '' && <p style={{ marginBottom: 6 }}>{shortDescription}</p>}
+                                <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">Voir la fiche source</a>
+                              </div>
+                            );
+                          })}
+                          {preview.candidateCount > 10 && (
+                            <div className="muted">{preview.candidateCount - 10} autre(s) candidat(s) détecté(s), masqué(s) dans cette prévisualisation compacte.</div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

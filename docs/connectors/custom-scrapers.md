@@ -65,6 +65,22 @@ Pour les fiches détail, JobPilot privilégie à nouveau un `JobPosting` structu
 
 Chaque URL de détail repasse par le transport contrôlé et le contrôle `robots.txt`. Les URL hors domaine sont ignorées. Aucun login, cookie privé, Gemini ou navigateur n’est déclenché par cette prévisualisation.
 
+## Qualité de l’extraction
+
+La qualité de l’extraction est évaluée séparément du score de matching du profil candidat.
+
+Chaque candidat reçoit `rawData.quality` avec :
+
+- `score` de 0 à 100 ;
+- `reliable` ;
+- les raisons du score.
+
+Le score favorise un titre réellement exploitable, une URL HTTPS du domaine autorisé, une description suffisamment longue, la présence de données Schema.org `JobPosting`, un enrichissement de fiche détail et des champs métier supplémentaires.
+
+Un simple lien de type `JOB_LINK` sans description ne peut pas devenir fiable. Une URL hors domaine ou un titre générique comme « Voir le poste » bloque également l’éligibilité. Le seuil actuel pour l’import automatique est **70/100 avec une description d’au moins 60 caractères**.
+
+Ce garde-fou ne décide pas si l’offre correspond au profil PHP/Symfony ou à un autre profil candidat : ce contrôle reste effectué ensuite par le pipeline normal de matching de JobPilot.
+
 ## Choix du mode
 
 `AUTO` reste le mode recommandé.
@@ -83,10 +99,11 @@ Le diagnostic et la prévisualisation actuels ne lancent pas encore Chromium. La
 
 ## Étapes suivantes
 
-Le registre, le diagnostic HTTP, l’extraction de liste et l’enrichissement borné des fiches sont maintenant branchés. Les prochains incréments prévus sont :
+Le registre, le diagnostic HTTP, l’extraction de liste, l’enrichissement borné des fiches, l’interface de prévisualisation et le garde-fou de qualité sont maintenant branchés dans la chaîne en cours de livraison. Les prochains incréments prévus sont :
 
-- afficher les candidats extraits directement dans **Paramètres > Scraping personnalisé** ;
-- définir le seuil de qualité qui autorise l’intégration d’une offre personnalisée dans le pipeline normal de normalisation, déduplication et matching ;
+- exposer la fiabilité dans l’interface de prévisualisation ;
+- brancher uniquement les candidats `reliable=true` sur le pipeline normal de normalisation, déduplication et matching ;
+- gérer les sources personnalisées comme des connecteurs dynamiques séparés afin de conserver leur historique et leur filtre de source ;
 - utiliser Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
 - worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis.
 

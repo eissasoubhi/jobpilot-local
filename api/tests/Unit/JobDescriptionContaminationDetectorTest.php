@@ -32,11 +32,44 @@ TEXT;
         self::assertTrue((new JobDescriptionContaminationDetector())->isMultiOfferDigest($text));
     }
 
+    public function testRecoversOnlyTheCurrentOfferBlockFromStoredDigest(): void
+    {
+        $text = <<<'TEXT'
+Offres d'emploi similaires à Développeur et Lead Dev PHP (H/F) chez Davidson consulting
+Lead Développeur PHP Symfony (H-F) Actimage Arcueil Voir l'offre d'emploi : https://www.linkedin.com/comm/jobs/view/4429991557?trackingId=abc
+--------------------------------------------------
+Tech Lead PHP H/F Proelan Sophia Antipolis Voir l'offre d'emploi : https://www.linkedin.com/comm/jobs/view/4445927337?trackingId=def
+--------------------------------------------------
+Développeur Full Stack expérimenté - PHP Symfony & Angular H/F ALCYON France
+TEXT;
+
+        $summary = (new JobDescriptionContaminationDetector())->localSummary(
+            $text,
+            'Lead Développeur PHP Symfony (H-F)',
+        );
+
+        self::assertSame('Lead Développeur PHP Symfony (H-F) Actimage Arcueil', $summary);
+        self::assertStringNotContainsString('Tech Lead PHP H/F', $summary);
+        self::assertStringNotContainsString('https://', $summary);
+    }
+
+    public function testFallsBackToTitleWhenTheCurrentOfferCannotBeLocatedInDigest(): void
+    {
+        $summary = (new JobDescriptionContaminationDetector())->localSummary(
+            "Offres recommandées. Voir l'offre d'emploi. Voir l'offre d'emploi.",
+            'Lead PHP Symfony',
+        );
+
+        self::assertSame('Lead PHP Symfony', $summary);
+    }
+
     public function testKeepsNormalSingleOfferDescriptionClean(): void
     {
         $text = 'Nous cherchons un Lead PHP Symfony pour concevoir des API, accompagner l’équipe et travailler avec RabbitMQ. '
             .'Mission hybride à Paris, TJM 500 à 550 €.';
 
-        self::assertFalse((new JobDescriptionContaminationDetector())->isMultiOfferDigest($text));
+        $detector = new JobDescriptionContaminationDetector();
+        self::assertFalse($detector->isMultiOfferDigest($text));
+        self::assertSame($text, $detector->localSummary($text, 'Lead PHP Symfony'));
     }
 }

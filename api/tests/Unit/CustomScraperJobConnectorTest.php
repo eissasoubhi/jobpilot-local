@@ -11,6 +11,7 @@ use App\JobDiscovery\Infrastructure\CustomScraping\CustomScraperJobConnector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
+use App\JobDiscovery\Infrastructure\Scraping\Html\GenericPaginationDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore;
 use App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard;
@@ -70,6 +71,7 @@ HTML;
         self::assertSame('Example Jobs', $connector->name());
         self::assertSame(ConnectorMode::SCRAPING_HTTP, $connector->mode());
         self::assertSame('custom-generic-html-v1', $connector->parserVersion());
+        self::assertSame(21_600, $connector->syncIntervalSeconds());
         self::assertTrue($connector->isConfigured());
         self::assertCount(1, $offers);
         self::assertSame('Senior Symfony Developer', $offers[0]['title']);
@@ -135,6 +137,7 @@ HTML;
             $listingExtractor,
             new GenericJobDetailExtractor($listingExtractor),
             new CustomScraperOfferQualityEvaluator(),
+            new GenericPaginationDetector(),
         );
     }
 

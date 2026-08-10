@@ -9,11 +9,12 @@ use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
+use App\JobDiscovery\Domain\Connector\ScheduledJobSourceConnector;
 use App\JobDiscovery\Domain\Connector\SearchDiagnosticsConnector;
 use App\JobDiscovery\Domain\Connector\VersionedJobSourceConnector;
 use App\Service\CustomScraperExtractionService;
 
-final class CustomScraperJobConnector implements GovernedJobSourceConnector, VersionedJobSourceConnector, SearchDiagnosticsConnector
+final class CustomScraperJobConnector implements GovernedJobSourceConnector, VersionedJobSourceConnector, SearchDiagnosticsConnector, ScheduledJobSourceConnector
 {
     /** @var array<string, mixed> */
     private array $diagnostics = [];
@@ -47,6 +48,11 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
     public function parserVersion(): string
     {
         return 'custom-generic-html-v1';
+    }
+
+    public function syncIntervalSeconds(): int
+    {
+        return max(3_600, (int) ($this->data()['syncIntervalMinutes'] ?? 360) * 60);
     }
 
     public function isConfigured(): bool
@@ -141,6 +147,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             'requiresBrowser' => (bool) ($preview['requiresBrowser'] ?? false),
             'detailError' => is_string($preview['detailError'] ?? null) ? $preview['detailError'] : null,
             'networkRequests' => (int) ($preview['http']['networkRequests'] ?? 0),
+            'syncIntervalSeconds' => $this->syncIntervalSeconds(),
             'skipped' => false,
         ];
 

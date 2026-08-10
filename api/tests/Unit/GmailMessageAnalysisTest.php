@@ -82,6 +82,7 @@ final class GmailMessageAnalysisTest extends TestCase
         self::assertSame('Example', $offers[0]['company']);
         self::assertSame('APEC', $offers[0]['rawData']['alertPlatform']);
         self::assertSame('apec', $offers[0]['rawData']['alertPlatformCode']);
+        self::assertSame(1, $offers[0]['rawData']['eligibleLinkCount']);
         self::assertStringNotContainsString('utm_source', $offers[0]['sourceUrl']);
     }
 
@@ -105,6 +106,69 @@ final class GmailMessageAnalysisTest extends TestCase
         self::assertSame('Free-Work', $offers[0]['rawData']['alertPlatform']);
         self::assertSame('lesjeudis', $offers[1]['rawData']['alertPlatformCode']);
         self::assertSame('LesJeudis', $offers[1]['rawData']['alertPlatform']);
+    }
+
+    public function testMultiOfferAlertKeepsTechnologyContextSeparatedPerOffer(): void
+    {
+        $extractor = new GmailJobAlertExtractor();
+        $html = <<<'HTML'
+<section>
+  <article>
+    <h2>Backend Java chez Alpha</h2>
+    <p>Java 21, Spring Boot, Kafka, PostgreSQL. CDI à Paris.</p>
+    <a href="https://www.hellowork.com/fr-fr/emplois/111.html">Backend Java chez Alpha</a>
+  </article>
+  <article>
+    <h2>Développeur PHP Symfony chez Beta</h2>
+    <p>PHP 8.3, Symfony 7, API Platform, PostgreSQL. CDI à Lyon.</p>
+    <a href="https://www.hellowork.com/fr-fr/emplois/222.html">Développeur PHP Symfony chez Beta</a>
+  </article>
+</section>
+HTML;
+
+        $offers = $extractor->extract(
+            'gmail-multi',
+            'JOB_ALERT',
+            'Vos nouvelles offres backend : Java et PHP Symfony',
+            'Hellowork <alerts@example.com>',
+            'Backend Java Spring Boot. Développeur PHP Symfony API Platform.',
+            $html,
+            new \DateTimeImmutable('2026-08-10T18:00:00+02:00'),
+        );
+
+        self::assertCount(2, $offers);
+        self::assertSame('Backend Java', $offers[0]['title']);
+        self::assertStringContainsString('Java 21', $offers[0]['description']);
+        self::assertStringContainsString('Spring Boot', $offers[0]['description']);
+        self::assertStringNotContainsString('Symfony', $offers[0]['description']);
+        self::assertStringNotContainsString('API Platform', $offers[0]['description']);
+        self::assertSame('LINK_CONTEXT', $offers[0]['rawData']['descriptionScope']);
+        self::assertSame(2, $offers[0]['rawData']['eligibleLinkCount']);
+
+        self::assertSame('Développeur PHP Symfony', $offers[1]['title']);
+        self::assertStringContainsString('PHP 8.3', $offers[1]['description']);
+        self::assertStringContainsString('Symfony 7', $offers[1]['description']);
+        self::assertStringNotContainsString('Spring Boot', $offers[1]['description']);
+        self::assertSame('LINK_CONTEXT', $offers[1]['rawData']['descriptionScope']);
+    }
+
+    public function testSingleEligibleOfferCanUseMessageBodyWhenLocalContextIsOnlyTheLinkLabel(): void
+    {
+        $extractor = new GmailJobAlertExtractor();
+        $offers = $extractor->extract(
+            'gmail-single',
+            'JOB_ALERT',
+            'Alerte emploi Symfony',
+            'APEC <alertes@apec.fr>',
+            'Mission PHP 8.3 Symfony 7 API Platform à Paris en CDI.',
+            '<a href="https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/999">Développeur PHP Symfony chez Example</a>'
+                .'<a href="https://www.apec.fr/preferences/unsubscribe">Se désabonner</a>',
+            new \DateTimeImmutable('2026-08-10T18:00:00+02:00'),
+        );
+
+        self::assertCount(1, $offers);
+        self::assertSame('MESSAGE_BODY', $offers[0]['rawData']['descriptionScope']);
+        self::assertStringContainsString('API Platform', $offers[0]['description']);
     }
 
     private function encode(string $value): string

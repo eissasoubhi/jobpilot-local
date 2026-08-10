@@ -24,6 +24,8 @@ type ScraperPreset = {
   reviewDueAt: string;
   reviewFresh: boolean;
   reviewTtlDays: number;
+  reviewDaysRemaining: number;
+  reviewRenewalRecommended: boolean;
   syncIntervalMinutes: number;
   maxPages: number;
   maxDetails: number;
@@ -104,7 +106,7 @@ export default function SourcePresetPanel() {
       <Card>
         <h2 className="section-title">Sources suggérées</h2>
         <p className="muted">
-          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site. Les revues JobPilot expirent automatiquement après 90 jours.
+          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site. Les revues JobPilot expirent automatiquement après 90 jours et sont signalées 14 jours avant l’échéance.
         </p>
         {error !== '' && <ErrorBox message={error} />}
         {presets !== null && (
@@ -121,6 +123,9 @@ export default function SourcePresetPanel() {
                     <div className="actions">
                       <Badge tone={assistedOnly ? 'warn' : 'blue'}>{preset.complianceLabel}</Badge>
                       {!preset.reviewFresh && <Badge tone="warn">Revue expirée</Badge>}
+                      {preset.reviewRenewalRecommended && (
+                        <Badge tone="warn">Revue à renouveler · {preset.reviewDaysRemaining} j</Badge>
+                      )}
                       {preset.gmailSupported && <Badge tone="good">Gmail pris en charge</Badge>}
                       <Badge tone="blue">{modeLabel(preset.mode)}</Badge>
                     </div>
@@ -130,6 +135,12 @@ export default function SourcePresetPanel() {
                   <div className="muted" style={{ marginTop: 6 }}>
                     Revue JobPilot : {preset.reviewedAt} · échéance : {preset.reviewDueAt} · <a href={preset.termsUrl} target="_blank" rel="noreferrer">référence publique consultée</a>
                   </div>
+
+                  {preset.reviewRenewalRecommended && preset.reviewFresh && (
+                    <div className="notice warning" style={{ marginTop: 10 }}>
+                      Cette revue expire dans {preset.reviewDaysRemaining} jour{preset.reviewDaysRemaining === 1 ? '' : 's'}. Relis la référence publique et mets à jour le catalogue avant l’échéance ; l’ajout reste possible jusque-là si les autres conditions sont remplies.
+                    </div>
+                  )}
 
                   {preset.gmailSupported && (
                     <div className="notice" style={{ marginTop: 10 }}>

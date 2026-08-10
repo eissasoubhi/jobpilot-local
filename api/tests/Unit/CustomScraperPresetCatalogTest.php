@@ -21,6 +21,8 @@ final class CustomScraperPresetCatalogTest extends TestCase
             self::assertSame('2026-11-08', $preset['reviewDueAt']);
             self::assertTrue($preset['reviewFresh']);
             self::assertSame(90, $preset['reviewTtlDays']);
+            self::assertSame(90, $preset['reviewDaysRemaining']);
+            self::assertFalse($preset['reviewRenewalRecommended']);
             self::assertNotSame('', trim((string) $preset['termsUrl']));
             self::assertNotSame('', trim((string) $preset['reason']));
             self::assertNotSame('', trim((string) $preset['recommendedAction']));
@@ -41,6 +43,23 @@ final class CustomScraperPresetCatalogTest extends TestCase
         }
     }
 
+    public function testRenewalWarningStartsExactlyFourteenDaysBeforeDueDate(): void
+    {
+        $fifteenDaysBefore = (new CustomScraperPresetCatalog(null, '2026-10-24'))->all();
+        $fourteenDaysBefore = (new CustomScraperPresetCatalog(null, '2026-10-25'))->all();
+
+        foreach ($fifteenDaysBefore as $preset) {
+            self::assertSame(15, $preset['reviewDaysRemaining']);
+            self::assertFalse($preset['reviewRenewalRecommended']);
+            self::assertTrue($preset['reviewFresh']);
+        }
+        foreach ($fourteenDaysBefore as $preset) {
+            self::assertSame(14, $preset['reviewDaysRemaining']);
+            self::assertTrue($preset['reviewRenewalRecommended']);
+            self::assertTrue($preset['reviewFresh']);
+        }
+    }
+
     public function testExpiredReviewBlocksPresetPrefillWithoutChangingAssistedGmailSupport(): void
     {
         $presets = (new CustomScraperPresetCatalog(null, '2026-11-09'))->all();
@@ -48,6 +67,8 @@ final class CustomScraperPresetCatalogTest extends TestCase
         foreach ($presets as $preset) {
             $bySlug[$preset['slug']] = $preset;
             self::assertFalse($preset['reviewFresh']);
+            self::assertFalse($preset['reviewRenewalRecommended']);
+            self::assertSame(0, $preset['reviewDaysRemaining']);
             self::assertFalse($preset['canPrefill']);
             self::assertTrue($preset['gmailSupported']);
         }
@@ -57,12 +78,14 @@ final class CustomScraperPresetCatalogTest extends TestCase
         self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['lehibou-symfony']['complianceStatus']);
     }
 
-    public function testReviewIsStillFreshOnTheDueDate(): void
+    public function testReviewIsFreshButRenewalRecommendedOnDueDate(): void
     {
         $presets = (new CustomScraperPresetCatalog(null, '2026-11-08'))->all();
 
         foreach ($presets as $preset) {
             self::assertTrue($preset['reviewFresh']);
+            self::assertTrue($preset['reviewRenewalRecommended']);
+            self::assertSame(0, $preset['reviewDaysRemaining']);
         }
     }
 }

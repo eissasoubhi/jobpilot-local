@@ -12,6 +12,7 @@ final class CustomScraperPresetCatalog
     public const STATUS_AUTHORIZATION_REQUIRED = 'AUTHORIZATION_REQUIRED';
     public const STATUS_ASSISTED_ONLY = 'ASSISTED_ONLY';
     private const REVIEW_TTL_DAYS = 90;
+    private const REVIEW_WARNING_DAYS = 14;
 
     private AssistedJobPlatformCatalog $assistedPlatforms;
     private \DateTimeImmutable $today;
@@ -140,10 +141,14 @@ final class CustomScraperPresetCatalog
 
         $reviewedAt = new \DateTimeImmutable((string) ($preset['reviewedAt'] ?? '1970-01-01'));
         $reviewDueAt = $reviewedAt->modify('+'.self::REVIEW_TTL_DAYS.' days');
-        $reviewFresh = $this->today->format('Y-m-d') <= $reviewDueAt->format('Y-m-d');
+        $signedDaysRemaining = (int) $this->today->diff($reviewDueAt)->format('%r%a');
+        $reviewFresh = $signedDaysRemaining >= 0;
+        $reviewDaysRemaining = max(0, $signedDaysRemaining);
         $preset['reviewDueAt'] = $reviewDueAt->format('Y-m-d');
         $preset['reviewFresh'] = $reviewFresh;
         $preset['reviewTtlDays'] = self::REVIEW_TTL_DAYS;
+        $preset['reviewDaysRemaining'] = $reviewDaysRemaining;
+        $preset['reviewRenewalRecommended'] = $reviewFresh && $reviewDaysRemaining <= self::REVIEW_WARNING_DAYS;
         $preset['canPrefill'] = ($preset['canPrefill'] ?? false) === true && $reviewFresh;
 
         return $preset;

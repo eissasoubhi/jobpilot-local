@@ -29,6 +29,7 @@ const preview = {
   effectiveMode: 'HTTP',
   requiresBrowser: false,
   candidateCount: 2,
+  reliableCount: 1,
   detailLimit: 10,
   detailEnriched: 1,
   detailError: null,
@@ -61,6 +62,15 @@ const preview = {
         extractionMethod: 'JOB_LINK',
         detailExtractionMethod: 'JSON_LD',
         detailEnriched: true,
+        quality: {
+          reliable: true,
+          score: 86,
+          reasons: [
+            'Titre exploitable.',
+            'URL HTTPS du domaine autorisé.',
+            'Données Schema.org JobPosting détectées.',
+          ],
+        },
       },
     },
     {
@@ -81,6 +91,15 @@ const preview = {
       rawData: {
         extractionMethod: 'JOB_LINK',
         needsDetailFetch: true,
+        quality: {
+          reliable: false,
+          score: 47,
+          reasons: [
+            'Titre exploitable.',
+            'URL HTTPS du domaine autorisé.',
+            'Description trop courte pour un import automatique.',
+          ],
+        },
       },
     },
   ],
@@ -91,7 +110,7 @@ describe('CustomScrapingSettingsPage', () => {
     apiMock.mockReset();
   });
 
-  it('previews extracted candidates without importing them', async () => {
+  it('previews extraction reliability without importing candidates', async () => {
     apiMock.mockResolvedValueOnce([source]);
     apiMock.mockResolvedValueOnce(preview);
 
@@ -102,13 +121,18 @@ describe('CustomScrapingSettingsPage', () => {
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/custom-scrapers/42/preview', { method: 'POST' }));
     expect(screen.getByText('2 candidat(s)')).toBeInTheDocument();
+    expect(screen.getByText('1 éligible(s) à l’import')).toBeInTheDocument();
     expect(screen.getByText('1/10 fiche(s) enrichie(s)')).toBeInTheDocument();
     expect(screen.getByText('Senior Symfony Developer')).toBeInTheDocument();
     expect(screen.getByText('Acme France · Freelance · Paris · Hybride · TJM 450–500 €')).toBeInTheDocument();
     expect(screen.getByText('Mission Symfony 6.4 et API Platform.')).toBeInTheDocument();
     expect(screen.getByText('JobPosting')).toBeInTheDocument();
+    expect(screen.getByText('Fiable · 86/100')).toBeInTheDocument();
     expect(screen.getByText('React Developer')).toBeInTheDocument();
     expect(screen.getByText('Lien détecté')).toBeInTheDocument();
+    expect(screen.getByText('À vérifier · 47/100')).toBeInTheDocument();
+    expect(screen.getByText(/ce n’est pas le score de compatibilité avec ton profil/i)).toBeInTheDocument();
     expect(screen.getByText('2 requête(s) cible · HTTP 200 · aucune offre enregistrée')).toBeInTheDocument();
+    expect(screen.getAllByText(/^Qualité :/)).toHaveLength(2);
   });
 });

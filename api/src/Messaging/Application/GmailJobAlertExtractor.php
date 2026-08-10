@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Messaging\Application;
 
 use App\JobDiscovery\Application\JobTextMetadataExtractor;
+use App\Service\JobDescriptionContaminationDetector;
 
 final class GmailJobAlertExtractor
 {
@@ -14,15 +15,18 @@ final class GmailJobAlertExtractor
     private AssistedJobPlatformCatalog $platforms;
     private PlainTextJobAlertLinkExtractor $plainTextLinks;
     private JobTextMetadataExtractor $textMetadata;
+    private JobDescriptionContaminationDetector $descriptionContamination;
 
     public function __construct(
         ?AssistedJobPlatformCatalog $platforms = null,
         ?PlainTextJobAlertLinkExtractor $plainTextLinks = null,
         ?JobTextMetadataExtractor $textMetadata = null,
+        ?JobDescriptionContaminationDetector $descriptionContamination = null,
     ) {
         $this->platforms = $platforms ?? new AssistedJobPlatformCatalog();
         $this->plainTextLinks = $plainTextLinks ?? new PlainTextJobAlertLinkExtractor();
         $this->textMetadata = $textMetadata ?? new JobTextMetadataExtractor();
+        $this->descriptionContamination = $descriptionContamination ?? new JobDescriptionContaminationDetector();
     }
 
     /**
@@ -45,8 +49,9 @@ final class GmailJobAlertExtractor
         $eligibleLinkCount = count($preparedLinks);
         $offers = [];
         $seen = [];
-        $globalDescription = $this->cleanText(trim($plainBody) !== '' ? $plainBody : strip_tags($htmlBody));
-        $globalDescription = mb_substr($globalDescription, 0, self::MAX_DESCRIPTION_LENGTH);
+        $fullMessageDescription = $this->cleanText(trim($plainBody) !== '' ? $plainBody : strip_tags($htmlBody));
+        $messageDigestDetected = $this->descriptionContamination->isMultiOfferDigest($fullMessageDescription);
+        $globalDescription = mb_substr($fullMessageDescription, 0, self::MAX_DESCRIPTION_LENGTH);
         $senderEmail = $this->emailFromHeader($sender);
 
         foreach ($preparedLinks as $prepared) {
@@ -58,7 +63,7 @@ final class GmailJobAlertExtractor
             $link = $prepared['link'];
             $source = $prepared['source'];
             $title = $this->cleanTitle($link['label']);
-            if ($title === null && $eligibleLinkCount === 1) {
+            if ($title === null && $eligibleLinkCount === 1 && !$messageDigestDetected) {
                 $title = $this->fallbackTitle($subject);
             }
             if ($title === null) {
@@ -75,6 +80,7 @@ final class GmailJobAlertExtractor
                 $subject,
                 $globalDescription,
                 $eligibleLinkCount,
+                $messageDigestDetected,
             );
             $metadata = $this->textMetadata->extract($description);
 
@@ -99,6 +105,7 @@ final class GmailJobAlertExtractor
                     'anchorLabel' => $link['label'],
                     'descriptionScope' => $descriptionScope,
                     'eligibleLinkCount' => $eligibleLinkCount,
+                    'messageDigestDetected' => $messageDigestDetected,
                     'textMetadataExtracted' => true,
                 ],
             ];
@@ -216,21 +223,39 @@ final class GmailJobAlertExtractor
         string $subject,
         string $globalDescription,
         int $eligibleLinkCount,
+        bool $messageDigestDetected,
     ): array {
-        $context = $this->cleanText($link['context']);
+        $context = $this->cleanAlertDescription($link['context']);
         $label = $this->cleanText($link['label']);
         $minimumLocalLength = max(30, mb_strlen($label) + 12);
         if ($context !== '' && mb_strlen($context) >= $minimumLocalLength) {
             return [mb_substr($context, 0, self::MAX_DESCRIPTION_LENGTH), 'LINK_CONTEXT'];
         }
 
-        if ($eligibleLinkCount === 1 && $globalDescription !== '') {
-            return [$globalDescription, 'MESSAGE_BODY'];
+        if (!$messageDigestDetected && $eligibleLinkCount === 1 && $globalDescription !== '') {
+            $messageBody = $this->cleanAlertDescription($globalDescription);
+            if ($messageBody !== '') {
+                return [mb_substr($messageBody, 0, self::MAX_DESCRIPTION_LENGTH), 'MESSAGE_BODY'];
+            }
+        }
+
+        if ($messageDigestDetected) {
+            return [mb_substr($title, 0, self::MAX_DESCRIPTION_LENGTH), 'TITLE_ONLY_DIGEST'];
         }
 
         $fallback = $this->cleanText($title.' — '.$subject);
 
         return [mb_substr($fallback !== '' ? $fallback : $title, 0, self::MAX_DESCRIPTION_LENGTH), 'TITLE_SUBJECT'];
+    }
+
+    private function cleanAlertDescription(string $value): string
+    {
+        $value = $this->cleanText($value);
+        $value = preg_replace('~https?://[^\s<>"\']+~iu', ' ', $value) ?? $value;
+        $value = preg_replace('/\bvoir\s+l[’\']?offre(?:\s+d[’\']emploi)?\s*:?\s*/iu', ' ', $value) ?? $value;
+        $value = preg_replace('/(?:[-–—_*·.]\s*){6,}/u', ' ', $value) ?? $value;
+
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     private function normalizeUrl(string $url): ?string

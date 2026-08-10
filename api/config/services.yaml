@@ -50,6 +50,8 @@ services:
   _instanceof:
     App\JobDiscovery\Domain\Connector\JobSourceConnector:
       tags: ['app.job_source_connector']
+    App\JobDiscovery\Application\DynamicJobSourceConnectorProvider:
+      tags: ['app.dynamic_job_source_connector_provider']
 
   App\:
     resource: '../src/'
@@ -60,6 +62,7 @@ services:
       - '../src/Service/AdzunaJobProvider.php'
       - '../src/Service/FranceTravailJobProvider.php'
       - '../src/Service/SmartRecruitersJobProvider.php'
+      - '../src/JobDiscovery/Infrastructure/CustomScraping/CustomScraperJobConnector.php'
 
   App\Service\CvStorage:
     arguments:
@@ -159,6 +162,7 @@ services:
   App\JobDiscovery\Application\ConnectorRegistry:
     arguments:
       $connectors: !tagged_iterator app.job_source_connector
+      $dynamicProviders: !tagged_iterator app.dynamic_job_source_connector_provider
 
   App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore:
     arguments:

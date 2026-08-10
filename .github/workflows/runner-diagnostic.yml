@@ -1,0 +1,26 @@
+name: Runner diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/runner-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  github-hosted:
+    name: GitHub-hosted runner probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Runner started
+        run: echo "github-hosted runner started"
+
+  self-hosted:
+    name: Self-hosted jobpilot runner probe
+    runs-on: [self-hosted, jobpilot]
+    timeout-minutes: 2
+    steps:
+      - name: Runner started
+        run: echo "self-hosted jobpilot runner started"

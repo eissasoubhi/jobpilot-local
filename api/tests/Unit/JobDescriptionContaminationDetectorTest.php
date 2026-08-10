@@ -32,6 +32,14 @@ TEXT;
         self::assertTrue((new JobDescriptionContaminationDetector())->isMultiOfferDigest($text));
     }
 
+    public function testDoesNotTreatTrackingVariantsOfOneJobAsMultipleOffers(): void
+    {
+        $text = 'Lead PHP Symfony https://www.linkedin.com/comm/jobs/view/4429991557?trackingId=abc '
+            .'https://www.linkedin.com/comm/jobs/view/4429991557?trackingId=def';
+
+        self::assertFalse((new JobDescriptionContaminationDetector())->isMultiOfferDigest($text));
+    }
+
     public function testRecoversOnlyTheCurrentOfferBlockFromStoredDigest(): void
     {
         $text = <<<'TEXT'

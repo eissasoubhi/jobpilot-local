@@ -11,6 +11,7 @@ use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
+use App\JobDiscovery\Infrastructure\Scraping\Html\GenericPaginationDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingRequest;
 
@@ -24,6 +25,7 @@ final class CustomScraperExtractionService
         private GenericJobListingExtractor $extractor,
         private GenericJobDetailExtractor $detailExtractor,
         private CustomScraperOfferQualityEvaluator $qualityEvaluator,
+        private GenericPaginationDetector $paginationDetector,
     ) {
     }
 
@@ -81,6 +83,9 @@ final class CustomScraperExtractionService
         $candidates = $effectiveMode === CustomScraperSource::MODE_HTTP
             ? $this->extractor->extract($response->body, $response->url, $sourceName)
             : [];
+        $pagination = $effectiveMode === CustomScraperSource::MODE_HTTP
+            ? $this->paginationDetector->detect($response->body, $response->url)
+            : ['nextUrl' => null, 'strategy' => null, 'confidence' => null];
         $requiresBrowser = $effectiveMode === CustomScraperSource::MODE_BROWSER
             || ($recommendedMode === CustomScraperSource::MODE_BROWSER && $candidates === []);
 
@@ -149,6 +154,7 @@ final class CustomScraperExtractionService
             'detailLimit' => $detailLimit,
             'detailEnriched' => $detailEnriched,
             'detailError' => $detailError,
+            'pagination' => $pagination,
             'candidates' => array_values($candidates),
             'signals' => $analysis['signals'] ?? [],
             'http' => [

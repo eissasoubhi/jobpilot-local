@@ -21,16 +21,20 @@ final class CustomScraperPresetCatalogTest extends TestCase
             self::assertNotSame('', trim((string) $preset['termsUrl']));
             self::assertNotSame('', trim((string) $preset['reason']));
             self::assertNotSame('', trim((string) $preset['recommendedAction']));
+            self::assertTrue($preset['gmailSupported']);
+            self::assertNotSame('', trim((string) $preset['gmailPlatformCode']));
         }
 
         self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['apec-php-symfony']['complianceStatus']);
         self::assertTrue($bySlug['apec-php-symfony']['canPrefill']);
+        self::assertSame('apec', $bySlug['apec-php-symfony']['gmailPlatformCode']);
         self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['lehibou-symfony']['complianceStatus']);
         self::assertTrue($bySlug['lehibou-symfony']['canPrefill']);
 
         foreach (['free-work-symfony', 'welcome-to-the-jungle', 'hellowork-php', 'lesjeudis'] as $slug) {
             self::assertSame(CustomScraperPresetCatalog::STATUS_ASSISTED_ONLY, $bySlug[$slug]['complianceStatus']);
             self::assertFalse($bySlug[$slug]['canPrefill']);
+            self::assertTrue($bySlug[$slug]['gmailSupported']);
         }
     }
 }

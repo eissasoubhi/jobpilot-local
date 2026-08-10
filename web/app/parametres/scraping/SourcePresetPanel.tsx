@@ -24,6 +24,8 @@ type ScraperPreset = {
   syncIntervalMinutes: number;
   maxPages: number;
   maxDetails: number;
+  gmailSupported: boolean;
+  gmailPlatformCode: string;
 };
 
 type CreatedSource = {
@@ -95,7 +97,7 @@ export default function SourcePresetPanel() {
       <Card>
         <h2 className="section-title">Sources suggérées</h2>
         <p className="muted">
-          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site.
+          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site.
         </p>
         {error !== '' && <ErrorBox message={error} />}
         {presets !== null && (
@@ -111,6 +113,7 @@ export default function SourcePresetPanel() {
                     <strong>{preset.name}</strong>
                     <div className="actions">
                       <Badge tone={assistedOnly ? 'warn' : 'blue'}>{preset.complianceLabel}</Badge>
+                      {preset.gmailSupported && <Badge tone="good">Gmail pris en charge</Badge>}
                       <Badge tone="blue">{modeLabel(preset.mode)}</Badge>
                     </div>
                   </div>
@@ -120,9 +123,18 @@ export default function SourcePresetPanel() {
                     Revue JobPilot : {preset.reviewedAt} · <a href={preset.termsUrl} target="_blank" rel="noreferrer">référence publique consultée</a>
                   </div>
 
+                  {preset.gmailSupported && (
+                    <div className="notice" style={{ marginTop: 10 }}>
+                      JobPilot reconnaît déjà les liens d’offres <strong>{preset.gmailPlatformCode}</strong> présents dans les alertes Gmail et les envoie dans le catalogue canonique lors de la synchronisation.
+                      <div className="actions" style={{ marginTop: 8 }}>
+                        <a className="btn secondary" href="/messages">Ouvrir Gmail JobPilot</a>
+                      </div>
+                    </div>
+                  )}
+
                   {assistedOnly ? (
                     <div className="notice warning" style={{ marginTop: 10 }}>
-                      JobPilot ne propose pas de bouton d’activation automatique pour cette plateforme. Utilise Gmail, une extension/import manuel ou un accès officiellement autorisé.
+                      JobPilot ne propose pas de bouton d’activation automatique pour cette plateforme. Crée une alerte e-mail sur le site puis synchronise Gmail, utilise l’extension/import manuel ou un accès officiellement autorisé.
                     </div>
                   ) : isAdded ? (
                     <div className="notice" style={{ marginTop: 10 }}>

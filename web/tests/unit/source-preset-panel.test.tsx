@@ -23,6 +23,8 @@ const presets = [
     syncIntervalMinutes: 360,
     maxPages: 3,
     maxDetails: 15,
+    gmailSupported: true,
+    gmailPlatformCode: 'apec',
   },
   {
     slug: 'welcome-to-the-jungle',
@@ -39,6 +41,8 @@ const presets = [
     syncIntervalMinutes: 360,
     maxPages: 1,
     maxDetails: 0,
+    gmailSupported: true,
+    gmailPlatformCode: 'welcome-to-the-jungle',
   },
 ];
 
@@ -47,7 +51,7 @@ describe('SourcePresetPanel', () => {
     apiMock.mockReset();
   });
 
-  it('keeps assisted-only sites blocked and adds authorized presets disabled', async () => {
+  it('keeps assisted-only sites blocked, exposes Gmail and adds authorized presets disabled', async () => {
     apiMock.mockResolvedValueOnce(presets);
     apiMock.mockResolvedValueOnce({ id: 88, name: 'APEC — PHP / Symfony' });
 
@@ -57,12 +61,16 @@ describe('SourcePresetPanel', () => {
 
     const assistedCard = screen.getByText('Welcome to the Jungle').closest('.notice');
     expect(assistedCard).not.toBeNull();
-    expect(within(assistedCard as HTMLElement).getByText('Import assisté uniquement')).toBeInTheDocument();
-    expect(within(assistedCard as HTMLElement).queryByRole('button', { name: 'Ajouter désactivée' })).not.toBeInTheDocument();
+    const assisted = within(assistedCard as HTMLElement);
+    expect(assisted.getByText('Import assisté uniquement')).toBeInTheDocument();
+    expect(assisted.getByText('Gmail pris en charge')).toBeInTheDocument();
+    expect(assisted.getByRole('link', { name: 'Ouvrir Gmail JobPilot' })).toHaveAttribute('href', '/messages');
+    expect(assisted.queryByRole('button', { name: 'Ajouter désactivée' })).not.toBeInTheDocument();
 
     const apecCard = screen.getByText('APEC — PHP / Symfony').closest('.notice');
     expect(apecCard).not.toBeNull();
     const apec = within(apecCard as HTMLElement);
+    expect(apec.getByText('Gmail pris en charge')).toBeInTheDocument();
     const addButton = apec.getByRole('button', { name: 'Ajouter désactivée' });
     expect(addButton).toBeDisabled();
 

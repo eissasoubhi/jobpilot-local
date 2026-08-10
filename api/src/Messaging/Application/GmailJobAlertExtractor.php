@@ -6,6 +6,13 @@ namespace App\Messaging\Application;
 
 final class GmailJobAlertExtractor
 {
+    private AssistedJobPlatformCatalog $platforms;
+
+    public function __construct(?AssistedJobPlatformCatalog $platforms = null)
+    {
+        $this->platforms = $platforms ?? new AssistedJobPlatformCatalog();
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -35,7 +42,7 @@ final class GmailJobAlertExtractor
                 continue;
             }
 
-            $source = $this->sourceForUrl($url);
+            $source = $this->platforms->forUrl($url);
             if ($source === null && $category !== 'RECRUITER_OPPORTUNITY') {
                 continue;
             }
@@ -73,6 +80,7 @@ final class GmailJobAlertExtractor
                     'gmailMessageId' => $gmailMessageId,
                     'gmailCategory' => $category,
                     'alertPlatform' => $platform,
+                    'alertPlatformCode' => $source['code'] ?? null,
                     'sender' => $sender,
                     'anchorLabel' => $link['label'],
                 ],
@@ -86,6 +94,12 @@ final class GmailJobAlertExtractor
         }
 
         return $offers;
+    }
+
+    /** @return array{code: string, name: string}|null */
+    public function platformForText(string $text): ?array
+    {
+        return $this->platforms->forText($text);
     }
 
     /**
@@ -164,26 +178,6 @@ final class GmailJobAlertExtractor
         ksort($query);
 
         return $scheme.'://'.$host.$path.($query !== [] ? '?'.http_build_query($query) : '');
-    }
-
-    /** @return array{name: string}|null */
-    private function sourceForUrl(string $url): ?array
-    {
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
-
-        return match (true) {
-            str_contains($host, 'linkedin.') && str_contains($path, '/jobs/') => ['name' => 'LinkedIn'],
-            str_contains($host, 'indeed.') && (str_contains($path, '/viewjob') || str_contains($path, '/rc/clk')) => ['name' => 'Indeed'],
-            str_contains($host, 'apec.fr') && (str_contains($path, '/offre') || str_contains($path, '/recherche-emploi')) => ['name' => 'APEC'],
-            str_contains($host, 'hellowork.com') && str_contains($path, '/emplois') => ['name' => 'Hellowork'],
-            str_contains($host, 'welcometothejungle.com') && str_contains($path, '/jobs/') => ['name' => 'Welcome to the Jungle'],
-            str_contains($host, 'free-work.com') && (str_contains($path, '/tech-it/') || str_contains($path, '/missions/')) => ['name' => 'Free-Work'],
-            str_contains($host, 'lesjeudis.com') && str_contains($path, '/jobs/') => ['name' => 'LesJeudis'],
-            str_contains($host, 'lehibou.com') && str_contains($path, '/mission') => ['name' => 'Le Hibou'],
-            str_contains($host, 'francetravail.fr') && str_contains($path, '/offres/') => ['name' => 'France Travail'],
-            default => null,
-        };
     }
 
     private function looksLikeJobUrl(string $url): bool

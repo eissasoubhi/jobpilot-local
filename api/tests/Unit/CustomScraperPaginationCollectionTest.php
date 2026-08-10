@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperDetailPriority;
 use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
@@ -47,6 +48,7 @@ final class CustomScraperPaginationCollectionTest extends TestCase
         self::assertSame(2, $result['pagination']['pagesFetched']);
         self::assertTrue($result['pagination']['loopDetected']);
         self::assertSame('LOOP_DETECTED', $result['pagination']['stopReason']);
+        self::assertFalse($result['detailPriorityApplied']);
         self::assertSame(2, $result['http']['networkRequests']);
     }
 
@@ -66,6 +68,7 @@ final class CustomScraperPaginationCollectionTest extends TestCase
         self::assertSame(2, $result['pagination']['pageLimit']);
         self::assertSame('PAGE_LIMIT_REACHED', $result['pagination']['stopReason']);
         self::assertSame('https://jobs.example.test/jobs?page=3', $result['pagination']['nextUrl']);
+        self::assertFalse($result['detailPriorityApplied']);
         self::assertSame(2, $result['http']['networkRequests']);
     }
 
@@ -101,6 +104,7 @@ final class CustomScraperPaginationCollectionTest extends TestCase
             new GenericJobDetailExtractor($listingExtractor),
             new CustomScraperOfferQualityEvaluator(),
             new GenericPaginationDetector(),
+            new CustomScraperDetailPriority(),
         );
     }
 

@@ -16,7 +16,7 @@ permissions:
 jobs:
   backend:
     name: Backend tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, jobpilot]
     services:
       postgres:
         image: postgres:17-alpine
@@ -44,6 +44,8 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
+        env:
+          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
@@ -73,7 +75,7 @@ jobs:
 
   frontend:
     name: Frontend tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, jobpilot]
     defaults:
       run:
         working-directory: web
@@ -99,7 +101,7 @@ jobs:
 
   compose-config:
     name: Docker Compose configuration
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, jobpilot]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,7 +113,7 @@ jobs:
 
   e2e:
     name: Chromium end-to-end tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, jobpilot]
     timeout-minutes: 30
     services:
       postgres:
@@ -144,6 +146,8 @@ jobs:
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
+        env:
+          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter

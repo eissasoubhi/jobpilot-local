@@ -10,10 +10,14 @@ final class GmailJobAlertExtractor
     private const MAX_LINK_CONTEXT_LENGTH = 2_500;
 
     private AssistedJobPlatformCatalog $platforms;
+    private PlainTextJobAlertLinkExtractor $plainTextLinks;
 
-    public function __construct(?AssistedJobPlatformCatalog $platforms = null)
-    {
+    public function __construct(
+        ?AssistedJobPlatformCatalog $platforms = null,
+        ?PlainTextJobAlertLinkExtractor $plainTextLinks = null,
+    ) {
         $this->platforms = $platforms ?? new AssistedJobPlatformCatalog();
+        $this->plainTextLinks = $plainTextLinks ?? new PlainTextJobAlertLinkExtractor();
     }
 
     /**
@@ -166,15 +170,8 @@ final class GmailJobAlertExtractor
             libxml_use_internal_errors($previous);
         }
 
-        if (preg_match_all('~https?://[^\s<>"\']+~iu', $plainBody, $matches) === 1 || !empty($matches[0])) {
-            foreach ($matches[0] ?? [] as $url) {
-                $cleanUrl = rtrim($url, '.,;)\]');
-                $links[] = [
-                    'url' => $cleanUrl,
-                    'label' => '',
-                    'context' => $this->plainLinkContext($plainBody, $cleanUrl),
-                ];
-            }
+        foreach ($this->plainTextLinks->extract($plainBody) as $link) {
+            $links[] = $link;
         }
 
         return $links;
@@ -198,19 +195,6 @@ final class GmailJobAlertExtractor
         }
 
         return $this->cleanText($anchor->textContent);
-    }
-
-    private function plainLinkContext(string $plainBody, string $url): string
-    {
-        foreach (preg_split('/\R/u', $plainBody) ?: [] as $line) {
-            if (!str_contains($line, $url)) {
-                continue;
-            }
-
-            return mb_substr($this->cleanText(str_replace($url, ' ', $line)), 0, self::MAX_LINK_CONTEXT_LENGTH);
-        }
-
-        return '';
     }
 
     /**

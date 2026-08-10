@@ -51,14 +51,14 @@ final class AssistedJobPlatformCatalog
                 'code' => 'free-work',
                 'name' => 'Free-Work',
                 'hostPattern' => '/(^|\.)free-work\.com$/i',
-                'pathPatterns' => ['~/tech-it/(?:jobs?|missions?)/[^/]+/.+~i', '~/missions?/[^/]+/.+~i'],
+                'pathPatterns' => ['~/tech-it/job-mission/[^/]+/[^/]+~i'],
                 'aliases' => ['free-work', 'free work'],
             ],
             [
                 'code' => 'lesjeudis',
                 'name' => 'LesJeudis',
                 'hostPattern' => '/(^|\.)lesjeudis\.com$/i',
-                'pathPatterns' => ['~/jobs?/.+~i', '~/offres?/.+~i'],
+                'pathPatterns' => ['~/job/[^/]+~i'],
                 'aliases' => ['lesjeudis', 'les jeudis'],
             ],
             [

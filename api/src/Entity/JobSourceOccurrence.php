@@ -147,6 +147,14 @@ final class JobSourceOccurrence
             if ($this->publishedAt === null) {
                 $this->publishedAt = $this->parseDate($payload['publishedAt'] ?? null);
             }
+
+            $candidateRawData = is_array($payload['rawData'] ?? null) ? $payload['rawData'] : [];
+            foreach (['alertPlatform', 'alertPlatformCode'] as $key) {
+                $value = trim((string) ($candidateRawData[$key] ?? ''));
+                if ($value !== '') {
+                    $this->rawData[$key] = $value;
+                }
+            }
         }
 
         $this->lastSeenAt = new \DateTimeImmutable();
@@ -155,12 +163,20 @@ final class JobSourceOccurrence
     /** @return array<string, mixed> */
     public function toArray(): array
     {
+        $originPlatformCode = $this->provenanceValue('alertPlatformCode');
+        $originPlatformName = $this->provenanceValue('alertPlatform');
+
         return [
             'id' => $this->id,
             'sourceCode' => $this->sourceCode,
-            'sourceName' => $this->sourceName,
+            'sourceName' => $originPlatformName !== null
+                ? $originPlatformName.' via '.$this->sourceName
+                : $this->sourceName,
+            'connectorName' => $this->sourceName,
             'externalId' => $this->externalId,
             'sourceUrl' => $this->sourceUrl,
+            'originPlatformCode' => $originPlatformCode,
+            'originPlatformName' => $originPlatformName,
             'matchType' => $this->matchType,
             'matchScore' => $this->matchScore,
             'matchReasons' => $this->matchReasons,
@@ -168,6 +184,13 @@ final class JobSourceOccurrence
             'firstSeenAt' => $this->firstSeenAt->format(DATE_ATOM),
             'lastSeenAt' => $this->lastSeenAt->format(DATE_ATOM),
         ];
+    }
+
+    private function provenanceValue(string $key): ?string
+    {
+        $value = trim((string) ($this->rawData[$key] ?? ''));
+
+        return $value === '' ? null : mb_substr($value, 0, 120);
     }
 
     private function parseDate(mixed $value): ?\DateTimeImmutable

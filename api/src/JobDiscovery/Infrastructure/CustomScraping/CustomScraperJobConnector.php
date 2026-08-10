@@ -47,7 +47,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
 
     public function parserVersion(): string
     {
-        return 'custom-generic-html-v1';
+        return 'custom-generic-html-v2';
     }
 
     public function syncIntervalSeconds(): int
@@ -77,7 +77,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             return 'Cette source attend le worker Browser/Playwright isolé.';
         }
 
-        return 'Scraping HTTP générique : une page de liste par cycle, fiches détail bornées et import limité aux extractions fiables.';
+        return 'Scraping HTTP générique : pagination détectée du même domaine, fiches détail bornées et import limité aux extractions fiables.';
     }
 
     public function policy(): ConnectorPolicy
@@ -86,7 +86,8 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
         $checkedAt = is_string($data['authorizationCheckedAt'] ?? null)
             ? new \DateTimeImmutable((string) $data['authorizationCheckedAt'])
             : null;
-        $maxDetails = min(10, max(0, (int) ($data['maxDetails'] ?? 0)));
+        $maxPages = min(10, max(1, (int) ($data['maxPages'] ?? 1)));
+        $maxDetails = min(30, max(0, (int) ($data['maxDetails'] ?? 0)));
 
         return new ConnectorPolicy(
             ($data['authorizationConfirmed'] ?? false) === true
@@ -96,8 +97,8 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             is_string($data['authorizationReference'] ?? null)
                 ? $data['authorizationReference']
                 : 'Autorisation de collecte confirmée par l’utilisateur.',
-            maxRequestsPerSync: 1 + $maxDetails,
-            dailyQuota: 100,
+            maxRequestsPerSync: $maxPages + $maxDetails,
+            dailyQuota: 300,
             minimumDelayMilliseconds: 1_000,
             respectsRobotsTxt: true,
         );
@@ -118,8 +119,8 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             return [];
         }
 
-        $preview = $this->extraction->preview($this->source);
-        $candidates = is_array($preview['candidates'] ?? null) ? $preview['candidates'] : [];
+        $collection = $this->extraction->collect($this->source);
+        $candidates = is_array($collection['candidates'] ?? null) ? $collection['candidates'] : [];
         $reliable = array_values(array_filter(
             $candidates,
             static function (mixed $candidate): bool {
@@ -132,15 +133,19 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
                 return ($quality['reliable'] ?? false) === true;
             },
         ));
-        $pagination = is_array($preview['pagination'] ?? null) ? $preview['pagination'] : [];
+        $pagination = is_array($collection['pagination'] ?? null) ? $collection['pagination'] : [];
         $nextPageUrl = is_string($pagination['nextUrl'] ?? null) ? $pagination['nextUrl'] : null;
 
         $this->diagnostics = [
             'sourceId' => $this->data()['id'] ?? null,
             'listingUrl' => $this->data()['listingUrl'] ?? null,
-            'pagesFetched' => 1,
+            'pagesFetched' => (int) ($pagination['pagesFetched'] ?? 0),
             'configuredMaxPages' => (int) ($this->data()['maxPages'] ?? 1),
-            'paginationStrategy' => 'SINGLE_PAGE_WITH_SAFE_NEXT_DETECTION',
+            'effectivePageLimit' => (int) ($pagination['pageLimit'] ?? 1),
+            'paginationStrategy' => 'SAFE_DETECTED_NEXT_CHAIN',
+            'paginationStopReason' => is_string($pagination['stopReason'] ?? null) ? $pagination['stopReason'] : null,
+            'paginationLoopDetected' => (bool) ($pagination['loopDetected'] ?? false),
+            'paginationPageError' => is_string($pagination['pageError'] ?? null) ? $pagination['pageError'] : null,
             'nextPageDetected' => $nextPageUrl !== null,
             'nextPageUrl' => $nextPageUrl,
             'paginationDetectionStrategy' => is_string($pagination['strategy'] ?? null) ? $pagination['strategy'] : null,
@@ -148,11 +153,11 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             'candidateCount' => count($candidates),
             'reliableCount' => count($reliable),
             'filteredByExtractionQuality' => max(0, count($candidates) - count($reliable)),
-            'detailEnriched' => (int) ($preview['detailEnriched'] ?? 0),
-            'detailLimit' => (int) ($preview['detailLimit'] ?? 0),
-            'requiresBrowser' => (bool) ($preview['requiresBrowser'] ?? false),
-            'detailError' => is_string($preview['detailError'] ?? null) ? $preview['detailError'] : null,
-            'networkRequests' => (int) ($preview['http']['networkRequests'] ?? 0),
+            'detailEnriched' => (int) ($collection['detailEnriched'] ?? 0),
+            'detailLimit' => (int) ($collection['detailLimit'] ?? 0),
+            'requiresBrowser' => (bool) ($collection['requiresBrowser'] ?? false),
+            'detailError' => is_string($collection['detailError'] ?? null) ? $collection['detailError'] : null,
+            'networkRequests' => (int) ($collection['http']['networkRequests'] ?? 0),
             'syncIntervalSeconds' => $this->syncIntervalSeconds(),
             'skipped' => false,
         ];

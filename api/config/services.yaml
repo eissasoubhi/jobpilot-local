@@ -62,7 +62,9 @@ services:
       - '../src/Service/AdzunaJobProvider.php'
       - '../src/Service/FranceTravailJobProvider.php'
       - '../src/Service/SmartRecruitersJobProvider.php'
+      - '../src/Service/Ai/GeminiCustomScraperExtractor.php'
       - '../src/JobDiscovery/Infrastructure/CustomScraping/CustomScraperJobConnector.php'
+      - '../src/JobDiscovery/Infrastructure/CustomScraping/AiRecoveryCustomScraperJobConnector.php'
 
   App\Service\CvStorage:
     arguments:
@@ -108,6 +110,8 @@ services:
       $maxDetails: '%env(int:LE_STUDIO_TECH_MAX_DETAILS)%'
 
   App\Service\Ai\AiJobMatchAnalyzerInterface: '@App\Service\Ai\ConfiguredGeminiJobMatchAnalyzer'
+  App\JobDiscovery\Application\CustomScraperAiExtractorInterface: '@App\Service\Ai\ConfiguredGeminiCustomScraperExtractor'
+  App\JobDiscovery\Application\BrowserRenderClientInterface: '@App\JobDiscovery\Infrastructure\Browser\HttpBrowserRenderClient'
 
   App\Service\Ai\AiMatchingConfigurationStore:
     arguments:
@@ -126,6 +130,10 @@ services:
       $privateDir: '%private_dir%'
 
   App\Service\Ai\AiMatchingCache:
+    arguments:
+      $privateDir: '%private_dir%'
+
+  App\Service\Ai\CustomScraperAiExtractionCache:
     arguments:
       $privateDir: '%private_dir%'
 

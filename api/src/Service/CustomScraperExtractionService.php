@@ -14,10 +14,13 @@ use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericPaginationDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingRequest;
+use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingResult;
 
 final class CustomScraperExtractionService
 {
     private const HARD_MAX_DETAIL_PREVIEW = 10;
+    private const HARD_MAX_SYNC_PAGES = 10;
+    private const HARD_MAX_SYNC_DETAILS = 30;
 
     public function __construct(
         private ControlledHttpScrapingClient $httpClient,
@@ -32,11 +35,51 @@ final class CustomScraperExtractionService
     /** @return array<string, mixed> */
     public function preview(CustomScraperSource $source): array
     {
-        $data = $source->toArray();
-        if (($data['authorizationConfirmed'] ?? false) !== true) {
-            throw new \InvalidArgumentException('L’autorisation de collecte doit être confirmée avant d’extraire des offres.');
+        $data = $this->authorizedSourceData($source);
+        $detailLimit = min(self::HARD_MAX_DETAIL_PREVIEW, max(0, (int) ($data['maxDetails'] ?? 0)));
+        $connectorCode = 'custom-preview-'.substr(hash('sha256', (string) $data['domain'].'|'.(string) $data['listingUrl']), 0, 16);
+
+        return $this->run(
+            $source,
+            $data,
+            pageLimit: 1,
+            detailLimit: $detailLimit,
+            connectorCode: $connectorCode,
+            dailyQuota: 100,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    public function collect(CustomScraperSource $source): array
+    {
+        $data = $this->authorizedSourceData($source);
+        $id = $data['id'] ?? null;
+        if (!is_int($id)) {
+            throw new \InvalidArgumentException('La source personnalisée doit être persistée avant une synchronisation automatique.');
         }
 
+        return $this->run(
+            $source,
+            $data,
+            pageLimit: min(self::HARD_MAX_SYNC_PAGES, max(1, (int) ($data['maxPages'] ?? 1))),
+            detailLimit: min(self::HARD_MAX_SYNC_DETAILS, max(0, (int) ($data['maxDetails'] ?? 0))),
+            connectorCode: 'custom-scraper-'.$id,
+            dailyQuota: 300,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function run(
+        CustomScraperSource $source,
+        array $data,
+        int $pageLimit,
+        int $detailLimit,
+        string $connectorCode,
+        int $dailyQuota,
+    ): array {
         $configuredMode = (string) ($data['mode'] ?? CustomScraperSource::MODE_AUTO);
         if ($configuredMode === CustomScraperSource::MODE_BROWSER) {
             throw new \RuntimeException('Cette source force Browser/Playwright. Le worker navigateur n’est pas encore activé pour l’extraction.');
@@ -45,49 +88,121 @@ final class CustomScraperExtractionService
         $listingUrl = (string) ($data['listingUrl'] ?? '');
         $domain = (string) ($data['domain'] ?? '');
         $sourceName = (string) ($data['name'] ?? $domain);
-        $detailLimit = min(
-            self::HARD_MAX_DETAIL_PREVIEW,
-            max(0, (int) ($data['maxDetails'] ?? 0)),
-        );
         $checkedAt = is_string($data['authorizationCheckedAt'] ?? null)
             ? new \DateTimeImmutable((string) $data['authorizationCheckedAt'])
             : new \DateTimeImmutable('today');
-        $connectorCode = 'custom-preview-'.substr(hash('sha256', $domain.'|'.$listingUrl), 0, 16);
-
         $policy = new ConnectorPolicy(
             ConnectorComplianceStatus::ALLOWED,
             $checkedAt,
             is_string($data['authorizationReference'] ?? null) ? $data['authorizationReference'] : 'Autorisation confirmée par l’utilisateur.',
-            maxRequestsPerSync: 1 + $detailLimit,
-            dailyQuota: 100,
+            maxRequestsPerSync: $pageLimit + $detailLimit,
+            dailyQuota: $dailyQuota,
             minimumDelayMilliseconds: 1_000,
             respectsRobotsTxt: true,
         );
 
-        $response = $this->httpClient->fetch(new HttpScrapingRequest(
-            $connectorCode,
-            $listingUrl,
-            $policy,
-            timeoutSeconds: 10,
-            maxRetries: 0,
-            initialBackoffMilliseconds: 0,
-            maxResponseBytes: 3_000_000,
-        ));
-
-        $networkRequests = $response->attempts;
-        $analysis = $this->modeDetector->analyze($response->body);
-        $recommendedMode = (string) ($analysis['recommendedMode'] ?? CustomScraperSource::MODE_HTTP);
+        $pageUrl = $listingUrl;
+        $visited = [];
+        $candidatesByKey = [];
+        $paginationHistory = [];
+        $pagesFetched = 0;
+        $networkRequests = 0;
+        $paginationStopReason = 'NO_NEXT_PAGE';
+        $paginationLoopDetected = false;
+        $pageError = null;
+        $recommendedMode = CustomScraperSource::MODE_HTTP;
         $effectiveMode = $configuredMode === CustomScraperSource::MODE_AUTO
-            ? $recommendedMode
+            ? CustomScraperSource::MODE_HTTP
             : $configuredMode;
-        $candidates = $effectiveMode === CustomScraperSource::MODE_HTTP
-            ? $this->extractor->extract($response->body, $response->url, $sourceName)
-            : [];
-        $pagination = $effectiveMode === CustomScraperSource::MODE_HTTP
-            ? $this->paginationDetector->detect($response->body, $response->url)
-            : ['nextUrl' => null, 'strategy' => null, 'confidence' => null];
-        $requiresBrowser = $effectiveMode === CustomScraperSource::MODE_BROWSER
-            || ($recommendedMode === CustomScraperSource::MODE_BROWSER && $candidates === []);
+        $requiresBrowser = false;
+        $signals = [];
+        $firstResponse = null;
+        $lastResponse = null;
+        $lastPagination = ['nextUrl' => null, 'strategy' => null, 'confidence' => null];
+
+        while ($pagesFetched < $pageLimit) {
+            $normalizedPageUrl = $this->normalizeVisitedUrl($pageUrl);
+            if (isset($visited[$normalizedPageUrl])) {
+                $paginationLoopDetected = true;
+                $paginationStopReason = 'LOOP_DETECTED';
+                break;
+            }
+            $visited[$normalizedPageUrl] = true;
+
+            try {
+                $response = $this->fetch($connectorCode, $pageUrl, $policy);
+            } catch (\RuntimeException $exception) {
+                if ($pagesFetched === 0) {
+                    throw $exception;
+                }
+                $pageError = $exception->getMessage();
+                $paginationStopReason = 'PAGE_FETCH_ERROR';
+                break;
+            }
+
+            $firstResponse ??= $response;
+            $lastResponse = $response;
+            $networkRequests += $response->attempts;
+            ++$pagesFetched;
+
+            $analysis = $this->modeDetector->analyze($response->body);
+            if ($pagesFetched === 1) {
+                $recommendedMode = (string) ($analysis['recommendedMode'] ?? CustomScraperSource::MODE_HTTP);
+                $effectiveMode = $configuredMode === CustomScraperSource::MODE_AUTO
+                    ? $recommendedMode
+                    : $configuredMode;
+                $signals = is_array($analysis['signals'] ?? null) ? $analysis['signals'] : [];
+            } elseif ($configuredMode === CustomScraperSource::MODE_AUTO
+                && ($analysis['recommendedMode'] ?? CustomScraperSource::MODE_HTTP) === CustomScraperSource::MODE_BROWSER) {
+                $requiresBrowser = true;
+                $paginationStopReason = 'BROWSER_REQUIRED';
+                break;
+            }
+
+            if ($effectiveMode !== CustomScraperSource::MODE_HTTP) {
+                $requiresBrowser = true;
+                $paginationStopReason = 'BROWSER_REQUIRED';
+                break;
+            }
+
+            foreach ($this->extractor->extract($response->body, $response->url, $sourceName) as $candidate) {
+                $key = $this->candidateKey($candidate);
+                if (!isset($candidatesByKey[$key]) || $this->candidateRichness($candidate) > $this->candidateRichness($candidatesByKey[$key])) {
+                    $candidatesByKey[$key] = $candidate;
+                }
+            }
+
+            $lastPagination = $this->paginationDetector->detect($response->body, $response->url);
+            $nextUrl = is_string($lastPagination['nextUrl'] ?? null) ? $lastPagination['nextUrl'] : null;
+            $paginationHistory[] = [
+                'page' => $pagesFetched,
+                'url' => $response->url,
+                'nextUrl' => $nextUrl,
+                'strategy' => $lastPagination['strategy'] ?? null,
+                'confidence' => $lastPagination['confidence'] ?? null,
+            ];
+
+            if ($nextUrl === null) {
+                $paginationStopReason = 'NO_NEXT_PAGE';
+                break;
+            }
+            if (isset($visited[$this->normalizeVisitedUrl($nextUrl)])) {
+                $paginationLoopDetected = true;
+                $paginationStopReason = 'LOOP_DETECTED';
+                break;
+            }
+            if ($pagesFetched >= $pageLimit) {
+                $paginationStopReason = 'PAGE_LIMIT_REACHED';
+                break;
+            }
+
+            $pageUrl = $nextUrl;
+        }
+
+        $candidates = array_values($candidatesByKey);
+        if ($recommendedMode === CustomScraperSource::MODE_BROWSER && $candidates === []) {
+            $requiresBrowser = true;
+        }
 
         $detailEnriched = 0;
         $detailError = null;
@@ -100,21 +215,17 @@ final class CustomScraperExtractionService
                     continue;
                 }
 
-                $detailUrl = $this->eligibleDetailUrl((string) ($candidate['sourceUrl'] ?? ''), $domain, $response->url);
+                $detailUrl = $this->eligibleDetailUrl(
+                    (string) ($candidate['sourceUrl'] ?? ''),
+                    $domain,
+                    array_keys($visited),
+                );
                 if ($detailUrl === null) {
                     continue;
                 }
 
                 try {
-                    $detailResponse = $this->httpClient->fetch(new HttpScrapingRequest(
-                        $connectorCode,
-                        $detailUrl,
-                        $policy,
-                        timeoutSeconds: 10,
-                        maxRetries: 0,
-                        initialBackoffMilliseconds: 0,
-                        maxResponseBytes: 3_000_000,
-                    ));
+                    $detailResponse = $this->fetch($connectorCode, $detailUrl, $policy);
                     $networkRequests += $detailResponse->attempts;
                     $candidates[$index] = $this->detailExtractor->enrich(
                         $detailResponse->body,
@@ -154,18 +265,52 @@ final class CustomScraperExtractionService
             'detailLimit' => $detailLimit,
             'detailEnriched' => $detailEnriched,
             'detailError' => $detailError,
-            'pagination' => $pagination,
-            'candidates' => array_values($candidates),
-            'signals' => $analysis['signals'] ?? [],
+            'pagination' => [
+                'nextUrl' => $lastPagination['nextUrl'] ?? null,
+                'strategy' => $lastPagination['strategy'] ?? null,
+                'confidence' => $lastPagination['confidence'] ?? null,
+                'pagesFetched' => $pagesFetched,
+                'pageLimit' => $pageLimit,
+                'stopReason' => $paginationStopReason,
+                'loopDetected' => $paginationLoopDetected,
+                'pageError' => $pageError,
+                'history' => $paginationHistory,
+            ],
+            'candidates' => $candidates,
+            'signals' => $signals,
             'http' => [
                 'requestedUrl' => $listingUrl,
-                'finalUrl' => $response->url,
-                'statusCode' => $response->statusCode,
-                'responseBytes' => strlen($response->body),
+                'finalUrl' => $lastResponse?->url ?? $listingUrl,
+                'statusCode' => $firstResponse?->statusCode ?? 0,
+                'responseBytes' => $firstResponse !== null ? strlen($firstResponse->body) : 0,
                 'networkRequests' => $networkRequests,
-                'fromCache' => $response->fromCache,
+                'fromCache' => $firstResponse?->fromCache ?? false,
             ],
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function authorizedSourceData(CustomScraperSource $source): array
+    {
+        $data = $source->toArray();
+        if (($data['authorizationConfirmed'] ?? false) !== true) {
+            throw new \InvalidArgumentException('L’autorisation de collecte doit être confirmée avant d’extraire des offres.');
+        }
+
+        return $data;
+    }
+
+    private function fetch(string $connectorCode, string $url, ConnectorPolicy $policy): HttpScrapingResult
+    {
+        return $this->httpClient->fetch(new HttpScrapingRequest(
+            $connectorCode,
+            $url,
+            $policy,
+            timeoutSeconds: 10,
+            maxRetries: 0,
+            initialBackoffMilliseconds: 0,
+            maxResponseBytes: 3_000_000,
+        ));
     }
 
     /** @param array<string, mixed> $candidate */
@@ -179,10 +324,11 @@ final class CustomScraperExtractionService
         return trim((string) ($candidate['description'] ?? '')) === '';
     }
 
-    private function eligibleDetailUrl(string $url, string $domain, string $listingUrl): ?string
+    /** @param list<string> $listingUrls */
+    private function eligibleDetailUrl(string $url, string $domain, array $listingUrls): ?string
     {
         $url = trim($url);
-        if ($url === '' || rtrim($url, '/') === rtrim($listingUrl, '/')) {
+        if ($url === '') {
             return null;
         }
 
@@ -192,6 +338,45 @@ final class CustomScraperExtractionService
             return null;
         }
 
+        if (in_array($this->normalizeVisitedUrl($url), $listingUrls, true)) {
+            return null;
+        }
+
         return $url;
+    }
+
+    /** @param array<string, mixed> $candidate */
+    private function candidateKey(array $candidate): string
+    {
+        $externalId = trim((string) ($candidate['externalId'] ?? ''));
+        if ($externalId !== '') {
+            return 'id:'.$externalId;
+        }
+
+        return 'url:'.hash('sha256', trim((string) ($candidate['sourceUrl'] ?? '')).'|'.trim((string) ($candidate['title'] ?? '')));
+    }
+
+    /** @param array<string, mixed> $candidate */
+    private function candidateRichness(array $candidate): int
+    {
+        $score = mb_strlen(trim((string) ($candidate['description'] ?? '')));
+        foreach (['company', 'location', 'contractType', 'workMode', 'publishedAt'] as $field) {
+            if (trim((string) ($candidate[$field] ?? '')) !== '') {
+                $score += 100;
+            }
+        }
+
+        return $score;
+    }
+
+    private function normalizeVisitedUrl(string $url): string
+    {
+        $parts = parse_url(trim($url));
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $path = (string) ($parts['path'] ?? '/');
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?'.$parts['query'] : '';
+
+        return $scheme.'://'.$host.$path.$query;
     }
 }

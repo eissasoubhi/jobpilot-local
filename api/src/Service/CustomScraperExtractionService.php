@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperDetailPriority;
 use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
@@ -29,6 +30,7 @@ final class CustomScraperExtractionService
         private GenericJobDetailExtractor $detailExtractor,
         private CustomScraperOfferQualityEvaluator $qualityEvaluator,
         private GenericPaginationDetector $paginationDetector,
+        private CustomScraperDetailPriority $detailPriority,
     ) {
     }
 
@@ -40,17 +42,22 @@ final class CustomScraperExtractionService
         $connectorCode = 'custom-preview-'.substr(hash('sha256', (string) $data['domain'].'|'.(string) $data['listingUrl']), 0, 16);
 
         return $this->run(
-            $source,
             $data,
             pageLimit: 1,
             detailLimit: $detailLimit,
             connectorCode: $connectorCode,
             dailyQuota: 100,
+            targetJobs: [],
+            skills: [],
         );
     }
 
-    /** @return array<string, mixed> */
-    public function collect(CustomScraperSource $source): array
+    /**
+     * @param list<string> $targetJobs
+     * @param list<string> $skills
+     * @return array<string, mixed>
+     */
+    public function collect(CustomScraperSource $source, array $targetJobs = [], array $skills = []): array
     {
         $data = $this->authorizedSourceData($source);
         $id = $data['id'] ?? null;
@@ -59,26 +66,30 @@ final class CustomScraperExtractionService
         }
 
         return $this->run(
-            $source,
             $data,
             pageLimit: min(self::HARD_MAX_SYNC_PAGES, max(1, (int) ($data['maxPages'] ?? 1))),
             detailLimit: min(self::HARD_MAX_SYNC_DETAILS, max(0, (int) ($data['maxDetails'] ?? 0))),
             connectorCode: 'custom-scraper-'.$id,
             dailyQuota: 300,
+            targetJobs: $targetJobs,
+            skills: $skills,
         );
     }
 
     /**
      * @param array<string, mixed> $data
+     * @param list<string> $targetJobs
+     * @param list<string> $skills
      * @return array<string, mixed>
      */
     private function run(
-        CustomScraperSource $source,
         array $data,
         int $pageLimit,
         int $detailLimit,
         string $connectorCode,
         int $dailyQuota,
+        array $targetJobs,
+        array $skills,
     ): array {
         $configuredMode = (string) ($data['mode'] ?? CustomScraperSource::MODE_AUTO);
         if ($configuredMode === CustomScraperSource::MODE_BROWSER) {
@@ -156,12 +167,21 @@ final class CustomScraperExtractionService
                 && ($analysis['recommendedMode'] ?? CustomScraperSource::MODE_HTTP) === CustomScraperSource::MODE_BROWSER) {
                 $requiresBrowser = true;
                 $paginationStopReason = 'BROWSER_REQUIRED';
+                $lastPagination = ['nextUrl' => null, 'strategy' => null, 'confidence' => null];
+                $paginationHistory[] = [
+                    'page' => $pagesFetched,
+                    'url' => $response->url,
+                    'nextUrl' => null,
+                    'strategy' => null,
+                    'confidence' => null,
+                ];
                 break;
             }
 
             if ($effectiveMode !== CustomScraperSource::MODE_HTTP) {
                 $requiresBrowser = true;
                 $paginationStopReason = 'BROWSER_REQUIRED';
+                $lastPagination = ['nextUrl' => null, 'strategy' => null, 'confidence' => null];
                 break;
             }
 
@@ -206,12 +226,15 @@ final class CustomScraperExtractionService
 
         $detailEnriched = 0;
         $detailError = null;
+        $detailPriorityApplied = $targetJobs !== [] || $skills !== [];
         if ($effectiveMode === CustomScraperSource::MODE_HTTP && $detailLimit > 0 && $candidates !== []) {
-            foreach ($candidates as $index => $candidate) {
+            foreach ($this->detailPriority->rank($candidates, $targetJobs, $skills) as $index) {
                 if ($detailEnriched >= $detailLimit) {
                     break;
                 }
-                if (!$this->needsDetailFetch($candidate)) {
+
+                $candidate = $candidates[$index] ?? null;
+                if (!is_array($candidate) || !$this->needsDetailFetch($candidate)) {
                     continue;
                 }
 
@@ -265,6 +288,7 @@ final class CustomScraperExtractionService
             'detailLimit' => $detailLimit,
             'detailEnriched' => $detailEnriched,
             'detailError' => $detailError,
+            'detailPriorityApplied' => $detailPriorityApplied,
             'pagination' => [
                 'nextUrl' => $lastPagination['nextUrl'] ?? null,
                 'strategy' => $lastPagination['strategy'] ?? null,

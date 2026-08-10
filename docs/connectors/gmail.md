@@ -9,6 +9,8 @@ Il couvre deux usages distincts :
 1. envoyer les candidatures explicitement autorisées ;
 2. lire les messages correspondant à la recherche configurée afin de détecter des offres, des réponses et des actions à traiter.
 
+Gmail sert aussi de canal d’acquisition assisté lorsque les conditions d’une plateforme ne permettent pas à JobPilot de scraper directement son site. JobPilot analyse alors uniquement les alertes reçues dans le compte Gmail connecté par l’utilisateur.
+
 ## Autorisations OAuth
 
 JobPilot demande uniquement :
@@ -24,7 +26,7 @@ Après une modification des scopes, il faut déconnecter puis reconnecter Gmail 
 
 ## Synchronisation
 
-Gmail est un connecteur `GMAIL` enregistré dans le même registre qu’Arbeitnow et Adzuna.
+Gmail est un connecteur `GMAIL` enregistré dans le même registre que les autres sources.
 
 La synchronisation est lancée :
 
@@ -40,10 +42,12 @@ docker compose exec api php bin/console app:jobs:sync --force --connector=gmail
 La recherche Gmail est contrôlée par :
 
 ```dotenv
-GMAIL_SEARCH_QUERY=(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d
+GMAIL_SEARCH_QUERY=(job OR emploi OR offre OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d
 GMAIL_MAX_RESULTS=100
 GMAIL_MAX_PAGES=3
 ```
+
+`emploi` et `offre` font partie de la requête recommandée afin de couvrir les alertes francophones qui n’emploient pas les mots `job` ou `mission` dans le sujet/contenu recherché par Gmail. Une installation existante avec une valeur personnalisée conserve sa propre requête.
 
 Les limites protègent contre une lecture trop large de la boîte mail.
 
@@ -90,7 +94,7 @@ Une association incertaine reste non liée afin d’éviter de modifier la mauva
 
 Pour les catégories `JOB_ALERT` et `RECRUITER_OPPORTUNITY`, JobPilot analyse les liens du message complet.
 
-Les domaines reconnus incluent actuellement :
+La reconnaissance de plateforme est centralisée dans `AssistedJobPlatformCatalog`. Les plateformes reconnues incluent actuellement :
 
 - LinkedIn ;
 - Indeed ;
@@ -102,9 +106,28 @@ Les domaines reconnus incluent actuellement :
 - Le Hibou ;
 - France Travail.
 
-Les paramètres de tracking courants sont supprimés de l’URL. Les liens de désabonnement, de connexion et de préférences sont ignorés.
+Le même catalogue accepte plusieurs variantes de chemins d’offres (par exemple jobs/missions Free-Work, job/jobs LesJeudis ou mission/freelance LeHibou) tout en exigeant le domaine attendu et un chemin ressemblant réellement à une offre.
+
+Les paramètres de tracking courants sont supprimés de l’URL. Les liens de désabonnement, de connexion, de conditions ou de préférences ne deviennent pas des offres.
+
+Une offre extraite reçoit dans ses données brutes :
+
+```text
+alertPlatform
+alertPlatformCode
+```
+
+Le code stable permet de relier l’import Gmail au catalogue des sources suggérées sans changer la source canonique du connecteur, qui reste `gmail`.
 
 Une offre extraite passe ensuite par le pipeline normal : déduplication, filtrage, scoring, sélection du CV et préparation.
+
+## Sources suggérées et conformité
+
+La page **Paramètres > Scraping personnalisé** expose les plateformes prioritaires avec leur statut de conformité. Lorsque `gmailSupported=true`, le panneau affiche **Gmail pris en charge** et un accès direct à **Messagerie**.
+
+Cela ne transforme pas Gmail en contournement du site : JobPilot ne visite pas automatiquement la plateforme à partir de ce canal pour explorer d’autres offres. Il traite les liens que l’utilisateur a déjà reçus dans son propre compte Gmail et les normalise dans le pipeline existant.
+
+Pour les plateformes classées `ASSISTED_ONLY`, le panneau ne propose aucun bouton d’activation du scraper. L’utilisateur peut créer une alerte sur la plateforme, connecter Gmail à JobPilot puis lancer **Synchroniser Gmail**.
 
 ## Données conservées
 
@@ -124,6 +147,7 @@ Le HTML complet n’est pas conservé en base. Le texte stocké est limité à 1
 
 La page **Messagerie** permet de :
 
+- connecter/reconnecter Gmail ;
 - synchroniser Gmail ;
 - filtrer par catégorie ou par action requise ;
 - voir la plateforme détectée ;
@@ -137,4 +161,5 @@ La page **Messagerie** permet de :
 - Une offre dont le lien ou le titre est trop générique n’est pas importée.
 - L’association à une candidature est volontairement prudente.
 - Le connecteur ne lit que les messages correspondant à `GMAIL_SEARCH_QUERY`.
+- Une installation qui a déjà défini une requête personnalisée doit l’élargir manuellement si elle veut ajouter `emploi`/`offre`.
 - Aucun message n’est supprimé, déplacé, marqué comme lu ou modifié dans Gmail.

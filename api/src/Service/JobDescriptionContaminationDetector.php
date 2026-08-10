@@ -54,6 +54,39 @@ final class JobDescriptionContaminationDetector
         return false;
     }
 
+    public function localSummary(string $text, string $title): string
+    {
+        $text = $this->clean($text);
+        $title = $this->clean($title);
+        if ($title === '') {
+            return '';
+        }
+        if (!$this->isMultiOfferDigest($text)) {
+            return $text;
+        }
+
+        $position = mb_stripos($text, $title);
+        if ($position === false) {
+            return $title;
+        }
+
+        $candidate = mb_substr($text, $position, 2_000);
+        $parts = preg_split(
+            '/\bvoir\s+l[’\']?offre(?:\s+d[’\']emploi)?\b|(?:[-–—_*·.]\s*){6,}/iu',
+            $candidate,
+            2,
+        );
+        $candidate = trim((string) ($parts[0] ?? $candidate));
+        $candidate = preg_replace('~https?://[^\s<>"\']+~iu', ' ', $candidate) ?? $candidate;
+        $candidate = trim(preg_replace('/\s+/u', ' ', $candidate) ?? $candidate);
+
+        if ($candidate === '' || mb_strlen($candidate) < mb_strlen($title)) {
+            return $title;
+        }
+
+        return mb_substr($candidate, 0, 800);
+    }
+
     private function clean(string $value): string
     {
         $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');

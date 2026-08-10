@@ -55,7 +55,14 @@ final class ConnectorSmokeTestCommand extends Command
 
         if ($input->getOption('live') !== true) {
             $output->writeln('<error>Smoke test non exécuté : l’option --live est obligatoire.</error>');
-            $output->writeln('Cette protection empêche tout appel réseau réel accidentel, y compris depuis la CI.');
+            $output->writeln('Cette protection empêche tout appel réseau réel accidentel.');
+
+            return Command::INVALID;
+        }
+
+        if ($this->runningInCi()) {
+            $output->writeln('<error>Smoke test réel interdit dans un environnement CI/GitHub Actions.</error>');
+            $output->writeln('Utiliser uniquement les fixtures locales et les transports mockés dans la CI.');
 
             return Command::INVALID;
         }
@@ -97,5 +104,20 @@ final class ConnectorSmokeTestCommand extends Command
         $output->writeln('<error>'.$assessment['message'].'</error>');
 
         return Command::FAILURE;
+    }
+
+    private function runningInCi(): bool
+    {
+        return $this->environmentFlag('CI') || $this->environmentFlag('GITHUB_ACTIONS');
+    }
+
+    private function environmentFlag(string $name): bool
+    {
+        $value = $_SERVER[$name] ?? $_ENV[$name] ?? getenv($name);
+        if ($value === false || $value === null) {
+            return false;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on'], true);
     }
 }

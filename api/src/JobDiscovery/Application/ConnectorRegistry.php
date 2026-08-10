@@ -9,45 +9,79 @@ use App\JobDiscovery\Domain\Connector\JobSourceConnector;
 final class ConnectorRegistry
 {
     /** @var array<string, JobSourceConnector> */
-    private array $connectors = [];
+    private array $staticConnectors = [];
 
-    /** @param iterable<JobSourceConnector> $connectors */
-    public function __construct(iterable $connectors)
+    /** @var list<DynamicJobSourceConnectorProvider> */
+    private array $dynamicProviders = [];
+
+    /**
+     * @param iterable<JobSourceConnector> $connectors
+     * @param iterable<DynamicJobSourceConnectorProvider> $dynamicProviders
+     */
+    public function __construct(iterable $connectors, iterable $dynamicProviders = [])
     {
         foreach ($connectors as $connector) {
             $code = self::normalizeCode($connector->code());
             if ($code === '') {
                 throw new \InvalidArgumentException('Un connecteur doit déclarer un code non vide.');
             }
-            if (isset($this->connectors[$code])) {
+            if (isset($this->staticConnectors[$code])) {
                 throw new \LogicException(sprintf('Le code de connecteur "%s" est déclaré plusieurs fois.', $code));
             }
 
-            $this->connectors[$code] = $connector;
+            $this->staticConnectors[$code] = $connector;
         }
 
-        ksort($this->connectors);
+        foreach ($dynamicProviders as $provider) {
+            $this->dynamicProviders[] = $provider;
+        }
+
+        ksort($this->staticConnectors);
     }
 
     /** @return list<JobSourceConnector> */
     public function all(): array
     {
-        return array_values($this->connectors);
+        return array_values($this->resolvedConnectors());
     }
 
     public function get(string $code): JobSourceConnector
     {
         $normalized = self::normalizeCode($code);
-        if (!isset($this->connectors[$normalized])) {
+        $connectors = $this->resolvedConnectors();
+        if (!isset($connectors[$normalized])) {
             throw new \InvalidArgumentException(sprintf('Connecteur inconnu : %s.', $code));
         }
 
-        return $this->connectors[$normalized];
+        return $connectors[$normalized];
     }
 
     public function has(string $code): bool
     {
-        return isset($this->connectors[self::normalizeCode($code)]);
+        return isset($this->resolvedConnectors()[self::normalizeCode($code)]);
+    }
+
+    /** @return array<string, JobSourceConnector> */
+    private function resolvedConnectors(): array
+    {
+        $connectors = $this->staticConnectors;
+
+        foreach ($this->dynamicProviders as $provider) {
+            foreach ($provider->connectors() as $connector) {
+                $code = self::normalizeCode($connector->code());
+                if ($code === '') {
+                    throw new \InvalidArgumentException('Un connecteur dynamique doit déclarer un code non vide.');
+                }
+                if (isset($connectors[$code])) {
+                    throw new \LogicException(sprintf('Le code de connecteur "%s" est déclaré plusieurs fois.', $code));
+                }
+                $connectors[$code] = $connector;
+            }
+        }
+
+        ksort($connectors);
+
+        return $connectors;
     }
 
     private static function normalizeCode(string $code): string

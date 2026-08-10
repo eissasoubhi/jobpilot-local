@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
@@ -22,6 +23,7 @@ final class CustomScraperExtractionService
         private GenericHtmlModeDetector $modeDetector,
         private GenericJobListingExtractor $extractor,
         private GenericJobDetailExtractor $detailExtractor,
+        private CustomScraperOfferQualityEvaluator $qualityEvaluator,
     ) {
     }
 
@@ -123,12 +125,27 @@ final class CustomScraperExtractionService
             }
         }
 
+        $reliableCount = 0;
+        foreach ($candidates as $index => $candidate) {
+            $quality = $this->qualityEvaluator->evaluate($candidate, $domain);
+            $rawData = is_array($candidate['rawData'] ?? null) ? $candidate['rawData'] : [];
+            $candidate['rawData'] = [
+                ...$rawData,
+                'quality' => $quality,
+            ];
+            $candidates[$index] = $candidate;
+            if ($quality['reliable']) {
+                ++$reliableCount;
+            }
+        }
+
         return [
             'configuredMode' => $configuredMode,
             'recommendedMode' => $recommendedMode,
             'effectiveMode' => $effectiveMode,
             'requiresBrowser' => $requiresBrowser,
             'candidateCount' => count($candidates),
+            'reliableCount' => $reliableCount,
             'detailLimit' => $detailLimit,
             'detailEnriched' => $detailEnriched,
             'detailError' => $detailError,

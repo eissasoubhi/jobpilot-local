@@ -9,6 +9,9 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class ConnectorDeadLetterService
 {
+    /** @var array<string, ConnectorDeadLetter> */
+    private array $pending = [];
+
     public function __construct(private EntityManagerInterface $em)
     {
     }
@@ -154,8 +157,8 @@ final class ConnectorDeadLetterService
         ?string $title = null,
     ): ConnectorDeadLetter {
         $connectorCode = strtolower(trim($connectorCode));
-        $repository = $this->em->getRepository(ConnectorDeadLetter::class);
-        $entry = $repository->findOneBy([
+        $key = $this->key($connectorCode, $stage, $fingerprint);
+        $entry = $this->pending[$key] ?? $this->em->getRepository(ConnectorDeadLetter::class)->findOneBy([
             'connectorCode' => $connectorCode,
             'stage' => $stage,
             'fingerprint' => $fingerprint,
@@ -179,19 +182,24 @@ final class ConnectorDeadLetterService
             $this->em->persist($entry);
         }
 
+        $this->pending[$key] = $entry;
+
         return $entry;
     }
 
     private function resolveFingerprint(string $connectorCode, string $stage, string $fingerprint): void
     {
-        $entry = $this->em->getRepository(ConnectorDeadLetter::class)->findOneBy([
-            'connectorCode' => strtolower(trim($connectorCode)),
+        $connectorCode = strtolower(trim($connectorCode));
+        $key = $this->key($connectorCode, $stage, $fingerprint);
+        $entry = $this->pending[$key] ?? $this->em->getRepository(ConnectorDeadLetter::class)->findOneBy([
+            'connectorCode' => $connectorCode,
             'stage' => $stage,
             'fingerprint' => $fingerprint,
         ]);
 
         if ($entry instanceof ConnectorDeadLetter) {
             $entry->resolve();
+            $this->pending[$key] = $entry;
         }
     }
 
@@ -248,5 +256,10 @@ final class ConnectorDeadLetterService
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
 
         return $value === '' ? null : mb_substr($value, 0, $maxLength);
+    }
+
+    private function key(string $connectorCode, string $stage, string $fingerprint): string
+    {
+        return $connectorCode.'|'.$stage.'|'.$fingerprint;
     }
 }

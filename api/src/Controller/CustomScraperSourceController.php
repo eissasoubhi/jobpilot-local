@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\CustomScraperSource;
 use App\Service\CustomScraperDiagnosticService;
 use App\Service\CustomScraperExtractionService;
+use App\Service\CustomScraperPresetCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +20,7 @@ final class CustomScraperSourceController
         private EntityManagerInterface $em,
         private CustomScraperDiagnosticService $diagnostics,
         private CustomScraperExtractionService $extraction,
+        private CustomScraperPresetCatalog $presets,
     ) {
     }
 
@@ -31,6 +33,12 @@ final class CustomScraperSourceController
             static fn (CustomScraperSource $source): array => $source->toArray(),
             $sources,
         ));
+    }
+
+    #[Route('/presets', methods: ['GET'])]
+    public function presets(): JsonResponse
+    {
+        return new JsonResponse($this->presets->all());
     }
 
     #[Route('', methods: ['POST'])]

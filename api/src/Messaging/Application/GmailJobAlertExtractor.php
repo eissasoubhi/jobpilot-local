@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Messaging\Application;
 
+use App\JobDiscovery\Application\JobTextMetadataExtractor;
+
 final class GmailJobAlertExtractor
 {
     private const MAX_DESCRIPTION_LENGTH = 8_000;
@@ -11,13 +13,16 @@ final class GmailJobAlertExtractor
 
     private AssistedJobPlatformCatalog $platforms;
     private PlainTextJobAlertLinkExtractor $plainTextLinks;
+    private JobTextMetadataExtractor $textMetadata;
 
     public function __construct(
         ?AssistedJobPlatformCatalog $platforms = null,
         ?PlainTextJobAlertLinkExtractor $plainTextLinks = null,
+        ?JobTextMetadataExtractor $textMetadata = null,
     ) {
         $this->platforms = $platforms ?? new AssistedJobPlatformCatalog();
         $this->plainTextLinks = $plainTextLinks ?? new PlainTextJobAlertLinkExtractor();
+        $this->textMetadata = $textMetadata ?? new JobTextMetadataExtractor();
     }
 
     /**
@@ -71,6 +76,7 @@ final class GmailJobAlertExtractor
                 $globalDescription,
                 $eligibleLinkCount,
             );
+            $metadata = $this->textMetadata->extract($description);
 
             $payload = [
                 'externalId' => 'gmail-'.sha1($url),
@@ -78,10 +84,12 @@ final class GmailJobAlertExtractor
                 'title' => $title,
                 'company' => $company,
                 'location' => '',
-                'contractType' => '',
-                'workMode' => '',
+                'contractType' => $metadata['contractType'],
+                'workMode' => $metadata['workMode'],
                 'description' => $description,
                 'publishedAt' => $receivedAt->format(DATE_ATOM),
+                'tjmMin' => $metadata['tjmMin'],
+                'tjmMax' => $metadata['tjmMax'],
                 'rawData' => [
                     'gmailMessageId' => $gmailMessageId,
                     'gmailCategory' => $category,
@@ -91,6 +99,7 @@ final class GmailJobAlertExtractor
                     'anchorLabel' => $link['label'],
                     'descriptionScope' => $descriptionScope,
                     'eligibleLinkCount' => $eligibleLinkCount,
+                    'textMetadataExtracted' => true,
                 ],
             ];
 

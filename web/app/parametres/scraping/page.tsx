@@ -52,6 +52,12 @@ type ScraperDiagnostic = {
   };
 };
 
+type ExtractionQuality = {
+  reliable: boolean;
+  score: number;
+  reasons: string[];
+};
+
 type ScrapedCandidate = {
   sourceUrl: string;
   externalId: string;
@@ -76,6 +82,7 @@ type ScraperPreview = {
   effectiveMode: Exclude<ScraperMode, 'AUTO'>;
   requiresBrowser: boolean;
   candidateCount: number;
+  reliableCount: number;
   detailLimit: number;
   detailEnriched: number;
   detailError: string | null;
@@ -155,6 +162,21 @@ function extractionLabel(candidate: ScrapedCandidate): string {
   if (method === 'DOM') return 'DOM détail';
   if (method === 'JOB_LINK') return 'Lien détecté';
   return method;
+}
+
+function extractionQuality(candidate: ScrapedCandidate): ExtractionQuality | null {
+  const value = candidate.rawData.quality;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+
+  const quality = value as Record<string, unknown>;
+  const score = typeof quality.score === 'number' ? quality.score : null;
+  const reliable = typeof quality.reliable === 'boolean' ? quality.reliable : null;
+  const reasons = Array.isArray(quality.reasons)
+    ? quality.reasons.filter((reason): reason is string => typeof reason === 'string')
+    : [];
+
+  if (score === null || reliable === null) return null;
+  return { reliable, score, reasons };
 }
 
 export default function CustomScrapingSettingsPage() {
@@ -260,7 +282,7 @@ export default function CustomScrapingSettingsPage() {
     try {
       const result = await api<ScraperPreview>(`/custom-scrapers/${source.id}/preview`, { method: 'POST' });
       setPreviews((current) => ({ ...current, [source.id]: result }));
-      setMessage(`${result.candidateCount} candidat(s) détecté(s) pour ${source.name}.`);
+      setMessage(`${result.candidateCount} candidat(s) détecté(s), dont ${result.reliableCount} extraction(s) fiable(s) pour ${source.name}.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
@@ -445,12 +467,16 @@ export default function CustomScrapingSettingsPage() {
                   {preview && (
                     <div className="notice" style={{ marginTop: 12 }}>
                       <div className="actions">
-                        <Badge tone={preview.requiresBrowser ? 'warn' : 'good'}>{preview.candidateCount} candidat(s)</Badge>
+                        <Badge tone={preview.requiresBrowser ? 'warn' : 'blue'}>{preview.candidateCount} candidat(s)</Badge>
+                        <Badge tone={preview.reliableCount > 0 ? 'good' : 'warn'}>{preview.reliableCount} éligible(s) à l’import</Badge>
                         <Badge tone="blue">Mode : {preview.effectiveMode}</Badge>
                         {preview.detailLimit > 0 && <Badge tone="blue">{preview.detailEnriched}/{preview.detailLimit} fiche(s) enrichie(s)</Badge>}
                       </div>
                       <div className="muted" style={{ marginTop: 6 }}>
                         {preview.http.networkRequests} requête(s) cible · HTTP {preview.http.statusCode} · aucune offre enregistrée
+                      </div>
+                      <div className="muted" style={{ marginTop: 6 }}>
+                        « Fiable » signifie que l’extraction est assez complète pour entrer dans le pipeline JobPilot ; ce n’est pas le score de compatibilité avec ton profil.
                       </div>
                       {preview.requiresBrowser && (
                         <div className="notice warning" style={{ marginTop: 10 }}>Le HTML serveur ne suffit pas. Cette source devra passer par le worker Browser/Playwright lorsqu’il sera disponible.</div>
@@ -468,15 +494,26 @@ export default function CustomScrapingSettingsPage() {
                               .filter((value): value is string => Boolean(value));
                             const description = candidate.description.trim();
                             const shortDescription = description.length > 320 ? `${description.slice(0, 320)}…` : description;
+                            const quality = extractionQuality(candidate);
 
                             return (
                               <div className="notice" key={candidate.externalId}>
                                 <div className="actions" style={{ justifyContent: 'space-between' }}>
                                   <strong>{candidate.title}</strong>
-                                  <Badge tone="blue">{extractionLabel(candidate)}</Badge>
+                                  <div className="actions">
+                                    <Badge tone="blue">{extractionLabel(candidate)}</Badge>
+                                    {quality && (
+                                      <Badge tone={quality.reliable ? 'good' : 'warn'}>
+                                        {quality.reliable ? 'Fiable' : 'À vérifier'} · {quality.score}/100
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
                                 {details.length > 0 && <div className="muted" style={{ marginTop: 6 }}>{details.join(' · ')}</div>}
                                 {shortDescription !== '' && <p style={{ marginBottom: 6 }}>{shortDescription}</p>}
+                                {quality && quality.reasons.length > 0 && (
+                                  <div className="muted" style={{ marginBottom: 6 }}>Qualité : {quality.reasons.slice(0, 3).join(' · ')}</div>
+                                )}
                                 <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">Voir la fiche source</a>
                               </div>
                             );

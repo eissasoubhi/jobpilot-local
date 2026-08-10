@@ -156,11 +156,40 @@ final class ConnectorDeadLetter
         ?string $title,
     ): void {
         $this->errorClass = mb_substr(trim($errorClass) !== '' ? trim($errorClass) : 'RuntimeException', 0, 255);
-        $message = trim(preg_replace('/\s+/u', ' ', $errorMessage) ?? $errorMessage);
+        $message = $this->redactSensitiveError($errorMessage);
         $this->errorMessage = mb_substr($message !== '' ? $message : 'Erreur sans message.', 0, 1_000);
         $this->externalId = $this->optional($externalId, 180);
         $this->sourceUrl = $this->optional($sourceUrl, 500);
         $this->title = $this->optional($title, 255);
+    }
+
+    private function redactSensitiveError(string $message): string
+    {
+        $message = trim(preg_replace('/\s+/u', ' ', $message) ?? $message);
+        $message = preg_replace_callback(
+            '~https?://[^\s<>"\']+~iu',
+            static function (array $matches): string {
+                $url = rtrim((string) ($matches[0] ?? ''), '.,;:)\]');
+                $suffix = substr((string) ($matches[0] ?? ''), strlen($url));
+                $parts = parse_url($url);
+                if (!is_array($parts)) {
+                    return '[URL_REDACTED]'.$suffix;
+                }
+                $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+                $host = strtolower((string) ($parts['host'] ?? ''));
+                if ($scheme === '' || $host === '') {
+                    return '[URL_REDACTED]'.$suffix;
+                }
+                $path = (string) ($parts['path'] ?? '/');
+
+                return $scheme.'://'.$host.($path !== '' ? $path : '/').$suffix;
+            },
+            $message,
+        ) ?? $message;
+        $message = preg_replace('/\bBearer\s+[A-Za-z0-9._~+\/=:-]+/iu', 'Bearer [REDACTED]', $message) ?? $message;
+        $message = preg_replace('/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password)\s*[=:]\s*[^\s&,;]+/iu', '$1=[REDACTED]', $message) ?? $message;
+
+        return trim($message);
     }
 
     private function optional(?string $value, int $maxLength): ?string

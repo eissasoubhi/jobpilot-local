@@ -119,7 +119,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             return [];
         }
 
-        $collection = $this->extraction->collect($this->source);
+        $collection = $this->extraction->collect($this->source, $targetJobs, $skills);
         $candidates = is_array($collection['candidates'] ?? null) ? $collection['candidates'] : [];
         $reliable = array_values(array_filter(
             $candidates,
@@ -155,6 +155,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             'filteredByExtractionQuality' => max(0, count($candidates) - count($reliable)),
             'detailEnriched' => (int) ($collection['detailEnriched'] ?? 0),
             'detailLimit' => (int) ($collection['detailLimit'] ?? 0),
+            'detailPriorityApplied' => (bool) ($collection['detailPriorityApplied'] ?? false),
             'requiresBrowser' => (bool) ($collection['requiresBrowser'] ?? false),
             'detailError' => is_string($collection['detailError'] ?? null) ? $collection['detailError'] : null,
             'networkRequests' => (int) ($collection['http']['networkRequests'] ?? 0),

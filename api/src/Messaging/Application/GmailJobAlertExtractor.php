@@ -225,7 +225,9 @@ final class GmailJobAlertExtractor
         int $eligibleLinkCount,
     ): array {
         $context = $this->cleanText($link['context']);
-        if ($context !== '' && mb_strlen($context) >= max(20, mb_strlen($title))) {
+        $label = $this->cleanText($link['label']);
+        $minimumLocalLength = max(30, mb_strlen($label) + 12);
+        if ($context !== '' && mb_strlen($context) >= $minimumLocalLength) {
             return [mb_substr($context, 0, self::MAX_DESCRIPTION_LENGTH), 'LINK_CONTEXT'];
         }
 

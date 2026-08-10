@@ -50,8 +50,6 @@ services:
   _instanceof:
     App\JobDiscovery\Domain\Connector\JobSourceConnector:
       tags: ['app.job_source_connector']
-    App\JobDiscovery\Application\DynamicJobSourceConnectorProvider:
-      tags: ['app.dynamic_job_source_connector_provider']
 
   App\:
     resource: '../src/'
@@ -166,6 +164,9 @@ services:
         smartrecruiters:
           apiToken: '%env(SMARTRECRUITERS_API_TOKEN)%'
           companyIdentifiers: '%env(SMARTRECRUITERS_COMPANY_IDENTIFIERS)%'
+
+  App\JobDiscovery\Infrastructure\CustomScraping\AiRecoveryCustomScraperConnectorProvider:
+    tags: ['app.dynamic_job_source_connector_provider']
 
   App\JobDiscovery\Application\ConnectorRegistry:
     arguments:

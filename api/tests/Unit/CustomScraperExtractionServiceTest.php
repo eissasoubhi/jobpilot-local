@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Entity\CustomScraperSource;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
+use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore;
@@ -48,9 +49,55 @@ HTML;
         self::assertSame('HTTP', $preview['effectiveMode']);
         self::assertFalse($preview['requiresBrowser']);
         self::assertSame(1, $preview['candidateCount']);
+        self::assertSame(0, $preview['detailEnriched']);
         self::assertSame('S-10', $preview['candidates'][0]['externalId']);
         self::assertSame('Senior Symfony Developer', $preview['candidates'][0]['title']);
         self::assertSame(200, $preview['http']['statusCode']);
+    }
+
+    public function testEnrichesLinkCandidateFromBoundedDetailFetch(): void
+    {
+        $source = $this->source();
+        $source->fill(['maxDetails' => 1]);
+        $listing = <<<'HTML'
+<html><body><main>
+<a href="/jobs/symfony">Senior Symfony Developer</a>
+<a href="/jobs/react">React Developer</a>
+</main></body></html>
+HTML;
+        $detail = <<<'HTML'
+<html><body>
+<script type="application/ld+json">{
+  "@type":"JobPosting",
+  "identifier":{"value":"DETAIL-42"},
+  "title":"Senior Symfony Developer",
+  "hiringOrganization":{"name":"Acme France"},
+  "url":"https://jobs.example.test/jobs/symfony",
+  "employmentType":"FREELANCE",
+  "description":"Mission Symfony 6.4, API Platform et PostgreSQL.",
+  "baseSalary":{"value":{"minValue":450,"maxValue":500,"unitText":"DAY"}}
+}</script>
+</body></html>
+HTML;
+
+        $preview = $this->service(new MockHttpClient([
+            new MockResponse('', ['http_code' => 404]),
+            new MockResponse($listing, ['http_code' => 200]),
+            new MockResponse($detail, ['http_code' => 200]),
+        ]))->preview($source);
+
+        self::assertSame(2, $preview['candidateCount']);
+        self::assertSame(1, $preview['detailLimit']);
+        self::assertSame(1, $preview['detailEnriched']);
+        self::assertNull($preview['detailError']);
+        self::assertSame(2, $preview['http']['networkRequests']);
+        self::assertSame('Acme France', $preview['candidates'][0]['company']);
+        self::assertSame('Mission Symfony 6.4, API Platform et PostgreSQL.', $preview['candidates'][0]['description']);
+        self::assertSame(450, $preview['candidates'][0]['tjmMin']);
+        self::assertSame(500, $preview['candidates'][0]['tjmMax']);
+        self::assertTrue($preview['candidates'][0]['rawData']['detailEnriched']);
+        self::assertSame('JSON_LD', $preview['candidates'][0]['rawData']['detailExtractionMethod']);
+        self::assertSame('link-', substr((string) $preview['candidates'][0]['externalId'], 0, 5));
     }
 
     public function testAutoModeDoesNotExtractJavascriptShell(): void
@@ -103,6 +150,7 @@ HTML;
             'authorizationConfirmed' => true,
             'authorizationCheckedAt' => '2026-08-10',
             'authorizationReference' => 'Autorisation vérifiée pour ce test local.',
+            'maxDetails' => 0,
         ]);
 
         return $source;
@@ -110,6 +158,8 @@ HTML;
 
     private function service(MockHttpClient $http): CustomScraperExtractionService
     {
+        $listingExtractor = new GenericJobListingExtractor();
+
         return new CustomScraperExtractionService(
             new ControlledHttpScrapingClient(
                 $http,
@@ -117,7 +167,8 @@ HTML;
                 new RobotsTxtGuard($http, $this->directory.'/robots'),
             ),
             new GenericHtmlModeDetector(),
-            new GenericJobListingExtractor(),
+            $listingExtractor,
+            new GenericJobDetailExtractor($listingExtractor),
         );
     }
 

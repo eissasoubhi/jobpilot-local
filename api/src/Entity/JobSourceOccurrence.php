@@ -163,14 +163,20 @@ final class JobSourceOccurrence
     /** @return array<string, mixed> */
     public function toArray(): array
     {
+        $originPlatformCode = $this->provenanceValue('alertPlatformCode');
+        $originPlatformName = $this->provenanceValue('alertPlatform');
+
         return [
             'id' => $this->id,
             'sourceCode' => $this->sourceCode,
-            'sourceName' => $this->sourceName,
+            'sourceName' => $originPlatformName !== null
+                ? $originPlatformName.' via '.$this->sourceName
+                : $this->sourceName,
+            'connectorName' => $this->sourceName,
             'externalId' => $this->externalId,
             'sourceUrl' => $this->sourceUrl,
-            'originPlatformCode' => $this->provenanceValue('alertPlatformCode'),
-            'originPlatformName' => $this->provenanceValue('alertPlatform'),
+            'originPlatformCode' => $originPlatformCode,
+            'originPlatformName' => $originPlatformName,
             'matchType' => $this->matchType,
             'matchScore' => $this->matchScore,
             'matchReasons' => $this->matchReasons,

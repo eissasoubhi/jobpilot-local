@@ -43,25 +43,26 @@ La CI utilise uniquement des réponses HTTP synthétiques locales : aucun test a
 
 ## Prévisualiser l’extraction HTTP
 
-L’API `POST /api/custom-scrapers/{id}/preview` exécute la première vraie extraction générique, sans enregistrer d’offre dans le catalogue.
+L’API `POST /api/custom-scrapers/{id}/preview` exécute une extraction générique sur la première page sans enregistrer d’offre dans le catalogue.
 
 Cette prévisualisation :
 
 1. exige toujours la confirmation d’autorisation ;
-2. charge la liste via le transport HTTP contrôlé, après contrôle `robots.txt` ;
-3. utilise zéro retry, un timeout de 10 secondes et une réponse maximale de 3 Mo par page ;
+2. charge une seule page de liste via le transport HTTP contrôlé, après contrôle `robots.txt` ;
+3. utilise zéro retry, un timeout de 10 secondes et une réponse maximale de 3 Mo ;
 4. applique d’abord le détecteur HTTP/Browser ;
 5. en mode `AUTO`, n’extrait que si HTTP est le mode effectif ;
 6. refuse un mode `BROWSER` forcé tant que le worker Playwright isolé n’est pas disponible ;
 7. retourne au maximum 50 candidats ;
-8. peut enrichir au maximum 10 fiches détail par prévisualisation, même si la source est configurée avec une limite supérieure ;
-9. arrête immédiatement les lectures de fiches après la première erreur de détail afin de ne pas insister sur une source qui refuse ou devient instable.
+8. peut enrichir au maximum 10 fiches détail ;
+9. détecte une éventuelle page suivante sûre mais ne la charge pas ;
+10. arrête immédiatement les lectures de fiches après la première erreur de détail afin de ne pas insister sur une source qui refuse ou devient instable.
 
 L’extraction de liste est déterministe et privilégie les données structurées Schema.org `JobPosting`. Elle récupère quand disponibles le titre, l’entreprise, la localisation, le type de contrat, le mode de travail, la description, la date de publication, l’URL, l’identifiant et les bornes de salaire/TJM.
 
 Si aucun `JobPosting` n’est présent, l’extracteur peut retourner des liens de fiches probables du **même domaine**. Ces résultats sont marqués `JOB_LINK` avec `needsDetailFetch=true`.
 
-Pour les fiches détail, JobPilot privilégie à nouveau un `JobPosting` structuré. À défaut, un fallback DOM borné peut enrichir les champs les plus fiables : titre, description visible, contrat, mode de travail, date et TJM. L’identifiant externe trouvé sur la liste est conservé afin de ne pas casser la future déduplication.
+Pour les fiches détail, JobPilot privilégie à nouveau un `JobPosting` structuré. À défaut, un fallback DOM borné peut enrichir les champs les plus fiables : titre, description visible, contrat, mode de travail, date et TJM. L’identifiant externe trouvé sur la liste est conservé afin de ne pas casser la déduplication.
 
 Chaque URL de détail repasse par le transport contrôlé et le contrôle `robots.txt`. Les URL hors domaine sont ignorées. Aucun login, cookie privé, Gemini ou navigateur n’est déclenché par cette prévisualisation.
 
@@ -79,25 +80,39 @@ Le score favorise un titre réellement exploitable, une URL HTTPS du domaine aut
 
 Un simple lien de type `JOB_LINK` sans description ne peut pas devenir fiable. Une URL hors domaine ou un titre générique comme « Voir le poste » bloque également l’éligibilité. Le seuil actuel pour l’import automatique est **70/100 avec une description d’au moins 60 caractères**.
 
-Ce garde-fou ne décide pas si l’offre correspond au profil PHP/Symfony ou à un autre profil candidat : ce contrôle reste effectué ensuite par le pipeline normal de matching de JobPilot.
+Ce garde-fou ne décide pas si l’offre correspond au profil candidat : ce contrôle reste effectué ensuite par le pipeline normal de matching de JobPilot.
+
+## Pagination sûre
+
+JobPilot ne fabrique jamais une URL `?page=N` pour un site inconnu. La page suivante doit être explicitement détectée dans le HTML courant.
+
+Le détecteur accepte :
+
+- `rel="next"` sur une URL HTTPS du même domaine, avec confiance élevée ;
+- un lien explicite « Suivant », « Next », « Page suivante » ou équivalent, avec confiance moyenne ;
+- une flèche seule uniquement lorsqu’elle se trouve dans un conteneur clairement identifié comme navigation/pagination.
+
+Sont rejetés : les liens hors domaine, les schémas non HTTP, les URLs avec identifiants, la page courante elle-même et les liens ambigus.
+
+Pendant une synchronisation, JobPilot suit uniquement cette chaîne de liens détectés. Toutes les URLs déjà visitées sont mémorisées pour stopper immédiatement une boucle.
 
 ## Synchronisation dans JobPilot
 
 Chaque source personnalisée active et autorisée devient un connecteur dynamique distinct, avec un code stable `custom-scraper-{id}`. Elle dispose donc de son propre état de synchronisation, historique, diagnostics, parser et origine dans le catalogue.
 
-Pour cette première version de synchronisation générique :
+Pour la synchronisation générique HTTP :
 
-1. une seule page de liste est lue par cycle ;
-2. jusqu’à 10 fiches détail sont enrichies selon la configuration de la source ;
-3. seuls les candidats `rawData.quality.reliable=true` sont retournés par le connecteur ;
-4. ces candidats entrent ensuite dans le pipeline canonique existant : déduplication multi-sources, filtre profil/IA éventuel, scoring et préparation ;
-5. les candidats non fiables ne sont pas persistés comme offres ;
-6. la fréquence `syncIntervalMinutes` de chaque source est respectée sans ajouter de colonne en base ;
-7. les connecteurs classiques sans fréquence spécifique continuent d’utiliser l’intervalle global JobPilot.
+1. JobPilot suit les pages suivantes explicitement détectées, jusqu’à `maxPages` avec une limite dure de **10 pages par cycle** ;
+2. la collecte s’arrête sur absence de page suivante, limite atteinte, boucle détectée, erreur de page ou besoin de rendu Browser ;
+3. jusqu’à `maxDetails` fiches sont enrichies, avec une limite dure de **30 fiches par cycle** ;
+4. le budget HTTP affiché et appliqué est borné par `pages + fiches détail` ;
+5. seuls les candidats `rawData.quality.reliable=true` sont retournés par le connecteur ;
+6. ces candidats entrent ensuite dans le pipeline canonique existant : déduplication multi-sources, filtre profil/IA éventuel, scoring et préparation ;
+7. les candidats non fiables ne sont pas persistés comme offres ;
+8. la fréquence `syncIntervalMinutes` de chaque source est respectée sans ajouter de colonne en base ;
+9. les connecteurs classiques sans fréquence spécifique continuent d’utiliser l’intervalle global JobPilot.
 
-Le champ `maxPages` reste conservé dans la configuration mais n’est pas encore utilisé pour parcourir plusieurs pages : la pagination générique devra être détectée explicitement avant d’être activée. JobPilot ne fabrique pas automatiquement des URL `?page=N` pour un domaine inconnu.
-
-Une source forcée en `BROWSER` reste non synchronisable tant que le worker Playwright isolé n’est pas livré. En mode `AUTO`, une page détectée comme nécessitant Browser ne produit aucune offre HTTP.
+Une source forcée en `BROWSER` reste non synchronisable tant que le worker Playwright isolé n’est pas livré. En mode `AUTO`, une page détectée comme nécessitant Browser arrête la chaîne HTTP sans tentative de contournement.
 
 ## Choix du mode
 
@@ -117,10 +132,12 @@ Le diagnostic et la prévisualisation actuels ne lancent pas encore Chromium. La
 
 ## Étapes suivantes
 
-Le registre, le diagnostic HTTP, l’extraction de liste, l’enrichissement borné des fiches, l’interface de prévisualisation, le garde-fou de qualité et le connecteur dynamique sont maintenant branchés dans la chaîne en cours de livraison. Les prochains incréments prévus sont :
+Le chemin HTTP générique possède maintenant le registre, le diagnostic, la prévisualisation, l’extraction de liste, l’enrichissement des fiches, le garde-fou de qualité, le connecteur dynamique, la fréquence par source et la pagination détectée bornée.
 
-- exposer la fiabilité dans l’interface de prévisualisation ;
-- ajouter une détection de pagination générique sûre ;
+Les prochains incréments prévus sont :
+
+- exposer la fiabilité et le score d’extraction dans l’interface de prévisualisation ;
+- améliorer la priorité des fiches détail à enrichir selon les critères de recherche du profil ;
 - utiliser Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
 - worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis.
 
@@ -128,4 +145,4 @@ Le registre, le diagnostic HTTP, l’extraction de liste, l’enrichissement bor
 
 Le registre accepte uniquement des URL HTTPS sans identifiants intégrés. L’URL d’exemple de détail doit utiliser le même domaine que la liste des offres.
 
-Le diagnostic et la prévisualisation réutilisent les protections du transport contrôlé : blocage des URL locales/privées explicites, contrôle `robots.txt`, quotas, délai minimal, timeout, redirections bornées, circuit breaker, cache HTTP et taille de réponse maximale. Aucun login, cookie de session privé, CAPTCHA bypass, proxy furtif ou contournement de 401/403/429 n’est ajouté.
+Le diagnostic, la prévisualisation et la synchronisation réutilisent les protections du transport contrôlé : blocage des URL locales/privées explicites, contrôle `robots.txt`, quotas, délai minimal, timeout, redirections bornées, circuit breaker, cache HTTP et taille de réponse maximale. Aucun login, cookie de session privé, CAPTCHA bypass, proxy furtif ou contournement de 401/403/429 n’est ajouté.

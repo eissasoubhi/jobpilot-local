@@ -9,7 +9,34 @@ Chaque preset contient :
 - un statut de conformité ;
 - la référence publique consultée ;
 - la date de dernière revue ;
+- la date d’échéance de cette revue ;
+- un indicateur `reviewFresh` ;
 - des limites réseau conservatrices.
+
+## Durée de validité d’une revue
+
+Une revue de conformité JobPilot est considérée fraîche pendant **90 jours**.
+
+L’API expose :
+
+```text
+reviewedAt
+reviewDueAt
+reviewFresh
+reviewTtlDays
+```
+
+Après l’échéance :
+
+- le preset reste visible pour transparence ;
+- `reviewFresh=false` ;
+- `canPrefill=false`, y compris pour une source auparavant classée `AUTHORIZATION_REQUIRED` ;
+- l’UI affiche **Revue expirée** et ne propose plus le formulaire d’ajout automatique ;
+- la référence publique doit être relue et le catalogue mis à jour avant de réactiver le préremplissage.
+
+Le canal Gmail reste distinct : une revue de scraper expirée n’empêche pas JobPilot d’analyser les alertes déjà reçues dans le compte Gmail connecté de l’utilisateur.
+
+Les références revues le **10 août 2026** ont actuellement une échéance au **8 novembre 2026**.
 
 ## Statuts
 
@@ -17,7 +44,7 @@ Chaque preset contient :
 
 La source est techniquement compatible avec le framework générique, mais JobPilot ne doit pas l’activer sans autorisation applicable à la collecte automatisée.
 
-L’UI peut préremplir la source uniquement après :
+Lorsque la revue JobPilot est encore fraîche, l’UI peut préremplir la source uniquement après :
 
 1. saisie d’une référence d’autorisation par l’utilisateur ;
 2. confirmation explicite ;
@@ -51,4 +78,4 @@ Au 10 août 2026 :
 - Hellowork : `https://recruteur.hellowork.com/cgv-abo-lib`
 - LesJeudis : `https://lesjeudis.com/fr/cgu`
 
-Ces références doivent être relues périodiquement et immédiatement avant de faire évoluer un preset vers une collecte automatisée active. Un `robots.txt` permissif est un signal technique opérationnel, pas une autorisation contractuelle à lui seul.
+Ces références doivent aussi être relues immédiatement avant toute évolution vers une collecte automatisée active, même si le délai de 90 jours n’est pas encore atteint. Un `robots.txt` permissif est un signal technique opérationnel, pas une autorisation contractuelle à lui seul.

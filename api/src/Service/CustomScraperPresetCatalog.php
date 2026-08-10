@@ -11,19 +11,22 @@ final class CustomScraperPresetCatalog
 {
     public const STATUS_AUTHORIZATION_REQUIRED = 'AUTHORIZATION_REQUIRED';
     public const STATUS_ASSISTED_ONLY = 'ASSISTED_ONLY';
+    private const REVIEW_TTL_DAYS = 90;
 
     private AssistedJobPlatformCatalog $assistedPlatforms;
+    private \DateTimeImmutable $today;
 
-    public function __construct(?AssistedJobPlatformCatalog $assistedPlatforms = null)
+    public function __construct(?AssistedJobPlatformCatalog $assistedPlatforms = null, ?string $today = null)
     {
         $this->assistedPlatforms = $assistedPlatforms ?? new AssistedJobPlatformCatalog();
+        $this->today = new \DateTimeImmutable($today ?? 'today');
     }
 
     /** @return list<array<string, mixed>> */
     public function all(): array
     {
         return [
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'apec-php-symfony',
                 'platformCode' => 'apec',
                 'name' => 'APEC — PHP / Symfony',
@@ -40,7 +43,7 @@ final class CustomScraperPresetCatalog
                 'maxPages' => 3,
                 'maxDetails' => 15,
             ]),
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'lehibou-symfony',
                 'platformCode' => 'lehibou',
                 'name' => 'LeHibou — Développeur Symfony',
@@ -57,7 +60,7 @@ final class CustomScraperPresetCatalog
                 'maxPages' => 3,
                 'maxDetails' => 15,
             ]),
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'free-work-symfony',
                 'platformCode' => 'free-work',
                 'name' => 'Free-Work — Symfony',
@@ -74,7 +77,7 @@ final class CustomScraperPresetCatalog
                 'maxPages' => 3,
                 'maxDetails' => 15,
             ]),
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'welcome-to-the-jungle',
                 'platformCode' => 'welcome-to-the-jungle',
                 'name' => 'Welcome to the Jungle',
@@ -91,7 +94,7 @@ final class CustomScraperPresetCatalog
                 'maxPages' => 1,
                 'maxDetails' => 0,
             ]),
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'hellowork-php',
                 'platformCode' => 'hellowork',
                 'name' => 'Hellowork — PHP',
@@ -108,7 +111,7 @@ final class CustomScraperPresetCatalog
                 'maxPages' => 1,
                 'maxDetails' => 0,
             ]),
-            $this->withGmail([
+            $this->finalize([
                 'slug' => 'lesjeudis',
                 'platformCode' => 'lesjeudis',
                 'name' => 'LesJeudis',
@@ -129,11 +132,19 @@ final class CustomScraperPresetCatalog
     }
 
     /** @param array<string, mixed> $preset @return array<string, mixed> */
-    private function withGmail(array $preset): array
+    private function finalize(array $preset): array
     {
         $platformCode = (string) ($preset['platformCode'] ?? '');
         $preset['gmailSupported'] = $this->assistedPlatforms->supportsCode($platformCode);
         $preset['gmailPlatformCode'] = $platformCode;
+
+        $reviewedAt = new \DateTimeImmutable((string) ($preset['reviewedAt'] ?? '1970-01-01'));
+        $reviewDueAt = $reviewedAt->modify('+'.self::REVIEW_TTL_DAYS.' days');
+        $reviewFresh = $this->today->format('Y-m-d') <= $reviewDueAt->format('Y-m-d');
+        $preset['reviewDueAt'] = $reviewDueAt->format('Y-m-d');
+        $preset['reviewFresh'] = $reviewFresh;
+        $preset['reviewTtlDays'] = self::REVIEW_TTL_DAYS;
+        $preset['canPrefill'] = ($preset['canPrefill'] ?? false) === true && $reviewFresh;
 
         return $preset;
     }

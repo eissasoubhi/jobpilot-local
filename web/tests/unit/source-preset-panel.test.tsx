@@ -20,6 +20,9 @@ const presets = [
     recommendedAction: 'Obtenir un accord Apec.',
     termsUrl: 'https://corporate.apec.fr/legal',
     reviewedAt: '2026-08-10',
+    reviewDueAt: '2026-11-08',
+    reviewFresh: true,
+    reviewTtlDays: 90,
     syncIntervalMinutes: 360,
     maxPages: 3,
     maxDetails: 15,
@@ -38,6 +41,9 @@ const presets = [
     recommendedAction: 'Utiliser Gmail ou une extension.',
     termsUrl: 'https://www.welcometothejungle.com/fr/pages/terms',
     reviewedAt: '2026-08-10',
+    reviewDueAt: '2026-11-08',
+    reviewFresh: true,
+    reviewTtlDays: 90,
     syncIntervalMinutes: 360,
     maxPages: 1,
     maxDetails: 0,
@@ -51,7 +57,7 @@ describe('SourcePresetPanel', () => {
     apiMock.mockReset();
   });
 
-  it('keeps assisted-only sites blocked, exposes Gmail and adds authorized presets disabled', async () => {
+  it('keeps assisted-only sites blocked, exposes Gmail and adds fresh authorized presets disabled', async () => {
     apiMock.mockResolvedValueOnce(presets);
     apiMock.mockResolvedValueOnce({ id: 88, name: 'APEC — PHP / Symfony' });
 
@@ -71,6 +77,7 @@ describe('SourcePresetPanel', () => {
     expect(apecCard).not.toBeNull();
     const apec = within(apecCard as HTMLElement);
     expect(apec.getByText('Gmail pris en charge')).toBeInTheDocument();
+    expect(apec.getByText(/échéance : 2026-11-08/i)).toBeInTheDocument();
     const addButton = apec.getByRole('button', { name: 'Ajouter désactivée' });
     expect(addButton).toBeDisabled();
 
@@ -90,5 +97,30 @@ describe('SourcePresetPanel', () => {
 
     await waitFor(() => expect(screen.getByText(/a été ajoutée/i)).toBeInTheDocument());
     expect(screen.getByText(/désactivée/i)).toBeInTheDocument();
+  });
+
+  it('blocks onboarding when the JobPilot compliance review has expired', async () => {
+    apiMock.mockResolvedValueOnce([
+      {
+        ...presets[0],
+        canPrefill: false,
+        reviewFresh: false,
+        reviewDueAt: '2026-11-08',
+      },
+    ]);
+
+    render(<SourcePresetPanel />);
+
+    await waitFor(() => expect(screen.getByText('APEC — PHP / Symfony')).toBeInTheDocument());
+    const apecCard = screen.getByText('APEC — PHP / Symfony').closest('.notice');
+    expect(apecCard).not.toBeNull();
+    const apec = within(apecCard as HTMLElement);
+
+    expect(apec.getByText('Revue expirée')).toBeInTheDocument();
+    expect(apec.getByText(/dépassé 90 jours/i)).toBeInTheDocument();
+    expect(apec.getByRole('link', { name: 'Ouvrir Gmail JobPilot' })).toHaveAttribute('href', '/messages');
+    expect(apec.queryByLabelText('Référence de ton autorisation')).not.toBeInTheDocument();
+    expect(apec.queryByRole('button', { name: 'Ajouter désactivée' })).not.toBeInTheDocument();
+    expect(apiMock).toHaveBeenCalledTimes(1);
   });
 });

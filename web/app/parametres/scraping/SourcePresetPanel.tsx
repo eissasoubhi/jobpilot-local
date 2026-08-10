@@ -21,6 +21,9 @@ type ScraperPreset = {
   recommendedAction: string;
   termsUrl: string;
   reviewedAt: string;
+  reviewDueAt: string;
+  reviewFresh: boolean;
+  reviewTtlDays: number;
   syncIntervalMinutes: number;
   maxPages: number;
   maxDetails: number;
@@ -58,6 +61,10 @@ export default function SourcePresetPanel() {
 
   const addPreset = async (preset: ScraperPreset): Promise<void> => {
     const reference = (references[preset.slug] ?? '').trim();
+    if (!preset.reviewFresh) {
+      setError('La revue JobPilot de cette source a expiré. Revalide les conditions publiques avant de l’ajouter.');
+      return;
+    }
     if (!preset.canPrefill || !confirmed[preset.slug] || reference === '') {
       setError('Confirme l’autorisation et indique sa référence avant d’ajouter cette source.');
       return;
@@ -97,7 +104,7 @@ export default function SourcePresetPanel() {
       <Card>
         <h2 className="section-title">Sources suggérées</h2>
         <p className="muted">
-          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site.
+          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site. Les revues JobPilot expirent automatiquement après 90 jours.
         </p>
         {error !== '' && <ErrorBox message={error} />}
         {presets !== null && (
@@ -113,6 +120,7 @@ export default function SourcePresetPanel() {
                     <strong>{preset.name}</strong>
                     <div className="actions">
                       <Badge tone={assistedOnly ? 'warn' : 'blue'}>{preset.complianceLabel}</Badge>
+                      {!preset.reviewFresh && <Badge tone="warn">Revue expirée</Badge>}
                       {preset.gmailSupported && <Badge tone="good">Gmail pris en charge</Badge>}
                       <Badge tone="blue">{modeLabel(preset.mode)}</Badge>
                     </div>
@@ -120,7 +128,7 @@ export default function SourcePresetPanel() {
                   <p style={{ marginBottom: 6 }}>{preset.reason}</p>
                   <div className="muted">Action recommandée : {preset.recommendedAction}</div>
                   <div className="muted" style={{ marginTop: 6 }}>
-                    Revue JobPilot : {preset.reviewedAt} · <a href={preset.termsUrl} target="_blank" rel="noreferrer">référence publique consultée</a>
+                    Revue JobPilot : {preset.reviewedAt} · échéance : {preset.reviewDueAt} · <a href={preset.termsUrl} target="_blank" rel="noreferrer">référence publique consultée</a>
                   </div>
 
                   {preset.gmailSupported && (
@@ -135,6 +143,10 @@ export default function SourcePresetPanel() {
                   {assistedOnly ? (
                     <div className="notice warning" style={{ marginTop: 10 }}>
                       JobPilot ne propose pas de bouton d’activation automatique pour cette plateforme. Crée une alerte e-mail sur le site puis synchronise Gmail, utilise l’extension/import manuel ou un accès officiellement autorisé.
+                    </div>
+                  ) : !preset.reviewFresh ? (
+                    <div className="notice warning" style={{ marginTop: 10 }}>
+                      La revue de conformité JobPilot a dépassé {preset.reviewTtlDays} jours. Relis la référence publique, mets à jour le catalogue puis seulement ensuite ajoute ou active cette source. Gmail reste utilisable entre-temps.
                     </div>
                   ) : isAdded ? (
                     <div className="notice" style={{ marginTop: 10 }}>
@@ -162,7 +174,7 @@ export default function SourcePresetPanel() {
                         <button
                           className="btn secondary"
                           type="button"
-                          disabled={adding !== null || !(confirmed[preset.slug] ?? false) || reference.trim() === ''}
+                          disabled={adding !== null || !preset.canPrefill || !(confirmed[preset.slug] ?? false) || reference.trim() === ''}
                           onClick={() => void addPreset(preset)}
                         >
                           {adding === preset.slug ? 'Ajout…' : 'Ajouter désactivée'}

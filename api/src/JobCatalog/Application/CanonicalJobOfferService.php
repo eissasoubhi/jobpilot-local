@@ -14,12 +14,16 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class CanonicalJobOfferService
 {
+    private ContaminatedJobDescriptionRepairer $descriptionRepairer;
+
     public function __construct(
         private EntityManagerInterface $em,
         private CanonicalJobMatcher $matcher,
         private JobProcessor $processor,
         private AiOfferIntakeFilter $intakeFilter,
+        ?ContaminatedJobDescriptionRepairer $descriptionRepairer = null,
     ) {
+        $this->descriptionRepairer = $descriptionRepairer ?? new ContaminatedJobDescriptionRepairer();
     }
 
     /**
@@ -56,17 +60,26 @@ final class CanonicalJobOfferService
             'externalId' => $externalId,
         ]);
         if ($existingOccurrence instanceof JobSourceOccurrence) {
+            $job = $existingOccurrence->getJobOffer();
             $existingOccurrence->touch($payload);
-            $existingOccurrence->getJobOffer()->enrichFromOccurrence($payload);
-            $this->em->flush();
+            $descriptionRepaired = $this->descriptionRepairer->repair($job, $payload, $sourceCode);
+            $job->enrichFromOccurrence($payload);
+
+            if ($descriptionRepaired && $this->canReprocessAutomatically($job)) {
+                $this->processor->process($job, $settings, $profile);
+            } else {
+                $this->em->flush();
+            }
 
             return new CanonicalJobImportResult(
-                $existingOccurrence->getJobOffer(),
+                $job,
                 $existingOccurrence,
                 CanonicalJobImportResult::DUPLICATE,
                 'EXACT_SOURCE_ID',
                 100,
-                ['Même identifiant externe déjà importé pour cette source.'],
+                $descriptionRepaired
+                    ? ['Même identifiant externe déjà importé ; description Gmail polluée réparée depuis la nouvelle occurrence.']
+                    : ['Même identifiant externe déjà importé pour cette source.'],
             );
         }
 
@@ -126,6 +139,11 @@ final class CanonicalJobOfferService
             100,
             ['Première occurrence de cette offre canonique.'],
         );
+    }
+
+    private function canReprocessAutomatically(JobOffer $job): bool
+    {
+        return in_array($job->getStatus(), ['DISCOVERED', 'PREPARED', 'REJECTED_BY_FILTER'], true);
     }
 
     /** @param array<string, mixed> $payload */

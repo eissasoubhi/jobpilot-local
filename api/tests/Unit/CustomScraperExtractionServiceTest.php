@@ -9,6 +9,7 @@ use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobDetailExtractor;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericJobListingExtractor;
+use App\JobDiscovery\Infrastructure\Scraping\Html\GenericPaginationDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingStateStore;
 use App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard;
@@ -52,10 +53,32 @@ HTML;
         self::assertSame(1, $preview['candidateCount']);
         self::assertSame(0, $preview['reliableCount']);
         self::assertSame(0, $preview['detailEnriched']);
+        self::assertNull($preview['pagination']['nextUrl']);
         self::assertSame('S-10', $preview['candidates'][0]['externalId']);
         self::assertSame('Senior Symfony Developer', $preview['candidates'][0]['title']);
         self::assertFalse($preview['candidates'][0]['rawData']['quality']['reliable']);
         self::assertSame(200, $preview['http']['statusCode']);
+    }
+
+    public function testReportsSafeNextPageWithoutFetchingIt(): void
+    {
+        $html = <<<'HTML'
+<html><body>
+<a href="/jobs/symfony">Senior Symfony Developer</a>
+<a href="/jobs/react">React Developer</a>
+<a rel="next" href="?page=2">Suivant</a>
+</body></html>
+HTML;
+
+        $preview = $this->service(new MockHttpClient([
+            new MockResponse('', ['http_code' => 404]),
+            new MockResponse($html, ['http_code' => 200]),
+        ]))->preview($this->source());
+
+        self::assertSame('https://jobs.example.test/jobs?page=2', $preview['pagination']['nextUrl']);
+        self::assertSame('REL_NEXT', $preview['pagination']['strategy']);
+        self::assertSame('HIGH', $preview['pagination']['confidence']);
+        self::assertSame(1, $preview['http']['networkRequests']);
     }
 
     public function testEnrichesLinkCandidateFromBoundedDetailFetch(): void
@@ -121,6 +144,7 @@ HTML;
         self::assertTrue($preview['requiresBrowser']);
         self::assertSame(0, $preview['candidateCount']);
         self::assertSame(0, $preview['reliableCount']);
+        self::assertNull($preview['pagination']['nextUrl']);
         self::assertSame([], $preview['candidates']);
     }
 
@@ -178,6 +202,7 @@ HTML;
             $listingExtractor,
             new GenericJobDetailExtractor($listingExtractor),
             new CustomScraperOfferQualityEvaluator(),
+            new GenericPaginationDetector(),
         );
     }
 

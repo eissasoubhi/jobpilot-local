@@ -24,7 +24,7 @@ La page **Paramètres > Scraping personnalisé** enregistre pour chaque source :
 - date de vérification ;
 - référence ou note CGU facultative.
 
-Une source ne peut pas être activée ou testée si l’utilisateur retire sa confirmation d’autorisation.
+Une source ne peut pas être activée, testée ou prévisualisée si l’utilisateur retire sa confirmation d’autorisation.
 
 ## Tester le site
 
@@ -41,6 +41,26 @@ Le diagnostic :
 
 La CI utilise uniquement des réponses HTTP synthétiques locales : aucun test automatisé ne dépend d’un site réel.
 
+## Prévisualiser l’extraction HTTP
+
+L’API `POST /api/custom-scrapers/{id}/preview` exécute la première vraie extraction générique, sans enregistrer d’offre dans le catalogue.
+
+Cette prévisualisation :
+
+1. exige toujours la confirmation d’autorisation ;
+2. fait une seule requête de liste via le transport HTTP contrôlé, après contrôle `robots.txt` ;
+3. utilise zéro retry, un timeout de 10 secondes et une réponse maximale de 3 Mo ;
+4. applique d’abord le détecteur HTTP/Browser ;
+5. en mode `AUTO`, n’extrait que si HTTP est le mode effectif ;
+6. refuse un mode `BROWSER` forcé tant que le worker Playwright isolé n’est pas disponible ;
+7. retourne au maximum 50 candidats et ne suit encore aucun lien de détail.
+
+L’extraction est déterministe et privilégie les données structurées Schema.org `JobPosting`. Elle récupère quand disponibles le titre, l’entreprise, la localisation, le type de contrat, le mode de travail, la description, la date de publication, l’URL, l’identifiant et les bornes de salaire/TJM.
+
+Si aucun `JobPosting` n’est présent, l’extracteur peut retourner des liens de fiches probables du **même domaine**. Ces résultats sont marqués `JOB_LINK` avec `needsDetailFetch=true` : ils constituent des candidats à enrichir dans une étape suivante et ne sont pas encore persistés.
+
+Les URL externes à la source sont ignorées. Aucune page de détail, aucun login, aucun cookie privé, aucun Gemini et aucun navigateur ne sont déclenchés par cette prévisualisation.
+
 ## Choix du mode
 
 `AUTO` reste le mode recommandé.
@@ -55,19 +75,19 @@ Le résultat suit ces règles :
 4. un mode forcé par l’utilisateur reste prioritaire sur la recommandation ;
 5. Browser ne doit jamais servir à contourner une authentification, un CAPTCHA ou une restriction d’accès.
 
-Le diagnostic actuel ne lance pas encore Chromium. La vérification Browser/Playwright réelle arrivera dans une étape séparée et isolée.
+Le diagnostic et la prévisualisation actuels ne lancent pas encore Chromium. La vérification Browser/Playwright réelle arrivera dans une étape séparée et isolée.
 
 ## Étapes suivantes
 
-Le registre et le diagnostic HTTP sont maintenant branchés. Les prochains incréments prévus sont :
+Le registre, le diagnostic HTTP et la prévisualisation d’extraction sont maintenant branchés. Les prochains incréments prévus sont :
 
-- extraction générique des offres depuis le DOM avec une sortie structurée et contrôlée ;
+- enrichissement borné des candidats `JOB_LINK` via les fiches détail du même domaine ;
 - utilisation de Gemini seulement lorsque nécessaire pour interpréter un DOM inconnu, avec cache et quotas ;
-- worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis ;
-- intégration des offres extraites dans le pipeline normal de normalisation, déduplication et matching.
+- intégration des offres suffisamment structurées dans le pipeline normal de normalisation, déduplication et matching ;
+- worker Browser/Playwright isolé pour les sources publiques autorisées dont le rendu JavaScript est réellement requis.
 
 ## Sécurité
 
 Le registre accepte uniquement des URL HTTPS sans identifiants intégrés. L’URL d’exemple de détail doit utiliser le même domaine que la liste des offres.
 
-Le diagnostic réutilise les protections du transport contrôlé : blocage des URL locales/privées explicites, contrôle `robots.txt`, quotas, délai minimal, timeout, redirections bornées, circuit breaker, cache HTTP et taille de réponse maximale. Aucun login, cookie de session privé, CAPTCHA bypass, proxy furtif ou contournement de 401/403/429 n’est ajouté.
+Le diagnostic et la prévisualisation réutilisent les protections du transport contrôlé : blocage des URL locales/privées explicites, contrôle `robots.txt`, quotas, délai minimal, timeout, redirections bornées, circuit breaker, cache HTTP et taille de réponse maximale. Aucun login, cookie de session privé, CAPTCHA bypass, proxy furtif ou contournement de 401/403/429 n’est ajouté.

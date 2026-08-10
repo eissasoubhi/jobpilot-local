@@ -25,20 +25,20 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
 
     public function extract(string $html, string $pageUrl, string $sourceName): array
     {
-        $config = $this->configuration->load();
-        if (!($config['enabled'] ?? false)
-            || trim((string) ($config['apiKey'] ?? '')) === ''
-            || trim((string) ($config['model'] ?? '')) === '') {
+        $config = $this->configuration->effective();
+        if (!$config['enabled']
+            || trim($config['apiKey']) === ''
+            || trim($config['model']) === '') {
             return [];
         }
 
-        $model = trim((string) $config['model']);
+        $model = trim($config['model']);
         $extractor = new GeminiCustomScraperExtractor(
             $this->httpClient,
             $this->logger,
             $this->contextBuilder,
             true,
-            (string) $config['apiKey'],
+            $config['apiKey'],
             $model,
         );
         $fingerprint = $extractor->cacheFingerprint($html, $pageUrl, $sourceName);
@@ -55,38 +55,44 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
             ]);
         }
 
-        $estimatedTokens = $extractor->estimatedInputTokens($html, $pageUrl, $sourceName, $this->quotaManager);
-        $quota = is_array($config['quota'] ?? null) ? $config['quota'] : [];
-        $reservation = $this->quotaManager->reserve(
-            self::PROVIDER,
-            $model,
-            $estimatedTokens,
-            max(1, (int) ($quota['rpm'] ?? 1)),
-            max(1, (int) ($quota['tpm'] ?? 1)),
-            max(1, (int) ($quota['rpd'] ?? 1)),
-            max(1, min(100, (int) ($quota['usablePercent'] ?? 80))),
-        );
-        if ($reservation === null) {
+        try {
+            $reservationId = $this->quotaManager->reserve(
+                self::PROVIDER,
+                $model,
+                $extractor->estimatedInputTokens($html, $pageUrl, $sourceName, $this->quotaManager),
+                $config['quota'],
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('Custom scraper Gemini extraction skipped because local quota accounting failed.', [
+                'model' => $model,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        if ($reservationId === null) {
             $this->logger->info('Custom scraper AI extraction skipped because the configured Gemini quota is exhausted.', [
                 'model' => $model,
+                'quota' => $config['quota'],
             ]);
 
             return [];
         }
 
         $offers = $extractor->extract($html, $pageUrl, $sourceName);
-        try {
-            $this->quotaManager->reconcile(
-                self::PROVIDER,
-                $model,
-                $reservation,
-                $extractor->lastInputTokens(),
-            );
-        } catch (\Throwable $exception) {
-            $this->logger->warning('Custom scraper AI quota reconciliation failed.', [
-                'exception' => $exception::class,
-                'message' => $exception->getMessage(),
-            ]);
+        $actualInputTokens = $extractor->lastInputTokens();
+        if ($actualInputTokens !== null) {
+            try {
+                $this->quotaManager->reconcile($reservationId, $actualInputTokens);
+            } catch (\Throwable $exception) {
+                $this->logger->warning('Custom scraper AI quota reconciliation failed.', [
+                    'model' => $model,
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
 
         if ($offers !== []) {

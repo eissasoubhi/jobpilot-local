@@ -14,17 +14,38 @@ Le fait qu’une page fonctionne mieux avec JavaScript ne suffit pas à autorise
 Règles de mode :
 
 - `HTTP` : jamais de bascule Browser automatique ;
-- `AUTO` : Browser uniquement lorsque le diagnostic recommande `BROWSER` ;
-- `BROWSER` : Browser peut être utilisé même si le diagnostic HTTP était ambigu, mais seulement si les trois garde-fous précédents sont validés.
+- `AUTO` : le chemin HTTP + fallback IA reste prioritaire et Browser ne prend le relais que lorsque le diagnostic indique qu’un rendu navigateur est nécessaire ;
+- `BROWSER` : Browser peut être utilisé directement, mais uniquement après les mêmes contrôles d’autorisation et de `robots.txt`.
 
-## Coordinateur
+## Chaîne de récupération
 
-`CustomScraperBrowserRenderCoordinator` applique cette politique avant d’appeler `BrowserRenderClientInterface`.
+`BrowserAwareCustomScraperJobConnector` est le connecteur dynamique final exposé au registre. Il réutilise les chemins existants au lieu de créer un pipeline parallèle :
 
-Lorsque la politique refuse le rendu, aucun appel au worker n’est effectué. Lorsque la politique l’autorise, le coordinateur transmet seulement le code de source, l’URL, le domaine et les deux confirmations de sécurité déjà obtenues.
+1. extraction HTTP déterministe ;
+2. fallback Gemini grounded lorsque la politique IA l’autorise ;
+3. récupération Browser uniquement lorsque le mode et le diagnostic l’exigent ;
+4. extraction du HTML rendu avec les mêmes extracteurs génériques ;
+5. enrichissement des fiches détail ;
+6. passage obligatoire par `CustomScraperOfferQualityEvaluator` ;
+7. seules les offres fiables rejoignent le pipeline canonique JobPilot.
+
+Avant chaque rendu de page liste ou de fiche détail, `CustomScraperBrowserRecoveryService` exécute un préflight via l’infrastructure HTTP contrôlée. Une interdiction `robots.txt`, une révocation d’autorisation ou une erreur de préflight empêche l’appel au worker.
+
+## Limites Browser
+
+Le chemin Browser est volontairement plus conservateur que le scraping HTTP :
+
+- 3 pages de liste maximum par synchronisation ;
+- 10 fiches détail maximum ;
+- pagination uniquement via un `nextUrl` HTTPS du même domaine détecté par le moteur générique ;
+- arrêt sur boucle, erreur de préflight ou erreur de rendu ;
+- HTML rendu limité à 3 Mo côté worker et revalidé côté API ;
+- worker désactivé tant que `BROWSER_WORKER_URL` et `JOBPILOT_BROWSER_WORKER_TOKEN` ne sont pas configurés.
+
+## Frontière de sécurité
+
+Le worker reste read-only : aucun login automatisé, aucun cookie/session privée injectée, aucun clic ou formulaire, aucun CAPTCHA bypass, aucun mode stealth, aucune rotation de proxy et aucun contournement de contrôle d’accès. Les navigations principales restent sur le domaine HTTPS autorisé et les destinations privées/locales sont refusées.
 
 ## État de livraison
 
-Cette tranche teste la décision indépendamment du moteur de collecte. Elle ne rend pas encore les sources `BROWSER` synchronisables.
-
-La prochaine intégration devra obtenir un véritable accord `robots.txt` depuis l’infrastructure HTTP existante avant d’appeler ce coordinateur, puis réutiliser l’extraction DOM, la pagination et le score de qualité sur le HTML rendu.
+Le chemin Browser est maintenant câblé dans la synchronisation des sources personnalisées. Il ne devient réellement actif en environnement d’exécution qu’après déploiement du worker Playwright et configuration de son URL/token internes.

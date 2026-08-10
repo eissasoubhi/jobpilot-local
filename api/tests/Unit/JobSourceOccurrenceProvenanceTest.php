@@ -30,7 +30,9 @@ final class JobSourceOccurrenceProvenanceTest extends TestCase
 
         $data = $occurrence->toArray();
 
-        self::assertSame('Gmail', $data['sourceName']);
+        self::assertSame('Free-Work via Gmail', $data['sourceName']);
+        self::assertSame('Gmail', $data['connectorName']);
+        self::assertSame('gmail', $data['sourceCode']);
         self::assertSame('free-work', $data['originPlatformCode']);
         self::assertSame('Free-Work', $data['originPlatformName']);
         self::assertArrayNotHasKey('rawData', $data);
@@ -59,18 +61,22 @@ final class JobSourceOccurrenceProvenanceTest extends TestCase
         ]);
 
         $data = $occurrence->toArray();
+        self::assertSame('LesJeudis via Gmail', $data['sourceName']);
+        self::assertSame('Gmail', $data['connectorName']);
         self::assertSame('lesjeudis', $data['originPlatformCode']);
         self::assertSame('LesJeudis', $data['originPlatformName']);
         self::assertArrayNotHasKey('rawData', $data);
     }
 
-    public function testNonAssistedOccurrenceReturnsNullProvenance(): void
+    public function testNonAssistedOccurrenceKeepsConnectorNameAsDisplayName(): void
     {
         $offer = new JobOffer();
         $occurrence = new JobSourceOccurrence($offer, 'adzuna', 'Adzuna', 'adzuna-1');
         $occurrence->refresh([], 'PRIMARY', 100);
 
         $data = $occurrence->toArray();
+        self::assertSame('Adzuna', $data['sourceName']);
+        self::assertSame('Adzuna', $data['connectorName']);
         self::assertNull($data['originPlatformCode']);
         self::assertNull($data['originPlatformName']);
     }

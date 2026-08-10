@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\CustomScraperSource;
+use App\JobDiscovery\Application\CustomScraperDetailPriority;
 use App\JobDiscovery\Application\CustomScraperOfferQualityEvaluator;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\JobDiscovery\Infrastructure\CustomScraping\CustomScraperJobConnector;
@@ -85,6 +86,7 @@ HTML;
         self::assertSame(1, $diagnostics['filteredByExtractionQuality']);
         self::assertSame(1, $diagnostics['pagesFetched']);
         self::assertSame('NO_NEXT_PAGE', $diagnostics['paginationStopReason']);
+        self::assertTrue($diagnostics['detailPriorityApplied']);
         self::assertSame(2, $diagnostics['networkRequests']);
     }
 
@@ -135,6 +137,7 @@ HTML;
         self::assertSame(3, $diagnostics['effectivePageLimit']);
         self::assertSame('NO_NEXT_PAGE', $diagnostics['paginationStopReason']);
         self::assertFalse($diagnostics['paginationLoopDetected']);
+        self::assertTrue($diagnostics['detailPriorityApplied']);
         self::assertSame(2, $diagnostics['networkRequests']);
     }
 
@@ -190,6 +193,7 @@ HTML;
             new GenericJobDetailExtractor($listingExtractor),
             new CustomScraperOfferQualityEvaluator(),
             new GenericPaginationDetector(),
+            new CustomScraperDetailPriority(),
         );
     }
 

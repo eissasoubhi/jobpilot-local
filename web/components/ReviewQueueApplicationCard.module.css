@@ -1,0 +1,114 @@
+.letterSection {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #dfe4ef;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.letterHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.letterTitleBlock {
+  min-width: 0;
+}
+
+.letterTitleBlock h3 {
+  margin: 3px 0 0;
+  font-size: 19px;
+}
+
+.letterMeta {
+  margin-top: 6px;
+  color: #687386;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.letterActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview {
+  max-height: 360px;
+  overflow: auto;
+  padding: 18px 20px;
+  border: 1px solid #e2e6ef;
+  border-radius: 12px;
+  background: #fbfcfe;
+  color: #303b4f;
+  font-size: 14px;
+  line-height: 1.72;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editor {
+  display: grid;
+  gap: 10px;
+}
+
+.editor textarea {
+  min-height: 320px;
+  padding: 16px 18px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.editorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.editorHint {
+  color: #687386;
+  font-size: 12px;
+}
+
+.editorButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.empty {
+  padding: 18px;
+  border: 1px dashed #d7dde8;
+  border-radius: 12px;
+  color: #687386;
+  background: #fbfcfe;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .letterHeader {
+    display: grid;
+  }
+
+  .letterActions {
+    justify-content: flex-start;
+  }
+
+  .editorFooter {
+    align-items: stretch;
+  }
+
+  .editorButtons {
+    width: 100%;
+  }
+
+  .editorButtons :global(.btn) {
+    flex: 1 1 auto;
+  }
+}

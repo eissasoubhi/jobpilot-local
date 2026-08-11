@@ -57,6 +57,7 @@ const navigation: readonly NavigationGroup[] = [
       ['/parametres/scraping', 'Scraping personnalisé', '⌘'],
       ['/cv', 'Mes CV', '▤'],
       ['/profil', 'Profil', '◉'],
+      ['/profil/reponses', 'Réponses automatiques', '✎'],
       ['/parametres', 'Paramètres', '☷'],
     ],
   },

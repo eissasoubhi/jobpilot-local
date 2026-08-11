@@ -15,13 +15,15 @@ final class ApplicationPreparationService
         private EntityManagerInterface $em,
         private ApplicationCvRepairService $cvRepair,
         private ApplicationContentBuilder $contentBuilder,
+        private ?LocalDataService $data = null,
     ) {}
 
     public function prepare(JobOffer $job, CandidateProfile $profile): Application
     {
         $existing = $this->em->getRepository(Application::class)->findOneBy(['jobOffer' => $job]);
         $application = $existing ?? new Application($job);
-        $content = $this->contentBuilder->build($job, $profile);
+        $profileSkills = $this->data?->settings()->getSkills() ?? [];
+        $content = $this->contentBuilder->build($job, $profile, $profileSkills);
 
         $compensation = null;
         if ($job->getProposedTjm() !== null) {

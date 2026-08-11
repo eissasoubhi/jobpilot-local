@@ -88,7 +88,7 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
@@ -104,6 +104,16 @@ describe('platform acquisition matrix', () => {
     expect(connector?.note).toContain('screen/web scraping');
     expect(connector?.note).toContain('commerciales ou non');
     expect(connector?.note).toContain('licence écrite');
+    expect(connector?.nextStep).toContain('Gmail');
+  });
+
+  it('records why Welcome to the Jungle does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'welcome-to-the-jungle');
+
+    expect(connector).toBeDefined();
+    expect(connector?.note).toContain('27/04/2026');
+    expect(connector?.note).toContain('robots');
+    expect(connector?.note).toContain('extensions/modules de navigateur');
     expect(connector?.nextStep).toContain('Gmail');
   });
 

@@ -28,7 +28,8 @@ Pour chaque plateforme, la revue doit répondre explicitement aux questions suiv
 L’absence de connexion requise rend une plateforme **candidate techniquement** au scraping, mais ne suffit pas à rendre ce scraping autorisé. La décision finale de JobPilot doit être l’un des modes suivants :
 
 - `API` ;
-- `RSS` ;
+- `RSS` ou autre flux officiel ;
+- `XML` partenaire lorsqu’un export officiel sous convention existe ;
 - `SCRAPING_HTTP` ;
 - `SCRAPING_BROWSER` ;
 - `GMAIL/EXTENSION` ;
@@ -53,9 +54,11 @@ Un connecteur opérationnel peut rester en **configuration requise** tant que se
 
 ### `PLANNED`
 
-Un canal officiel réutilisable a été identifié, mais le connecteur n’est pas encore développé ou configuré.
+Un canal officiel réutilisable a été identifié, mais le connecteur n’est pas encore développé, configuré ou autorisé pour JobPilot.
 
-Une source passe dans cet état uniquement après confirmation de son API ou de son flux officiel. Elle ne devient `OPERATIONAL` qu’après ajout au registre backend, politique de collecte, limites, tests et documentation.
+Une source passe dans cet état uniquement après confirmation d’une API, d’un flux ou d’un export officiel. Elle ne devient `OPERATIONAL` qu’après obtention des accès ou accords nécessaires, ajout au registre backend, politique de collecte, limites, tests et documentation.
+
+Apec est actuellement dans cet état : son export XML officiel existe, mais il est organisé par convention de partenariat et JobPilot ne possède pas encore cet accord.
 
 ### `EMAIL_OR_EXTENSION_ONLY`
 
@@ -100,7 +103,28 @@ La revue doit vérifier au minimum :
 5. les règles `robots.txt` lorsqu’un accès HTTP public est envisagé ;
 6. la stabilité du format et la disponibilité des champs obligatoires ;
 7. la nécessité éventuelle d’un accord partenaire ;
-8. la décision finale entre API/RSS, scraping HTTP, scraping navigateur, Gmail/extension ou blocage documenté.
+8. la décision finale entre API/RSS, flux partenaire, scraping HTTP, scraping navigateur, Gmail/extension ou blocage documenté.
+
+## Apec
+
+Décision revue le **11 août 2026**.
+
+Apec propose officiellement aux sites tiers deux moyens de relayer ses offres :
+
+- un widget de moteur de recherche ;
+- un **export des offres via flux XML standardisé**, organisé par **convention de partenariat**.
+
+Ce flux XML est le canal de redistribution à privilégier pour JobPilot si Apec accepte un partenariat. Il ne doit pas être confondu avec l’API **ADEP** mise en avant en 2026 pour permettre aux recruteurs et ATS de **diffuser leurs propres offres vers Apec.fr** : ADEP n’est pas présentée comme une API publique de lecture du catalogue candidat.
+
+Références officielles :
+
+- <https://corporate.apec.fr/devenir-partenaire>
+- <https://www.apec.fr/faq.html?question=comment-puis-je-publier-des-offres-d-emploi-en-utilisant-un-flux-xml>
+- <https://www.apec.fr/recruteur/recruter/diffuser-une-offre/fiches-transactions/diffusez-vos-offres-d-emploi-automatiquement-sur-apec-fr-gr-ce-a-votre-ats-.html>
+
+JobPilot classe donc Apec en `PLANNED` : un canal officiel réutilisable est identifié, mais son accès nécessite une convention que JobPilot ne possède pas encore. Aucun scraper HTTP ou Browser Apec n’est activé par défaut. En attendant, les alertes Gmail reconnues et l’import assisté restent les canaux utilisables.
+
+Étape suivante : demander une convention de partenariat Apec pour l’export XML, documenter les spécifications et quotas obtenus, puis seulement implémenter un connecteur exécutable.
 
 ## Le Studio Tech
 

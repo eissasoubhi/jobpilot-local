@@ -164,8 +164,8 @@ jobs:
         working-directory: api
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Build isolated Playwright image
-        run: docker build --tag jobpilot-playwright-e2e:ci --file web/Dockerfile.e2e web
+      - name: Prepare isolated Chromium runtime
+        run: docker build --tag jobpilot-browser-worker:ci browser-worker
 
       - name: Install frontend dependencies
         working-directory: web
@@ -242,21 +242,20 @@ jobs:
           cat /tmp/jobpilot-web.log || true
           exit 1
 
-      - name: Run Playwright in isolated container
+      - name: Run Playwright in isolated browser container
         run: |
-          set +e
-          container_id=$(docker create \
+          docker run --rm \
             --network host \
+            --ipc host \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
             --env CI=true \
             --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
-            jobpilot-playwright-e2e:ci)
-          docker start --attach "$container_id"
-          status=$?
-          rm -rf web/playwright-report web/test-results
-          docker cp "$container_id:/app/playwright-report" web/playwright-report 2>/dev/null || true
-          docker cp "$container_id:/app/test-results" web/test-results 2>/dev/null || true
-          docker rm "$container_id" >/dev/null
-          exit "$status"
+            --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+            --volume "$PWD/web:/workspace" \
+            --workdir /workspace \
+            jobpilot-browser-worker:ci \
+            npm run test:e2e
 
       - name: Show application logs on failure
         if: failure()

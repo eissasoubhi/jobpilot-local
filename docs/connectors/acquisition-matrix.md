@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work et WeLoveDevs sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs et HelloWork sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -89,6 +89,22 @@ Références officielles :
 - <https://welovedevs.com/wp-content/uploads/2025/05/CGU.Developpeur.V.3.4.docx.pdf>
 
 JobPilot classe donc WeLoveDevs en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou navigateur planifié n’est ajouté. Une collecte automatique ne pourra être envisagée qu’après autorisation écrite ou identification d’un canal officiel réutilisable. Les alertes reconnues et l’import explicitement déclenché par l’utilisateur restent les voies admises.
+
+#### Cas HelloWork
+
+Décision revue le **11 août 2026**. Les listes et fiches d’offres HelloWork sont consultables publiquement, mais les CGU actuelles distinguent explicitement cette visibilité d’un droit d’extraction automatisée.
+
+Les CGU HelloWork indiquent que les systèmes automatisés ou logiciels accédant au Site sont des utilisateurs non légitimes de la base de données et interdisent strictement l’utilisation de systèmes automatisés pour extraire les données du Site, y compris le Contenu, par `screen scraping` ou `web scraping`, à des fins commerciales **ou non**. L’exception prévue exige une convention de licence écrite conclue avec HELLOWORK et autorisant expressément l’extraction.
+
+Références officielles revues :
+
+- <https://www.hellowork-group.com/fr/legal/cgu-hellowork/>
+- <https://www.hellowork.com/fr-fr/page/infos-legales.html>
+- <https://recruteur.hellowork.com/fr/page/nos-partenaires-ats.html>
+
+Les intégrations ATS présentées publiquement servent aux recruteurs à diffuser leurs offres ou synchroniser des candidatures avec HelloWork ; elles ne constituent pas, dans cette revue, une API publique de lecture du catalogue candidat.
+
+JobPilot classe donc HelloWork en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié, aucun endpoint interne non documenté et aucune automatisation de session ne doivent être ajoutés. Gmail et l’import assisté restent disponibles. Cette décision ne pourra être réouverte qu’après licence écrite applicable ou identification d’un canal officiel de lecture/réutilisation.
 
 ### `UNDER_REVIEW`
 

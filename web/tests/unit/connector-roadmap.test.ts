@@ -78,6 +78,18 @@ describe('platform acquisition matrix', () => {
     expect(connector?.nextStep).toContain('convention de partenariat Apec');
   });
 
+  it('records Talent.com as a publisher API/feed plan without enabling scraping', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'talent-com');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('PLANNED');
+    expect(connector?.modes).toEqual(['API', 'XML']);
+    expect(connector?.note).toContain('Publisher');
+    expect(connector?.note).toContain('self-serve Job API');
+    expect(connector?.note).toContain('aucun scraper planifié');
+    expect(connector?.nextStep).toContain('accès Publisher Talent.com');
+  });
+
   it('marks Le Studio Tech as the operational public HTTP scraper', () => {
     const connector = connectorRoadmap.find((entry) => entry.code === 'le-studio-tech');
 

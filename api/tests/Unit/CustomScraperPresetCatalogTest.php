@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class CustomScraperPresetCatalogTest extends TestCase
 {
-    public function testCatalogSeparatesAuthorizationRequiredAndAssistedOnlySourcesWhileReviewIsFresh(): void
+    public function testCatalogKeepsReportedWrittenAuthorizationsBehindExplicitConfirmation(): void
     {
         $presets = (new CustomScraperPresetCatalog(null, '2026-08-10'))->all();
 
@@ -28,19 +28,15 @@ final class CustomScraperPresetCatalogTest extends TestCase
             self::assertNotSame('', trim((string) $preset['recommendedAction']));
             self::assertTrue($preset['gmailSupported']);
             self::assertNotSame('', trim((string) $preset['gmailPlatformCode']));
+            self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $preset['complianceStatus']);
+            self::assertSame('Autorisation écrite à confirmer', $preset['complianceLabel']);
+            self::assertStringContainsString('11 août 2026', (string) $preset['reason']);
+            self::assertTrue($preset['canPrefill']);
         }
 
-        self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['apec-php-symfony']['complianceStatus']);
-        self::assertTrue($bySlug['apec-php-symfony']['canPrefill']);
         self::assertSame('apec', $bySlug['apec-php-symfony']['gmailPlatformCode']);
-        self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['lehibou-symfony']['complianceStatus']);
-        self::assertTrue($bySlug['lehibou-symfony']['canPrefill']);
-
-        foreach (['free-work-symfony', 'welcome-to-the-jungle', 'hellowork-php', 'lesjeudis'] as $slug) {
-            self::assertSame(CustomScraperPresetCatalog::STATUS_ASSISTED_ONLY, $bySlug[$slug]['complianceStatus']);
-            self::assertFalse($bySlug[$slug]['canPrefill']);
-            self::assertTrue($bySlug[$slug]['gmailSupported']);
-        }
+        self::assertSame('lehibou', $bySlug['lehibou-symfony']['gmailPlatformCode']);
+        self::assertStringContainsString('flux XML officiel Apec', (string) $bySlug['apec-php-symfony']['reason']);
     }
 
     public function testRenewalWarningStartsExactlyFourteenDaysBeforeDueDate(): void
@@ -71,11 +67,10 @@ final class CustomScraperPresetCatalogTest extends TestCase
             self::assertSame(0, $preset['reviewDaysRemaining']);
             self::assertFalse($preset['canPrefill']);
             self::assertTrue($preset['gmailSupported']);
+            self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $preset['complianceStatus']);
         }
 
-        self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['apec-php-symfony']['complianceStatus']);
         self::assertSame('2026-11-08', $bySlug['apec-php-symfony']['reviewDueAt']);
-        self::assertSame(CustomScraperPresetCatalog::STATUS_AUTHORIZATION_REQUIRED, $bySlug['lehibou-symfony']['complianceStatus']);
     }
 
     public function testReviewIsFreshButRenewalRecommendedOnDueDate(): void

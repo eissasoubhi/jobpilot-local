@@ -41,6 +41,7 @@ final class Version20260811194500 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
+        $this->addSql('UPDATE candidate_profile SET portfolio_url = github_url WHERE portfolio_url IS NULL AND github_url IS NOT NULL');
         $this->addSql('ALTER TABLE candidate_profile DROP first_name');
         $this->addSql('ALTER TABLE candidate_profile DROP last_name');
         $this->addSql('ALTER TABLE candidate_profile DROP address_line1');

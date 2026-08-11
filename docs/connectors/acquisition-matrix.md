@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs et HelloWork sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork et Welcome to the Jungle sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -105,6 +105,20 @@ Références officielles revues :
 Les intégrations ATS présentées publiquement servent aux recruteurs à diffuser leurs offres ou synchroniser des candidatures avec HelloWork ; elles ne constituent pas, dans cette revue, une API publique de lecture du catalogue candidat.
 
 JobPilot classe donc HelloWork en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié, aucun endpoint interne non documenté et aucune automatisation de session ne doivent être ajoutés. Gmail et l’import assisté restent disponibles. Cette décision ne pourra être réouverte qu’après licence écrite applicable ou identification d’un canal officiel de lecture/réutilisation.
+
+#### Cas Welcome to the Jungle
+
+Décision revue le **11 août 2026** sur les CGU officielles version du **27 avril 2026**.
+
+Les CGU Welcome to the Jungle interdisent explicitement de développer, soutenir ou utiliser un logiciel, dispositif, script, robot, robot d’indexation, extension/module de navigateur ou autre technologie afin de procéder à une extraction automatisée de données (`scraping`) ou de copier/télécharger le Site, ses Contenus ou ses Services.
+
+L’exception prévue pour certains opérateurs de moteurs de recherche publics vise la création d’index de recherche accessibles au public et ne s’applique pas à l’usage JobPilot. Aucun canal officiel de lecture/réutilisation du catalogue candidat n’a été identifié dans cette revue.
+
+Référence officielle :
+
+- <https://www.welcometothejungle.com/fr/pages/terms>
+
+JobPilot classe donc Welcome to the Jungle en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié, aucun endpoint interne non documenté et aucune automatisation de session privée ne doivent être ajoutés. Gmail et l’import assisté restent les canaux admis tant qu’un accord écrit applicable ou un canal officiel de lecture/réutilisation n’est pas publié.
 
 ### `UNDER_REVIEW`
 

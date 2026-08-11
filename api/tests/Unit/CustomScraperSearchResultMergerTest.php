@@ -88,7 +88,7 @@ final class CustomScraperSearchResultMergerTest extends TestCase
         self::assertSame([], $result['candidates'][1]['rawData']['discoveredByKeywords']);
     }
 
-    public function testExistingKeywordProvenanceIsPreservedWithoutDuplicates(): void
+    public function testExistingKeywordProvenanceIsMergedFromEveryDuplicateCandidate(): void
     {
         $result = (new CustomScraperSearchResultMerger())->merge([
             [
@@ -99,10 +99,18 @@ final class CustomScraperSearchResultMergerTest extends TestCase
                     'rawData' => ['discoveredByKeywords' => ['PHP', 'PHP']],
                 ]],
             ],
+            [
+                'keyword' => 'React.js',
+                'candidates' => [[
+                    'externalId' => 'job-1',
+                    'title' => 'Symfony',
+                    'rawData' => ['discoveredByKeywords' => ['Vue.js']],
+                ]],
+            ],
         ]);
 
         self::assertSame(
-            ['PHP', 'Symfony'],
+            ['PHP', 'Symfony', 'Vue.js', 'React.js'],
             $result['candidates'][0]['rawData']['discoveredByKeywords'],
         );
     }

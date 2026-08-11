@@ -177,11 +177,17 @@
       const evidence = [];
 
       for (const autocompleteTerm of candidateRule.autocomplete) {
-        const matched = termScore(signals.normalized.autocomplete, autocompleteTerm);
-        if (matched) {
-          score = Math.max(score, 0.99 * matched);
+        if (signals.normalized.autocomplete === autocompleteTerm) {
+          score = Math.max(score, 0.99);
           evidence.push(`autocomplete:${autocompleteTerm}`);
         }
+      }
+
+      const inputType = normalize(element.getAttribute?.('type') || '');
+      const inputTypeKey = inputType === 'email' ? 'identity.email' : (inputType === 'tel' ? 'identity.phone' : null);
+      if (inputTypeKey === candidateRule.key) {
+        score = Math.max(score, 0.9);
+        evidence.push(`input-type:${inputType}`);
       }
 
       const sources = [

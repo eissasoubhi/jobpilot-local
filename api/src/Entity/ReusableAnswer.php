@@ -17,6 +17,7 @@ final class ReusableAnswer
     public const TYPE_NUMBER = 'NUMBER';
     public const TYPE_BOOLEAN = 'BOOLEAN';
     public const TYPE_CHOICE = 'CHOICE';
+    public const TYPE_MULTI_CHOICE = 'MULTI_CHOICE';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -113,6 +114,12 @@ final class ReusableAnswer
         return $this->answerEn;
     }
 
+    /** @return array{fr: list<string>, en: list<string>} */
+    public function getQuestionPatterns(): array
+    {
+        return $this->questionPatterns;
+    }
+
     public function isEnabled(): bool
     {
         return $this->enabled;
@@ -156,7 +163,7 @@ final class ReusableAnswer
 
         if (array_key_exists('answerType', $data)) {
             $type = strtoupper(trim((string) $data['answerType']));
-            if (!in_array($type, [self::TYPE_TEXT, self::TYPE_NUMBER, self::TYPE_BOOLEAN, self::TYPE_CHOICE], true)) {
+            if (!in_array($type, [self::TYPE_TEXT, self::TYPE_NUMBER, self::TYPE_BOOLEAN, self::TYPE_CHOICE, self::TYPE_MULTI_CHOICE], true)) {
                 throw new \InvalidArgumentException('Le type de réponse est invalide.');
             }
             $this->answerType = $type;

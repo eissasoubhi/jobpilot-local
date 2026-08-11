@@ -113,6 +113,7 @@ jobs:
 
   e2e:
     name: Chromium end-to-end tests
+    needs: [backend, frontend, compose-config]
     runs-on: [self-hosted, jobpilot]
     timeout-minutes: 30
     services:
@@ -163,11 +164,12 @@ jobs:
         working-directory: api
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Install frontend and Chromium dependencies
+      - name: Build isolated Playwright image
+        run: docker build --tag jobpilot-playwright-e2e:ci --file web/Dockerfile.e2e web
+
+      - name: Install frontend dependencies
         working-directory: web
-        run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
+        run: npm install --no-audit --no-fund
 
       - name: Build Next.js for browser tests
         working-directory: web
@@ -240,11 +242,21 @@ jobs:
           cat /tmp/jobpilot-web.log || true
           exit 1
 
-      - name: Run Playwright
-        working-directory: web
-        env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-        run: npm run test:e2e
+      - name: Run Playwright in isolated container
+        run: |
+          set +e
+          container_id=$(docker create \
+            --network host \
+            --env CI=true \
+            --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+            jobpilot-playwright-e2e:ci)
+          docker start --attach "$container_id"
+          status=$?
+          rm -rf web/playwright-report web/test-results
+          docker cp "$container_id:/app/playwright-report" web/playwright-report 2>/dev/null || true
+          docker cp "$container_id:/app/test-results" web/test-results 2>/dev/null || true
+          docker rm "$container_id" >/dev/null
+          exit "$status"
 
       - name: Show application logs on failure
         if: failure()

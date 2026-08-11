@@ -48,7 +48,7 @@ jobs:
           runner: self-hosted
         with:
           php-version: '8.4'
-          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
       - name: Install backend dependencies
@@ -151,7 +151,7 @@ jobs:
           runner: self-hosted
         with:
           php-version: '8.4'
-          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
 

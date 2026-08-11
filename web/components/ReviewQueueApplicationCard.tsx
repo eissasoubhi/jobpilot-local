@@ -3,6 +3,7 @@
 import type { Ref } from 'react';
 import { useEffect, useState } from 'react';
 
+import { CoverLetterDrawer } from '@/components/CoverLetterDrawer';
 import styles from '@/components/ReviewQueueApplicationCard.module.css';
 import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import { Badge } from '@/components/UI';
@@ -19,7 +20,6 @@ type ReviewQueueApplicationCardProps = {
 
 type EditableApplication = Application & {
   coverLetterManuallyEdited?: boolean;
-  coverLetterEditedAt?: string | null;
 };
 
 const TRACKING_STATUSES = [
@@ -33,6 +33,11 @@ const TRACKING_STATUSES = [
   ['IGNORED_NOT_MATCH', 'Ne correspond pas au profil'],
 ] as const;
 
+function wordCount(value: string): number {
+  const normalized = value.trim();
+  return normalized === '' ? 0 : normalized.split(/\s+/).length;
+}
+
 export function ReviewQueueApplicationCard({
   application,
   headingRef,
@@ -41,9 +46,7 @@ export function ReviewQueueApplicationCard({
   const [currentApplication, setCurrentApplication] = useState<Application>(application);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
   const [saving, setSaving] = useState(false);
-  const [coverLetterEditing, setCoverLetterEditing] = useState(false);
-  const [coverLetterSaving, setCoverLetterSaving] = useState(false);
-  const [coverLetterDraft, setCoverLetterDraft] = useState(application.coverLetter);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -51,8 +54,7 @@ export function ReviewQueueApplicationCard({
   useEffect(() => {
     setCurrentApplication(application);
     setSelectedStatus(application.status);
-    setCoverLetterDraft(application.coverLetter);
-    setCoverLetterEditing(false);
+    setDrawerOpen(false);
     setDescriptionExpanded(false);
     setNotice('');
     setError('');
@@ -61,7 +63,6 @@ export function ReviewQueueApplicationCard({
   const applyUpdatedApplication = (updated: Application): void => {
     setCurrentApplication(updated);
     setSelectedStatus(updated.status);
-    setCoverLetterDraft(updated.coverLetter);
     onApplicationUpdated?.(updated);
   };
 
@@ -97,50 +98,6 @@ export function ReviewQueueApplicationCard({
     await saveApplication(selectedStatus, 'Statut de suivi enregistré dans JobPilot.');
   };
 
-  const saveCoverLetter = async (): Promise<void> => {
-    if (coverLetterSaving) return;
-
-    setCoverLetterSaving(true);
-    setNotice('');
-    setError('');
-
-    try {
-      const updated = await api<EditableApplication>(`/applications/${currentApplication.id}/cover-letter`, {
-        method: 'PATCH',
-        body: JSON.stringify({ coverLetter: coverLetterDraft }),
-      });
-      applyUpdatedApplication(updated);
-      setCoverLetterEditing(false);
-      setNotice('Lettre de motivation enregistrée.');
-    } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
-    } finally {
-      setCoverLetterSaving(false);
-    }
-  };
-
-  const resetCoverLetter = async (): Promise<void> => {
-    if (coverLetterSaving) return;
-    if (!window.confirm('Réinitialiser la lettre avec la dernière version générée par JobPilot ?')) return;
-
-    setCoverLetterSaving(true);
-    setNotice('');
-    setError('');
-
-    try {
-      const updated = await api<EditableApplication>(`/applications/${currentApplication.id}/cover-letter/reset`, {
-        method: 'POST',
-      });
-      applyUpdatedApplication(updated);
-      setCoverLetterEditing(false);
-      setNotice('Lettre réinitialisée depuis la dernière version générée.');
-    } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
-    } finally {
-      setCoverLetterSaving(false);
-    }
-  };
-
   const copyCoverLetter = async (): Promise<void> => {
     setNotice('');
     setError('');
@@ -151,18 +108,6 @@ export function ReviewQueueApplicationCard({
     } catch {
       setError('Impossible de copier la lettre de motivation dans le presse-papiers.');
     }
-  };
-
-  const startCoverLetterEditing = (): void => {
-    setCoverLetterDraft(currentApplication.coverLetter);
-    setCoverLetterEditing(true);
-    setNotice('');
-    setError('');
-  };
-
-  const cancelCoverLetterEditing = (): void => {
-    setCoverLetterDraft(currentApplication.coverLetter);
-    setCoverLetterEditing(false);
   };
 
   const job = currentApplication.jobOffer;
@@ -177,15 +122,15 @@ export function ReviewQueueApplicationCard({
   const scoreReasons = job.scoreReasons ?? [];
   const description = job.description?.trim() || 'Description non disponible.';
   const descriptionIsLong = description.length > 1_400 || description.split('\n').length > 18;
-  const coverLetterEditedAt = editableApplication.coverLetterEditedAt
-    ? new Date(editableApplication.coverLetterEditedAt).toLocaleString('fr-FR')
-    : null;
+  const isLowMatch = job.score < 60;
+  const coverLetterWords = wordCount(currentApplication.coverLetter);
+  const downloadBase = `${API_URL}/applications/${currentApplication.id}/cover-letter/download`;
 
   return (
     <article className={styles.card} aria-label={`Offre à examiner : ${job.title}`}>
       <header className={styles.offerHeader}>
         <div className={styles.titleBlock}>
-          <div className={styles.eyebrow}>Prête à envoyer</div>
+          <div className={styles.eyebrow}>{isLowMatch ? 'À examiner' : 'Prête à envoyer'}</div>
           <h2 ref={headingRef} tabIndex={-1}>{job.title}</h2>
           <div className={styles.meta} aria-label="Métadonnées de l’offre">
             {job.company && <span>{job.company}</span>}
@@ -198,25 +143,11 @@ export function ReviewQueueApplicationCard({
           <Badge tone={applicationStatusTone(currentApplication.status)}>
             {applicationBadgeLabel(currentApplication)}
           </Badge>
+          {isLowMatch && <Badge tone="warn">Match faible · {job.score}%</Badge>}
           <Badge tone={isCdi ? 'good' : 'neutral'}>{isCdi ? 'CDI' : 'Non-CDI'}</Badge>
           {!isCdi && contractLabel !== 'Non renseigné' && <Badge>{contractLabel}</Badge>}
         </div>
       </header>
-
-      <div className={styles.readiness} aria-label="Éléments de candidature disponibles">
-        <div className={styles.readinessItem}>
-          <span className={styles.readinessLabel}>CV</span>
-          <span className={styles.readinessValue}>{currentApplication.cvDocument?.name || 'Non sélectionné'}</span>
-        </div>
-        <div className={styles.readinessItem}>
-          <span className={styles.readinessLabel}>Lettre</span>
-          <span className={styles.readinessValue}>{hasCoverLetter ? 'Prête' : 'Non préparée'}</span>
-        </div>
-        <div className={styles.readinessItem}>
-          <span className={styles.readinessLabel}>Rémunération</span>
-          <span className={styles.readinessValue}>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</span>
-        </div>
-      </div>
 
       <ReviewQueueTechnologyComparison comparison={profileComparison} />
 
@@ -266,96 +197,6 @@ export function ReviewQueueApplicationCard({
       {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
       {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
 
-      <section className={styles.letterSection} aria-labelledby={`cover-letter-title-${currentApplication.id}`}>
-        <div className={styles.letterHeader}>
-          <div className={styles.letterTitleBlock}>
-            <div className={styles.eyebrow}>Candidature</div>
-            <h3 id={`cover-letter-title-${currentApplication.id}`}>Lettre de motivation</h3>
-            <div className={styles.letterMeta}>
-              {editableApplication.coverLetterManuallyEdited ? (
-                <>Modifiée manuellement{coverLetterEditedAt ? ` · ${coverLetterEditedAt}` : ''}</>
-              ) : (
-                <>Générée automatiquement par JobPilot</>
-              )}
-            </div>
-          </div>
-
-          {!coverLetterEditing && hasCoverLetter && (
-            <div className={styles.letterActions}>
-              <button className="btn secondary small" type="button" onClick={startCoverLetterEditing}>
-                Modifier
-              </button>
-              <button className="btn secondary small" type="button" onClick={() => void copyCoverLetter()}>
-                Copier
-              </button>
-              <a
-                className="btn secondary small"
-                href={`${API_URL}/applications/${currentApplication.id}/cover-letter/download`}
-              >
-                Télécharger
-              </a>
-              {editableApplication.coverLetterManuallyEdited && (
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={coverLetterSaving}
-                  onClick={() => void resetCoverLetter()}
-                >
-                  Réinitialiser
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {!hasCoverLetter && !coverLetterEditing ? (
-          <div className={styles.empty}>Aucune lettre de motivation n’est préparée pour cette candidature.</div>
-        ) : coverLetterEditing ? (
-          <div className={styles.editor}>
-            <label htmlFor={`cover-letter-editor-${currentApplication.id}`}>Texte de la lettre</label>
-            <textarea
-              id={`cover-letter-editor-${currentApplication.id}`}
-              value={coverLetterDraft}
-              disabled={coverLetterSaving}
-              onChange={(event) => setCoverLetterDraft(event.target.value)}
-            />
-            <div className={styles.editorFooter}>
-              <div className={styles.editorHint}>Le téléchargement utilise toujours la dernière version enregistrée.</div>
-              <div className={styles.editorButtons}>
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={coverLetterSaving}
-                  onClick={cancelCoverLetterEditing}
-                >
-                  Annuler
-                </button>
-                {editableApplication.coverLetterManuallyEdited && (
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={coverLetterSaving}
-                    onClick={() => void resetCoverLetter()}
-                  >
-                    Réinitialiser
-                  </button>
-                )}
-                <button
-                  className="btn small"
-                  type="button"
-                  disabled={coverLetterSaving || coverLetterDraft.trim() === ''}
-                  onClick={() => void saveCoverLetter()}
-                >
-                  {coverLetterSaving ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.preview}>{currentApplication.coverLetter}</div>
-        )}
-      </section>
-
       <section className={styles.mission} aria-labelledby={`mission-title-${currentApplication.id}`}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitleBlock}>
@@ -374,7 +215,6 @@ export function ReviewQueueApplicationCard({
             className={styles.expandButton}
             type="button"
             aria-expanded={descriptionExpanded}
-            aria-controls={`mission-title-${currentApplication.id}`}
             onClick={() => setDescriptionExpanded((value) => !value)}
           >
             {descriptionExpanded ? 'Voir moins' : 'Voir toute la description'}
@@ -382,13 +222,14 @@ export function ReviewQueueApplicationCard({
         )}
       </section>
 
-      <section className={styles.scorePanel} aria-labelledby={`score-title-${currentApplication.id}`}>
+      <section className={`${styles.scorePanel} ${isLowMatch ? styles.scorePanelLow : ''}`} aria-labelledby={`score-title-${currentApplication.id}`}>
         <div className={styles.scoreSummary}>
           <div className={styles.scoreValue}>{job.score}%</div>
           <div className={styles.scoreHeader}>
             <div>
               <div className={styles.eyebrow}>Matching JobPilot</div>
               <h3 id={`score-title-${currentApplication.id}`}>Pourquoi ce score ?</h3>
+              {isLowMatch && <div className={styles.lowMatchHint}>Correspondance faible : vérification recommandée avant envoi.</div>}
             </div>
           </div>
         </div>
@@ -401,6 +242,64 @@ export function ReviewQueueApplicationCard({
           <div className="muted">Aucune explication détaillée disponible.</div>
         )}
       </section>
+
+      <section className={styles.applicationSummary} aria-labelledby={`application-summary-title-${currentApplication.id}`}>
+        <div className={styles.applicationSummaryHeader}>
+          <div>
+            <div className={styles.eyebrow}>Candidature</div>
+            <h3 id={`application-summary-title-${currentApplication.id}`}>Documents prêts à envoyer</h3>
+          </div>
+          {hasCoverLetter && (
+            <span className={styles.letterLength}>{coverLetterWords} mots · cible 150–220</span>
+          )}
+        </div>
+
+        <div className={styles.applicationContent}>
+          <div className={styles.applicationDocuments}>
+            <div className={styles.applicationDocument}>
+              <span>CV</span>
+              <strong>{currentApplication.cvDocument?.name || 'Non sélectionné'}</strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Lettre de motivation</span>
+              <strong>
+                {hasCoverLetter
+                  ? editableApplication.coverLetterManuallyEdited ? 'Prête · modifiée' : 'Prête'
+                  : 'Non préparée'}
+              </strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Rémunération</span>
+              <strong>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</strong>
+            </div>
+          </div>
+
+          {hasCoverLetter && (
+            <div className={styles.applicationActions}>
+              <button className="btn small" type="button" onClick={() => setDrawerOpen(true)}>
+                Voir / Modifier
+              </button>
+              <button className="btn secondary small" type="button" onClick={() => void copyCoverLetter()}>
+                Copier
+              </button>
+              <details className={styles.downloadMenu}>
+                <summary className="btn secondary small">Télécharger</summary>
+                <div className={styles.downloadOptions}>
+                  <a href={`${downloadBase}/pdf`}>PDF</a>
+                  <a href={`${downloadBase}/docx`}>Word (.docx)</a>
+                </div>
+              </details>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <CoverLetterDrawer
+        application={currentApplication}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onApplicationUpdated={applyUpdatedApplication}
+      />
     </article>
   );
 }

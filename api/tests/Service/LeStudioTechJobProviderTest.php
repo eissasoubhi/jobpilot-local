@@ -56,6 +56,52 @@ final class LeStudioTechJobProviderTest extends TestCase
         self::assertSame(3, $http->getRequestsCount());
     }
 
+    public function testSmokeTestReadsOneListingAndAtMostOneDetailWithoutPersistence(): void
+    {
+        $http = new MockHttpClient([
+            new MockResponse("User-agent: *\nAllow: /freelances/missions\n", ['http_code' => 200]),
+            new MockResponse($this->fixture('le-studio-tech-missions.html'), [
+                'http_code' => 200,
+                'response_headers' => ['content-type: text/html; charset=UTF-8'],
+            ]),
+            new MockResponse($this->fixture('le-studio-tech-detail.html'), ['http_code' => 200]),
+        ]);
+        $provider = $this->provider($http, true, 8, 20);
+
+        $result = $provider->smokeTest();
+
+        self::assertSame('PASS', $result['result']);
+        self::assertSame('Le Studio Tech', $result['source']);
+        self::assertSame('SCRAPING_HTTP', $result['mode']);
+        self::assertSame('le-studio-tech-html-v1', $result['parserVersion']);
+        self::assertSame(200, $result['statusCode']);
+        self::assertSame('app.lestudiotech.com', $result['finalHost']);
+        self::assertSame(2, $result['candidateCount']);
+        self::assertTrue($result['detailChecked']);
+        self::assertSame(200, $result['detailStatusCode']);
+        self::assertTrue($result['detailExtracted']);
+        self::assertGreaterThanOrEqual(0, $result['durationMs']);
+        self::assertSame(3, $http->getRequestsCount());
+    }
+
+    public function testSmokeTestWarnsWhenNoCurrentMissionIsExtracted(): void
+    {
+        $http = new MockHttpClient([
+            new MockResponse("User-agent: *\nAllow: /freelances/missions\n", ['http_code' => 200]),
+            new MockResponse('<html><body><main><h1>Aucune mission actuellement</h1></main></body></html>', ['http_code' => 200]),
+        ]);
+        $provider = $this->provider($http, true, 8, 20);
+
+        $result = $provider->smokeTest();
+
+        self::assertSame('WARN', $result['result']);
+        self::assertSame(0, $result['candidateCount']);
+        self::assertFalse($result['detailChecked']);
+        self::assertNull($result['detailStatusCode']);
+        self::assertNull($result['detailExtracted']);
+        self::assertSame(2, $http->getRequestsCount());
+    }
+
     public function testDisabledConnectorNeverCallsNetwork(): void
     {
         $http = new MockHttpClient(static function (): never {

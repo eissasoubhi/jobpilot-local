@@ -156,9 +156,12 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     note: 'Le connecteur de l’API officielle Offres d’emploi v2 est enregistré et peut être synchronisé lorsque les identifiants de l’application sont configurés.',
     nextStep: 'Ajuster les mots-clés globaux grâce aux diagnostics par requête déjà disponibles.',
   },
-  underReview('lesjeudis', 'LesJeudis', {
+  {
+    code: 'lesjeudis',
+    name: 'LesJeudis',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
     modes: ['GMAIL', 'EXTENSION'],
-    note: 'Les alertes reconnues et l’import assisté sont disponibles. La collecte planifiée exige encore un canal officiellement autorisé.',
-    nextStep: 'Confirmer une API, un export ou un flux officiel avant d’activer une collecte en arrière-plan.',
-  }),
+    note: 'Les CGU LesJeudis mises à jour le 20/01/2026 interdisent explicitement l’utilisation d’un logiciel robot ou de tout autre procédé automatisé de scraping, ainsi que le contournement des protections internes. JobPilot n’active donc aucun scraper planifié.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après accord écrit du Groupe LesJeudis ou publication d’un canal officiel de lecture/réutilisation.',
+  },
 ] as const;

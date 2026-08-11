@@ -26,11 +26,6 @@ final class HttpScrapingChallengeDetector
             '/cdn-cgi/challenge-platform/' => 'Cloudflare challenge',
             'challenges.cloudflare.com' => 'Cloudflare challenge',
             'cf-chl-' => 'Cloudflare challenge',
-            'g-recaptcha' => 'Google reCAPTCHA',
-            'www.google.com/recaptcha/' => 'Google reCAPTCHA',
-            'www.recaptcha.net/recaptcha/' => 'Google reCAPTCHA',
-            'h-captcha' => 'hCaptcha',
-            'hcaptcha.com/1/api.js' => 'hCaptcha',
             'geo.captcha-delivery.com' => 'DataDome challenge',
             'captcha-delivery.com/captcha/' => 'DataDome challenge',
             'datadome-captcha' => 'DataDome challenge',
@@ -47,12 +42,26 @@ final class HttpScrapingChallengeDetector
             || str_contains($normalized, 'verify that you are human')
             || str_contains($normalized, 'vérifiez que vous êtes humain')
             || str_contains($normalized, 'confirmez que vous êtes humain');
+        if (!$humanVerification) {
+            return null;
+        }
+
+        if (str_contains($normalized, 'g-recaptcha')
+            || str_contains($normalized, 'www.google.com/recaptcha/')
+            || str_contains($normalized, 'www.recaptcha.net/recaptcha/')) {
+            return 'Google reCAPTCHA';
+        }
+
+        if (str_contains($normalized, 'h-captcha') || str_contains($normalized, 'hcaptcha.com/1/api.js')) {
+            return 'hCaptcha';
+        }
+
         $challengeContext = str_contains($normalized, 'captcha')
             || str_contains($normalized, 'challenge')
             || str_contains($normalized, 'bot detection')
             || str_contains($normalized, 'anti-bot');
 
-        return $humanVerification && $challengeContext ? 'Human verification challenge' : null;
+        return $challengeContext ? 'Human verification challenge' : null;
     }
 
     /** @param array<string, list<string>> $headers */

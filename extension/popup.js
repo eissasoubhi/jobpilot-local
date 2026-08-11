@@ -15,13 +15,21 @@ document.getElementById('import').addEventListener('click', async () => {
 });
 
 document.getElementById('autofill').addEventListener('click', async () => {
-  show('Chargement du profil…');
-  chrome.runtime.sendMessage({type:'GET_PROFILE'}, async result => {
-    if (!result?.ok) return show(result?.error || 'Profil indisponible.', 'error');
+  show('Analyse du formulaire et chargement du profil…');
+  chrome.runtime.sendMessage({type:'GET_AUTOFILL_CONTEXT'}, async result => {
+    if (!result?.ok) return show(result?.error || 'Contexte Autofill indisponible.', 'error');
+
     const tab = await activeTab();
-    chrome.tabs.sendMessage(tab.id, {type:'AUTOFILL_PAGE', profile:result.profile}, response => {
+    chrome.tabs.sendMessage(tab.id, {type:'AUTOFILL_GENERIC_PAGE', context:result.context}, response => {
       if (chrome.runtime.lastError) return show('Impossible de remplir cette page.', 'error');
-      show(`${response?.filled || 0} champ(s) prérempli(s). Vérifie avant d’envoyer.`, 'success');
+      if (!response?.ok) return show(response?.error || 'Remplissage impossible.', 'error');
+
+      const report = response.report || {};
+      const filled = report.filled || 0;
+      const review = report.review || 0;
+      const preserved = report.preserved || 0;
+      const skipped = report.skipped || 0;
+      show(`${filled} rempli(s) · ${review} à vérifier · ${preserved} conservé(s) · ${skipped} ignoré(s). Vérifie avant d’envoyer.`, 'success');
     });
   });
 });

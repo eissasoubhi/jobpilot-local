@@ -8,6 +8,7 @@ use App\Entity\Application;
 use App\Entity\UserSettings;
 use App\Service\ApplicationCvRepairService;
 use App\Service\ApplicationMessageUpgradeService;
+use App\Service\CoverLetterDocumentExporter;
 use App\Service\JobProfileTechnologyComparisonService;
 use App\Service\LocalDataService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,6 +28,7 @@ final class ApplicationController
         private ApplicationMessageUpgradeService $messageUpgrade,
         private LocalDataService $data,
         private JobProfileTechnologyComparisonService $technologyComparison,
+        private CoverLetterDocumentExporter $coverLetterDocumentExporter,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -93,17 +95,34 @@ final class ApplicationController
             return new JsonResponse(['error' => 'Aucune lettre de motivation n’est disponible.'], 404);
         }
 
-        $filename = $this->coverLetterFilename($application);
-        $disposition = HeaderUtils::makeDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            $filename,
+        return $this->downloadResponse(
+            $letter,
+            'text/plain; charset=UTF-8',
+            $this->coverLetterFilename($application, 'txt'),
         );
+    }
 
-        return new Response($letter, 200, [
-            'Content-Type' => 'text/plain; charset=UTF-8',
-            'Content-Disposition' => $disposition,
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+    #[Route('/{id}/cover-letter/download/{format}', requirements: ['format' => 'pdf|docx'], methods: ['GET'])]
+    public function downloadCoverLetterDocument(Application $application, string $format): Response
+    {
+        $letter = $application->getCoverLetter();
+        if (trim($letter) === '') {
+            return new JsonResponse(['error' => 'Aucune lettre de motivation n’est disponible.'], 404);
+        }
+
+        if ($format === 'pdf') {
+            return $this->downloadResponse(
+                $this->coverLetterDocumentExporter->pdf($letter),
+                'application/pdf',
+                $this->coverLetterFilename($application, 'pdf'),
+            );
+        }
+
+        return $this->downloadResponse(
+            $this->coverLetterDocumentExporter->docx($letter),
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            $this->coverLetterFilename($application, 'docx'),
+        );
     }
 
     /** @return array<string, mixed> */
@@ -115,7 +134,21 @@ final class ApplicationController
         ];
     }
 
-    private function coverLetterFilename(Application $application): string
+    private function downloadResponse(string $content, string $contentType, string $filename): Response
+    {
+        $disposition = HeaderUtils::makeDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $filename,
+        );
+
+        return new Response($content, 200, [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => $disposition,
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    private function coverLetterFilename(Application $application, string $extension): string
     {
         $job = $application->getJobOffer();
         $parts = array_filter([
@@ -132,6 +165,6 @@ final class ApplicationController
             $name = 'Lettre-motivation';
         }
 
-        return substr($name, 0, 160).'.txt';
+        return substr($name, 0, 160).'.'.$extension;
     }
 }

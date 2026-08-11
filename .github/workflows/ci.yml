@@ -14,8 +14,51 @@ permissions:
   contents: read
 
 jobs:
+  runner-preflight:
+    name: Runner disk preflight
+    runs-on: [self-hosted, jobpilot]
+    timeout-minutes: 5
+    steps:
+      - name: Reclaim safe CI disk space
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Disk usage before cleanup:"
+          df -h /
+          docker system df || true
+
+          # Generated dependency/build output is recreated by the jobs below.
+          # Cleaning it here is important because service containers are started
+          # before normal job steps and therefore need free disk beforehand.
+          rm -rf \
+            "$GITHUB_WORKSPACE/web/node_modules" \
+            "$GITHUB_WORKSPACE/web/.next" \
+            "$GITHUB_WORKSPACE/web/test-results" \
+            "$GITHUB_WORKSPACE/web/playwright-report" \
+            "$GITHUB_WORKSPACE/api/vendor" \
+            "$GITHUB_WORKSPACE/api/var" \
+            "$GITHUB_WORKSPACE/api/composer.lock"
+
+          docker container prune --force || true
+          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
+          docker image prune --force || true
+          docker builder prune --force --filter "until=24h" || true
+
+          echo "Disk usage after cleanup:"
+          df -h /
+          docker system df || true
+
+          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
+          minimum_kb=$((1024 * 1024))
+          if [ "$available_kb" -lt "$minimum_kb" ]; then
+            echo "::error::Le runner JobPilot dispose de moins de 1 Gio libre après le nettoyage CI. Libérer de l'espace sur la VM avant de lancer les tests lourds."
+            exit 1
+          fi
+
   backend:
     name: Backend tests
+    needs: [runner-preflight]
     runs-on: [self-hosted, jobpilot]
     services:
       postgres:
@@ -75,6 +118,7 @@ jobs:
 
   frontend:
     name: Frontend tests
+    needs: [runner-preflight]
     runs-on: [self-hosted, jobpilot]
     defaults:
       run:
@@ -101,6 +145,7 @@ jobs:
 
   compose-config:
     name: Docker Compose configuration
+    needs: [runner-preflight]
     runs-on: [self-hosted, jobpilot]
     steps:
       - uses: actions/checkout@v4
@@ -277,3 +322,11 @@ jobs:
         run: |
           test ! -f /tmp/jobpilot-web.pid || kill "$(cat /tmp/jobpilot-web.pid)" || true
           test ! -f /tmp/jobpilot-api.pid || kill "$(cat /tmp/jobpilot-api.pid)" || true
+
+      - name: Reclaim browser CI artifacts
+        if: always()
+        run: |
+          rm -rf web/test-results web/playwright-report
+          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
+          docker container prune --force || true
+          docker image prune --force || true

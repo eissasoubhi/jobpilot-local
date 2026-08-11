@@ -1,8 +1,71 @@
 export type Profile = {
-  fullName: string; email: string; phone: string; city: string; postalCode: string;
-  mobility: string; workAuthorisation: string; availability: string; noticePeriod: string;
-  yearsOfExperience: number; languages: { language: string; level: string }[];
-  acceptedContracts: string[]; workModePreference: string; linkedinUrl?: string; portfolioUrl?: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  postalCode: string;
+  region: string;
+  country: string;
+  countryCode: string;
+  currentJobTitle: string;
+  mobility: string;
+  preferredLocations: string[];
+  workAuthorisation: string;
+  availability: string;
+  noticePeriod: string;
+  yearsOfExperience: number;
+  technologyExperience: Record<string, number>;
+  languages: { language: string; level: string }[];
+  acceptedContracts: string[];
+  workModePreference: string;
+  desiredSalary?: number | null;
+  desiredTjm?: number | null;
+  linkedinUrl?: string | null;
+  githubUrl?: string | null;
+  portfolioUrl?: string | null;
+  professionalUrls: string[];
+};
+
+export type AutofillProfile = {
+  schemaVersion: number;
+  identity: Pick<Profile, 'fullName' | 'firstName' | 'lastName' | 'email' | 'phone'>;
+  address: {
+    line1: string;
+    line2?: string | null;
+    city: string;
+    postalCode: string;
+    region: string;
+    country: string;
+    countryCode: string;
+  };
+  professional: {
+    currentJobTitle: string;
+    yearsOfExperience: number;
+    technologyExperience: Record<string, number>;
+    languages: Profile['languages'];
+    linkedinUrl?: string | null;
+    githubUrl?: string | null;
+    portfolioUrl?: string | null;
+    otherUrls: string[];
+  };
+  preferences: {
+    mobility: string;
+    preferredLocations: string[];
+    acceptedContracts: string[];
+    workModePreference: string;
+    availability: string;
+    noticePeriod: string;
+    desiredSalary?: number | null;
+    desiredTjm?: number | null;
+  };
+  screening: {
+    workAuthorisation: string;
+  };
+  updatedAt: string;
 };
 
 export type Settings = {

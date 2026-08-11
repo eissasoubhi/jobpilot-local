@@ -6,6 +6,8 @@ import { Badge, Card, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
+import styles from './scraping.module.css';
+
 type ScraperMode = 'AUTO' | 'HTTP' | 'BROWSER';
 type ComplianceStatus = 'AUTHORIZATION_REQUIRED' | 'ASSISTED_ONLY';
 
@@ -102,25 +104,25 @@ export default function SourcePresetPanel() {
   }
 
   return (
-    <div style={{ marginTop: 18 }}>
+    <div className={styles.presetSection}>
       <Card>
         <h2 className="section-title">Sources suggérées</h2>
-        <p className="muted">
-          Ce catalogue distingue la faisabilité technique de l’autorisation de collecte. Une page publique ou un robots.txt permissif ne remplace pas les conditions d’utilisation du site. Les alertes reçues dans ton propre Gmail restent un canal distinct du scraping du site. Les revues JobPilot expirent automatiquement après 90 jours et sont signalées 14 jours avant l’échéance.
+        <p className={styles.presetIntro}>
+          Le catalogue sépare la faisabilité technique du droit de collecter. Les plateformes bloquées en scraping restent utilisables via Gmail ou import assisté. Les revues de conformité expirent après 90 jours.
         </p>
         {error !== '' && <ErrorBox message={error} />}
         {presets !== null && (
-          <div className="stack" style={{ marginTop: 12 }}>
+          <div className={styles.presetGrid}>
             {presets.map((preset) => {
               const assistedOnly = preset.complianceStatus === 'ASSISTED_ONLY';
               const reference = references[preset.slug] ?? '';
               const isAdded = added[preset.slug] !== undefined;
 
               return (
-                <div className="notice" key={preset.slug}>
-                  <div className="actions" style={{ justifyContent: 'space-between' }}>
-                    <strong>{preset.name}</strong>
-                    <div className="actions">
+                <div className={`notice ${styles.presetCard}`} key={preset.slug}>
+                  <div className={styles.presetHeader}>
+                    <h3 className={styles.presetTitle}>{preset.name}</h3>
+                    <div className={styles.presetBadges}>
                       <Badge tone={assistedOnly ? 'warn' : 'blue'}>{preset.complianceLabel}</Badge>
                       {!preset.reviewFresh && <Badge tone="warn">Revue expirée</Badge>}
                       {preset.reviewRenewalRecommended && (
@@ -130,47 +132,52 @@ export default function SourcePresetPanel() {
                       <Badge tone="blue">{modeLabel(preset.mode)}</Badge>
                     </div>
                   </div>
-                  <p style={{ marginBottom: 6 }}>{preset.reason}</p>
-                  <div className="muted">Action recommandée : {preset.recommendedAction}</div>
-                  <div className="muted" style={{ marginTop: 6 }}>
-                    Revue JobPilot : {preset.reviewedAt} · échéance : {preset.reviewDueAt} · <a href={preset.termsUrl} target="_blank" rel="noreferrer">référence publique consultée</a>
+
+                  <p className={styles.presetReason}>{preset.reason}</p>
+                  <div className={styles.recommendation}>
+                    <strong>Action recommandée</strong><br />
+                    {preset.recommendedAction}
+                  </div>
+                  <div className={styles.presetMeta}>
+                    <span>Revue JobPilot : {preset.reviewedAt} · échéance : {preset.reviewDueAt}</span>
+                    <a href={preset.termsUrl} target="_blank" rel="noreferrer">Référence publique consultée</a>
                   </div>
 
                   {preset.reviewRenewalRecommended && preset.reviewFresh && (
-                    <div className="notice warning" style={{ marginTop: 10 }}>
-                      Cette revue expire dans {preset.reviewDaysRemaining} jour{preset.reviewDaysRemaining === 1 ? '' : 's'}. Relis la référence publique et mets à jour le catalogue avant l’échéance ; l’ajout reste possible jusque-là si les autres conditions sont remplies.
+                    <div className={styles.warningBox}>
+                      Revue à renouveler dans {preset.reviewDaysRemaining} jour{preset.reviewDaysRemaining === 1 ? '' : 's'}. L’ajout reste possible jusque-là si les autres conditions sont remplies.
                     </div>
                   )}
 
                   {preset.gmailSupported && (
-                    <div className="notice" style={{ marginTop: 10 }}>
-                      JobPilot reconnaît déjà les liens d’offres <strong>{preset.gmailPlatformCode}</strong> présents dans les alertes Gmail et les envoie dans le catalogue canonique lors de la synchronisation.
-                      <div className="actions" style={{ marginTop: 8 }}>
+                    <div className={styles.gmailBox}>
+                      JobPilot reconnaît déjà les liens <strong>{preset.gmailPlatformCode}</strong> reçus dans les alertes Gmail.
+                      <div className={styles.compactActions}>
                         <a className="btn secondary" href="/messages">Ouvrir Gmail JobPilot</a>
                       </div>
                     </div>
                   )}
 
                   {assistedOnly ? (
-                    <div className="notice warning" style={{ marginTop: 10 }}>
-                      JobPilot ne propose pas de bouton d’activation automatique pour cette plateforme. Crée une alerte e-mail sur le site puis synchronise Gmail, utilise l’extension/import manuel ou un accès officiellement autorisé.
+                    <div className={styles.warningBox}>
+                      Scraping automatique non proposé. Utilise une alerte e-mail, Gmail JobPilot, l’extension/import manuel ou un accès officiellement autorisé.
                     </div>
                   ) : !preset.reviewFresh ? (
-                    <div className="notice warning" style={{ marginTop: 10 }}>
-                      La revue de conformité JobPilot a dépassé {preset.reviewTtlDays} jours. Relis la référence publique, mets à jour le catalogue puis seulement ensuite ajoute ou active cette source. Gmail reste utilisable entre-temps.
+                    <div className={styles.warningBox}>
+                      La revue de conformité JobPilot a dépassé {preset.reviewTtlDays} jours. Relis la référence publique avant tout ajout ou activation. Gmail reste utilisable entre-temps.
                     </div>
                   ) : isAdded ? (
-                    <div className="notice" style={{ marginTop: 10 }}>
-                      <strong>{added[preset.slug]}</strong> a été ajoutée <strong>désactivée</strong>. Recharge la page si nécessaire, puis utilise « Tester le site » et « Prévisualiser les offres » avant de l’activer.
+                    <div className={styles.successBox}>
+                      <strong>{added[preset.slug]}</strong> a été ajoutée <strong>désactivée</strong>. Teste puis prévisualise la source avant activation.
                     </div>
                   ) : (
-                    <div className="stack" style={{ marginTop: 10 }}>
+                    <div className={styles.authorizationForm}>
                       <label>
                         Référence de ton autorisation
                         <input
                           value={reference}
                           onChange={(event) => setReferences((current) => ({ ...current, [preset.slug]: event.target.value }))}
-                          placeholder="Ex. accord écrit, ticket support, contrat ou lien précis"
+                          placeholder="Accord écrit, ticket support, contrat ou lien précis"
                         />
                       </label>
                       <label className="checkbox-label">
@@ -181,7 +188,7 @@ export default function SourcePresetPanel() {
                         />
                         Je confirme avoir une autorisation applicable à cette collecte automatisée.
                       </label>
-                      <div className="actions">
+                      <div className={styles.compactActions}>
                         <button
                           className="btn secondary"
                           type="button"

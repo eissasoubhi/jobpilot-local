@@ -216,8 +216,11 @@
     const best = candidates[0] || null;
     const second = candidates[1] || null;
     const ambiguous = Boolean(best && second && best.confidence - second.confidence < 0.08);
-    const questionText = signals.label || signals.legend || signals.group || signals.placeholder;
-    const looksLikeQuestion = /\?$/.test(questionText) || /^(why|what|when|where|how|do|are|have|can|pourquoi|quel|quelle|quand|ou|où|comment|avez|etes|êtes|pouvez)/i.test(questionText);
+    const kind = controlKind(element);
+    const questionText = (kind === 'radio' || kind === 'checkbox')
+      ? (signals.legend || signals.group || signals.label || signals.placeholder)
+      : (signals.label || signals.legend || signals.group || signals.placeholder);
+    const looksLikeQuestion = /\?$/.test(questionText) || /^(why|what|when|where|how|do|are|have|can|would|will|pourquoi|quel|quelle|quand|ou|où|comment|avez|etes|êtes|pouvez|souhaitez)/i.test(questionText);
 
     return {
       key: ambiguous ? null : best?.key || null,

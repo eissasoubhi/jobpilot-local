@@ -16,6 +16,9 @@ final class CustomScraperSource
     public const MODE_HTTP = 'HTTP';
     public const MODE_BROWSER = 'BROWSER';
 
+    private const MAX_SEARCH_KEYWORDS = 20;
+    private const MAX_SEARCH_KEYWORD_LENGTH = 80;
+
     #[ORM\Id, ORM\GeneratedValue, ORM\Column]
     private ?int $id = null;
 
@@ -30,6 +33,13 @@ final class CustomScraperSource
 
     #[ORM\Column(length: 2048, nullable: true)]
     private ?string $detailExampleUrl = null;
+
+    #[ORM\Column(length: 2048, nullable: true)]
+    private ?string $searchUrlTemplate = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json')]
+    private array $searchKeywords = [];
 
     #[ORM\Column(length: 16)]
     private string $mode = self::MODE_AUTO;
@@ -86,6 +96,14 @@ final class CustomScraperSource
             $this->detailExampleUrl = $value === '' ? null : $this->normalizeHttpsUrl($value, true);
         }
 
+        if (array_key_exists('searchUrlTemplate', $data)) {
+            $this->searchUrlTemplate = $this->normalizeSearchUrlTemplate($data['searchUrlTemplate']);
+        }
+
+        if (array_key_exists('searchKeywords', $data)) {
+            $this->searchKeywords = $this->normalizeSearchKeywords($data['searchKeywords']);
+        }
+
         if (array_key_exists('mode', $data)) {
             $mode = strtoupper(trim((string) $data['mode']));
             if (!in_array($mode, [self::MODE_AUTO, self::MODE_HTTP, self::MODE_BROWSER], true)) {
@@ -140,6 +158,13 @@ final class CustomScraperSource
             }
         }
 
+        if ($this->searchUrlTemplate !== null) {
+            $this->searchUrlTemplate = $this->normalizeSearchUrlTemplate($this->searchUrlTemplate);
+        }
+        if ($this->searchKeywords !== [] && $this->searchUrlTemplate === null) {
+            throw new \InvalidArgumentException('Une URL de recherche avec {keyword} est obligatoire lorsque des mots-clés sont configurés.');
+        }
+
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
@@ -154,6 +179,8 @@ final class CustomScraperSource
             'domain' => $this->domain,
             'listingUrl' => $this->listingUrl,
             'detailExampleUrl' => $this->detailExampleUrl,
+            'searchUrlTemplate' => $this->searchUrlTemplate,
+            'searchKeywords' => $this->searchKeywords,
             'mode' => $this->mode,
             'enabled' => $this->enabled,
             'authorizationConfirmed' => $this->authorizationConfirmed,
@@ -198,6 +225,73 @@ final class CustomScraperSource
         }
 
         return mb_substr($value, 0, 2048);
+    }
+
+    private function normalizeSearchUrlTemplate(mixed $value): ?string
+    {
+        $template = trim((string) ($value ?? ''));
+        if ($template === '') {
+            return null;
+        }
+        if (!str_contains($template, '{keyword}')) {
+            throw new \InvalidArgumentException('L’URL de recherche doit contenir le placeholder {keyword}.');
+        }
+
+        $unknownPlaceholderCandidate = str_replace('{keyword}', '', $template);
+        if (preg_match('/\{[^}]+\}/', $unknownPlaceholderCandidate) === 1) {
+            throw new \InvalidArgumentException('Seul le placeholder {keyword} est accepté dans l’URL de recherche.');
+        }
+
+        $validationUrl = str_replace('{keyword}', 'php', $template);
+        $normalized = $this->normalizeHttpsUrl($validationUrl, true);
+        $host = strtolower((string) parse_url($normalized, PHP_URL_HOST));
+        if ($host !== $this->domain) {
+            throw new \InvalidArgumentException('L’URL de recherche doit utiliser le même domaine que la liste des offres.');
+        }
+        if (mb_strlen($template) > 2048) {
+            throw new \InvalidArgumentException('L’URL de recherche est trop longue.');
+        }
+
+        return $template;
+    }
+
+    /** @return list<string> */
+    private function normalizeSearchKeywords(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+        if (!is_array($value)) {
+            throw new \InvalidArgumentException('Les mots-clés de recherche doivent être fournis sous forme de liste.');
+        }
+
+        $keywords = [];
+        $seen = [];
+        foreach ($value as $item) {
+            if (!is_scalar($item)) {
+                throw new \InvalidArgumentException('Chaque mot-clé de recherche doit être une chaîne de caractères.');
+            }
+            $keyword = trim((string) $item);
+            if ($keyword === '') {
+                continue;
+            }
+            if (mb_strlen($keyword) > self::MAX_SEARCH_KEYWORD_LENGTH) {
+                throw new \InvalidArgumentException(sprintf('Un mot-clé de recherche ne peut pas dépasser %d caractères.', self::MAX_SEARCH_KEYWORD_LENGTH));
+            }
+
+            $key = mb_strtolower($keyword);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $keywords[] = $keyword;
+
+            if (count($keywords) > self::MAX_SEARCH_KEYWORDS) {
+                throw new \InvalidArgumentException(sprintf('Une source ne peut pas contenir plus de %d mots-clés de recherche.', self::MAX_SEARCH_KEYWORDS));
+            }
+        }
+
+        return $keywords;
     }
 
     private function normalizeName(string $value): string

@@ -9,6 +9,7 @@ use App\Entity\CrmFollowUpTask;
 use App\Entity\InboxMessage;
 use App\Entity\JobOffer;
 use App\Entity\Positioning;
+use App\Entity\SourceConnector;
 use App\Entity\UserSettings;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -89,6 +90,24 @@ final class DashboardController
             ->getQuery()
             ->getSingleScalarResult();
 
+        /** @var list<SourceConnector> $connectorItems */
+        $connectorItems = $this->em->getRepository(SourceConnector::class)->findAll();
+        $operationalConnectors = 0;
+        $connectorsNeedingAttention = 0;
+        $lastConnectorSyncAt = null;
+        foreach ($connectorItems as $connector) {
+            if ($connector->canSynchronize()) {
+                ++$operationalConnectors;
+            } elseif ($connector->isEnabled()) {
+                ++$connectorsNeedingAttention;
+            }
+
+            $lastSyncedAt = $connector->getLastSyncedAt();
+            if ($lastSyncedAt !== null && ($lastConnectorSyncAt === null || $lastSyncedAt > $lastConnectorSyncAt)) {
+                $lastConnectorSyncAt = $lastSyncedAt;
+            }
+        }
+
         $trend = [];
         for ($offset = 0; $offset < 7; ++$offset) {
             $date = $activityStart->modify(sprintf('+%d days', $offset));
@@ -162,6 +181,12 @@ final class DashboardController
                 'autoSubmitThreshold' => $settings->getAutoSubmitThreshold(),
                 'autoSubmitDailyLimit' => $settings->getAutoSubmitDailyLimit(),
                 'targetJobsCount' => count($settings->getTargetJobs()),
+            ],
+            'connectors' => [
+                'total' => count($connectorItems),
+                'operational' => $operationalConnectors,
+                'needsAttention' => $connectorsNeedingAttention,
+                'lastSyncedAt' => $lastConnectorSyncAt?->format(DATE_ATOM),
             ],
             'recentJobs' => array_map(static fn (JobOffer $job): array => $job->toArray(), $recent),
         ]);

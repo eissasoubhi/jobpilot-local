@@ -138,13 +138,14 @@ HTML;
     private function service(MockHttpClient $http, BrowserRenderClientInterface $browserClient): CustomScraperBrowserRecoveryService
     {
         $listingExtractor = new GenericJobListingExtractor();
+        $robots = new RobotsTxtGuard($http, $this->directory.'/robots');
         $controlled = new ControlledHttpScrapingClient(
             $http,
             new HttpScrapingStateStore($this->directory.'/state'),
-            new RobotsTxtGuard($http, $this->directory.'/robots'),
+            $robots,
         );
         return new CustomScraperBrowserRecoveryService(
-            new CustomScraperDiagnosticService($controlled, new GenericHtmlModeDetector()),
+            new CustomScraperDiagnosticService($controlled, new GenericHtmlModeDetector(), $robots),
             new CustomScraperBrowserRenderCoordinator($browserClient, new CustomScraperBrowserRenderPolicy()),
             $browserClient,
             $listingExtractor,

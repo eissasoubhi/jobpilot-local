@@ -50,6 +50,30 @@ HTML;
         self::assertSame(1, $diagnostic['signals']['jobStructuredData']);
         self::assertGreaterThanOrEqual(2, $diagnostic['signals']['jobLikeLinks']);
         self::assertSame(200, $diagnostic['http']['statusCode']);
+        self::assertSame('https://jobs.example.test/robots.txt', $diagnostic['robots']['requestedUrl']);
+        self::assertSame(404, $diagnostic['robots']['statusCode']);
+        self::assertSame(0, $diagnostic['robots']['redirects']);
+    }
+
+    public function testRobotsCanonicalRedirectIsExposedInDiagnostic(): void
+    {
+        $html = '<html><body><a href="/offres/php">Développeur PHP Symfony</a></body></html>';
+
+        $diagnostic = $this->service(new MockHttpClient([
+            new MockResponse('', [
+                'http_code' => 301,
+                'response_headers' => ['location: /robots-canonical.txt'],
+            ]),
+            new MockResponse("User-agent: *\nAllow: /\n", ['http_code' => 200]),
+            new MockResponse($html, ['http_code' => 200]),
+        ]))->diagnose($this->source());
+
+        self::assertSame('https://jobs.example.test/robots.txt', $diagnostic['robots']['requestedUrl']);
+        self::assertSame('https://jobs.example.test/robots-canonical.txt', $diagnostic['robots']['finalUrl']);
+        self::assertSame(200, $diagnostic['robots']['statusCode']);
+        self::assertSame(1, $diagnostic['robots']['redirects']);
+        self::assertFalse($diagnostic['robots']['fromCache']);
+        self::assertSame(200, $diagnostic['http']['statusCode']);
     }
 
     public function testDetectsJavascriptApplicationShellAsBrowserCandidate(): void
@@ -117,13 +141,16 @@ HTML;
 
     private function service(MockHttpClient $http): CustomScraperDiagnosticService
     {
+        $robots = new RobotsTxtGuard($http, $this->directory.'/robots');
+
         return new CustomScraperDiagnosticService(
             new ControlledHttpScrapingClient(
                 $http,
                 new HttpScrapingStateStore($this->directory.'/state'),
-                new RobotsTxtGuard($http, $this->directory.'/robots'),
+                $robots,
             ),
             new GenericHtmlModeDetector(),
+            $robots,
         );
     }
 

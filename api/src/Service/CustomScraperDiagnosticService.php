@@ -10,12 +10,14 @@ use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingRequest;
+use App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard;
 
 final class CustomScraperDiagnosticService
 {
     public function __construct(
         private ControlledHttpScrapingClient $httpClient,
         private GenericHtmlModeDetector $modeDetector,
+        private RobotsTxtGuard $robotsTxtGuard,
     ) {
     }
 
@@ -44,7 +46,7 @@ final class CustomScraperDiagnosticService
             respectsRobotsTxt: true,
         );
 
-        $result = $this->httpClient->fetch(new HttpScrapingRequest(
+        $request = new HttpScrapingRequest(
             'custom-'.substr(hash('sha256', $domain.'|'.$listingUrl), 0, 16),
             $listingUrl,
             $policy,
@@ -52,7 +54,13 @@ final class CustomScraperDiagnosticService
             maxRetries: 0,
             initialBackoffMilliseconds: 0,
             maxResponseBytes: 3_000_000,
-        ));
+        );
+
+        // Run the check explicitly so the UI can explain canonical redirects.
+        // ControlledHttpScrapingClient performs the same guard again, which reuses
+        // the robots cache and therefore does not add another network request.
+        $robots = $this->robotsTxtGuard->assertAllowed($listingUrl, $request->userAgent);
+        $result = $this->httpClient->fetch($request);
 
         $analysis = $this->modeDetector->analyze($result->body);
         $recommendedMode = (string) $analysis['recommendedMode'];
@@ -68,6 +76,7 @@ final class CustomScraperDiagnosticService
             'reason' => $analysis['reason'],
             'browserVerificationRequired' => $analysis['browserVerificationRequired'],
             'signals' => $analysis['signals'],
+            'robots' => $robots->toArray(),
             'http' => [
                 'requestedUrl' => $listingUrl,
                 'finalUrl' => $result->url,

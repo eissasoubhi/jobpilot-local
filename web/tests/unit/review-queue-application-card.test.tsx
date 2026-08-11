@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
@@ -151,9 +151,10 @@ describe('ReviewQueueApplicationCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier' }));
 
-    expect(screen.getByRole('dialog', { name: 'Lettre de motivation' })).toBeInTheDocument();
-    expect(screen.getByText('Lettre de motivation préparée.')).toBeInTheDocument();
-    expect(screen.getByText(/cible 150–220/)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Lettre de motivation' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText('Lettre de motivation préparée.')).toBeInTheDocument();
+    expect(within(dialog).getByText(/cible 150–220/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Description de la mission' })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });

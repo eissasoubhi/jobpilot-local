@@ -88,7 +88,7 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
@@ -124,6 +124,16 @@ describe('platform acquisition matrix', () => {
     expect(connector?.note).toContain('20/01/2026');
     expect(connector?.note).toContain('logiciel robot');
     expect(connector?.note).toContain('procédé automatisé de scraping');
+    expect(connector?.nextStep).toContain('Gmail');
+  });
+
+  it('records why LeHibou stays on assisted acquisition', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'le-hibou');
+
+    expect(connector).toBeDefined();
+    expect(connector?.note).toContain('Aucun API/flux officiel');
+    expect(connector?.note).toContain('utilisateurs inscrits');
+    expect(connector?.note).toContain('session privée');
     expect(connector?.nextStep).toContain('Gmail');
   });
 

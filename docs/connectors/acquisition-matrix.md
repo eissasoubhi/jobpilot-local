@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle et LesJeudis sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis et LeHibou sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -132,6 +132,22 @@ Références officielles :
 - <https://lesjeudis.com/fr/mentions-legales>
 
 Aucun canal officiel de lecture/réutilisation du catalogue JobPilot n’a été confirmé dans cette revue. JobPilot classe donc LesJeudis en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié et aucune automatisation de session ne doivent être ajoutés. Les alertes Gmail déjà reconnues et l’import assisté restent les canaux admis tant qu’un accord écrit applicable ou un canal officiel n’est pas publié.
+
+#### Cas LeHibou
+
+Décision revue le **11 août 2026**.
+
+LeHibou expose des pages publiques de présentation et une interface de recherche, mais aucun API, flux RSS/XML ou canal officiel de lecture/réutilisation des missions n’a été identifié lors de cette revue. Les CGU indiquent que l’utilisateur doit créer un compte pour accéder aux Services et que l’accès au Site et aux Services est réservé aux utilisateurs inscrits.
+
+Références officielles :
+
+- <https://www.lehibou.com/conditions-generales-utilisation>
+- <https://www.lehibou.com/freelance>
+- <https://www.lehibou.com/recherche/annonces>
+
+Cette décision ne prétend pas que `robots.txt` interdit la collecte. Le point déterminant est l’absence de canal officiel réutilisable et le périmètre d’accès aux Services décrit par les CGU. Comme JobPilot interdit l’automatisation de connexion, de cookies privés ou de session utilisateur, il classe LeHibou en `EMAIL_OR_EXTENSION_ONLY` plutôt que de déduire une autorisation de scraping de simples pages SEO accessibles publiquement.
+
+Les alertes Gmail reconnues et l’import volontaire d’une page ouverte par l’utilisateur restent les canaux admis. Une collecte planifiée ne pourra être envisagée qu’après publication d’un canal officiel réutilisable ou autorisation écrite applicable.
 
 ### `UNDER_REVIEW`
 

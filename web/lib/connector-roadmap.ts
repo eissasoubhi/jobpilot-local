@@ -72,11 +72,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
   underReview('freelance-republik', 'FreelanceRepublik'),
   underReview('comet', 'Comet'),
   underReview('cherry-pick', 'Cherry Pick'),
-  underReview('le-hibou', 'LeHibou', {
+  {
+    code: 'le-hibou',
+    name: 'LeHibou',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
     modes: ['GMAIL', 'EXTENSION'],
-    note: 'Les alertes reconnues et l’import assisté sont disponibles. La collecte planifiée exige encore un canal officiellement autorisé.',
-    nextStep: 'Confirmer une API, un export ou un flux officiel avant d’activer une collecte en arrière-plan.',
-  }),
+    note: 'Aucun API/flux officiel de lecture des missions n’a été identifié. Les CGU LeHibou encadrent l’accès aux Services autour d’un compte utilisateur et indiquent que l’accès au Site et aux Services est réservé aux utilisateurs inscrits. JobPilot n’automatise donc aucune session privée et ne déduit pas un droit de scraping des pages SEO publiques.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après canal officiel réutilisable ou autorisation écrite LeHibou.',
+  },
   underReview('mindquest', 'Mindquest'),
   {
     code: 'we-love-devs',

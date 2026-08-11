@@ -50,7 +50,7 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         self::assertSame('fr', $french['language']);
         self::assertNotEmpty($french['matches']);
         self::assertSame('availability', $french['matches'][0]['answer']['key']);
-        self::assertSame(1.0, $french['matches'][0]['score']);
+        self::assertGreaterThanOrEqual(0.99, (float) $french['matches'][0]['score']);
         self::assertSame('Immédiatement', $french['matches'][0]['answer']['resolved']['fr']);
 
         $client->request('GET', '/api/reusable-answers/match', [

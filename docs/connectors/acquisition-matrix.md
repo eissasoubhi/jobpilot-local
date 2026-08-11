@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork et Welcome to the Jungle sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle et LesJeudis sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -119,6 +119,19 @@ Référence officielle :
 - <https://www.welcometothejungle.com/fr/pages/terms>
 
 JobPilot classe donc Welcome to the Jungle en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié, aucun endpoint interne non documenté et aucune automatisation de session privée ne doivent être ajoutés. Gmail et l’import assisté restent les canaux admis tant qu’un accord écrit applicable ou un canal officiel de lecture/réutilisation n’est pas publié.
+
+#### Cas LesJeudis
+
+Décision revue le **11 août 2026** sur les CGU officielles mises à jour le **20 janvier 2026**.
+
+Les CGU LesJeudis imposent aux utilisateurs, candidats comme recruteurs, de ne pas utiliser un logiciel robot ou tout autre procédé automatisé de scraping et de ne pas détourner ou tenter de détourner les systèmes de protection internes à la plateforme.
+
+Références officielles :
+
+- <https://lesjeudis.com/fr/cgu>
+- <https://lesjeudis.com/fr/mentions-legales>
+
+Aucun canal officiel de lecture/réutilisation du catalogue JobPilot n’a été confirmé dans cette revue. JobPilot classe donc LesJeudis en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP ou Browser planifié et aucune automatisation de session ne doivent être ajoutés. Les alertes Gmail déjà reconnues et l’import assisté restent les canaux admis tant qu’un accord écrit applicable ou un canal officiel n’est pas publié.
 
 ### `UNDER_REVIEW`
 

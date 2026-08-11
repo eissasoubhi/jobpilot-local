@@ -88,7 +88,7 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
@@ -114,6 +114,16 @@ describe('platform acquisition matrix', () => {
     expect(connector?.note).toContain('27/04/2026');
     expect(connector?.note).toContain('robots');
     expect(connector?.note).toContain('extensions/modules de navigateur');
+    expect(connector?.nextStep).toContain('Gmail');
+  });
+
+  it('records why LesJeudis does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'lesjeudis');
+
+    expect(connector).toBeDefined();
+    expect(connector?.note).toContain('20/01/2026');
+    expect(connector?.note).toContain('logiciel robot');
+    expect(connector?.note).toContain('procédé automatisé de scraping');
     expect(connector?.nextStep).toContain('Gmail');
   });
 

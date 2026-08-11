@@ -17,6 +17,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class LeStudioTechSmokeTestCommand extends Command
 {
+    private const COMPLIANCE_REVIEW_TTL_DAYS = 90;
+
     public function __construct(private LeStudioTechJobProvider $provider)
     {
         parent::__construct();
@@ -28,6 +30,18 @@ final class LeStudioTechSmokeTestCommand extends Command
 
         if (!$this->provider->isConfigured()) {
             $io->error('FAIL · le connecteur Le Studio Tech est désactivé.');
+
+            return Command::FAILURE;
+        }
+
+        $policy = $this->provider->policy();
+        $reviewedAt = $policy->reviewedAt;
+        $reviewDeadline = $reviewedAt?->modify('+'.self::COMPLIANCE_REVIEW_TTL_DAYS.' days');
+        if (!$policy->complianceStatus->allowsAutomatedCollection()
+            || $reviewedAt === null
+            || $reviewDeadline === null
+            || $reviewDeadline < new \DateTimeImmutable('today')) {
+            $io->error('FAIL · la revue de conformité du connecteur est absente, expirée ou n’autorise plus la collecte automatisée. Aucun appel réseau n’a été effectué.');
 
             return Command::FAILURE;
         }
@@ -45,6 +59,8 @@ final class LeStudioTechSmokeTestCommand extends Command
             ['Source' => $result['source']],
             ['Mode' => $result['mode']],
             ['Parseur' => $result['parserVersion']],
+            ['Revue conformité' => $reviewedAt->format('Y-m-d')],
+            ['Échéance revue' => $reviewDeadline->format('Y-m-d')],
             ['HTTP liste' => (string) $result['statusCode']],
             ['Hôte final' => $result['finalHost']],
             ['Candidats détectés' => (string) $result['candidateCount']],

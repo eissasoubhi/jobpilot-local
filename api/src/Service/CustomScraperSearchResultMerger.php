@@ -29,7 +29,12 @@ final class CustomScraperSearchResultMerger
 
                 ++$rawCount;
                 $key = $this->candidateKey($candidate);
-                $keywordsByKey[$key] ??= $this->existingKeywords($candidate);
+                $keywordsByKey[$key] ??= [];
+                foreach ($this->existingKeywords($candidate) as $existingKeyword) {
+                    if (!in_array($existingKeyword, $keywordsByKey[$key], true)) {
+                        $keywordsByKey[$key][] = $existingKeyword;
+                    }
+                }
                 if ($keyword !== null && !in_array($keyword, $keywordsByKey[$key], true)) {
                     $keywordsByKey[$key][] = $keyword;
                 }

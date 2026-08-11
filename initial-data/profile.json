@@ -1,14 +1,26 @@
 {
   "fullName": "Aissa SOUBHI",
+  "firstName": "Aissa",
+  "lastName": "SOUBHI",
   "email": "eissa.soubhi@gmail.com",
   "phone": "+33617796780",
+  "addressLine1": "",
+  "addressLine2": null,
   "city": "Cergy",
   "postalCode": "95000",
+  "region": "",
+  "country": "France",
+  "countryCode": "FR",
+  "currentJobTitle": "",
   "mobility": "France",
+  "preferredLocations": [
+    "France"
+  ],
   "workAuthorisation": "Salarié",
   "availability": "Immédiatement",
   "noticePeriod": "Aucun préavis",
   "yearsOfExperience": 11,
+  "technologyExperience": {},
   "languages": [
     {
       "language": "Français",
@@ -26,6 +38,10 @@
     "Sous-traitance"
   ],
   "workModePreference": "Aucune préférence",
+  "desiredSalary": null,
+  "desiredTjm": null,
   "linkedinUrl": "https://linkedin.com/in/aissa0soubhi",
-  "portfolioUrl": "https://github.com/eissasoubhi/"
+  "githubUrl": "https://github.com/eissasoubhi/",
+  "portfolioUrl": null,
+  "professionalUrls": []
 }

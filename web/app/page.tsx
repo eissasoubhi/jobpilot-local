@@ -57,6 +57,12 @@ type DashboardData = {
     autoSubmitDailyLimit: number;
     targetJobsCount: number;
   };
+  connectors: {
+    total: number;
+    operational: number;
+    needsAttention: number;
+    lastSyncedAt: string | null;
+  };
   recentJobs: Job[];
 };
 
@@ -86,6 +92,16 @@ function formatRate(value: number): string {
 
 function formatDay(value: string): string {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'short' }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatDateTime(value: string | null): string {
+  if (value === null) return 'Jamais';
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }
 
 function KpiCard({
@@ -171,6 +187,14 @@ export default function DashboardPage() {
         action: 'Résoudre les blocages',
         priority: 'neutral',
       },
+      {
+        label: 'Connecteurs à vérifier',
+        description: 'Sources activées mais non opérationnelles ou incomplètement configurées.',
+        count: data.connectors.needsAttention,
+        href: '/connecteurs',
+        action: 'Vérifier les sources',
+        priority: 'neutral',
+      },
     ];
   }, [data]);
 
@@ -242,20 +266,28 @@ export default function DashboardPage() {
           {pendingAttention === 0 ? (
             <div className={styles.clearState}>
               <strong>Rien d’urgent.</strong>
-              <span>La Review Queue, la messagerie et les relances ne demandent aucune action.</span>
+              <span>La Review Queue, les messages, les relances et les sources ne demandent aucune action.</span>
             </div>
           ) : (
             <div className={styles.attentionList}>
-              {attentionItems.filter((item) => item.count > 0).map((item) => (
-                <Link className={styles.attentionRow} href={item.href} key={item.label}>
-                  <span className={`${styles.attentionCount} ${styles[item.priority]}`}>{item.count}</span>
-                  <span className={styles.attentionCopy}>
-                    <strong>{item.label}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                  <span className={styles.rowAction}>{item.action} →</span>
-                </Link>
-              ))}
+              {attentionItems.filter((item) => item.count > 0).map((item) => {
+                const priorityClass = item.priority === 'primary'
+                  ? styles.primary
+                  : item.priority === 'warning'
+                    ? styles.warning
+                    : '';
+
+                return (
+                  <Link className={styles.attentionRow} href={item.href} key={item.label}>
+                    <span className={`${styles.attentionCount} ${priorityClass}`}>{item.count}</span>
+                    <span className={styles.attentionCopy}>
+                      <strong>{item.label}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                    <span className={styles.rowAction}>{item.action} →</span>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </Card>
@@ -365,7 +397,7 @@ export default function DashboardPage() {
           <div className={styles.sectionHeading}>
             <div>
               <span className={styles.eyebrow}>Configuration active</span>
-              <h2>Automatisation</h2>
+              <h2>Automatisation & sources</h2>
             </div>
             <Link className={styles.textLink} href="/parametres">Modifier →</Link>
           </div>
@@ -376,6 +408,13 @@ export default function DashboardPage() {
             <div><span>Seuil auto-envoi</span><strong>{data.automation.autoSubmitThreshold}/100</strong></div>
             <div><span>Limite quotidienne</span><strong>{data.automation.autoSubmitDailyLimit}</strong></div>
             <div><span>Postes cibles</span><strong>{data.automation.targetJobsCount}</strong></div>
+            <div>
+              <span>Connecteurs opérationnels</span>
+              <Badge tone={data.connectors.needsAttention > 0 ? 'warn' : 'good'}>
+                {data.connectors.operational}/{data.connectors.total}
+              </Badge>
+            </div>
+            <div><span>Dernière synchronisation</span><strong>{formatDateTime(data.connectors.lastSyncedAt)}</strong></div>
           </div>
         </Card>
 

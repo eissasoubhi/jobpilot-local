@@ -42,12 +42,6 @@ test('Gmail inbox exposes classification, association, filters and processing', 
   });
 
   await page.route('**/api/integrations/gmail/messages**', async (route) => {
-    if (route.request().method() === 'PATCH') {
-      processed = true;
-      await fulfillJson(route, { ...interviewMessage, processed: true });
-      return;
-    }
-
     const url = new URL(route.request().url());
     const actionRequired = url.searchParams.get('actionRequired');
     const processedFilter = url.searchParams.get('processed');
@@ -59,6 +53,14 @@ test('Gmail inbox exposes classification, association, filters and processing', 
       ? []
       : [{ ...interviewMessage, processed }];
     await fulfillJson(route, messages);
+  });
+
+  // Keep this explicit: the collection glob above matches query-string GETs but
+  // does not reliably match the nested /{id}/processed endpoint in Playwright.
+  await page.route('**/api/integrations/gmail/messages/*/processed', async (route) => {
+    expect(route.request().method()).toBe('PATCH');
+    processed = true;
+    await fulfillJson(route, { ...interviewMessage, processed: true });
   });
 
   await page.goto('/messages');

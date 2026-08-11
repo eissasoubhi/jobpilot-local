@@ -193,7 +193,8 @@ export default function ReusableAnswersPage() {
                   <option value="TEXT">Texte</option>
                   <option value="NUMBER">Nombre</option>
                   <option value="BOOLEAN">Oui / Non</option>
-                  <option value="CHOICE">Choix</option>
+                  <option value="CHOICE">Choix unique</option>
+                  <option value="MULTI_CHOICE">Choix multiple</option>
                 </select>
               </label>
               {answer.valueSource === 'PROFILE' ? (

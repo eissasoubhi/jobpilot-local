@@ -11,9 +11,21 @@ La génération par défaut est déterministe et fondée uniquement sur des info
 - langue de l'offre ;
 - nombre d'années d'expérience enregistré dans le profil ;
 - disponibilité enregistrée ;
-- nom du candidat lorsqu'il est renseigné.
+- nom du candidat lorsqu'il est renseigné ;
+- compétences configurées dans JobPilot qui sont également présentes dans le texte de l'offre.
 
-La lettre ne transforme jamais une technologie simplement mentionnée dans l'offre en compétence du candidat. Une offre qui demande Java, Rust, Kubernetes ou AWS ne suffit donc pas à faire apparaître ces technologies comme expérience maîtrisée dans la lettre.
+La lettre ne transforme jamais une technologie simplement mentionnée dans l'offre en compétence du candidat. Une offre qui demande Java, Rust, Kubernetes ou AWS ne suffit donc pas à faire apparaître ces technologies comme expérience maîtrisée dans la lettre : elles ne peuvent être utilisées pour personnaliser le texte que si elles sont aussi présentes dans les compétences configurées du candidat.
+
+## Format
+
+La lettre générée vise une longueur moyenne de **150 à 220 mots**, répartie en quatre courts paragraphes :
+
+1. poste ciblé et expérience ;
+2. adéquation technique fondée sur les compétences communes entre le profil et l'offre ;
+3. contribution recherchée et manière de travailler ;
+4. disponibilité et proposition d'échange.
+
+Lorsqu'aucune compétence configurée ne correspond explicitement au texte de l'offre, JobPilot utilise un paragraphe neutre centré sur les responsabilités de la mission au lieu d'inventer une adéquation technique.
 
 ## Langue
 
@@ -30,4 +42,4 @@ Une amélioration IA future pourra enrichir le texte uniquement derrière une ab
 
 ## Soumission
 
-Cette fonctionnalité ne modifie pas la politique de soumission externe. La lettre reste éditable dans les flux de revue existants avant toute action externe.
+Cette fonctionnalité ne modifie pas la politique de soumission externe. La lettre reste éditable dans le drawer de la Review Queue avant toute action externe et peut être exportée en PDF ou Word.

@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\ReusableAnswer;
 use App\Service\LocalDataService;
+use App\Service\ReusableAnswerMatcher;
 use App\Service\ReusableAnswerResolver;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,6 +20,7 @@ final class ReusableAnswerController
         private EntityManagerInterface $em,
         private LocalDataService $data,
         private ReusableAnswerResolver $resolver,
+        private ReusableAnswerMatcher $matcher,
     ) {
     }
 
@@ -44,6 +46,34 @@ final class ReusableAnswerController
             'answers' => array_map(
                 fn (ReusableAnswer $answer): array => $this->resolver->resolve($answer, $profile),
                 $answers,
+            ),
+        ]);
+    }
+
+    #[Route('/match', methods: ['GET'])]
+    public function match(Request $request): JsonResponse
+    {
+        $question = trim((string) $request->query->get('question', ''));
+        if ($question === '' || mb_strlen($question) > 1000) {
+            return new JsonResponse(['error' => 'La question est obligatoire et limitée à 1000 caractères.'], 400);
+        }
+
+        $language = strtolower(trim((string) $request->query->get('language', 'fr')));
+        $profile = $this->data->profile();
+        $answers = $this->em->getRepository(ReusableAnswer::class)->findAll();
+        $matches = $this->matcher->match($question, $language, $answers);
+
+        return new JsonResponse([
+            'schemaVersion' => 1,
+            'question' => $question,
+            'language' => in_array($language, ['fr', 'en'], true) ? $language : 'fr',
+            'matches' => array_map(
+                fn (array $match): array => [
+                    'score' => $match['score'],
+                    'matchedPattern' => $match['matchedPattern'],
+                    'answer' => $this->resolver->resolve($match['answer'], $profile),
+                ],
+                $matches,
             ),
         ]);
     }

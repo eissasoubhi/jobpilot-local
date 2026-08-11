@@ -28,6 +28,7 @@ Cette documentation est la référence produit, métier, technique et opération
 - [France Travail via l’API Offres d’emploi v2](connectors/france-travail.md)
 - [SmartRecruiters via la Posting API officielle](connectors/smartrecruiters.md)
 - [Symfony Jobs via le flux RSS officiel](connectors/symfony-jobs.md)
+- [Talent.com — Publisher Job API planifiée](connectors/talent-com.md)
 - [Connecteur Gmail et Inbox intelligente](connectors/gmail.md)
 - [Free-Work via Gmail et import assisté](connectors/free-work.md)
 

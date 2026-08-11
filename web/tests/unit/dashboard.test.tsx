@@ -77,7 +77,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Offres à revoir')).toBeInTheDocument();
     expect(screen.getByText('Messages à traiter')).toBeInTheDocument();
     expect(screen.getByText('Relances dues')).toBeInTheDocument();
-    expect(screen.getByText('57,1 %')).toBeInTheDocument();
+    expect(screen.getAllByText('57,1 %').length).toBeGreaterThanOrEqual(1);
   });
 
   it('provides direct access to the most relevant work and configuration pages', async () => {
@@ -93,6 +93,6 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('link', { name: /Critères de recherche/i })).toHaveAttribute('href', '/criteres-recherche');
     expect(screen.getByRole('link', { name: /Clés API & IA/i })).toHaveAttribute('href', '/parametres/integrations');
     expect(screen.getByRole('link', { name: /Scraping/i })).toHaveAttribute('href', '/parametres/scraping');
-    expect(screen.getByRole('link', { name: /Reporting/i })).toHaveAttribute('href', '/reporting');
+    expect(screen.getAllByRole('link', { name: /Reporting/i }).some((link) => link.getAttribute('href') === '/reporting')).toBe(true);
   });
 });

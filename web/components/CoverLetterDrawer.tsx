@@ -42,6 +42,8 @@ export function CoverLetterDrawer({
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousOpenRef = useRef(false);
+  const previousApplicationIdRef = useRef(application.id);
 
   const editableApplication = application as EditableApplication;
   const displayedLetter = editing ? draft : application.coverLetter;
@@ -52,11 +54,23 @@ export function CoverLetterDrawer({
     : null;
 
   useEffect(() => {
-    setDraft(application.coverLetter);
-    setEditing(false);
-    setNotice('');
-    setError('');
-  }, [application.id, application.coverLetter, open]);
+    const changedApplication = previousApplicationIdRef.current !== application.id;
+    const justOpened = open && !previousOpenRef.current;
+
+    if (open && (changedApplication || justOpened)) {
+      setDraft(application.coverLetter);
+      setEditing(false);
+      setNotice('');
+      setError('');
+    }
+
+    previousApplicationIdRef.current = application.id;
+    previousOpenRef.current = open;
+  }, [application.coverLetter, application.id, open]);
+
+  useEffect(() => {
+    if (!editing) setDraft(application.coverLetter);
+  }, [application.coverLetter, editing]);
 
   useEffect(() => {
     if (!open) return;

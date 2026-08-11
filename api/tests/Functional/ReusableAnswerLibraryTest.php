@@ -37,21 +37,47 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         self::assertFalse($answers['work_authorisation']['eligibleForAutomaticFill']);
     }
 
+    public function testRecurringQuestionCanBeMatchedInFrenchAndEnglish(): void
+    {
+        $client = static::createClient();
+
+        $client->request('GET', '/api/reusable-answers/match', [
+            'question' => 'Quand pouvez-vous commencer ?',
+            'language' => 'fr',
+        ]);
+        self::assertResponseIsSuccessful();
+        $french = $this->decode($client);
+        self::assertSame('fr', $french['language']);
+        self::assertNotEmpty($french['matches']);
+        self::assertSame('availability', $french['matches'][0]['answer']['key']);
+        self::assertSame(1.0, $french['matches'][0]['score']);
+        self::assertSame('Immédiatement', $french['matches'][0]['answer']['resolved']['fr']);
+
+        $client->request('GET', '/api/reusable-answers/match', [
+            'question' => 'How many years of experience do you have?',
+            'language' => 'en',
+        ]);
+        self::assertResponseIsSuccessful();
+        $english = $this->decode($client);
+        self::assertSame('years_experience', $english['matches'][0]['answer']['key']);
+        self::assertSame('11', $english['matches'][0]['answer']['resolved']['en']);
+    }
+
     public function testCustomAnswerCanBeCreatedUpdatedResolvedAndDeleted(): void
     {
         $client = static::createClient();
 
         $client->jsonRequest('POST', '/api/reusable-answers', [
             'key' => 'preferred_contract_test',
-            'label' => 'Contrat préféré test',
+            'label' => 'Contrats préférés test',
             'category' => 'CUSTOM',
             'valueSource' => 'STATIC',
-            'answerType' => 'CHOICE',
-            'answerFr' => 'CDI',
-            'answerEn' => 'Permanent contract',
+            'answerType' => 'MULTI_CHOICE',
+            'answerFr' => 'CDI, CDD',
+            'answerEn' => 'Permanent contract, fixed-term contract',
             'questionPatterns' => [
-                'fr' => ['Quel type de contrat recherchez-vous ?'],
-                'en' => ['What type of contract are you looking for?'],
+                'fr' => ['Quels types de contrat recherchez-vous ?'],
+                'en' => ['What types of contract are you looking for?'],
             ],
             'enabled' => true,
             'sensitive' => false,
@@ -60,7 +86,8 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         self::assertResponseStatusCodeSame(201);
         $created = $this->decode($client);
         self::assertSame('preferred_contract_test', $created['key']);
-        self::assertSame('CDI', $created['answerFr']);
+        self::assertSame('MULTI_CHOICE', $created['answerType']);
+        self::assertSame('CDI, CDD', $created['answerFr']);
 
         $id = (int) $created['id'];
         $client->jsonRequest('PATCH', sprintf('/api/reusable-answers/%d', $id), [
@@ -84,8 +111,8 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         }
 
         self::assertIsArray($resolved);
-        self::assertSame('CDI', $resolved['resolved']['fr']);
-        self::assertSame('Permanent contract', $resolved['resolved']['en']);
+        self::assertSame('CDI, CDD', $resolved['resolved']['fr']);
+        self::assertSame('Permanent contract, fixed-term contract', $resolved['resolved']['en']);
         self::assertFalse($resolved['eligibleForAutomaticFill']);
 
         $client->request('DELETE', sprintf('/api/reusable-answers/%d', $id));

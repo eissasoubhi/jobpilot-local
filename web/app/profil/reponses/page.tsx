@@ -54,6 +54,12 @@ export default function ReusableAnswersPage() {
     setAnswers((current) => current?.map((answer) => answer.id === id ? { ...answer, [key]: value } : answer) ?? null);
   };
 
+  const updateSensitive = (id: number, sensitive: boolean): void => {
+    setAnswers((current) => current?.map((answer) => answer.id === id
+      ? { ...answer, sensitive, autoFillAllowed: sensitive ? false : answer.autoFillAllowed }
+      : answer) ?? null);
+  };
+
   const save = async (answer: Draft): Promise<void> => {
     setSavingId(answer.id);
     setError('');
@@ -220,7 +226,7 @@ export default function ReusableAnswersPage() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 14, alignItems: 'center' }}>
               <label><input type="checkbox" checked={answer.enabled} onChange={(event) => updateLocal(answer.id, 'enabled', event.target.checked)} /> Active</label>
-              <label><input type="checkbox" checked={answer.sensitive} onChange={(event) => updateLocal(answer.id, 'sensitive', event.target.checked)} /> Sensible</label>
+              <label><input type="checkbox" checked={answer.sensitive} onChange={(event) => updateSensitive(answer.id, event.target.checked)} /> Sensible</label>
               <label><input type="checkbox" checked={answer.autoFillAllowed} onChange={(event) => updateLocal(answer.id, 'autoFillAllowed', event.target.checked)} /> Autoriser le remplissage automatique</label>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                 <button className="btn secondary" type="button" onClick={() => void remove(answer)}>Supprimer</button>

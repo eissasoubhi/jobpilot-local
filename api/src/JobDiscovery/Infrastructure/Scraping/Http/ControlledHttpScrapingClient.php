@@ -19,11 +19,15 @@ final class ControlledHttpScrapingClient
     /** @var array<string, int> */
     private array $requestsThisSync = [];
 
+    private HttpScrapingChallengeDetector $challengeDetector;
+
     public function __construct(
         private HttpClientInterface $httpClient,
         private HttpScrapingStateStore $stateStore,
         private RobotsTxtGuard $robotsTxtGuard,
+        ?HttpScrapingChallengeDetector $challengeDetector = null,
     ) {
+        $this->challengeDetector = $challengeDetector ?? new HttpScrapingChallengeDetector();
     }
 
     public function fetch(HttpScrapingRequest $request): HttpScrapingResult
@@ -95,6 +99,7 @@ final class ControlledHttpScrapingClient
                             throw new HttpScrapingException('La source a répondu 304 mais aucun contenu HTTP valide n’est en cache.');
                         }
 
+                        $this->assertNoChallenge($connectorCode, $state, $body, $responseHeaders);
                         $this->markSuccess($connectorCode, $state);
 
                         return new HttpScrapingResult(
@@ -130,6 +135,8 @@ final class ControlledHttpScrapingClient
                         ));
                     }
 
+                    $this->assertNoChallenge($connectorCode, $state, $body, $responseHeaders);
+
                     $state['cache'][$cacheKey] = [
                         'url' => $currentUrl,
                         'etag' => $this->firstHeader($responseHeaders, 'etag'),
@@ -163,6 +170,25 @@ final class ControlledHttpScrapingClient
             sprintf('La collecte HTTP de %s a échoué après %d tentative(s).', $request->url, $request->maxRetries + 1),
             previous: $lastException,
         );
+    }
+
+    /** @param array<string, mixed> $state @param array<string, list<string>> $headers */
+    private function assertNoChallenge(string $connectorCode, array &$state, string $body, array $headers): void
+    {
+        $challenge = $this->challengeDetector->detect($body, $headers);
+        if ($challenge === null) {
+            return;
+        }
+
+        // Treat an anti-automation challenge like an access denial: do not cache or
+        // parse it as job content and suspend the connector instead of bypassing it.
+        $this->markFailure($connectorCode, $state, 403);
+
+        throw new HttpScrapingException(sprintf(
+            'Protection anti-automatisation détectée pour %s (%s). Le connecteur est temporairement suspendu ; aucun contournement automatique n’est tenté.',
+            $connectorCode,
+            $challenge,
+        ));
     }
 
     /** @param array<string, mixed> $state */

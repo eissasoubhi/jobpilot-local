@@ -48,7 +48,7 @@ jobs:
           runner: self-hosted
         with:
           php-version: '8.4'
-          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
       - name: Install backend dependencies
@@ -151,7 +151,7 @@ jobs:
           runner: self-hosted
         with:
           php-version: '8.4'
-          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
 
@@ -250,6 +250,7 @@ jobs:
             --user "$(id -u):$(id -g)" \
             --env HOME=/tmp \
             --env CI=true \
+            --env PLAYWRIGHT_BASE_URL=/ms-playwright \
             --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
             --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
             --volume "$PWD/web:/workspace" \

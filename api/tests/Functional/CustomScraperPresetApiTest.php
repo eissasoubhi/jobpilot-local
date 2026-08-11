@@ -8,7 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class CustomScraperPresetApiTest extends WebTestCase
 {
-    public function testPresetCatalogIsPubliclyReadableButDoesNotAuthorizeSources(): void
+    public function testPresetCatalogIsPubliclyReadableButStillRequiresExplicitAuthorization(): void
     {
         $client = static::createClient();
 
@@ -33,17 +33,19 @@ final class CustomScraperPresetApiTest extends WebTestCase
         self::assertTrue($apec['canPrefill']);
         self::assertSame('AUTHORIZATION_REQUIRED', $apec['complianceStatus']);
         self::assertIsArray($freeWork);
-        self::assertFalse($freeWork['canPrefill']);
-        self::assertSame('ASSISTED_ONLY', $freeWork['complianceStatus']);
+        self::assertTrue($freeWork['canPrefill']);
+        self::assertSame('AUTHORIZATION_REQUIRED', $freeWork['complianceStatus']);
 
-        $client->jsonRequest('POST', '/api/custom-scrapers', [
-            'name' => $apec['name'],
-            'listingUrl' => $apec['listingUrl'],
-            'mode' => $apec['mode'],
-            'enabled' => true,
-            'authorizationConfirmed' => false,
-        ]);
-        self::assertResponseStatusCodeSame(400);
-        self::assertStringContainsString('confirmer', (string) $client->getResponse()->getContent());
+        foreach ([$apec, $freeWork] as $preset) {
+            $client->jsonRequest('POST', '/api/custom-scrapers', [
+                'name' => $preset['name'],
+                'listingUrl' => $preset['listingUrl'],
+                'mode' => $preset['mode'],
+                'enabled' => true,
+                'authorizationConfirmed' => false,
+            ]);
+            self::assertResponseStatusCodeSame(400);
+            self::assertStringContainsString('confirmer', (string) $client->getResponse()->getContent());
+        }
     }
 }

@@ -59,6 +59,27 @@ final class ApplicationCoverLetterApiTest extends WebTestCase
             (string) $client->getResponse()->headers->get('Content-Disposition'),
         );
 
+        $client->request('GET', sprintf('/api/applications/%d/cover-letter/download/pdf', $id));
+        self::assertResponseIsSuccessful();
+        self::assertStringStartsWith('%PDF-1.4', (string) $client->getResponse()->getContent());
+        self::assertStringContainsString('application/pdf', (string) $client->getResponse()->headers->get('Content-Type'));
+        self::assertStringContainsString(
+            'Lettre-motivation_Example-Corp_Developpeur-PHP-Symfony.pdf',
+            (string) $client->getResponse()->headers->get('Content-Disposition'),
+        );
+
+        $client->request('GET', sprintf('/api/applications/%d/cover-letter/download/docx', $id));
+        self::assertResponseIsSuccessful();
+        self::assertStringStartsWith('PK', (string) $client->getResponse()->getContent());
+        self::assertStringContainsString(
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            (string) $client->getResponse()->headers->get('Content-Type'),
+        );
+        self::assertStringContainsString(
+            'Lettre-motivation_Example-Corp_Developpeur-PHP-Symfony.docx',
+            (string) $client->getResponse()->headers->get('Content-Disposition'),
+        );
+
         $client->request('POST', sprintf('/api/applications/%d/cover-letter/reset', $id));
         self::assertResponseIsSuccessful();
         $reset = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);

@@ -44,6 +44,7 @@ export function ReviewQueueApplicationCard({
   const [coverLetterEditing, setCoverLetterEditing] = useState(false);
   const [coverLetterSaving, setCoverLetterSaving] = useState(false);
   const [coverLetterDraft, setCoverLetterDraft] = useState(application.coverLetter);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
@@ -52,6 +53,7 @@ export function ReviewQueueApplicationCard({
     setSelectedStatus(application.status);
     setCoverLetterDraft(application.coverLetter);
     setCoverLetterEditing(false);
+    setDescriptionExpanded(false);
     setNotice('');
     setError('');
   }, [application]);
@@ -173,46 +175,53 @@ export function ReviewQueueApplicationCard({
   const hasCoverLetter = currentApplication.coverLetter.trim() !== '';
   const hasCompensation = (currentApplication.compensationAnswer ?? '').trim() !== '';
   const scoreReasons = job.scoreReasons ?? [];
+  const description = job.description?.trim() || 'Description non disponible.';
+  const descriptionIsLong = description.length > 1_400 || description.split('\n').length > 18;
   const coverLetterEditedAt = editableApplication.coverLetterEditedAt
     ? new Date(editableApplication.coverLetterEditedAt).toLocaleString('fr-FR')
     : null;
 
   return (
-    <article className="review-queue-card" aria-label={`Offre à examiner : ${job.title}`}>
-      <header className="review-queue-card-header">
-        <div className="review-queue-card-title-block">
-          <div className="review-queue-eyebrow">Prête à envoyer</div>
+    <article className={styles.card} aria-label={`Offre à examiner : ${job.title}`}>
+      <header className={styles.offerHeader}>
+        <div className={styles.titleBlock}>
+          <div className={styles.eyebrow}>Prête à envoyer</div>
           <h2 ref={headingRef} tabIndex={-1}>{job.title}</h2>
-          <div className="review-queue-card-meta">
-            <span>{job.company || 'Entreprise non renseignée'}</span>
-            <span>{job.location || 'Lieu non renseigné'}</span>
-            <span>{job.workMode || 'Mode de travail non renseigné'}</span>
-            <span>{job.source || 'Source non renseignée'}</span>
+          <div className={styles.meta} aria-label="Métadonnées de l’offre">
+            {job.company && <span>{job.company}</span>}
+            {job.location && <span>{job.location}</span>}
+            {job.workMode && <span>{job.workMode}</span>}
+            {job.source && <span>{job.source}</span>}
           </div>
         </div>
-        <div className="review-queue-card-badges">
+        <div className={styles.badges}>
           <Badge tone={applicationStatusTone(currentApplication.status)}>
             {applicationBadgeLabel(currentApplication)}
           </Badge>
           <Badge tone={isCdi ? 'good' : 'neutral'}>{isCdi ? 'CDI' : 'Non-CDI'}</Badge>
-          <Badge>Contrat : {contractLabel}</Badge>
+          {!isCdi && contractLabel !== 'Non renseigné' && <Badge>{contractLabel}</Badge>}
         </div>
       </header>
 
-      <div className="review-queue-readiness" aria-label="Éléments de candidature disponibles">
-        {currentApplication.cvDocument ? (
-          <span><strong>CV</strong> {currentApplication.cvDocument.name}</span>
-        ) : (
-          <span><strong>CV</strong> non sélectionné</span>
-        )}
-        <span><strong>Lettre</strong> {hasCoverLetter ? 'prête' : 'non préparée'}</span>
-        <span><strong>Rémunération</strong> {hasCompensation ? currentApplication.compensationAnswer : 'non préparée'}</span>
+      <div className={styles.readiness} aria-label="Éléments de candidature disponibles">
+        <div className={styles.readinessItem}>
+          <span className={styles.readinessLabel}>CV</span>
+          <span className={styles.readinessValue}>{currentApplication.cvDocument?.name || 'Non sélectionné'}</span>
+        </div>
+        <div className={styles.readinessItem}>
+          <span className={styles.readinessLabel}>Lettre</span>
+          <span className={styles.readinessValue}>{hasCoverLetter ? 'Prête' : 'Non préparée'}</span>
+        </div>
+        <div className={styles.readinessItem}>
+          <span className={styles.readinessLabel}>Rémunération</span>
+          <span className={styles.readinessValue}>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</span>
+        </div>
       </div>
 
       <ReviewQueueTechnologyComparison comparison={profileComparison} />
 
-      <section className="review-queue-actions-panel" aria-label="Actions secondaires sur la candidature">
-        <div className="review-queue-primary-actions">
+      <section className={styles.actionsPanel} aria-label="Actions secondaires sur la candidature">
+        <div className={styles.quickActions}>
           {job.sourceUrl && (
             <a className="btn small" href={job.sourceUrl} target="_blank" rel="noreferrer">
               Ouvrir la plateforme
@@ -226,9 +235,9 @@ export function ReviewQueueApplicationCard({
           )}
         </div>
 
-        <div className="review-queue-status-inline">
-          <label className="review-queue-status-control">
-            Changer le statut
+        <div className={styles.statusActions}>
+          <label className={styles.statusControl}>
+            Statut de suivi
             <select
               aria-label="Statut de suivi dans JobPilot"
               value={selectedStatus}
@@ -254,13 +263,13 @@ export function ReviewQueueApplicationCard({
         </div>
       </section>
 
-      {notice !== '' && <div className="success-box review-queue-feedback" role="status">{notice}</div>}
-      {error !== '' && <div className="error-box review-queue-feedback" role="alert">{error}</div>}
+      {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
+      {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
 
       <section className={styles.letterSection} aria-labelledby={`cover-letter-title-${currentApplication.id}`}>
         <div className={styles.letterHeader}>
           <div className={styles.letterTitleBlock}>
-            <div className="review-queue-eyebrow">Candidature</div>
+            <div className={styles.eyebrow}>Candidature</div>
             <h3 id={`cover-letter-title-${currentApplication.id}`}>Lettre de motivation</h3>
             <div className={styles.letterMeta}>
               {editableApplication.coverLetterManuallyEdited ? (
@@ -347,29 +356,45 @@ export function ReviewQueueApplicationCard({
         )}
       </section>
 
-      <section className="review-queue-mission">
-        <div className="review-queue-section-heading">
-          <div>
-            <div className="review-queue-eyebrow">Contexte de décision</div>
-            <h3>Description de la mission</h3>
+      <section className={styles.mission} aria-labelledby={`mission-title-${currentApplication.id}`}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitleBlock}>
+            <div className={styles.eyebrow}>Contexte de décision</div>
+            <h3 id={`mission-title-${currentApplication.id}`}>Description de la mission</h3>
           </div>
         </div>
-        <div className="review-queue-description">
-          {job.description || 'Description non disponible.'}
+        <div
+          className={`${styles.descriptionViewport} ${descriptionIsLong && !descriptionExpanded ? styles.descriptionViewportCollapsed : ''}`}
+          data-expanded={descriptionExpanded ? 'true' : 'false'}
+        >
+          <div className={styles.description}>{description}</div>
         </div>
+        {descriptionIsLong && (
+          <button
+            className={styles.expandButton}
+            type="button"
+            aria-expanded={descriptionExpanded}
+            aria-controls={`mission-title-${currentApplication.id}`}
+            onClick={() => setDescriptionExpanded((value) => !value)}
+          >
+            {descriptionExpanded ? 'Voir moins' : 'Voir toute la description'}
+          </button>
+        )}
       </section>
 
-      <section className="review-queue-score-panel">
-        <div className="review-queue-score-summary">
-          <div className="review-queue-score-value">{job.score}%</div>
-          <div>
-            <div className="review-queue-eyebrow">Matching JobPilot</div>
-            <h3>Pourquoi ce score ?</h3>
+      <section className={styles.scorePanel} aria-labelledby={`score-title-${currentApplication.id}`}>
+        <div className={styles.scoreSummary}>
+          <div className={styles.scoreValue}>{job.score}%</div>
+          <div className={styles.scoreHeader}>
+            <div>
+              <div className={styles.eyebrow}>Matching JobPilot</div>
+              <h3 id={`score-title-${currentApplication.id}`}>Pourquoi ce score ?</h3>
+            </div>
           </div>
         </div>
 
         {scoreReasons.length > 0 ? (
-          <ul className="review-queue-score-reasons">
+          <ul className={styles.scoreReasons}>
             {scoreReasons.map((reason) => <li key={reason}>{reason}</li>)}
           </ul>
         ) : (

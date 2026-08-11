@@ -52,6 +52,12 @@ const dashboardPayload = {
     autoSubmitDailyLimit: 5,
     targetJobsCount: 7,
   },
+  connectors: {
+    total: 6,
+    operational: 5,
+    needsAttention: 1,
+    lastSyncedAt: '2026-08-11T17:45:00+02:00',
+  },
   recentJobs: [],
 };
 
@@ -77,6 +83,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Offres à revoir')).toBeInTheDocument();
     expect(screen.getByText('Messages à traiter')).toBeInTheDocument();
     expect(screen.getByText('Relances dues')).toBeInTheDocument();
+    expect(screen.getByText('Connecteurs à vérifier')).toBeInTheDocument();
     expect(screen.getAllByText('57,1 %').length).toBeGreaterThanOrEqual(1);
   });
 

@@ -1,0 +1,55 @@
+name: Scraping live smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scraping-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  le-studio-tech:
+    name: Le Studio Tech live smoke
+    runs-on: [self-hosted, jobpilot]
+    timeout-minutes: 10
+    env:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: scraping-smoke-local-only
+      LE_STUDIO_TECH_ENABLED: 1
+      LE_STUDIO_TECH_PAGES: 1
+      LE_STUDIO_TECH_MAX_DETAILS: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        env:
+          runner: self-hosted
+        with:
+          php-version: '8.4'
+          extensions: ctype, dom, iconv, intl, json, mbstring, sodium, xml, xmlwriter
+          coverage: none
+          tools: composer:v2
+
+      - name: Install backend dependencies
+        working-directory: api
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run bounded live smoke test
+        working-directory: api
+        run: |
+          set -o pipefail
+          php bin/console app:scraping:smoke:le-studio-tech --no-interaction | tee /tmp/jobpilot-scraping-smoke.txt
+          {
+            echo '## Le Studio Tech — smoke test public'
+            echo
+            echo '```text'
+            cat /tmp/jobpilot-scraping-smoke.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

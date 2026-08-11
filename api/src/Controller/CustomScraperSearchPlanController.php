@@ -34,7 +34,7 @@ final class CustomScraperSearchPlanController
             && $configuration['searchKeywords'] !== [];
 
         return new JsonResponse([
-            'sourceId' => $source->getId(),
+            'sourceId' => $configuration['id'],
             'sourceName' => $configuration['name'],
             'configured' => $configured,
             'searchCount' => count($searches),

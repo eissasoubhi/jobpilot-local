@@ -72,8 +72,8 @@ class CandidateProfile
             }
         }
 
-        if (!array_key_exists('fullName', $data)
-            && (array_key_exists('firstName', $data) || array_key_exists('lastName', $data))) {
+        if ((array_key_exists('firstName', $data) || array_key_exists('lastName', $data))
+            && ($this->firstName !== '' || $this->lastName !== '')) {
             $this->fullName = trim($this->firstName.' '.$this->lastName);
         }
 

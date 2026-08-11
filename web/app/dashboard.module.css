@@ -1,0 +1,564 @@
+.dashboard {
+  display: grid;
+  gap: 22px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kpiCard {
+  min-width: 0;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 19px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--panel);
+  box-shadow: 0 4px 18px rgba(25, 39, 77, .04);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  border-color: #cbd3e2;
+  box-shadow: 0 9px 24px rgba(25, 39, 77, .08);
+}
+
+.kpiCard strong {
+  margin: 9px 0 8px;
+  color: #18233a;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+
+.kpiEmphasis {
+  border-color: #cbd3ff;
+  background: linear-gradient(145deg, #ffffff 0%, #f3f5ff 100%);
+}
+
+.kpiEmphasis strong {
+  color: #314ac7;
+}
+
+.kpiLabel {
+  color: #39465e;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.kpiNote {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.primaryGrid,
+.analyticsGrid,
+.bottomGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.analyticsGrid,
+.bottomGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.attentionCard,
+.activityCard {
+  min-height: 340px;
+}
+
+.sectionHeading,
+.sectionHeadingOutside {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 17px;
+}
+
+.sectionHeading h2,
+.sectionHeadingOutside h2 {
+  margin: 3px 0 0;
+  color: #1f2b43;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+}
+
+.sectionHeadingOutside {
+  margin: 0;
+}
+
+.eyebrow {
+  display: block;
+  color: #6170a5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.textLink {
+  color: #4459c9;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+}
+
+.attentionList {
+  display: grid;
+  gap: 8px;
+}
+
+.attentionRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e7eaf0;
+  border-radius: 12px;
+  background: #fbfcfe;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.attentionRow:hover {
+  border-color: #ccd4e5;
+  background: #f7f9fd;
+}
+
+.attentionCount {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #eef1f5;
+  color: #4b5568;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.attentionCount.primary {
+  background: #edf0ff;
+  color: #314ac7;
+}
+
+.attentionCount.warning {
+  background: #fff3dd;
+  color: #9a560b;
+}
+
+.attentionCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.attentionCopy strong {
+  color: #28354c;
+  font-size: 13px;
+}
+
+.attentionCopy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.rowAction {
+  color: #4056c4;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.clearState {
+  min-height: 215px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 26px;
+  border: 1px dashed #d6dce7;
+  border-radius: 13px;
+  background: #fbfcfd;
+  text-align: center;
+}
+
+.clearState strong {
+  color: var(--good);
+  font-size: 16px;
+}
+
+.clearState span {
+  max-width: 390px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.legendJobs {
+  background: #536dfe;
+}
+
+.legendSubmitted {
+  background: #86a4ff;
+}
+
+.activityChart {
+  min-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  padding: 14px 6px 0;
+  border-top: 1px solid #edf0f5;
+  background-image: linear-gradient(to top, rgba(228, 232, 240, .7) 1px, transparent 1px);
+  background-size: 100% 25%;
+}
+
+.activityDay {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 180px auto auto;
+  gap: 5px;
+  text-align: center;
+}
+
+.barArea {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+}
+
+.barArea span {
+  width: min(14px, 38%);
+  min-height: 3px;
+  border-radius: 5px 5px 2px 2px;
+  transition: height .2s ease;
+}
+
+.jobBar {
+  background: #536dfe;
+}
+
+.submittedBar {
+  background: #9bb1ff;
+}
+
+.activityDay strong {
+  color: #48546a;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
+.activityDay small {
+  color: #8a93a3;
+  font-size: 9px;
+}
+
+.pipeline {
+  display: grid;
+  gap: 15px;
+}
+
+.pipelineRow {
+  display: grid;
+  gap: 7px;
+}
+
+.pipelineMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+  color: #4a5569;
+  font-size: 12px;
+}
+
+.pipelineMeta strong {
+  color: #202d45;
+  font-size: 14px;
+}
+
+.pipelineTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f5;
+}
+
+.pipelineTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #526afe, #7f94ff);
+}
+
+.performanceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.performanceGrid > div {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 13px;
+  border: 1px solid #e6e9f0;
+  border-radius: 12px;
+  background: #fafbfe;
+}
+
+.performanceGrid span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.performanceGrid strong {
+  color: #25324a;
+  font-size: 24px;
+  letter-spacing: -.025em;
+}
+
+.contextNote {
+  margin: 13px 0 0;
+  color: #818a9a;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.quickSection {
+  display: grid;
+  gap: 12px;
+}
+
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quickLink {
+  position: relative;
+  min-height: 106px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 14px 36px 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel);
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.quickLink:hover {
+  transform: translateY(-1px);
+  border-color: #ccd4e5;
+  box-shadow: 0 6px 18px rgba(25, 39, 77, .06);
+}
+
+.quickLink strong {
+  color: #26334a;
+  font-size: 13px;
+}
+
+.quickLink span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.quickLink i {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: #6575be;
+  font-size: 15px;
+  font-style: normal;
+}
+
+.settingsList {
+  display: grid;
+}
+
+.settingsList > div {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.settingsList > div:last-child {
+  border-bottom: 0;
+}
+
+.settingsList > div > span:first-child {
+  color: #586377;
+  font-size: 12px;
+}
+
+.settingsList strong {
+  color: #27344b;
+  font-size: 13px;
+}
+
+.recentList {
+  display: grid;
+}
+
+.recentRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.recentRow:last-child {
+  border-bottom: 0;
+}
+
+.recentRow > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.recentRow strong {
+  overflow: hidden;
+  color: #28354c;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentRow div span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scorePill {
+  min-width: 37px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--primary2);
+  color: #314ac7;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+@media (max-width: 1180px) {
+  .kpiGrid,
+  .quickGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .primaryGrid,
+  .analyticsGrid,
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .attentionCard,
+  .activityCard {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard {
+    gap: 16px;
+  }
+
+  .kpiGrid,
+  .quickGrid,
+  .performanceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpiCard {
+    min-height: 118px;
+  }
+
+  .attentionRow {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .rowAction {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .sectionHeading {
+    align-items: flex-start;
+  }
+
+  .activityChart {
+    min-height: 205px;
+    gap: 3px;
+  }
+
+  .activityDay {
+    grid-template-rows: 145px auto auto;
+  }
+
+  .barArea span {
+    width: min(10px, 42%);
+  }
+
+  .legend {
+    display: none;
+  }
+}

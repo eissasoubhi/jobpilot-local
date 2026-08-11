@@ -94,11 +94,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     nextStep: 'Confirmer un canal officiel d’offres réutilisable et ses conditions d’utilisation.',
   }),
   underReview('cadremploi', 'Cadremploi'),
-  underReview('hellowork', 'HelloWork', {
+  {
+    code: 'hellowork',
+    name: 'HelloWork',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
     modes: ['GMAIL', 'EXTENSION'],
-    note: 'Les alertes e-mail reconnues et l’import assisté sont possibles, mais aucun canal de collecte planifiée n’est approuvé.',
-    nextStep: 'Confirmer un canal officiel d’offres réutilisable et ses conditions d’utilisation.',
-  }),
+    note: 'Les CGU HelloWork interdisent les systèmes automatisés de screen/web scraping, à des fins commerciales ou non, sauf convention de licence écrite autorisant expressément l’extraction. JobPilot n’active donc aucun scraper planifié.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après licence écrite HelloWork ou canal officiel de lecture/réutilisation.',
+  },
   underReview('jobijoba', 'Jobijoba'),
   underReview('eures', 'EURES', {
     note: 'Le portail officiel expose un important catalogue public européen, mais JobPilot n’a pas encore confirmé une API ou un flux officiel d’offres réutilisable.',

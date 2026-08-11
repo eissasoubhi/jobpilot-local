@@ -5,9 +5,15 @@ import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationC
 import type { JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import type { Application } from '@/lib/types';
 
-const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
+const { apiMock, copyMock } = vi.hoisted(() => ({
+  apiMock: vi.fn(),
+  copyMock: vi.fn(),
+}));
 
-vi.mock('@/lib/api', () => ({ api: apiMock }));
+vi.mock('@/lib/api', () => ({
+  API_URL: '/api',
+  api: apiMock,
+}));
 
 function application(overrides: Partial<Application> = {}): Application {
   return {
@@ -69,9 +75,30 @@ function applicationWithComparison(): Application {
   return item;
 }
 
+function withCoverLetterState(
+  item: Application,
+  manuallyEdited: boolean,
+  editedAt: string | null,
+): Application {
+  const editable = item as Application & {
+    coverLetterManuallyEdited?: boolean;
+    coverLetterEditedAt?: string | null;
+  };
+  editable.coverLetterManuallyEdited = manuallyEdited;
+  editable.coverLetterEditedAt = editedAt;
+
+  return editable;
+}
+
 describe('ReviewQueueApplicationCard', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     apiMock.mockReset();
+    copyMock.mockReset();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: copyMock },
+    });
   });
 
   it('keeps mission context and secondary actions in the card while primary decisions live in the bottom bar', () => {
@@ -101,6 +128,12 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByRole('link', { name: 'Ouvrir la plateforme' })).toHaveAttribute('href', 'https://example.test/jobs/7');
     expect(screen.getByRole('link', { name: 'Ouvrir le CV' })).toHaveAttribute('href', '/api/cvs/3/download');
     expect(screen.queryByText('Ce message préparé ne doit pas occuper la Review Queue.')).not.toBeInTheDocument();
+    expect(screen.getByText('Lettre de motivation')).toBeInTheDocument();
+    expect(screen.getByText('Générée automatiquement par JobPilot')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Télécharger' })).toHaveAttribute(
+      'href',
+      '/api/applications/42/cover-letter/download',
+    );
   });
 
   it('keeps a selected status local until Apply is clicked', async () => {
@@ -137,5 +170,85 @@ describe('ReviewQueueApplicationCard', () => {
     }));
     expect(onApplicationUpdated).toHaveBeenCalledWith(interview);
     expect(await screen.findByRole('status')).toHaveTextContent('Statut de suivi enregistré dans JobPilot.');
+  });
+
+  it('edits and saves a cover letter without changing the application status', async () => {
+    const updated = withCoverLetterState(
+      application({ coverLetter: 'Lettre personnalisée.' }),
+      true,
+      '2026-08-11T03:00:00+00:00',
+    );
+    const onApplicationUpdated = vi.fn();
+    apiMock.mockResolvedValueOnce(updated);
+
+    render(
+      <ReviewQueueApplicationCard
+        application={application()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
+    expect(editor).toHaveValue('Lettre de motivation préparée.');
+    fireEvent.change(editor, { target: { value: 'Lettre personnalisée.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42/cover-letter', {
+      method: 'PATCH',
+      body: JSON.stringify({ coverLetter: 'Lettre personnalisée.' }),
+    }));
+    expect(updated.status).toBe('READY_TO_SUBMIT');
+    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
+    expect(await screen.findByText('Lettre personnalisée.')).toBeInTheDocument();
+    expect(screen.getByText(/Modifiée manuellement/)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation enregistrée.');
+  });
+
+  it('cancels an unsaved cover letter edit', () => {
+    render(<ReviewQueueApplicationCard application={application()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
+    fireEvent.change(editor, { target: { value: 'Brouillon non sauvegardé.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByRole('textbox', { name: 'Texte de la lettre' })).not.toBeInTheDocument();
+    expect(screen.getByText('Lettre de motivation préparée.')).toBeInTheDocument();
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+
+  it('copies the saved cover letter', async () => {
+    copyMock.mockResolvedValueOnce(undefined);
+    render(<ReviewQueueApplicationCard application={application()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
+
+    await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Lettre de motivation préparée.'));
+    expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation copiée.');
+  });
+
+  it('resets a manual cover letter to the latest generated version', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const manual = withCoverLetterState(
+      application({ coverLetter: 'Texte manuel.' }),
+      true,
+      '2026-08-11T03:00:00+00:00',
+    );
+    const reset = withCoverLetterState(
+      application({ coverLetter: 'Dernière version générée.' }),
+      false,
+      null,
+    );
+    apiMock.mockResolvedValueOnce(reset);
+
+    render(<ReviewQueueApplicationCard application={manual} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42/cover-letter/reset', {
+      method: 'POST',
+    }));
+    expect(await screen.findByText('Dernière version générée.')).toBeInTheDocument();
+    expect(screen.getByText('Générée automatiquement par JobPilot')).toBeInTheDocument();
   });
 });

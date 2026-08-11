@@ -17,6 +17,8 @@ class Application
     #[ORM\ManyToOne] #[ORM\JoinColumn(onDelete: 'SET NULL')] private ?CvDocument $cvDocument = null;
     #[ORM\Column(type: 'text')] private string $message = '';
     #[ORM\Column(type: 'text')] private string $coverLetter = '';
+    #[ORM\Column(type: 'text')] private string $generatedCoverLetter = '';
+    #[ORM\Column(nullable: true)] private ?\DateTimeImmutable $coverLetterEditedAt = null;
     #[ORM\Column(length: 255, nullable: true)] private ?string $compensationAnswer = null;
     #[ORM\Column(length: 255, nullable: true)] private ?string $confirmationRef = null;
     #[ORM\Column(length: 255, nullable: true)] private ?string $gmailMessageId = null;
@@ -38,6 +40,9 @@ class Application
     public function getCvDocument(): ?CvDocument { return $this->cvDocument; }
     public function getMessage(): string { return $this->message; }
     public function getCoverLetter(): string { return $this->coverLetter; }
+    public function getGeneratedCoverLetter(): string { return $this->generatedCoverLetter; }
+    public function getCoverLetterEditedAt(): ?\DateTimeImmutable { return $this->coverLetterEditedAt; }
+    public function isCoverLetterManuallyEdited(): bool { return $this->coverLetterEditedAt !== null; }
     public function getCompensationAnswer(): ?string { return $this->compensationAnswer; }
     public function getSubmittedAt(): ?\DateTimeImmutable { return $this->submittedAt; }
     public function getGmailMessageId(): ?string { return $this->gmailMessageId; }
@@ -52,13 +57,42 @@ class Application
 
         $this->cvDocument = $cv;
         $this->message = $message;
-        $this->coverLetter = $coverLetter;
+        $this->generatedCoverLetter = $coverLetter;
+        if (!$this->isCoverLetterManuallyEdited()) {
+            $this->coverLetter = $coverLetter;
+        }
         $this->compensationAnswer = $compensation;
         $this->status = $cv === null ? 'MISSING_CV' : 'READY_TO_SUBMIT';
         $this->submissionError = null;
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function editCoverLetter(string $coverLetter): void
+    {
+        $coverLetter = trim(str_replace("\r\n", "\n", $coverLetter));
+        if ($coverLetter === '') {
+            throw new \InvalidArgumentException('La lettre de motivation ne peut pas être vide.');
+        }
+        if (mb_strlen($coverLetter) > 50_000) {
+            throw new \InvalidArgumentException('La lettre de motivation dépasse la taille maximale autorisée.');
+        }
+
+        $this->coverLetter = $coverLetter;
+        $this->coverLetterEditedAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function resetCoverLetter(): void
+    {
+        if (trim($this->generatedCoverLetter) === '') {
+            throw new \LogicException('Aucune version générée de la lettre de motivation n’est disponible.');
+        }
+
+        $this->coverLetter = $this->generatedCoverLetter;
+        $this->coverLetterEditedAt = null;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function attachCv(CvDocument $cv): void
@@ -196,6 +230,8 @@ class Application
             'cvDocument' => $this->cvDocument?->toArray(),
             'message' => $this->message,
             'coverLetter' => $this->coverLetter,
+            'coverLetterManuallyEdited' => $this->isCoverLetterManuallyEdited(),
+            'coverLetterEditedAt' => $this->coverLetterEditedAt?->format(DATE_ATOM),
             'compensationAnswer' => $this->compensationAnswer,
             'confirmationRef' => $this->confirmationRef,
             'gmailMessageId' => $this->gmailMessageId,

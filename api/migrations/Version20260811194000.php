@@ -17,7 +17,8 @@ final class Version20260811194000 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $this->addSql('ALTER TABLE custom_scraper_source ADD search_url_template VARCHAR(2048) DEFAULT NULL');
-        $this->addSql("ALTER TABLE custom_scraper_source ADD search_keywords JSON NOT NULL DEFAULT '[]'");
+        $this->addSql("ALTER TABLE custom_scraper_source ADD search_keywords JSON DEFAULT '[]' NOT NULL");
+        $this->addSql('ALTER TABLE custom_scraper_source ALTER search_keywords DROP DEFAULT');
     }
 
     public function down(Schema $schema): void

@@ -86,7 +86,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Performance')).toBeInTheDocument();
     expect(screen.getByText('Actions & configuration')).toBeInTheDocument();
     expect(screen.getByText('Offres à revoir')).toBeInTheDocument();
-    expect(screen.getByText('Messages à traiter')).toBeInTheDocument();
+    expect(screen.getAllByText('Messages à traiter').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Relances dues')).toBeInTheDocument();
     expect(screen.getByText('Connecteurs à vérifier')).toBeInTheDocument();
     expect(screen.getAllByText('57,1 %').length).toBeGreaterThanOrEqual(1);

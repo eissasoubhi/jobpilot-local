@@ -37,8 +37,7 @@ jobs:
             "$GITHUB_WORKSPACE/web/test-results" \
             "$GITHUB_WORKSPACE/web/playwright-report" \
             "$GITHUB_WORKSPACE/api/vendor" \
-            "$GITHUB_WORKSPACE/api/var" \
-            "$GITHUB_WORKSPACE/api/composer.lock"
+            "$GITHUB_WORKSPACE/api/var"
 
           docker container prune --force || true
           docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true

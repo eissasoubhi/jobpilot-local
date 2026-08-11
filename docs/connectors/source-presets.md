@@ -13,6 +13,24 @@ Chaque preset contient :
 - un indicateur `reviewFresh` ;
 - des limites réseau conservatrices.
 
+## Autorisations écrites signalées le 11 août 2026
+
+L’utilisateur de JobPilot a signalé disposer d’autorisations écrites de scraping pour les plateformes qu’il souhaite connecter, à l’exception explicite de **LinkedIn**.
+
+JobPilot ne stocke pas le contenu privé de ces e-mails dans le dépôt et ne transforme pas cette déclaration en activation automatique. Pour chaque source concernée, le workflow reste :
+
+1. renseigner une référence locale de l’accord écrit ;
+2. confirmer explicitement que cet accord couvre la collecte automatisée visée ;
+3. créer la source en état **désactivé** ;
+4. exécuter diagnostic et prévisualisation ;
+5. activer manuellement seulement si le test est concluant.
+
+Les presets Free-Work, Welcome to the Jungle, Hellowork et LesJeudis passent donc de `ASSISTED_ONLY` à `AUTHORIZATION_REQUIRED`. Cette évolution autorise le préremplissage contrôlé, pas le scraping automatique par défaut.
+
+**LinkedIn reste exclu de ce workflow** : aucune collecte automatisée de LinkedIn n’est ajoutée. Les mécanismes Gmail/import assisté restent les seuls canaux JobPilot prévus pour cette plateforme.
+
+Lorsqu’une API, un flux RSS/XML ou un autre canal officiel adapté existe, ce canal reste prioritaire sur le scraping même lorsqu’un accord écrit de scraping est disponible.
+
 ## Durée de validité d’une revue
 
 Une revue de conformité JobPilot est considérée fraîche pendant **90 jours**.
@@ -51,23 +69,20 @@ Lorsque la revue JobPilot est encore fraîche, l’UI peut préremplir la source
 3. création de la source en état **désactivé** ;
 4. diagnostic et prévisualisation avant activation manuelle.
 
-Au 10 août 2026 :
+Au 11 août 2026 :
 
 - APEC — PHP / Symfony ;
-- LeHibou — Développeur Symfony.
-
-### `ASSISTED_ONLY`
-
-Les conditions publiques revues interdisent le scraping automatisé ou imposent des restrictions incompatibles avec une activation générique prudente.
-
-JobPilot ne propose donc aucun bouton d’ajout automatique. Utiliser à la place une alerte Gmail, une extension/import utilisateur, une API partenaire ou une autorisation explicite spécifique.
-
-Au 10 août 2026 :
-
+- LeHibou — Développeur Symfony ;
 - Free-Work — Symfony ;
 - Welcome to the Jungle ;
 - Hellowork — PHP ;
 - LesJeudis.
+
+### `ASSISTED_ONLY`
+
+Ce statut reste disponible pour les plateformes pour lesquelles aucun droit applicable à une collecte automatisée n’est confirmé. JobPilot n’y propose aucun bouton d’ajout automatique et conserve uniquement les canaux tels que Gmail, import utilisateur ou canal officiel adapté.
+
+LinkedIn doit rester hors des presets de scraping automatisé et utiliser ce principe d’import assisté.
 
 ## Références revues le 10 août 2026
 

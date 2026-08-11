@@ -21,6 +21,8 @@ jobs:
       APP_ENV: prod
       APP_DEBUG: 0
       APP_SECRET: scraping-smoke-local-only
+      APP_ENCRYPTION_KEY: ''
+      DATABASE_URL: postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot?serverVersion=17&charset=utf8
       LE_STUDIO_TECH_ENABLED: 1
       LE_STUDIO_TECH_PAGES: 1
       LE_STUDIO_TECH_MAX_DETAILS: 1
@@ -33,7 +35,7 @@ jobs:
           runner: self-hosted
         with:
           php-version: '8.4'
-          extensions: ctype, dom, iconv, intl, json, mbstring, sodium, xml, xmlwriter
+          extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
           coverage: none
           tools: composer:v2
 

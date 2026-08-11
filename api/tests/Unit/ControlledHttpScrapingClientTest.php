@@ -223,18 +223,18 @@ final class ControlledHttpScrapingClientTest extends TestCase
     public function testOversizedResponseIsRejected(): void
     {
         $client = $this->client(new MockHttpClient(new MockResponse(
-            str_repeat('x', 32),
+            str_repeat('x', 2_048),
             ['http_code' => 200],
         )));
 
         $this->expectException(HttpScrapingException::class);
-        $this->expectExceptionMessage('dépasse la limite de 16 octets');
+        $this->expectExceptionMessage('dépasse la limite de 1024 octets');
         $client->fetch(new HttpScrapingRequest(
             'response-limit-source',
             'https://jobs.example.test/offers',
             $this->allowedPolicy(),
             maxRetries: 0,
-            maxResponseBytes: 16,
+            maxResponseBytes: 1_024,
         ));
     }
 

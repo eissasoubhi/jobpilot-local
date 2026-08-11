@@ -5,7 +5,7 @@ export type ReusableAnswer = {
   category: string;
   valueSource: 'STATIC' | 'PROFILE';
   profilePath?: string | null;
-  answerType: 'TEXT' | 'NUMBER' | 'BOOLEAN' | 'CHOICE';
+  answerType: 'TEXT' | 'NUMBER' | 'BOOLEAN' | 'CHOICE' | 'MULTI_CHOICE';
   answerFr?: string | null;
   answerEn?: string | null;
   questionPatterns: {
@@ -30,4 +30,17 @@ export type ResolvedReusableAnswer = ReusableAnswer & {
 export type ResolvedReusableAnswerPayload = {
   schemaVersion: number;
   answers: ResolvedReusableAnswer[];
+};
+
+export type ReusableAnswerMatch = {
+  score: number;
+  matchedPattern: string;
+  answer: ResolvedReusableAnswer;
+};
+
+export type ReusableAnswerMatchPayload = {
+  schemaVersion: number;
+  question: string;
+  language: 'fr' | 'en';
+  matches: ReusableAnswerMatch[];
 };

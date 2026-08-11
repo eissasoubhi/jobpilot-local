@@ -88,11 +88,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
   },
   underReview('sept-lieues', 'Sept Lieues'),
   underReview('jean-michel', 'Jean-Michel.io'),
-  underReview('welcome-to-the-jungle', 'Welcome to the Jungle', {
+  {
+    code: 'welcome-to-the-jungle',
+    name: 'Welcome to the Jungle',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
     modes: ['GMAIL', 'EXTENSION'],
-    note: 'Les alertes e-mail reconnues et l’import assisté sont possibles, mais aucun canal de collecte planifiée n’est approuvé.',
-    nextStep: 'Confirmer un canal officiel d’offres réutilisable et ses conditions d’utilisation.',
-  }),
+    note: 'Les CGU Welcome to the Jungle du 27/04/2026 interdisent l’utilisation de scripts, robots, crawlers, extensions/modules de navigateur ou autres technologies pour extraire automatiquement les données du Site. L’exception limitée aux moteurs de recherche publics ne s’applique pas à JobPilot.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après accord écrit WTTJ ou publication d’un canal officiel de lecture/réutilisation.',
+  },
   underReview('cadremploi', 'Cadremploi'),
   {
     code: 'hellowork',

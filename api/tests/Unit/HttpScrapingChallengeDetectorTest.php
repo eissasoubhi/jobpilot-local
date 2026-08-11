@@ -31,12 +31,21 @@ final class HttpScrapingChallengeDetectorTest extends TestCase
             $this->detector->detect('<script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script>'),
         );
         self::assertSame(
-            'Google reCAPTCHA',
-            $this->detector->detect('<div class="g-recaptcha" data-sitekey="test"></div>'),
-        );
-        self::assertSame(
             'DataDome challenge',
             $this->detector->detect('<script src="https://geo.captcha-delivery.com/captcha/?initialCid=x"></script>'),
+        );
+    }
+
+    public function testCaptchaWidgetNeedsHumanVerificationContext(): void
+    {
+        self::assertNull($this->detector->detect('<form><div class="g-recaptcha" data-sitekey="contact-form"></div></form>'));
+        self::assertSame(
+            'Google reCAPTCHA',
+            $this->detector->detect('<h1>Verify you are human</h1><div class="g-recaptcha" data-sitekey="challenge"></div>'),
+        );
+        self::assertSame(
+            'hCaptcha',
+            $this->detector->detect('<h1>Verify that you are human</h1><div class="h-captcha"></div>'),
         );
     }
 
@@ -53,6 +62,7 @@ final class HttpScrapingChallengeDetectorTest extends TestCase
     {
         $body = '<html><head><title>Développeur Symfony</title></head><body>'
             .'<p>Rejoignez notre équipe pour relever un challenge technique.</p>'
+            .'<form><div class="g-recaptcha" data-sitekey="contact-form"></div></form>'
             .'</body></html>';
 
         self::assertNull($this->detector->detect($body, ['content-type' => ['text/html']]));

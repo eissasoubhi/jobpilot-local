@@ -88,13 +88,23 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
       expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
       expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
     }
+  });
+
+  it('records why HelloWork does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'hellowork');
+
+    expect(connector).toBeDefined();
+    expect(connector?.note).toContain('screen/web scraping');
+    expect(connector?.note).toContain('commerciales ou non');
+    expect(connector?.note).toContain('licence écrite');
+    expect(connector?.nextStep).toContain('Gmail');
   });
 
   it('records why WeLoveDevs does not get a planned scraper', () => {

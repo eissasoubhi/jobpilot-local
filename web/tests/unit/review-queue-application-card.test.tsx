@@ -101,14 +101,17 @@ describe('ReviewQueueApplicationCard', () => {
     });
   });
 
-  it('keeps mission context and secondary actions in the card while primary decisions live in the bottom bar', () => {
+  it('keeps the decision context compact and leaves primary decisions in the bottom bar', () => {
     render(<ReviewQueueApplicationCard application={applicationWithComparison()} />);
 
     expect(screen.getByRole('article', { name: /Développeur Front-end React/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Développeur Front-end React / TypeScript', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText('Example')).toBeInTheDocument();
+    expect(screen.getByText('Paris 9e')).toBeInTheDocument();
+    expect(screen.getByText('Hybride')).toBeInTheDocument();
     expect(screen.getByText('Description de la mission')).toBeInTheDocument();
     expect(screen.getByText(/Mission React, TypeScript et Next.js/)).toBeInTheDocument();
     expect(screen.getByText('CDI')).toBeInTheDocument();
-    expect(screen.getByText('Contrat : CDI')).toBeInTheDocument();
     expect(screen.getByText('88%')).toBeInTheDocument();
     expect(screen.getByText('Pourquoi ce score ?')).toBeInTheDocument();
     expect(screen.getByText('React correspond à un poste cible.')).toBeInTheDocument();
@@ -134,6 +137,25 @@ describe('ReviewQueueApplicationCard', () => {
       'href',
       '/api/applications/42/cover-letter/download',
     );
+  });
+
+  it('keeps a long mission compact until the user expands it', () => {
+    const item = application();
+    item.jobOffer.description = Array.from(
+      { length: 24 },
+      (_, index) => `Ligne ${index + 1} de la mission Symfony React TypeScript.`,
+    ).join('\n');
+
+    render(<ReviewQueueApplicationCard application={item} />);
+
+    const expand = screen.getByRole('button', { name: 'Voir toute la description' });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(expand);
+    expect(screen.getByRole('button', { name: 'Voir moins' })).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voir moins' }));
+    expect(screen.getByRole('button', { name: 'Voir toute la description' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps a selected status local until Apply is clicked', async () => {

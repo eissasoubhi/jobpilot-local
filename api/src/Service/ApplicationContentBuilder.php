@@ -17,9 +17,10 @@ final class ApplicationContentBuilder
     }
 
     /**
+     * @param list<string> $profileSkills
      * @return array{message: string, coverLetter: string, coverLetterRequired: bool}
      */
-    public function build(JobOffer $job, CandidateProfile $profile): array
+    public function build(JobOffer $job, CandidateProfile $profile, array $profileSkills = []): array
     {
         $content = $this->messageBuilder->build($job, $profile);
         $coverLetterRequired = $this->coverLetterRequirementDetector->isRequired(
@@ -29,7 +30,7 @@ final class ApplicationContentBuilder
 
         return [
             'message' => $content['message'],
-            'coverLetter' => $coverLetterBuilder->build($job, $profile),
+            'coverLetter' => $coverLetterBuilder->build($job, $profile, $profileSkills),
             'coverLetterRequired' => $coverLetterRequired,
         ];
     }

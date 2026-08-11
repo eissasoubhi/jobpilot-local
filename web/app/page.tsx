@@ -1,16 +1,114 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Job } from '@/lib/types';
 
+import styles from './dashboard.module.css';
+
 type DashboardData = {
-  counts: Record<string, number>;
+  period: {
+    days: number;
+    from: string;
+    to: string;
+  };
+  counts: {
+    jobs: number;
+    newJobs: number;
+    qualifiedJobs: number;
+    applications: number;
+    prepared: number;
+    submitted: number;
+    submittedRecently: number;
+    interviews: number;
+    rejected: number;
+    positionings: number;
+    messages: number;
+    actionMessages: number;
+    followUpsDue: number;
+    missingCv: number;
+    failedSubmissions: number;
+  };
+  performance: {
+    responseRate: number;
+    interviewRate: number;
+    responses: number;
+    averageScore: number;
+  };
+  pipeline: Array<{
+    key: string;
+    label: string;
+    value: number;
+  }>;
+  trend: Array<{
+    date: string;
+    jobs: number;
+    submitted: number;
+  }>;
+  automation: {
+    matchingThreshold: number;
+    autoPrepare: boolean;
+    autoSubmitEnabled: boolean;
+    autoSubmitThreshold: number;
+    autoSubmitDailyLimit: number;
+    targetJobsCount: number;
+  };
   recentJobs: Job[];
 };
+
+type AttentionItem = {
+  label: string;
+  description: string;
+  count: number;
+  href: string;
+  action: string;
+  priority: 'primary' | 'warning' | 'neutral';
+};
+
+const quickLinks = [
+  ['/offres/review', 'Review Queue', 'Décider rapidement sur les offres prêtes'],
+  ['/criteres-recherche', 'Critères de recherche', 'Ajuster les postes, filtres et exclusions'],
+  ['/connecteurs', 'Connecteurs', 'Contrôler les sources et synchronisations'],
+  ['/parametres/integrations', 'Clés API & IA', 'Gérer Gemini et les intégrations'],
+  ['/parametres/scraping', 'Scraping', 'Configurer les sources personnalisées'],
+  ['/reporting', 'Reporting', 'Analyser les conversions en détail'],
+  ['/profil', 'Profil', 'Mettre à jour les données candidat'],
+  ['/cv', 'CV', 'Contrôler les versions de CV disponibles'],
+] as const;
+
+function formatRate(value: number): string {
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
+}
+
+function formatDay(value: string): string {
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'short' }).format(new Date(`${value}T12:00:00`));
+}
+
+function KpiCard({
+  label,
+  value,
+  note,
+  href,
+  emphasis = false,
+}: {
+  label: string;
+  value: string | number;
+  note: string;
+  href: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <Link className={`${styles.kpiCard} ${emphasis ? styles.kpiEmphasis : ''}`} href={href}>
+      <span className={styles.kpiLabel}>{label}</span>
+      <strong>{value}</strong>
+      <span className={styles.kpiNote}>{note}</span>
+    </Link>
+  );
+}
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -37,6 +135,45 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const attentionItems = useMemo<AttentionItem[]>(() => {
+    if (data === null) return [];
+
+    return [
+      {
+        label: 'Offres à revoir',
+        description: 'Des candidatures sont prêtes : valider ou écarter les offres.',
+        count: data.counts.prepared,
+        href: '/offres/review',
+        action: 'Ouvrir la Review Queue',
+        priority: 'primary',
+      },
+      {
+        label: 'Messages à traiter',
+        description: 'Réponses détectées qui nécessitent une action de ta part.',
+        count: data.counts.actionMessages,
+        href: '/messages',
+        action: 'Voir les messages',
+        priority: 'warning',
+      },
+      {
+        label: 'Relances dues',
+        description: 'Relances CRM arrivées à échéance et toujours ouvertes.',
+        count: data.counts.followUpsDue,
+        href: '/crm/follow-ups',
+        action: 'Gérer les relances',
+        priority: 'warning',
+      },
+      {
+        label: 'Candidatures bloquées',
+        description: 'CV manquant ou tentative d’envoi en échec.',
+        count: data.counts.missingCv + data.counts.failedSubmissions,
+        href: '/candidatures',
+        action: 'Résoudre les blocages',
+        priority: 'neutral',
+      },
+    ];
+  }, [data]);
+
   if (error !== '') {
     return (
       <>
@@ -50,71 +187,223 @@ export default function DashboardPage() {
     return <Loading />;
   }
 
-  const stats = [
-    ['Offres détectées', data.counts.jobs ?? 0],
-    ['Prêtes à envoyer', data.counts.prepared ?? 0],
-    ['Candidatures envoyées', data.counts.submitted ?? 0],
-    ['Positionnements', data.counts.positionings ?? 0],
-  ] as const;
+  const maxTrend = Math.max(1, ...data.trend.flatMap((item) => [item.jobs, item.submitted]));
+  const maxPipeline = Math.max(1, ...data.pipeline.map((item) => item.value));
+  const pendingAttention = attentionItems.reduce((total, item) => total + item.count, 0);
 
   return (
-    <>
+    <div className={styles.dashboard}>
       <PageHeader
         title="Tableau de bord"
-        description="Vue d’ensemble de ta recherche et de tes candidatures."
+        description="L’essentiel pour savoir où tu en es et quoi faire maintenant."
+        actions={<Link className="btn" href="/offres/review">Ouvrir la Review Queue</Link>}
       />
 
-      <div className="grid cols-4">
-        {stats.map(([label, value]) => (
-          <Card key={label} className="stat-card">
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </Card>
-        ))}
-      </div>
+      <section className={styles.kpiGrid} aria-label="Indicateurs principaux">
+        <KpiCard
+          label="Nouvelles offres"
+          value={data.counts.newJobs}
+          note="sur les 7 derniers jours"
+          href="/offres"
+        />
+        <KpiCard
+          label="À revoir"
+          value={data.counts.prepared}
+          note="candidatures prêtes à décider"
+          href="/offres/review"
+          emphasis={data.counts.prepared > 0}
+        />
+        <KpiCard
+          label="Envoyées"
+          value={data.counts.submittedRecently}
+          note="sur les 7 derniers jours"
+          href="/candidatures"
+        />
+        <KpiCard
+          label="Taux de réponse"
+          value={formatRate(data.performance.responseRate)}
+          note={`${data.performance.responses} réponse(s) enregistrée(s)`}
+          href="/reporting"
+        />
+      </section>
 
-      <div style={{ height: 18 }} />
+      <section className={styles.primaryGrid}>
+        <Card className={styles.attentionCard}>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>Priorités</span>
+              <h2>À faire maintenant</h2>
+            </div>
+            <Badge tone={pendingAttention > 0 ? 'warn' : 'good'}>
+              {pendingAttention > 0 ? `${pendingAttention} action(s)` : 'À jour'}
+            </Badge>
+          </div>
 
-      <div className="grid cols-2">
-        <Card>
-          <h2 className="section-title">Offres récentes</h2>
-          {data.recentJobs.length === 0 ? (
-            <div className="empty">Aucune offre importée.</div>
+          {pendingAttention === 0 ? (
+            <div className={styles.clearState}>
+              <strong>Rien d’urgent.</strong>
+              <span>La Review Queue, la messagerie et les relances ne demandent aucune action.</span>
+            </div>
           ) : (
-            data.recentJobs.map((job) => (
-              <div className="list-row" key={job.id}>
-                <div>
-                  <h3>{job.title}</h3>
-                  <div className="muted small">
-                    {job.company || 'Entreprise non renseignée'} ·{' '}
-                    {job.location || 'Lieu non renseigné'}
-                  </div>
-                  <div style={{ marginTop: 7 }}>
-                    <Badge tone={job.status === 'PREPARED' ? 'good' : 'blue'}>
-                      {job.status}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="score" aria-label={`Score ${job.score}`}>
-                  {job.score}
-                </div>
-              </div>
-            ))
+            <div className={styles.attentionList}>
+              {attentionItems.filter((item) => item.count > 0).map((item) => (
+                <Link className={styles.attentionRow} href={item.href} key={item.label}>
+                  <span className={`${styles.attentionCount} ${styles[item.priority]}`}>{item.count}</span>
+                  <span className={styles.attentionCopy}>
+                    <strong>{item.label}</strong>
+                    <small>{item.description}</small>
+                  </span>
+                  <span className={styles.rowAction}>{item.action} →</span>
+                </Link>
+              ))}
+            </div>
           )}
         </Card>
 
-        <Card>
-          <h2 className="section-title">Règles actives</h2>
-          <div className="stack">
-            <div className="notice">Les offres sont triées par fraîcheur, puis par score.</div>
-            <div className="notice">Score ≥ 50 : préparation automatique.</div>
-            <div className="notice">
-              CV français pour une offre francophone, CV anglais pour une offre anglophone.
+        <Card className={styles.activityCard}>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>7 jours</span>
+              <h2>Activité récente</h2>
             </div>
-            <div className="notice warning">L’envoi final reste en confirmation manuelle.</div>
+            <div className={styles.legend} aria-label="Légende du graphique">
+              <span><i className={styles.legendJobs} />Offres</span>
+              <span><i className={styles.legendSubmitted} />Envoyées</span>
+            </div>
+          </div>
+
+          <div
+            className={styles.activityChart}
+            role="img"
+            aria-label="Évolution des offres détectées et candidatures envoyées sur les sept derniers jours"
+          >
+            {data.trend.map((item) => (
+              <div className={styles.activityDay} key={item.date}>
+                <div className={styles.barArea}>
+                  <span
+                    className={styles.jobBar}
+                    style={{ height: `${item.jobs === 0 ? 3 : Math.max(10, (item.jobs / maxTrend) * 100)}%` }}
+                    title={`${item.jobs} offre(s)`}
+                  />
+                  <span
+                    className={styles.submittedBar}
+                    style={{ height: `${item.submitted === 0 ? 3 : Math.max(10, (item.submitted / maxTrend) * 100)}%` }}
+                    title={`${item.submitted} candidature(s) envoyée(s)`}
+                  />
+                </div>
+                <strong>{formatDay(item.date)}</strong>
+                <small>{item.jobs} / {item.submitted}</small>
+              </div>
+            ))}
           </div>
         </Card>
-      </div>
-    </>
+      </section>
+
+      <section className={styles.analyticsGrid}>
+        <Card>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>Conversion</span>
+              <h2>Parcours global</h2>
+            </div>
+            <Link className={styles.textLink} href="/reporting">Reporting détaillé →</Link>
+          </div>
+          <div className={styles.pipeline}>
+            {data.pipeline.map((item) => (
+              <div className={styles.pipelineRow} key={item.key}>
+                <div className={styles.pipelineMeta}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+                <div className={styles.pipelineTrack}>
+                  <span style={{ width: `${Math.max(item.value > 0 ? 3 : 0, (item.value / maxPipeline) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>Qualité</span>
+              <h2>Performance</h2>
+            </div>
+          </div>
+          <div className={styles.performanceGrid}>
+            <div><span>Taux de réponse</span><strong>{formatRate(data.performance.responseRate)}</strong></div>
+            <div><span>Conversion entretien</span><strong>{formatRate(data.performance.interviewRate)}</strong></div>
+            <div><span>Score moyen</span><strong>{data.performance.averageScore}/100</strong></div>
+            <div><span>Entretiens</span><strong>{data.counts.interviews}</strong></div>
+          </div>
+          <p className={styles.contextNote}>
+            Ces indicateurs utilisent uniquement les statuts enregistrés dans JobPilot ; aucune réponse n’est déduite artificiellement.
+          </p>
+        </Card>
+      </section>
+
+      <section className={styles.quickSection}>
+        <div className={styles.sectionHeadingOutside}>
+          <div>
+            <span className={styles.eyebrow}>Accès rapide</span>
+            <h2>Actions & configuration</h2>
+          </div>
+        </div>
+        <div className={styles.quickGrid}>
+          {quickLinks.map(([href, label, description]) => (
+            <Link className={styles.quickLink} href={href} key={href}>
+              <strong>{label}</strong>
+              <span>{description}</span>
+              <i>→</i>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.bottomGrid}>
+        <Card>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>Configuration active</span>
+              <h2>Automatisation</h2>
+            </div>
+            <Link className={styles.textLink} href="/parametres">Modifier →</Link>
+          </div>
+          <div className={styles.settingsList}>
+            <div><span>Seuil de matching</span><strong>{data.automation.matchingThreshold}/100</strong></div>
+            <div><span>Préparation automatique</span><Badge tone={data.automation.autoPrepare ? 'good' : 'neutral'}>{data.automation.autoPrepare ? 'Active' : 'Inactive'}</Badge></div>
+            <div><span>Envoi automatique</span><Badge tone={data.automation.autoSubmitEnabled ? 'warn' : 'neutral'}>{data.automation.autoSubmitEnabled ? 'Actif' : 'Désactivé'}</Badge></div>
+            <div><span>Seuil auto-envoi</span><strong>{data.automation.autoSubmitThreshold}/100</strong></div>
+            <div><span>Limite quotidienne</span><strong>{data.automation.autoSubmitDailyLimit}</strong></div>
+            <div><span>Postes cibles</span><strong>{data.automation.targetJobsCount}</strong></div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.eyebrow}>Dernières découvertes</span>
+              <h2>Offres récentes</h2>
+            </div>
+            <Link className={styles.textLink} href="/offres">Voir tout →</Link>
+          </div>
+          {data.recentJobs.length === 0 ? (
+            <div className="empty">Aucune offre importée.</div>
+          ) : (
+            <div className={styles.recentList}>
+              {data.recentJobs.map((job) => (
+                <Link className={styles.recentRow} href="/offres" key={job.id}>
+                  <div>
+                    <strong>{job.title}</strong>
+                    <span>{job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'}</span>
+                  </div>
+                  <span className={styles.scorePill}>{job.score}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
+      </section>
+    </div>
   );
 }

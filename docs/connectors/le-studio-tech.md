@@ -73,9 +73,34 @@ Toutes les missions trouvées sur les pages parcourues sont retournées au pipel
 
 Une fiche explicitement marquée `Mission terminée` est écartée.
 
+## Smoke test réseau séparé
+
+Le workflow `.github/workflows/scraping-smoke.yml` est volontairement séparé de la CI normale. Il ne s’exécute jamais sur `pull_request` ou `push` : il peut être lancé manuellement via `workflow_dispatch` et est planifié une fois par semaine, le mardi à 06:17 UTC.
+
+Il exécute :
+
+```bash
+php bin/console app:scraping:smoke:le-studio-tech --no-interaction
+```
+
+Le probe est plus strict qu’une synchronisation normale :
+
+- une seule page de liste ;
+- au plus une fiche détail ;
+- aucun retry applicatif ;
+- timeout de 10 secondes par requête ;
+- `robots.txt`, SSRF, domaine, quotas, délai minimal et circuit breaker restent appliqués par le transport commun ;
+- aucune persistance de `JobOffer` ;
+- aucune candidature ;
+- aucun HTML brut dans les logs ou artifacts.
+
+Le résumé contient seulement le résultat `PASS/WARN/FAIL`, la source, le mode, la version du parseur, les statuts HTTP, l’hôte final, le nombre de candidats détectés, l’état de la fiche détail et la durée. Zéro mission publiée produit `WARN` plutôt qu’un faux échec du transport.
+
+Avant tout appel réseau, la commande vérifie que la politique du connecteur autorise encore la collecte et que sa revue de conformité a moins de 90 jours. Une revue expirée transforme le smoke test en `FAIL` sans contacter le site, afin d’éviter qu’un workflow planifié continue indéfiniment après une décision de conformité devenue obsolète.
+
 ## Tests et stabilité
 
-La CI n’appelle jamais Le Studio Tech. Les tests utilisent des fixtures HTML synthétiques qui reproduisent uniquement les marqueurs structurels nécessaires au parseur.
+La CI normale n’appelle jamais Le Studio Tech. Les tests utilisent des fixtures HTML synthétiques qui reproduisent uniquement les marqueurs structurels nécessaires au parseur, y compris le contrat du smoke test `PASS` et le cas légitime `WARN` lorsqu’aucune mission n’est disponible.
 
 Les diagnostics communs enregistrent la version du parseur, le volume reçu, le taux de normalisation et la qualité des champs. Une rupture du HTML doit apparaître dans la santé du connecteur au lieu d’être masquée silencieusement.
 

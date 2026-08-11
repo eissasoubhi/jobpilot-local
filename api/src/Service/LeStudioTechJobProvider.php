@@ -76,6 +76,83 @@ final class LeStudioTechJobProvider implements JobSourceConnector, GovernedJobSo
         );
     }
 
+    /**
+     * Probe réseau réel strictement borné pour le workflow de smoke test séparé de la CI.
+     *
+     * Aucune offre n'est persistée : une page liste est lue et, si possible, une seule
+     * fiche détail est validée avec le même transport contrôlé et le même parseur.
+     *
+     * @return array{
+     *   result: 'PASS'|'WARN',
+     *   source: string,
+     *   mode: string,
+     *   parserVersion: string,
+     *   statusCode: int,
+     *   finalHost: string,
+     *   candidateCount: int,
+     *   detailChecked: bool,
+     *   detailStatusCode: int|null,
+     *   detailExtracted: bool|null,
+     *   durationMs: int
+     * }
+     */
+    public function smokeTest(): array
+    {
+        if (!$this->enabled) {
+            throw new \LogicException('Le connecteur Le Studio Tech est désactivé.');
+        }
+
+        $startedAt = microtime(true);
+        $listing = $this->httpClient->fetch(new HttpScrapingRequest(
+            $this->code(),
+            self::LISTING_URL,
+            $this->policy(),
+            timeoutSeconds: 10,
+            maxRetries: 0,
+            initialBackoffMilliseconds: 0,
+            maxResponseBytes: 3_000_000,
+        ));
+        $offers = $this->parser->parseListing($listing->body, self::LISTING_URL);
+
+        $detailChecked = false;
+        $detailStatusCode = null;
+        $detailExtracted = null;
+        $firstOffer = $offers[0] ?? null;
+        if (is_array($firstOffer)) {
+            $detailUrl = trim((string) ($firstOffer['sourceUrl'] ?? ''));
+            if ($detailUrl !== '') {
+                $detailChecked = true;
+                $detail = $this->httpClient->fetch(new HttpScrapingRequest(
+                    $this->code(),
+                    $detailUrl,
+                    $this->policy(),
+                    timeoutSeconds: 10,
+                    maxRetries: 0,
+                    initialBackoffMilliseconds: 0,
+                    maxResponseBytes: 3_000_000,
+                ));
+                $detailStatusCode = $detail->statusCode;
+                $detailExtracted = $this->parser->enrichDetail($detail->body, $firstOffer) !== null;
+            }
+        }
+
+        $host = strtolower((string) (parse_url($listing->url, PHP_URL_HOST) ?: ''));
+
+        return [
+            'result' => $offers === [] ? 'WARN' : 'PASS',
+            'source' => $this->name(),
+            'mode' => $this->mode()->value,
+            'parserVersion' => $this->parserVersion(),
+            'statusCode' => $listing->statusCode,
+            'finalHost' => $host,
+            'candidateCount' => count($offers),
+            'detailChecked' => $detailChecked,
+            'detailStatusCode' => $detailStatusCode,
+            'detailExtracted' => $detailExtracted,
+            'durationMs' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
+        ];
+    }
+
     public function search(array $targetJobs, array $skills): array
     {
         if (!$this->enabled) {

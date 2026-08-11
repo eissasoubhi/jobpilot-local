@@ -66,6 +66,18 @@ describe('platform acquisition matrix', () => {
     }
   });
 
+  it('records Apec as an official partner-feed plan without enabling scraping', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'apec');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('PLANNED');
+    expect(connector?.modes).toEqual(['XML', 'GMAIL', 'EXTENSION']);
+    expect(connector?.note).toContain('flux XML standardisé');
+    expect(connector?.note).toContain('convention de partenariat');
+    expect(connector?.note).toContain('aucun scraping Apec');
+    expect(connector?.nextStep).toContain('convention de partenariat Apec');
+  });
+
   it('marks Le Studio Tech as the operational public HTTP scraper', () => {
     const connector = connectorRoadmap.find((entry) => entry.code === 'le-studio-tech');
 

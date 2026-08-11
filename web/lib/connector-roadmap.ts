@@ -4,7 +4,7 @@ export type ConnectorRoadmapStatus =
   | 'UNDER_REVIEW'
   | 'EMAIL_OR_EXTENSION_ONLY';
 
-export type ConnectorRoadmapMode = 'API' | 'SCRAPING_HTTP' | 'GMAIL' | 'EXTENSION';
+export type ConnectorRoadmapMode = 'API' | 'XML' | 'SCRAPING_HTTP' | 'GMAIL' | 'EXTENSION';
 
 export interface ConnectorRoadmapEntry {
   code: string;
@@ -59,11 +59,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     note: 'La visibilité publique des offres n’autorise pas une extraction planifiée de la base. JobPilot utilise uniquement les alertes reconnues ou une page importée volontairement par l’utilisateur.',
     nextStep: 'Obtenir une autorisation explicite ou un flux officiel avant d’envisager une collecte en arrière-plan.',
   },
-  underReview('apec', 'Apec', {
-    modes: ['GMAIL', 'EXTENSION'],
-    note: 'Les alertes e-mail reconnues et l’import assisté sont possibles, mais aucun connecteur API ou flux public planifié n’est approuvé.',
-    nextStep: 'Confirmer un canal officiel d’offres réutilisable et ses conditions d’utilisation.',
-  }),
+  {
+    code: 'apec',
+    name: 'Apec',
+    status: 'PLANNED',
+    modes: ['XML', 'GMAIL', 'EXTENSION'],
+    note: 'Apec propose officiellement aux sites tiers un export de ses offres via flux XML standardisé, organisé par convention de partenariat. JobPilot n’active aucun scraping Apec en arrière-plan sans cet accord ; Gmail et l’import assisté restent disponibles entre-temps.',
+    nextStep: 'Demander une convention de partenariat Apec pour accéder au flux XML officiel, puis implémenter le connecteur uniquement après accord.',
+  },
   underReview('collective-work', 'Collective.work'),
   underReview('creme-de-la-creme', 'Crème de la Crème'),
   underReview('freelance-republik', 'FreelanceRepublik'),

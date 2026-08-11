@@ -9,7 +9,7 @@ import {
 function statusLabel(status: ConnectorRoadmapStatus): string {
   return {
     OPERATIONAL: 'Opérationnel',
-    PLANNED: 'API planifiée',
+    PLANNED: 'Canal officiel planifié',
     UNDER_REVIEW: 'Canal en revue',
     EMAIL_OR_EXTENSION_ONLY: 'Gmail ou import assisté uniquement',
   }[status];
@@ -24,6 +24,7 @@ function statusTone(status: ConnectorRoadmapStatus): 'good' | 'blue' | 'warn' {
 function modeLabel(mode: ConnectorRoadmapMode): string {
   return {
     API: 'API officielle',
+    XML: 'Flux XML partenaire',
     SCRAPING_HTTP: 'Scraping HTTP public',
     GMAIL: 'Alertes Gmail',
     EXTENSION: 'Import assisté',
@@ -36,7 +37,7 @@ function roadmapExplanation(entry: ConnectorRoadmapEntry): string {
   }
 
   if (entry.status === 'PLANNED') {
-    return 'Un canal officiel réutilisable a été identifié. Le connecteur reste inactif jusqu’à son implémentation, sa configuration et ses tests.';
+    return 'Un canal officiel réutilisable a été identifié. Le connecteur reste inactif jusqu’à l’obtention des accès nécessaires, son implémentation, sa configuration et ses tests.';
   }
 
   if (entry.status === 'EMAIL_OR_EXTENSION_ONLY') {
@@ -61,7 +62,7 @@ export function ConnectorRoadmapSection() {
 
       <div className="actions" style={{ marginBottom: 14 }}>
         <Badge tone="good">{operationalCount} opérationnelle(s)</Badge>
-        <Badge tone="blue">{plannedCount} API planifiée(s)</Badge>
+        <Badge tone="blue">{plannedCount} canal/canaux officiel(s) planifié(s)</Badge>
         <Badge tone="warn">{restrictedCount} restreinte(s)</Badge>
         <Badge>{reviewCount} en revue</Badge>
       </div>

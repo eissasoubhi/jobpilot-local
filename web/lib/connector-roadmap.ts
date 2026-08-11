@@ -131,7 +131,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     nextStep: 'Surveiller la qualité des champs, les quotas et l’efficacité des recherches.',
   },
   underReview('kicklox', 'Kicklox'),
-  underReview('talent-com', 'Talent.com'),
+  {
+    code: 'talent-com',
+    name: 'Talent.com',
+    status: 'PLANNED',
+    modes: ['API', 'XML'],
+    note: 'Le programme officiel Publisher de Talent.com propose aux job boards et publishers un self-serve Job API ainsi que des flux XML pour intégrer les offres Talent.com. JobPilot privilégie ce canal partenaire et n’ajoute aucun scraper planifié.',
+    nextStep: 'Obtenir un accès Publisher Talent.com, les spécifications, credentials, quotas et droits applicables, puis implémenter le connecteur officiel dans une PR séparée.',
+  },
   {
     code: 'smartrecruiters',
     name: 'SmartRecruiters',

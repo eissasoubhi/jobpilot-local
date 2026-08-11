@@ -42,15 +42,25 @@ test('Gmail inbox exposes classification, association, filters and processing', 
   });
 
   await page.route('**/api/integrations/gmail/messages**', async (route) => {
-    if (route.request().method() === 'PATCH') {
-      processed = true;
-      await fulfillJson(route, { ...interviewMessage, processed: true });
-      return;
+    const url = new URL(route.request().url());
+    const actionRequired = url.searchParams.get('actionRequired');
+    const processedFilter = url.searchParams.get('processed');
+    if (actionRequired === 'true') {
+      expect(processedFilter).toBe('false');
     }
 
-    const url = new URL(route.request().url());
-    expect(url.searchParams.get('actionRequired') ?? 'true').toBe('true');
-    await fulfillJson(route, [{ ...interviewMessage, processed }]);
+    const messages = processed && actionRequired === 'true' && processedFilter === 'false'
+      ? []
+      : [{ ...interviewMessage, processed }];
+    await fulfillJson(route, messages);
+  });
+
+  // Keep this explicit: the collection glob above matches query-string GETs but
+  // does not reliably match the nested /{id}/processed endpoint in Playwright.
+  await page.route('**/api/integrations/gmail/messages/*/processed', async (route) => {
+    expect(route.request().method()).toBe('PATCH');
+    processed = true;
+    await fulfillJson(route, { ...interviewMessage, processed: true });
   });
 
   await page.goto('/messages');
@@ -69,6 +79,7 @@ test('Gmail inbox exposes classification, association, filters and processing', 
   await expect(page.getByRole('heading', { name: interviewMessage.subject, level: 3 })).toBeVisible();
 
   await page.getByRole('button', { name: 'Marquer comme traité' }).click();
-  await expect(page.getByText('Traité', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: interviewMessage.subject, level: 3 })).not.toBeVisible();
+  await expect(page.getByText('Aucun message ne correspond à ce filtre. Lance une synchronisation ou change le filtre.')).toBeVisible();
   expect(processed).toBe(true);
 });

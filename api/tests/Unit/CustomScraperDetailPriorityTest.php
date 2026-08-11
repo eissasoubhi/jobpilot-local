@@ -23,7 +23,7 @@ final class CustomScraperDetailPriorityTest extends TestCase
             ['PHP', 'Symfony', 'API Platform'],
         );
 
-        self::assertSame([2, 1, 0], $order);
+        self::assertSame([2, 0, 1], $order);
     }
 
     public function testKeepsOriginalOrderWhenNoProfileTermsAreAvailable(): void

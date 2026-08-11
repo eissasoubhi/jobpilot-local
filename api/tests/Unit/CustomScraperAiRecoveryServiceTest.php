@@ -45,7 +45,7 @@ final class CustomScraperAiRecoveryServiceTest extends TestCase
                 ++$this->calls;
                 return [[
                     'source' => $sourceName,
-                    'sourceUrl' => 'https://jobs.example.test/careers/42',
+                    'sourceUrl' => 'https://jobs.example.test/opportunities/42',
                     'externalId' => 'ai-link-42',
                     'title' => 'Senior Symfony Developer',
                     'company' => '',
@@ -67,12 +67,12 @@ final class CustomScraperAiRecoveryServiceTest extends TestCase
                 ]];
             }
         };
-        $listing = '<html><body><main><h1>Nos offres emploi</h1><p>'.str_repeat('Offre emploi mission technique Symfony et PHP. ', 20).'</p><a href="/careers/42">Découvrir cette opportunité</a></main></body></html>';
+        $listing = '<html><body><main><h1>Nos offres emploi</h1><p>'.str_repeat('Offre emploi mission technique Symfony et PHP. ', 20).'</p><a href="/opportunities/42">Découvrir cette opportunité</a></main></body></html>';
         $detail = <<<'HTML'
 <html><body><script type="application/ld+json">{
   "@type":"JobPosting",
   "title":"Senior Symfony Developer",
-  "url":"https://jobs.example.test/careers/42",
+  "url":"https://jobs.example.test/opportunities/42",
   "hiringOrganization":{"name":"Acme France"},
   "employmentType":"FREELANCE",
   "description":"Mission Symfony 6.4, API Platform et PostgreSQL sur une application métier utilisée quotidiennement, avec tests automatisés et revue de code.",

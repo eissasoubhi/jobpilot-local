@@ -242,6 +242,7 @@ final class GenericJobListingExtractor
     private function genericLinkText(string $value): bool
     {
         $value = $this->normalize($value);
+        $value = trim(preg_replace('/[^a-z0-9]+/', ' ', $value) ?? $value);
 
         return preg_match('/^(voir|voir l offre|voir le poste|postuler|en savoir plus|details?|detail|candidater|apply|learn more)$/', $value) === 1;
     }

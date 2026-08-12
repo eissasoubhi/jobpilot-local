@@ -10,11 +10,21 @@ import type { Job } from '@/lib/types';
 
 import styles from './dashboard.module.css';
 
+type PeriodComparison = {
+  current: number;
+  previous: number;
+  deltaPercent: number | null;
+};
+
 type DashboardData = {
   period: {
     days: number;
     from: string;
     to: string;
+  };
+  comparison: {
+    newJobs: PeriodComparison;
+    submitted: PeriodComparison;
   };
   counts: {
     jobs: number;
@@ -38,6 +48,20 @@ type DashboardData = {
     interviewRate: number;
     responses: number;
     averageScore: number;
+  };
+  sourcePerformance: {
+    trackedSources: number;
+    leaders: Array<{
+      code: string;
+      name: string;
+      submitted: number;
+      responses: number;
+      interviews: number;
+      responseRate: number;
+      interviewRate: number;
+      averageMatchingScore: number;
+      lowVolume: boolean;
+    }>;
   };
   pipeline: Array<{
     key: string;
@@ -104,6 +128,19 @@ function formatDateTime(value: string | null): string {
   }).format(new Date(value));
 }
 
+function formatComparison(comparison: PeriodComparison): string {
+  if (comparison.deltaPercent === null) {
+    return 'nouveau vs 7 j précédents';
+  }
+
+  if (comparison.deltaPercent === 0) {
+    return 'stable vs 7 j précédents';
+  }
+
+  const value = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(comparison.deltaPercent);
+  return `${comparison.deltaPercent > 0 ? '+' : ''}${value} % vs 7 j précédents`;
+}
+
 function KpiCard({
   label,
   value,
@@ -156,19 +193,11 @@ export default function DashboardPage() {
 
     return [
       {
-        label: 'Offres à revoir',
-        description: 'Des candidatures sont prêtes : valider ou écarter les offres.',
-        count: data.counts.prepared,
-        href: '/offres/review',
-        action: 'Ouvrir la Review Queue',
-        priority: 'primary',
-      },
-      {
         label: 'Messages à traiter',
         description: 'Réponses détectées qui nécessitent une action de ta part.',
         count: data.counts.actionMessages,
         href: '/messages',
-        action: 'Voir les messages',
+        action: 'Traiter les messages',
         priority: 'warning',
       },
       {
@@ -176,8 +205,16 @@ export default function DashboardPage() {
         description: 'Relances CRM arrivées à échéance et toujours ouvertes.',
         count: data.counts.followUpsDue,
         href: '/crm/follow-ups',
-        action: 'Gérer les relances',
+        action: 'Faire les relances',
         priority: 'warning',
+      },
+      {
+        label: 'Offres à revoir',
+        description: 'Des candidatures sont prêtes : valider ou écarter les offres.',
+        count: data.counts.prepared,
+        href: '/offres/review',
+        action: 'Ouvrir la Review Queue',
+        priority: 'primary',
       },
       {
         label: 'Candidatures bloquées',
@@ -214,20 +251,23 @@ export default function DashboardPage() {
   const maxTrend = Math.max(1, ...data.trend.flatMap((item) => [item.jobs, item.submitted]));
   const maxPipeline = Math.max(1, ...data.pipeline.map((item) => item.value));
   const pendingAttention = attentionItems.reduce((total, item) => total + item.count, 0);
+  const focusItem = attentionItems.find((item) => item.count > 0) ?? null;
 
   return (
     <div className={styles.dashboard}>
       <PageHeader
         title="Tableau de bord"
-        description="L’essentiel pour savoir où tu en es et quoi faire maintenant."
-        actions={<Link className="btn" href="/offres/review">Ouvrir la Review Queue</Link>}
+        description="L’essentiel pour savoir où tu en es, ce qui évolue et quoi faire maintenant."
+        actions={focusItem !== null
+          ? <Link className="btn" href={focusItem.href}>{focusItem.action}</Link>
+          : <Link className="btn" href="/offres/review">Ouvrir la Review Queue</Link>}
       />
 
       <section className={styles.kpiGrid} aria-label="Indicateurs principaux">
         <KpiCard
           label="Nouvelles offres"
           value={data.counts.newJobs}
-          note="sur les 7 derniers jours"
+          note={formatComparison(data.comparison.newJobs)}
           href="/offres"
         />
         <KpiCard
@@ -240,7 +280,7 @@ export default function DashboardPage() {
         <KpiCard
           label="Envoyées"
           value={data.counts.submittedRecently}
-          note="sur les 7 derniers jours"
+          note={formatComparison(data.comparison.submitted)}
           href="/candidatures"
         />
         <KpiCard
@@ -255,13 +295,19 @@ export default function DashboardPage() {
         <Card className={styles.attentionCard}>
           <div className={styles.sectionHeading}>
             <div>
-              <span className={styles.eyebrow}>Priorités</span>
+              <span className={styles.eyebrow}>Focus du jour</span>
               <h2>À faire maintenant</h2>
             </div>
             <Badge tone={pendingAttention > 0 ? 'warn' : 'good'}>
               {pendingAttention > 0 ? `${pendingAttention} action(s)` : 'À jour'}
             </Badge>
           </div>
+
+          {focusItem !== null && (
+            <p className={styles.contextNote}>
+              Priorité recommandée : <strong>{focusItem.label}</strong>. Les réponses et relances passent avant la revue des nouvelles candidatures.
+            </p>
+          )}
 
           {pendingAttention === 0 ? (
             <div className={styles.clearState}>
@@ -373,6 +419,35 @@ export default function DashboardPage() {
           </p>
         </Card>
       </section>
+
+      <Card>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.eyebrow}>Efficacité des canaux</span>
+            <h2>Sources qui performent</h2>
+          </div>
+          <Link className={styles.textLink} href="/reporting/sources">Détail par source →</Link>
+        </div>
+        {data.sourcePerformance.leaders.length === 0 ? (
+          <div className="empty">Pas encore assez de candidatures pour comparer les sources.</div>
+        ) : (
+          <div className={styles.settingsList}>
+            {data.sourcePerformance.leaders.map((source, index) => (
+              <div key={source.code}>
+                <span>
+                  #{index + 1} {source.name}{source.lowVolume ? ' · faible volume' : ''}
+                </span>
+                <strong>
+                  {source.submitted} envoyée(s) · {formatRate(source.responseRate)} réponses · {source.interviews} entretien(s) · score {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(source.averageMatchingScore)}/100
+                </strong>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className={styles.contextNote}>
+          {data.sourcePerformance.trackedSources} source(s) avec candidature(s). Classement par envois, puis réponses et entretiens. « Faible volume » signifie moins de 3 envois ; une offre trouvée sur plusieurs sources peut créditer plusieurs canaux.
+        </p>
+      </Card>
 
       <section className={styles.quickSection}>
         <div className={styles.sectionHeadingOutside}>

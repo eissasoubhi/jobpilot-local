@@ -20,6 +20,17 @@ Le plan produit alors une requête distincte par mot-clé. Le mot-clé est encod
 
 Si aucun template ou aucun mot-clé n’est configuré, JobPilot conserve le comportement historique et utilise simplement `listingUrl`.
 
+## Prévisualiser le plan sans lancer de collecte
+
+`GET /api/custom-scrapers/{id}/search-plan` expose le plan calculé sans effectuer aucun appel externe. La réponse contient :
+
+- l’URL finale de chaque recherche et le mot-clé associé ;
+- le nombre de recherches ;
+- la limite de pages par recherche ;
+- le nombre maximal estimé de requêtes de liste (`searchCount × maxPages`).
+
+Cette route sert au diagnostic manuel avant de brancher l’exécution multi-mots-clés. Elle permet de vérifier les templates propres à chaque plateforme et leur budget de requêtes sans déclencher de scraping.
+
 ## Garde-fous
 
 - HTTPS obligatoire ;
@@ -35,5 +46,5 @@ La pagination continue d’être gérée séparément par le scraper existant. U
 
 1. exécuter ce plan dans le service d’extraction ;
 2. dédupliquer les offres retrouvées par plusieurs recherches ;
-3. exposer des diagnostics par mot-clé ;
+3. enrichir les diagnostics avec les résultats et erreurs par mot-clé ;
 4. ajouter l’édition du template et des mots-clés dans la configuration avancée de l’interface Scraping.

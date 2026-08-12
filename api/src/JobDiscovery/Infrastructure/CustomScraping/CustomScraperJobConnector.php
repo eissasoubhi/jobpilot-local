@@ -86,7 +86,13 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
         $checkedAt = is_string($data['authorizationCheckedAt'] ?? null)
             ? new \DateTimeImmutable((string) $data['authorizationCheckedAt'])
             : null;
-        $maxPages = min(10, max(1, (int) ($data['maxPages'] ?? 1)));
+        $maxPagesPerSearch = min(10, max(1, (int) ($data['maxPages'] ?? 1)));
+        $keywords = is_array($data['searchKeywords'] ?? null) ? $data['searchKeywords'] : [];
+        $searchTemplate = is_string($data['searchUrlTemplate'] ?? null)
+            ? trim((string) $data['searchUrlTemplate'])
+            : '';
+        $searchCount = $searchTemplate !== '' && $keywords !== [] ? count($keywords) : 1;
+        $maxListingRequests = min(10, $maxPagesPerSearch * max(1, $searchCount));
         $maxDetails = min(30, max(0, (int) ($data['maxDetails'] ?? 0)));
 
         return new ConnectorPolicy(
@@ -97,7 +103,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             is_string($data['authorizationReference'] ?? null)
                 ? $data['authorizationReference']
                 : 'Autorisation de collecte confirmée par l’utilisateur.',
-            maxRequestsPerSync: $maxPages + $maxDetails,
+            maxRequestsPerSync: $maxListingRequests + $maxDetails,
             dailyQuota: 300,
             minimumDelayMilliseconds: 1_000,
             respectsRobotsTxt: true,
@@ -134,7 +140,11 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             },
         ));
         $pagination = is_array($collection['pagination'] ?? null) ? $collection['pagination'] : [];
+        $searches = is_array($collection['searches'] ?? null) ? $collection['searches'] : [];
         $nextPageUrl = is_string($pagination['nextUrl'] ?? null) ? $pagination['nextUrl'] : null;
+        $paginationStrategy = is_string($pagination['strategy'] ?? null)
+            ? $pagination['strategy']
+            : 'SAFE_DETECTED_NEXT_CHAIN';
 
         $this->diagnostics = [
             'sourceId' => $this->data()['id'] ?? null,
@@ -142,7 +152,7 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             'pagesFetched' => (int) ($pagination['pagesFetched'] ?? 0),
             'configuredMaxPages' => (int) ($this->data()['maxPages'] ?? 1),
             'effectivePageLimit' => (int) ($pagination['pageLimit'] ?? 1),
-            'paginationStrategy' => 'SAFE_DETECTED_NEXT_CHAIN',
+            'paginationStrategy' => $paginationStrategy,
             'paginationStopReason' => is_string($pagination['stopReason'] ?? null) ? $pagination['stopReason'] : null,
             'paginationLoopDetected' => (bool) ($pagination['loopDetected'] ?? false),
             'paginationPageError' => is_string($pagination['pageError'] ?? null) ? $pagination['pageError'] : null,
@@ -150,6 +160,14 @@ final class CustomScraperJobConnector implements GovernedJobSourceConnector, Ver
             'nextPageUrl' => $nextPageUrl,
             'paginationDetectionStrategy' => is_string($pagination['strategy'] ?? null) ? $pagination['strategy'] : null,
             'paginationDetectionConfidence' => is_string($pagination['confidence'] ?? null) ? $pagination['confidence'] : null,
+            'keywordSearchEnabled' => ($searches['enabled'] ?? false) === true,
+            'keywordSearchCount' => (int) ($searches['searchCount'] ?? 0),
+            'keywordSearchExecutedCount' => (int) ($searches['executedSearchCount'] ?? 0),
+            'keywordSearchGlobalPageBudget' => (int) ($searches['globalPageBudget'] ?? 0),
+            'keywordSearchBudgetLimited' => (bool) ($searches['budgetLimited'] ?? false),
+            'keywordSearchRawCandidateCount' => (int) ($searches['rawCandidateCount'] ?? 0),
+            'keywordSearchDuplicateCount' => (int) ($searches['duplicateCount'] ?? 0),
+            'keywordSearchStoppedEarly' => (bool) ($searches['stoppedEarly'] ?? false),
             'candidateCount' => count($candidates),
             'reliableCount' => count($reliable),
             'filteredByExtractionQuality' => max(0, count($candidates) - count($reliable)),

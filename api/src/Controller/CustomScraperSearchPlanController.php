@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\CustomScraperSource;
-use App\Service\CustomScraperSearchPlanner;
+use App\Service\CustomScraperMultiSearchBudgetPlanner;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -14,7 +14,7 @@ final class CustomScraperSearchPlanController
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private CustomScraperSearchPlanner $planner,
+        private CustomScraperMultiSearchBudgetPlanner $planner,
     ) {
     }
 
@@ -27,7 +27,8 @@ final class CustomScraperSearchPlanController
         }
 
         $configuration = $source->toArray();
-        $searches = $this->planner->plan($source);
+        $plan = $this->planner->plan($source);
+        $searches = $plan['searches'];
         $configured = is_string($configuration['searchUrlTemplate'] ?? null)
             && trim((string) $configuration['searchUrlTemplate']) !== ''
             && is_array($configuration['searchKeywords'] ?? null)
@@ -38,8 +39,11 @@ final class CustomScraperSearchPlanController
             'sourceName' => $configuration['name'],
             'configured' => $configured,
             'searchCount' => count($searches),
-            'maxPagesPerSearch' => (int) $configuration['maxPages'],
-            'estimatedMaxListingRequests' => count($searches) * (int) $configuration['maxPages'],
+            'maxPagesPerSearch' => $plan['maxPagesPerSearch'],
+            'requestedMaxListingRequests' => $plan['requestedMaxListingRequests'],
+            'estimatedMaxListingRequests' => $plan['globalPageBudget'],
+            'globalPageBudget' => $plan['globalPageBudget'],
+            'budgetLimited' => $plan['budgetLimited'],
             'searches' => $searches,
         ]);
     }

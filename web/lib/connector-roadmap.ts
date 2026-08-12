@@ -163,7 +163,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     note: 'Les missions publiques sont collectées sans session via le transport HTTP contrôlé. Le connecteur respecte robots.txt, les quotas locaux et conserve le lien vers la plateforme.',
     nextStep: 'Surveiller la stabilité du parseur HTML, la qualité des champs et les éventuelles évolutions des règles de collecte.',
   },
-  underReview('meteojob', 'Meteojob'),
+  {
+    code: 'meteojob',
+    name: 'Meteojob',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
+    modes: ['GMAIL', 'EXTENSION'],
+    note: 'Les CGU Meteojob/CleverConnect limitent l’usage du contenu à un cadre personnel et privé et encadrent ou interdisent l’extraction des bases et le scraping pour d’autres finalités. Aucun canal public officiel de lecture/réutilisation n’a été identifié pour JobPilot.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après accord écrit CleverConnect ou identification d’un canal officiel de redistribution.',
+  },
   underReview('michael-page', 'Michael Page'),
   {
     code: 'france-travail',

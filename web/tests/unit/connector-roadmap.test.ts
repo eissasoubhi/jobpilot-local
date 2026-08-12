@@ -115,13 +115,25 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou', 'meteojob']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
       expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
       expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
     }
+  });
+
+  it('records why Meteojob does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'meteojob');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
+    expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
+    expect(connector?.note).toContain('personnel et privé');
+    expect(connector?.note).toContain('scraping');
+    expect(connector?.nextStep).toContain('Gmail');
+    expect(connector?.nextStep).toContain('CleverConnect');
   });
 
   it('records why HelloWork does not get a planned scraper', () => {

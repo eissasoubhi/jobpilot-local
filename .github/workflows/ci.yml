@@ -40,18 +40,22 @@ jobs:
             "$GITHUB_WORKSPACE/api/var"
 
           docker container prune --force || true
+          # GitHub Actions Postgres services leave anonymous data volumes behind.
+          # `docker volume prune` removes unused anonymous volumes by default and
+          # does not remove named volumes unless `--all` is explicitly supplied.
+          docker volume prune --force || true
           docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
           docker image prune --force || true
-          docker builder prune --force --filter "until=24h" || true
+          docker builder prune --force || true
 
           echo "Disk usage after cleanup:"
           df -h /
           docker system df || true
 
           available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
-          minimum_kb=$((1024 * 1024))
+          minimum_kb=$((4 * 1024 * 1024))
           if [ "$available_kb" -lt "$minimum_kb" ]; then
-            echo "::error::Le runner JobPilot dispose de moins de 1 Gio libre après le nettoyage CI. Libérer de l'espace sur la VM avant de lancer les tests lourds."
+            echo "::error::Le runner JobPilot dispose de moins de 4 Gio libres après le nettoyage CI. Libérer de l'espace sur la VM avant de lancer les tests lourds."
             exit 1
           fi
 
@@ -114,6 +118,9 @@ jobs:
       - name: Run PHPUnit
         working-directory: api
         run: php bin/phpunit
+      - name: Reclaim backend workspace artifacts
+        if: always()
+        run: rm -rf api/vendor api/var
 
   frontend:
     name: Frontend tests
@@ -141,6 +148,9 @@ jobs:
           NEXT_PUBLIC_API_URL: /api
           API_INTERNAL_URL: http://127.0.0.1:8080
         run: npm run build
+      - name: Reclaim frontend workspace artifacts
+        if: always()
+        run: rm -rf node_modules .next test-results playwright-report
 
   compose-config:
     name: Docker Compose configuration
@@ -188,6 +198,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Reclaim disk before browser job
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf \
+            web/node_modules \
+            web/.next \
+            web/test-results \
+            web/playwright-report \
+            api/vendor \
+            api/var
+          docker container prune --force || true
+          docker volume prune --force || true
+          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
+          docker image prune --force || true
+          docker builder prune --force || true
+          echo "Disk usage before E2E dependencies:"
+          df -h /
+          docker system df || true
+          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
+          minimum_kb=$((4 * 1024 * 1024))
+          if [ "$available_kb" -lt "$minimum_kb" ]; then
+            echo "::error::Le runner JobPilot dispose de moins de 4 Gio libres avant l'E2E Chromium."
+            exit 1
+          fi
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -325,7 +361,15 @@ jobs:
       - name: Reclaim browser CI artifacts
         if: always()
         run: |
-          rm -rf web/test-results web/playwright-report
+          rm -rf \
+            web/node_modules \
+            web/.next \
+            web/test-results \
+            web/playwright-report \
+            api/vendor \
+            api/var
           docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
           docker container prune --force || true
           docker image prune --force || true
+          docker builder prune --force || true
+          df -h /

@@ -31,6 +31,8 @@ const dashboardPayload = {
     interviewRate: 28.6,
     responses: 4,
     averageScore: 86,
+    firstResponseMedianHours: 36,
+    firstResponseMeasured: 3,
   },
   sourcePerformance: {
     trackedSources: 3,
@@ -132,6 +134,19 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Focus du jour')).toBeInTheDocument());
     expect(screen.getAllByRole('link', { name: /Traiter les messages/i }).some((link) => link.getAttribute('href') === '/messages')).toBe(true);
+  });
+
+  it('shows response latency only as a measured Gmail-linked metric', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(dashboardPayload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('Délai médian 1re réponse')).toBeInTheDocument());
+    expect(screen.getByText('1,5 j')).toBeInTheDocument();
+    expect(screen.getByText(/calculé sur 3 candidature\(s\) avec une réponse Gmail liée/)).toBeInTheDocument();
   });
 
   it('shows a compact source performance summary without overstating low-volume signals', async () => {

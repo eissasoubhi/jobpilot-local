@@ -163,6 +163,7 @@ final class DashboardController
         $currentJobs = count($recentActivityJobs);
         $currentSubmissions = count($recentSubmissions);
         $sourcePerformance = $this->sourcePerformance();
+        $responseLatency = $this->responseLatency();
 
         return new JsonResponse([
             'period' => [
@@ -196,6 +197,8 @@ final class DashboardController
                 'interviewRate' => $submitted > 0 ? round(($interviews / $submitted) * 100, 1) : 0,
                 'responses' => $responses,
                 'averageScore' => $averageScore,
+                'firstResponseMedianHours' => $responseLatency['medianHours'],
+                'firstResponseMeasured' => $responseLatency['measured'],
             ],
             'sourcePerformance' => $sourcePerformance,
             'pipeline' => [
@@ -239,6 +242,58 @@ final class DashboardController
             'current' => $current,
             'previous' => $previous,
             'deltaPercent' => round((($current - $previous) / $previous) * 100, 1),
+        ];
+    }
+
+    /** @return array{measured: int, medianHours: float|null} */
+    private function responseLatency(): array
+    {
+        $categories = ['APPLICATION_REPLY', 'INFORMATION_REQUEST', 'INTERVIEW_REQUEST', 'REJECTION'];
+
+        /** @var list<InboxMessage> $responseMessages */
+        $responseMessages = $this->em->getRepository(InboxMessage::class)->createQueryBuilder('message')
+            ->addSelect('application')
+            ->innerJoin('message.application', 'application')
+            ->andWhere('message.category IN (:categories)')
+            ->andWhere('application.submittedAt IS NOT NULL')
+            ->setParameter('categories', $categories)
+            ->orderBy('message.receivedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        /** @var array<int, float> $firstResponseHours */
+        $firstResponseHours = [];
+        foreach ($responseMessages as $message) {
+            $application = $message->getApplication();
+            $applicationId = $application?->getId();
+            $submittedAt = $application?->getSubmittedAt();
+            if ($applicationId === null || $submittedAt === null || isset($firstResponseHours[$applicationId])) {
+                continue;
+            }
+
+            $receivedAt = $message->getReceivedAt();
+            if ($receivedAt < $submittedAt) {
+                continue;
+            }
+
+            $firstResponseHours[$applicationId] = ($receivedAt->getTimestamp() - $submittedAt->getTimestamp()) / 3600;
+        }
+
+        $durations = array_values($firstResponseHours);
+        sort($durations, SORT_NUMERIC);
+        $count = count($durations);
+        if ($count === 0) {
+            return ['measured' => 0, 'medianHours' => null];
+        }
+
+        $middle = intdiv($count, 2);
+        $median = $count % 2 === 1
+            ? $durations[$middle]
+            : ($durations[$middle - 1] + $durations[$middle]) / 2;
+
+        return [
+            'measured' => $count,
+            'medianHours' => round($median, 1),
         ];
     }
 

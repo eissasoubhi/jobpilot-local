@@ -48,6 +48,8 @@ type DashboardData = {
     interviewRate: number;
     responses: number;
     averageScore: number;
+    firstResponseMedianHours: number | null;
+    firstResponseMeasured: number;
   };
   sourcePerformance: {
     trackedSources: number;
@@ -126,6 +128,16 @@ function formatDateTime(value: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+function formatResponseDelay(hours: number | null): string {
+  if (hours === null) return '—';
+
+  if (hours < 24) {
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(hours)} h`;
+  }
+
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(hours / 24)} j`;
 }
 
 function formatComparison(comparison: PeriodComparison): string {
@@ -411,11 +423,11 @@ export default function DashboardPage() {
           <div className={styles.performanceGrid}>
             <div><span>Taux de réponse</span><strong>{formatRate(data.performance.responseRate)}</strong></div>
             <div><span>Conversion entretien</span><strong>{formatRate(data.performance.interviewRate)}</strong></div>
+            <div><span>Délai médian 1re réponse</span><strong>{formatResponseDelay(data.performance.firstResponseMedianHours)}</strong></div>
             <div><span>Score moyen</span><strong>{data.performance.averageScore}/100</strong></div>
-            <div><span>Entretiens</span><strong>{data.counts.interviews}</strong></div>
           </div>
           <p className={styles.contextNote}>
-            Ces indicateurs utilisent uniquement les statuts enregistrés dans JobPilot ; aucune réponse n’est déduite artificiellement.
+            Le délai de première réponse est calculé sur {data.performance.firstResponseMeasured} candidature(s) avec une réponse Gmail liée, à partir de la date d’envoi. Les autres indicateurs utilisent uniquement les statuts enregistrés dans JobPilot.
           </p>
         </Card>
       </section>

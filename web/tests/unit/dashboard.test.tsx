@@ -32,6 +32,33 @@ const dashboardPayload = {
     responses: 4,
     averageScore: 86,
   },
+  sourcePerformance: {
+    trackedSources: 3,
+    leaders: [
+      {
+        code: 'freework',
+        name: 'Free-Work',
+        submitted: 4,
+        responses: 2,
+        interviews: 1,
+        responseRate: 50,
+        interviewRate: 25,
+        averageMatchingScore: 88.5,
+        lowVolume: false,
+      },
+      {
+        code: 'france-travail',
+        name: 'France Travail',
+        submitted: 2,
+        responses: 1,
+        interviews: 0,
+        responseRate: 50,
+        interviewRate: 0,
+        averageMatchingScore: 84,
+        lowVolume: true,
+      },
+    ],
+  },
   pipeline: [
     { key: 'detected', label: 'Offres détectées', value: 24 },
     { key: 'qualified', label: 'Score ≥ 85', value: 14 },
@@ -105,6 +132,21 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Focus du jour')).toBeInTheDocument());
     expect(screen.getAllByRole('link', { name: /Traiter les messages/i }).some((link) => link.getAttribute('href') === '/messages')).toBe(true);
+  });
+
+  it('shows a compact source performance summary without overstating low-volume signals', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(dashboardPayload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('Sources qui performent')).toBeInTheDocument());
+    expect(screen.getByText(/#1 Free-Work/)).toBeInTheDocument();
+    expect(screen.getByText(/#2 France Travail · faible volume/)).toBeInTheDocument();
+    expect(screen.getByText(/3 source\(s\) avec candidature\(s\)/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Détail par source/i })).toHaveAttribute('href', '/reporting/sources');
   });
 
   it('provides direct access to the most relevant work and configuration pages', async () => {

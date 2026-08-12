@@ -1,7 +1,7 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== 'DETECT_FORM_FIELDS') return;
 
-  const detector = globalThis.JobPilotFormDetector;
+  const detector = globalThis.JobPilotAtsAwareDetector || globalThis.JobPilotFormDetector;
   if (!detector || typeof detector.detect !== 'function') {
     sendResponse({
       schemaVersion: 1,

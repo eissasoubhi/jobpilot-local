@@ -2,7 +2,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== 'AUTOFILL_GENERIC_PAGE') return;
 
   const engine = globalThis.JobPilotAutofillEngine;
-  const detector = globalThis.JobPilotFormDetector;
+  const detector = globalThis.JobPilotAtsAwareDetector || globalThis.JobPilotFormDetector;
   if (!engine || typeof engine.fill !== 'function' || !detector) {
     sendResponse({ ok: false, error: 'JobPilot autofill engine is unavailable.' });
     return;

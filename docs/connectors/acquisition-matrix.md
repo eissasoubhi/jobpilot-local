@@ -58,7 +58,7 @@ Un canal officiel réutilisable a été identifié, mais le connecteur n’est p
 
 Une source passe dans cet état uniquement après confirmation d’une API, d’un flux ou d’un export officiel. Elle ne devient `OPERATIONAL` qu’après obtention des accès ou accords nécessaires, ajout au registre backend, politique de collecte, limites, tests et documentation.
 
-Apec est actuellement dans cet état : son export XML officiel existe, mais il est organisé par convention de partenariat et JobPilot ne possède pas encore cet accord.
+Apec est dans cet état via son export XML sous convention. Talent.com l’est via son programme Publisher. Jobijoba rejoint cet état via son programme officiel d’affiliation, qui annonce des intégrations par flux, API ou widget ; JobPilot retient l’API ou un flux officiel comme voie cible et n’active aucun scraping.
 
 ### `EMAIL_OR_EXTENSION_ONLY`
 
@@ -184,6 +184,20 @@ Références officielles :
 JobPilot classe donc Apec en `PLANNED` : un canal officiel réutilisable est identifié, mais son accès nécessite une convention que JobPilot ne possède pas encore. Aucun scraper HTTP ou Browser Apec n’est activé par défaut. En attendant, les alertes Gmail reconnues et l’import assisté restent les canaux utilisables.
 
 Étape suivante : demander une convention de partenariat Apec pour l’export XML, documenter les spécifications et quotas obtenus, puis seulement implémenter un connecteur exécutable.
+
+## Jobijoba
+
+Décision revue le **11 août 2026** sur le programme d’affiliation officiel.
+
+Jobijoba propose explicitement aux sites et applications d’intégrer ses offres d’emploi dans le cadre de son programme d’affiliation. La page officielle annonce trois modalités : **flux**, **API** et **widget**. Ce canal de redistribution est la voie appropriée pour JobPilot ; la visibilité du site public ne doit pas être utilisée pour justifier un scraper.
+
+Référence officielle :
+
+- <https://www.jobijoba.com/fr/affiliation-offres-emploi>
+
+JobPilot classe donc Jobijoba en `PLANNED`. Le mode structuré reste `API` tant que le format exact du flux d’affiliation n’a pas été communiqué ; la mise en œuvre future pourra retenir l’API ou le flux officiel fourni dans le cadre du partenariat. Aucun scraper HTTP ou Browser Jobijoba n’est planifié.
+
+Étape suivante : obtenir les spécifications, accès, conditions de redistribution, credentials éventuels et quotas applicables au programme d’affiliation. Jobijoba ne pourra devenir `OPERATIONAL` qu’après réception de ces éléments et implémentation d’un connecteur dédié avec tests locaux/mocks, diagnostics et kill switch.
 
 ## Le Studio Tech
 

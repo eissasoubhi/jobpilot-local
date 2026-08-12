@@ -103,9 +103,227 @@ Objectif : supprimer au maximum la saisie répétitive pendant les candidatures 
 10. **PR Autofill 10 — Review & Safety UX** : aperçu avant envoi, niveaux de confiance, permissions et garde-fous.
 11. **PR Autofill 11 — E2E Compatibility Matrix** : tests end-to-end et matrice de compatibilité des principaux ATS.
 
-## Étape 4
+## Étape 4 — Intelligence et reporting
 
 - Module IA local ou fournisseur configurable, avec sortie JSON structurée.
 - Score sémantique avec embeddings locaux.
 - Analyse des statistiques : taux de réponse par source, CV, salaire/TJM et intitulé.
 - Exploiter les statistiques d’autofill : taux de champs reconnus, corrections manuelles et compatibilité par ATS.
+
+## Étape 5 — Preference Learning / Ranking adaptatif
+
+Objectif : faire évoluer le classement des offres à partir des décisions réelles de l’utilisateur et des résultats du pipeline, sans remplacer les critères explicites du profil.
+
+### 5.1 — Signaux de préférence
+
+- Enregistrer les décisions utilisateur : « correspond », « ne correspond pas », ignorée, enregistrée et candidature envoyée.
+- Utiliser les événements aval comme signaux plus forts : réponse recruteur, demande d’informations, entretien, offre et embauche.
+- Conserver les signaux négatifs : rejet explicite de l’offre, refus du candidat, désintérêt répété pour un type de poste ou une technologie.
+- Ne jamais considérer un refus recruteur comme une préférence négative du candidat.
+
+### 5.2 — Modèle de préférence explicable
+
+- Construire un score de préférence séparé du score de compatibilité métier.
+- Identifier les tendances récurrentes : intitulés, technologies, secteurs, localisation, contrat, télétravail, salaire/TJM et type d’entreprise.
+- Garder les critères utilisateur explicites prioritaires sur l’apprentissage implicite.
+- Afficher les raisons principales lorsqu’un score est influencé par l’historique : « vous avez souvent envoyé des candidatures à des missions similaires », « ce type d’offre est souvent marqué comme non pertinent », etc.
+- Prévoir la possibilité de désactiver ou réinitialiser l’apprentissage.
+
+### 5.3 — Similar Jobs
+
+- Ajouter une recherche « offres similaires » à partir d’une ou plusieurs candidatures choisies.
+- Permettre d’utiliser les candidatures envoyées, les offres favorites ou les offres ayant conduit à un entretien comme exemples positifs.
+- Utiliser un seuil de similarité configurable et expliquer les éléments communs détectés.
+- Ne jamais masquer automatiquement une offre uniquement à cause du modèle de préférence ; conserver un garde-fou par score métier et critères explicites.
+
+### Plan de PRs — Preference Learning
+
+1. **Preference 01 — Preference Signals** : modèle de données et événements de préférence.
+2. **Preference 02 — Preference Feature Extraction** : extraction des dimensions apprises depuis les offres et le pipeline.
+3. **Preference 03 — Adaptive Ranking** : score de préférence séparé + combinaison contrôlée avec le matching existant.
+4. **Preference 04 — Explainability & Controls** : raisons, reset, activation/désactivation et transparence utilisateur.
+5. **Preference 05 — Similar Jobs** : recherche et classement par similarité à partir d’exemples positifs.
+
+## Étape 6 — CV Tailoring sécurisé
+
+Objectif : adapter un CV à une offre sans jamais inventer de compétence, d’expérience, d’entreprise ou de responsabilité.
+
+### 6.1 — Modèle source de vérité
+
+- Conserver le CV original comme source immuable.
+- Extraire les expériences, compétences, réalisations et informations de profil dans une représentation structurée et traçable.
+- Toute proposition de modification doit pointer vers un fait présent dans le CV source ou le profil candidat validé.
+
+### 6.2 — Adaptation par offre
+
+- Réordonner les compétences selon leur pertinence pour l’offre.
+- Mettre davantage en avant les expériences et réalisations directement liées au besoin.
+- Adapter le résumé professionnel et les mots-clés ATS.
+- Raccourcir les éléments peu pertinents lorsque cela améliore la lisibilité.
+- Préserver les dates, employeurs, intitulés, technologies réellement utilisées et responsabilités réelles.
+
+### 6.3 — Diff et validation
+
+- Afficher un diff clair entre le CV source et la version adaptée.
+- Signaler chaque reformulation générée et sa source factuelle.
+- Permettre Accepter, Modifier, Rejeter et Régénérer par bloc.
+- Refuser automatiquement toute proposition non rattachable à un fait connu.
+- Conserver un historique des variantes utilisées par candidature.
+
+### 6.4 — Intégration Autofill
+
+- Associer explicitement la variante de CV validée à la candidature.
+- L’extension ne doit téléverser que la variante approuvée pour cette candidature.
+- Prévoir un fallback vers le CV original lorsqu’aucune variante adaptée n’est validée.
+
+### Plan de PRs — CV Tailoring
+
+1. **CV Tailoring 01 — Structured Resume Facts**.
+2. **CV Tailoring 02 — Grounded Tailoring Engine**.
+3. **CV Tailoring 03 — Resume Diff & Review UI**.
+4. **CV Tailoring 04 — Application Resume Variants**.
+5. **CV Tailoring 05 — Autofill Integration & E2E**.
+
+## Étape 7 — Hiring Manager / Recruiter Intelligence
+
+Objectif : prolonger une candidature par une stratégie de contact et de relance intégrée au CRM JobPilot.
+
+### 7.1 — Contacts liés aux organisations
+
+- Enrichir le CRM avec les contacts liés à une entreprise, une agence ou un client final.
+- Stocker nom, fonction, niveau hiérarchique, LinkedIn, email, source et niveau de confiance.
+- Catégoriser les rôles : Recruiter, Talent Acquisition, HR, Engineering Manager, Head of Engineering, CTO, Founder, Commercial/Business Manager, etc.
+- Distinguer les contacts réellement connus de ceux uniquement suggérés.
+
+### 7.2 — Discovery et enrichissement
+
+- Permettre une recherche ciblée de contacts depuis une offre ou une organisation.
+- Prioriser les personnes les plus susceptibles d’être impliquées dans le recrutement concerné.
+- Prévoir des fournisseurs interchangeables ou des imports manuels plutôt qu’un couplage à un service unique.
+- Ne pas inventer une adresse email lorsqu’elle n’est pas vérifiée ou suffisamment fiable.
+
+### 7.3 — Follow-up intelligent
+
+- Depuis une candidature envoyée, proposer une relance après un délai configurable.
+- Utiliser l’historique Gmail pour ne jamais relancer lorsqu’une réponse a déjà été reçue.
+- Préparer des messages différents selon le destinataire : recruteur, hiring manager, commercial, client final.
+- Afficher clairement le contexte utilisé et laisser l’utilisateur valider l’envoi.
+- Mesurer le taux de réponse après relance et la performance par type de contact.
+
+### Plan de PRs — Contacts & Follow-up
+
+1. **Contacts 01 — CRM Contact Model**.
+2. **Contacts 02 — Organization Contact Workspace**.
+3. **Contacts 03 — Contact Discovery Provider Interface**.
+4. **Contacts 04 — Follow-up Recommendations**.
+5. **Contacts 05 — Gmail Follow-up Guardrails & Send Flow**.
+6. **Contacts 06 — Contact Performance Analytics**.
+
+## Étape 8 — Interview Workspace
+
+Objectif : créer un espace de préparation directement lié à chaque candidature au lieu d’un assistant entretien isolé.
+
+### 8.1 — Contexte automatique
+
+- Construire le contexte à partir de l’offre canonique, de la description complète, de l’entreprise, du CV réellement envoyé, des réponses de candidature et des échanges Gmail associés.
+- Ajouter le contexte CRM disponible : recruteur, commercial, client final et historique des interactions.
+- Ne jamais utiliser une information non reliée à la candidature sans l’indiquer explicitement.
+
+### 8.2 — Préparation
+
+- Générer une présentation orale 2, 5 et 10 minutes adaptée à la mission.
+- Générer les questions techniques probables avec réponses structurées.
+- Générer les questions métier et comportementales probables.
+- Proposer les expériences les plus pertinentes à mettre en avant.
+- Générer des questions pertinentes à poser au recruteur ou au client.
+- Identifier les points faibles ou technologies manquantes à préparer avant l’entretien.
+
+### 8.3 — Simulation et apprentissage
+
+- Ajouter un mode simulation d’entretien avec questions successives.
+- Permettre de noter les questions réellement posées après l’entretien.
+- Réutiliser ces retours pour améliorer les préparations futures par type de poste, technologie, entreprise ou secteur.
+- Ne jamais présenter un contenu généré comme une expérience réellement vécue par le candidat.
+
+### Plan de PRs — Interview Workspace
+
+1. **Interview 01 — Application Context Builder**.
+2. **Interview 02 — Interview Preparation Generator**.
+3. **Interview 03 — Interview Workspace UI**.
+4. **Interview 04 — Mock Interview Mode**.
+5. **Interview 05 — Real Interview Feedback Learning**.
+
+## Étape 9 — Autopilot contrôlé
+
+Objectif : permettre un niveau d’automatisation supérieur uniquement lorsque les données, le matching et le formulaire sont suffisamment fiables.
+
+### 9.1 — Trois modes
+
+- **Assisté** : JobPilot trouve, analyse et prépare ; aucune écriture dans les formulaires sans action utilisateur.
+- **Copilot** : JobPilot prépare et remplit ; l’utilisateur vérifie et déclenche l’envoi final.
+- **Autopilot** : JobPilot peut déclencher l’envoi final uniquement lorsqu’une politique explicite l’autorise.
+
+### 9.2 — Policy Engine
+
+Une candidature Autopilot ne peut être autorisée que si toutes les règles configurées sont satisfaites, par exemple :
+
+- score de compatibilité supérieur au seuil configuré ;
+- score de préférence suffisant ;
+- aucun champ ambigu ou inconnu bloquant ;
+- aucune question sensible non validée ;
+- CV et documents explicitement sélectionnés ;
+- salaire/TJM compatible avec la politique candidat ;
+- aucun double positionnement ou conflit CRM ;
+- ATS/site marqué comme compatible et fiable ;
+- aucun CAPTCHA, authentification supplémentaire ou protection anti-automatisation ;
+- limite journalière et quota par entreprise respectés.
+
+### 9.3 — Dry Run, audit et arrêt d’urgence
+
+- Ajouter un mode « Dry Run » montrant exactement ce qui serait envoyé sans soumettre.
+- Journaliser localement la décision de politique, les champs remplis, documents sélectionnés et raison de l’autorisation.
+- Rendre chaque soumission idempotente pour éviter un double envoi.
+- Fournir un bouton global d’arrêt immédiat de l’Autopilot.
+- Permettre de désactiver une entreprise, une source ou un ATS de l’Autopilot.
+
+### 9.4 — Déploiement progressif
+
+- Commencer par une liste blanche de sites/ATS validés en E2E.
+- Limiter initialement le volume quotidien.
+- Comparer taux de réponse, taux d’erreur et corrections entre Copilot et Autopilot avant d’élargir la couverture.
+- Ne jamais contourner CAPTCHA, authentification, limites de plateforme ou protections anti-automatisation.
+
+### Plan de PRs — Autopilot
+
+1. **Autopilot 01 — Automation Modes & Policy Model**.
+2. **Autopilot 02 — Submission Eligibility Evaluator**.
+3. **Autopilot 03 — Dry Run & Audit Trail**.
+4. **Autopilot 04 — Trusted ATS Submission Adapter**.
+5. **Autopilot 05 — Idempotency, Limits & Kill Switch**.
+6. **Autopilot 06 — Controlled Rollout & Metrics**.
+
+## Principes UX transverses
+
+Objectif : conserver une interface simple même si la plateforme devient techniquement plus puissante.
+
+- Ne pas exposer la complexité des connecteurs, workers, scrapers, mappings ATS ou moteurs IA sur les écrans principaux.
+- Le dashboard doit répondre d’abord à : « qu’est-ce qui a changé ? », « qu’est-ce qui mérite mon attention ? » et « quelle est la prochaine action ? ».
+- Préférer des actions métier simples : Revoir, Envoyer, Relancer, Préparer entretien, Adapter CV.
+- Garder diagnostics, connecteurs, quotas et réglages avancés dans des écrans secondaires.
+- Éviter de créer un outil IA indépendant pour chaque besoin lorsque le même contexte candidat/offre/candidature peut alimenter plusieurs fonctionnalités.
+- Construire un contexte métier partagé : Candidate Profile + Offers + Applications + Gmail + CRM + Timeline + Market Signals.
+- Conserver l’explicabilité : chaque action automatique importante doit pouvoir répondre à « pourquoi JobPilot a fait ça ? ».
+- Conserver le contrôle humain comme comportement par défaut ; augmenter l’automatisation uniquement avec une politique explicite.
+
+## Ordre stratégique recommandé
+
+1. Terminer **Autofill / Browser Extension** et la matrice ATS.
+2. Construire **Preference Learning** pour améliorer le ranking à partir de l’usage réel.
+3. Ajouter **CV Tailoring sécurisé**.
+4. Ajouter **Hiring Manager / Recruiter Intelligence** et les relances Gmail/CRM.
+5. Construire **Interview Workspace**.
+6. Introduire **Autopilot contrôlé** seulement après validation de la fiabilité Autofill/ATS et des garde-fous.
+
+Le positionnement cible de JobPilot est celui d’un système de pilotage personnel de la recherche d’emploi couvrant le cycle complet :
+
+**Discover → Understand → Decide → Apply → Track → Communicate → Prepare → Negotiate → Learn**.

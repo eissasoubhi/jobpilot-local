@@ -104,6 +104,16 @@ final class InboxMessage
         return $this->category;
     }
 
+    public function getReceivedAt(): \DateTimeImmutable
+    {
+        return $this->receivedAt;
+    }
+
+    public function getApplication(): ?Application
+    {
+        return $this->application;
+    }
+
     public function isActionRequired(): bool
     {
         return $this->actionRequired;

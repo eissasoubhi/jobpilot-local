@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
 import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
+import { crmOrganizationHref } from '@/lib/crm-navigation';
 import { getErrorMessage } from '@/lib/errors';
 import {
   buildReviewQueue,
@@ -67,6 +68,10 @@ export default function ReviewQueuePage() {
   const current = currentReviewQueueItem(queue, currentIndex);
   const progress = queue.length > 0 ? ((currentIndex + 1) / queue.length) * 100 : 0;
   const currentId = current?.id ?? null;
+  const crmContextName = current?.jobOffer.clientName?.trim()
+    || current?.jobOffer.company?.trim()
+    || '';
+  const crmContextHref = crmOrganizationHref(crmContextName);
 
   useEffect(() => {
     const previousCurrentId = previousCurrentIdRef.current;
@@ -165,7 +170,18 @@ export default function ReviewQueuePage() {
             {loading ? 'Chargement' : `${queue.length} prête${queue.length > 1 ? 's' : ''} à envoyer`}
           </span>
         </div>
-        <Link className="review-queue-back-link" href="/offres">← Offres</Link>
+        <div className="actions">
+          {crmContextHref && (
+            <Link
+              className="btn secondary small"
+              href={crmContextHref}
+              aria-label={`Ouvrir le contexte CRM de ${crmContextName}`}
+            >
+              Contexte CRM
+            </Link>
+          )}
+          <Link className="review-queue-back-link" href="/offres">← Offres</Link>
+        </div>
       </header>
 
       <div className={styles.screenReaderStatus} role="status" aria-live="polite" aria-atomic="true">

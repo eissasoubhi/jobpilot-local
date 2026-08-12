@@ -175,11 +175,11 @@ describe('ReviewQueuePage', () => {
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Carte complète Second Symfony role' })).toHaveFocus());
 
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Carte complète First Symfony role' })).toHaveFocus());
 
     const input = screen.getByRole('textbox', { name: 'Édition locale' });

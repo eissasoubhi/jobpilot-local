@@ -49,6 +49,20 @@ type DashboardData = {
     responses: number;
     averageScore: number;
   };
+  sourcePerformance: {
+    trackedSources: number;
+    leaders: Array<{
+      code: string;
+      name: string;
+      submitted: number;
+      responses: number;
+      interviews: number;
+      responseRate: number;
+      interviewRate: number;
+      averageMatchingScore: number;
+      lowVolume: boolean;
+    }>;
+  };
   pipeline: Array<{
     key: string;
     label: string;
@@ -405,6 +419,35 @@ export default function DashboardPage() {
           </p>
         </Card>
       </section>
+
+      <Card>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.eyebrow}>Efficacité des canaux</span>
+            <h2>Sources qui performent</h2>
+          </div>
+          <Link className={styles.textLink} href="/reporting/sources">Détail par source →</Link>
+        </div>
+        {data.sourcePerformance.leaders.length === 0 ? (
+          <div className="empty">Pas encore assez de candidatures pour comparer les sources.</div>
+        ) : (
+          <div className={styles.settingsList}>
+            {data.sourcePerformance.leaders.map((source, index) => (
+              <div key={source.code}>
+                <span>
+                  #{index + 1} {source.name}{source.lowVolume ? ' · faible volume' : ''}
+                </span>
+                <strong>
+                  {source.submitted} envoyée(s) · {formatRate(source.responseRate)} réponses · {source.interviews} entretien(s) · score {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(source.averageMatchingScore)}/100
+                </strong>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className={styles.contextNote}>
+          {data.sourcePerformance.trackedSources} source(s) avec candidature(s). Classement par envois, puis réponses et entretiens. « Faible volume » signifie moins de 3 envois ; une offre trouvée sur plusieurs sources peut créditer plusieurs canaux.
+        </p>
+      </Card>
 
       <section className={styles.quickSection}>
         <div className={styles.sectionHeadingOutside}>

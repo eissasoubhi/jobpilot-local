@@ -78,6 +78,19 @@ describe('platform acquisition matrix', () => {
     expect(connector?.nextStep).toContain('convention de partenariat Apec');
   });
 
+  it('records Jobijoba as an official affiliate-channel plan without enabling scraping', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'jobijoba');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('PLANNED');
+    expect(connector?.modes).toEqual(['API']);
+    expect(connector?.note).toContain('programme d’affiliation');
+    expect(connector?.note).toContain('flux, API ou widget');
+    expect(connector?.note).toContain('aucun scraping Jobijoba');
+    expect(connector?.nextStep).toContain('spécifications');
+    expect(connector?.nextStep).toContain('quotas');
+  });
+
   it('records Talent.com as an official Publisher API plan without enabling scraping', () => {
     const connector = connectorRoadmap.find((entry) => entry.code === 'talent-com');
 

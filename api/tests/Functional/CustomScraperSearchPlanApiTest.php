@@ -14,8 +14,8 @@ final class CustomScraperSearchPlanApiTest extends WebTestCase
 
         $client->jsonRequest('POST', '/api/custom-scrapers', [
             'name' => 'Keyword Jobs',
-            'listingUrl' => 'https://jobs.example.com/offres',
-            'searchUrlTemplate' => 'https://jobs.example.com/offres?q={keyword}&sort=date',
+            'listingUrl' => 'https://keyword-search.example.com/offres',
+            'searchUrlTemplate' => 'https://keyword-search.example.com/offres?q={keyword}&sort=date',
             'searchKeywords' => ['PHP', 'Symfony', 'Vue.js', 'React.js'],
             'mode' => 'HTTP',
             'authorizationConfirmed' => true,
@@ -37,12 +37,15 @@ final class CustomScraperSearchPlanApiTest extends WebTestCase
         self::assertTrue($plan['configured']);
         self::assertSame(4, $plan['searchCount']);
         self::assertSame(3, $plan['maxPagesPerSearch']);
-        self::assertSame(12, $plan['estimatedMaxListingRequests']);
+        self::assertSame(12, $plan['requestedMaxListingRequests']);
+        self::assertSame(10, $plan['estimatedMaxListingRequests']);
+        self::assertSame(10, $plan['globalPageBudget']);
+        self::assertTrue($plan['budgetLimited']);
         self::assertSame([
-            ['keyword' => 'PHP', 'url' => 'https://jobs.example.com/offres?q=PHP&sort=date'],
-            ['keyword' => 'Symfony', 'url' => 'https://jobs.example.com/offres?q=Symfony&sort=date'],
-            ['keyword' => 'Vue.js', 'url' => 'https://jobs.example.com/offres?q=Vue.js&sort=date'],
-            ['keyword' => 'React.js', 'url' => 'https://jobs.example.com/offres?q=React.js&sort=date'],
+            ['keyword' => 'PHP', 'url' => 'https://keyword-search.example.com/offres?q=PHP&sort=date', 'pageLimit' => 3],
+            ['keyword' => 'Symfony', 'url' => 'https://keyword-search.example.com/offres?q=Symfony&sort=date', 'pageLimit' => 3],
+            ['keyword' => 'Vue.js', 'url' => 'https://keyword-search.example.com/offres?q=Vue.js&sort=date', 'pageLimit' => 2],
+            ['keyword' => 'React.js', 'url' => 'https://keyword-search.example.com/offres?q=React.js&sort=date', 'pageLimit' => 2],
         ], $plan['searches']);
 
         $client->request('DELETE', sprintf('/api/custom-scrapers/%d', $id));
@@ -71,9 +74,12 @@ final class CustomScraperSearchPlanApiTest extends WebTestCase
         $plan = $this->decode($client->getResponse()->getContent());
         self::assertFalse($plan['configured']);
         self::assertSame(1, $plan['searchCount']);
+        self::assertSame(2, $plan['requestedMaxListingRequests']);
         self::assertSame(2, $plan['estimatedMaxListingRequests']);
+        self::assertSame(2, $plan['globalPageBudget']);
+        self::assertFalse($plan['budgetLimited']);
         self::assertSame([
-            ['keyword' => null, 'url' => 'https://fallback.example.com/jobs'],
+            ['keyword' => null, 'url' => 'https://fallback.example.com/jobs', 'pageLimit' => 2],
         ], $plan['searches']);
 
         $client->request('GET', '/api/custom-scrapers/999999/search-plan');

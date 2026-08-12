@@ -246,9 +246,13 @@ final class DashboardController
     private function sourcePerformance(): array
     {
         $report = $this->sourceConversionReport->report();
-        $rows = array_values(array_filter(
+        $trackedRows = array_values(array_filter(
             $report['sources'],
             static fn (array $row): bool => (int) ($row['applications'] ?? 0) > 0,
+        ));
+        $rows = array_values(array_filter(
+            $trackedRows,
+            static fn (array $row): bool => (int) ($row['submitted'] ?? 0) > 0,
         ));
 
         usort($rows, static function (array $left, array $right): int {
@@ -275,7 +279,7 @@ final class DashboardController
         ], array_slice($rows, 0, 3));
 
         return [
-            'trackedSources' => count($rows),
+            'trackedSources' => count($trackedRows),
             'leaders' => $leaders,
         ];
     }

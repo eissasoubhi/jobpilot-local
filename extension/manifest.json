@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "JobPilot Local",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Importe les offres visibles dans JobPilot et préremplit les formulaires avec validation manuelle.",
   "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": ["http://localhost:8080/*", "http://127.0.0.1:8080/*", "<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_title": "JobPilot", "default_popup": "popup.html" },
-  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["form-detector.js", "autofill-engine.js", "form-detector-bridge.js", "autofill-bridge.js", "content.js"], "run_at": "document_idle" }],
+  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["form-detector.js", "autofill-engine.js", "document-uploader.js", "form-detector-bridge.js", "autofill-bridge.js", "document-upload-bridge.js", "content.js"], "run_at": "document_idle" }],
   "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
 }

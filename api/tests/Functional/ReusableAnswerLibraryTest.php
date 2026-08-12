@@ -24,7 +24,7 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         }
 
         self::assertArrayHasKey('availability', $answers);
-        self::assertSame('Immédiatement', $answers['availability']['resolved']['fr']);
+        self::assertSame('Immédiate', $answers['availability']['resolved']['fr']);
         self::assertTrue($answers['availability']['eligibleForAutomaticFill']);
 
         self::assertArrayHasKey('years_experience', $answers);
@@ -51,7 +51,7 @@ final class ReusableAnswerLibraryTest extends WebTestCase
         self::assertNotEmpty($french['matches']);
         self::assertSame('availability', $french['matches'][0]['answer']['key']);
         self::assertGreaterThanOrEqual(0.99, (float) $french['matches'][0]['score']);
-        self::assertSame('Immédiatement', $french['matches'][0]['answer']['resolved']['fr']);
+        self::assertSame('Immédiate', $french['matches'][0]['answer']['resolved']['fr']);
 
         $client->request('GET', '/api/reusable-answers/match', [
             'question' => 'How many years of experience do you have?',

@@ -5,6 +5,10 @@ import DashboardPage from '@/app/page';
 
 const dashboardPayload = {
   period: { days: 7, from: '2026-08-05', to: '2026-08-11' },
+  comparison: {
+    newJobs: { current: 8, previous: 6, deltaPercent: 33.3 },
+    submitted: { current: 4, previous: 2, deltaPercent: 100 },
+  },
   counts: {
     jobs: 24,
     newJobs: 8,
@@ -66,7 +70,7 @@ describe('DashboardPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders an action-oriented dashboard with useful KPIs and priorities', async () => {
+  it('renders a smart daily focus with useful KPIs and priorities', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(dashboardPayload), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -75,16 +79,32 @@ describe('DashboardPage', () => {
     render(<DashboardPage />);
 
     await waitFor(() => expect(screen.getByText('Nouvelles offres')).toBeInTheDocument());
+    expect(screen.getByText('Focus du jour')).toBeInTheDocument();
     expect(screen.getByText('À faire maintenant')).toBeInTheDocument();
     expect(screen.getByText('Activité récente')).toBeInTheDocument();
     expect(screen.getByText('Parcours global')).toBeInTheDocument();
     expect(screen.getByText('Performance')).toBeInTheDocument();
     expect(screen.getByText('Actions & configuration')).toBeInTheDocument();
     expect(screen.getByText('Offres à revoir')).toBeInTheDocument();
-    expect(screen.getByText('Messages à traiter')).toBeInTheDocument();
+    expect(screen.getAllByText('Messages à traiter').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Relances dues')).toBeInTheDocument();
     expect(screen.getByText('Connecteurs à vérifier')).toBeInTheDocument();
     expect(screen.getAllByText('57,1 %').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('+33,3 % vs 7 j précédents')).toBeInTheDocument();
+    expect(screen.getByText('+100 % vs 7 j précédents')).toBeInTheDocument();
+    expect(screen.getByText(/Priorité recommandée :/)).toHaveTextContent('Messages à traiter');
+  });
+
+  it('uses the most urgent pending action as the primary dashboard shortcut', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(dashboardPayload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('Focus du jour')).toBeInTheDocument());
+    expect(screen.getAllByRole('link', { name: /Traiter les messages/i }).some((link) => link.getAttribute('href') === '/messages')).toBe(true);
   });
 
   it('provides direct access to the most relevant work and configuration pages', async () => {

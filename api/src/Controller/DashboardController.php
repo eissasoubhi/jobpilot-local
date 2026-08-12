@@ -31,6 +31,7 @@ final class DashboardController
 
         $today = new \DateTimeImmutable('today');
         $activityStart = $today->modify('-6 days');
+        $previousStart = $activityStart->modify('-7 days');
 
         /** @var list<JobOffer> $recentActivityJobs */
         $recentActivityJobs = $jobs->createQueryBuilder('job')
@@ -39,6 +40,15 @@ final class DashboardController
             ->getQuery()
             ->getResult();
 
+        $previousJobs = (int) $jobs->createQueryBuilder('job')
+            ->select('COUNT(job.id)')
+            ->andWhere('job.discoveredAt >= :previousStart')
+            ->andWhere('job.discoveredAt < :currentStart')
+            ->setParameter('previousStart', $previousStart)
+            ->setParameter('currentStart', $activityStart)
+            ->getQuery()
+            ->getSingleScalarResult();
+
         /** @var list<Application> $recentSubmissions */
         $recentSubmissions = $apps->createQueryBuilder('application')
             ->andWhere('application.submittedAt IS NOT NULL')
@@ -46,6 +56,16 @@ final class DashboardController
             ->setParameter('start', $activityStart)
             ->getQuery()
             ->getResult();
+
+        $previousSubmissions = (int) $apps->createQueryBuilder('application')
+            ->select('COUNT(application.id)')
+            ->andWhere('application.submittedAt IS NOT NULL')
+            ->andWhere('application.submittedAt >= :previousStart')
+            ->andWhere('application.submittedAt < :currentStart')
+            ->setParameter('previousStart', $previousStart)
+            ->setParameter('currentStart', $activityStart)
+            ->getQuery()
+            ->getSingleScalarResult();
 
         $submitted = (int) $apps->createQueryBuilder('application')
             ->select('COUNT(application.id)')
@@ -136,6 +156,8 @@ final class DashboardController
         $applicationCount = $apps->count([]);
         $jobCount = $jobs->count([]);
         $recent = $jobs->findBy([], ['discoveredAt' => 'DESC'], 5);
+        $currentJobs = count($recentActivityJobs);
+        $currentSubmissions = count($recentSubmissions);
 
         return new JsonResponse([
             'period' => [
@@ -143,14 +165,18 @@ final class DashboardController
                 'from' => $activityStart->format('Y-m-d'),
                 'to' => $today->format('Y-m-d'),
             ],
+            'comparison' => [
+                'newJobs' => $this->comparison($currentJobs, $previousJobs),
+                'submitted' => $this->comparison($currentSubmissions, $previousSubmissions),
+            ],
             'counts' => [
                 'jobs' => $jobCount,
-                'newJobs' => count($recentActivityJobs),
+                'newJobs' => $currentJobs,
                 'qualifiedJobs' => $qualifiedJobs,
                 'applications' => $applicationCount,
                 'prepared' => $readyToSubmit,
                 'submitted' => $submitted,
-                'submittedRecently' => count($recentSubmissions),
+                'submittedRecently' => $currentSubmissions,
                 'interviews' => $interviews,
                 'rejected' => $rejected,
                 'positionings' => $positions->count([]),
@@ -190,5 +216,23 @@ final class DashboardController
             ],
             'recentJobs' => array_map(static fn (JobOffer $job): array => $job->toArray(), $recent),
         ]);
+    }
+
+    /** @return array{current: int, previous: int, deltaPercent: float|null} */
+    private function comparison(int $current, int $previous): array
+    {
+        if ($previous === 0) {
+            return [
+                'current' => $current,
+                'previous' => 0,
+                'deltaPercent' => $current === 0 ? 0.0 : null,
+            ];
+        }
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'deltaPercent' => round((($current - $previous) / $previous) * 100, 1),
+        ];
     }
 }

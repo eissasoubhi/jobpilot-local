@@ -36,7 +36,23 @@ Le garde-fou existant reste fixé à **10 pages de liste maximum par synchronisa
 
 `estimatedMaxListingRequests` reste exposé pour compatibilité et représente désormais le budget global effectif, pas le produit non borné `searchCount × maxPages`.
 
-Cette route sert au diagnostic manuel avant de brancher l’exécution multi-mots-clés. Elle permet de vérifier les templates propres à chaque plateforme et leur budget de requêtes sans déclencher de scraping.
+## Tester réellement les pages de liste
+
+`POST /api/custom-scrapers/{id}/search-preview` exécute le plan multi-mots-clés sur les pages publiques autorisées du connecteur. Ce test manuel utilise le même `connectorCode` pour toutes les recherches : le quota par synchronisation reste donc partagé entre PHP, Symfony, Vue.js, React.js, etc.
+
+Le résultat expose :
+
+- `networkRequests`, `durationMs` et le budget global ;
+- `rawCandidateCount`, `duplicateCount` et `candidateCount` après fusion ;
+- les offres fusionnées avec `rawData.discoveredByKeywords` ;
+- un diagnostic par mot-clé : URL de départ, pages visitées, limite, nombre brut d’offres, `statusCodes`, dernier statut HTTP, durée, mode recommandé, raison d’arrêt et erreur éventuelle ;
+- un historique page par page avec URL, statut HTTP et pagination détectée ;
+- `requiresBrowser` lorsqu’une page publique autorisée, y compris une page de pagination ultérieure, semble nécessiter JavaScript ;
+- `stoppedEarly` et `globalError` si la collecte doit être interrompue.
+
+Une erreur d’accès ou de transport arrête les recherches suivantes au lieu d’essayer d’autres mots-clés pour contourner un blocage. De la même façon, si le HTML indique qu’un rendu navigateur est nécessaire, JobPilot arrête la collecte HTTP et signale `requiresBrowser` sans tenter de mécanisme furtif ou de contournement.
+
+La déduplication intervient avant tout futur enrichissement de détail : une même offre trouvée avec PHP et Symfony n’est conservée qu’une fois, avec les deux mots-clés de provenance.
 
 ## Garde-fous
 
@@ -46,13 +62,16 @@ Cette route sert au diagnostic manuel avant de brancher l’exécution multi-mot
 - 20 mots-clés maximum par source ;
 - 80 caractères maximum par mot-clé ;
 - 10 pages de liste maximum par synchronisation, réparties entre les recherches ;
-- aucune authentification, cookie privé ou information sensible dans le template.
+- un seul quota partagé entre toutes les recherches ;
+- robots.txt, circuit breaker et détection anti-automatisation restent appliqués par le client HTTP contrôlé ;
+- aucune authentification, cookie privé ou information sensible dans le template ;
+- aucun appel live dans la CI : les tests utilisent des réponses HTML locales simulées.
 
-La pagination continue d’être gérée séparément par le scraper existant. Un placeholder `{page}` n’est donc pas introduit dans ce lot afin de ne pas dupliquer la logique de pagination par source.
+La pagination continue d’être détectée à partir des pages publiques. Un placeholder `{page}` n’est pas introduit afin de ne pas dupliquer la logique de pagination propre aux sites.
 
 ## Étapes suivantes
 
-1. faire consommer les `pageLimit` calculés par l’orchestrateur d’extraction ;
-2. fusionner les résultats via `CustomScraperSearchResultMerger` ;
-3. enrichir les diagnostics avec les résultats et erreurs par mot-clé ;
+1. intégrer cette phase de liste multi-mots-clés dans `CustomScraperExtractionService::collect()` ;
+2. enrichir uniquement les candidats déjà fusionnés avec les pages détail ;
+3. afficher les diagnostics par mot-clé dans l’interface de configuration des connecteurs ;
 4. ajouter l’édition du template et des mots-clés dans la configuration avancée de l’interface Scraping.

@@ -32,6 +32,12 @@ Le modèle ne fournit aucun setter de mutation. Une correction future doit crée
 
 `JobTimelineRecorder` ajoute l’événement à l’unité de travail Doctrine sans appeler `flush()`. Le service appelant garde ainsi la frontière transactionnelle avec la transition métier qui produit l’événement.
 
+## Producteurs raccordés
+
+La mise à jour manuelle d’une candidature vers `SUBMITTED` produit désormais `APPLICATION_SUBMITTED` dans la même unité de travail que le changement de statut. Une nouvelle modification d’une candidature déjà `SUBMITTED` ne produit pas de doublon. L’événement utilise la date `submittedAt` comme date métier et conserve le statut précédent dans son payload.
+
+L’envoi Gmail automatique reste volontairement un raccordement séparé : l’e-mail est un effet externe irréversible et son traitement doit éviter qu’un incident d’écriture de timeline transforme un message réellement envoyé en faux échec de soumission.
+
 ## Étapes suivantes
 
-Les intégrations seront livrées séparément, transition par transition, avec des tests garantissant qu’un événement n’est enregistré qu’après une transition métier réelle et idempotente. Les métriques temporelles ne devront utiliser cette timeline qu’une fois les événements nécessaires effectivement raccordés.
+Les autres intégrations seront livrées séparément, transition par transition, avec des tests garantissant qu’un événement n’est enregistré qu’après une transition métier réelle et idempotente. Les métriques temporelles ne devront utiliser cette timeline qu’une fois les événements nécessaires effectivement raccordés.

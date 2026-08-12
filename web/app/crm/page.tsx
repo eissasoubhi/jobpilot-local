@@ -13,6 +13,7 @@ import {
   filterCrmOrganizations,
   type CrmRoleFilter,
 } from '@/lib/crm';
+import { crmQueryFromSearch } from '@/lib/crm-navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory, CrmOrganization } from '@/lib/types';
 
@@ -28,6 +29,11 @@ export default function CrmPage() {
     const response = await api<CrmDirectory>('/crm/organizations');
     setDirectory(response);
     setError('');
+  }, []);
+
+  useEffect(() => {
+    const contextQuery = crmQueryFromSearch(window.location.search);
+    if (contextQuery !== '') setQuery(contextQuery);
   }, []);
 
   useEffect(() => {

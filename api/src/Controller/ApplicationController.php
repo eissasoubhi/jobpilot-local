@@ -11,6 +11,8 @@ use App\Service\ApplicationMessageUpgradeService;
 use App\Service\CoverLetterDocumentExporter;
 use App\Service\JobProfileTechnologyComparisonService;
 use App\Service\LocalDataService;
+use App\Timeline\JobTimelineEventType;
+use App\Timeline\JobTimelineRecorder;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -29,6 +31,7 @@ final class ApplicationController
         private LocalDataService $data,
         private JobProfileTechnologyComparisonService $technologyComparison,
         private CoverLetterDocumentExporter $coverLetterDocumentExporter,
+        private JobTimelineRecorder $timeline,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -48,7 +51,20 @@ final class ApplicationController
     #[Route('/{id}', methods: ['PATCH'])]
     public function update(Application $application, Request $request): JsonResponse
     {
+        $previousStatus = $application->getStatus();
         $application->fill($request->toArray());
+
+        if ($previousStatus !== 'SUBMITTED' && $application->getStatus() === 'SUBMITTED') {
+            $this->timeline->record(
+                $application->getJobOffer(),
+                JobTimelineEventType::APPLICATION_SUBMITTED,
+                ['previousStatus' => $previousStatus],
+                $application,
+                $application->getSubmittedAt(),
+                'manual-status',
+            );
+        }
+
         $this->em->flush();
 
         return new JsonResponse($this->serialize($application, $this->data->settings()));

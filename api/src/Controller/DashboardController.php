@@ -11,13 +11,17 @@ use App\Entity\JobOffer;
 use App\Entity\Positioning;
 use App\Entity\SourceConnector;
 use App\Entity\UserSettings;
+use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class DashboardController
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+        private SourceConversionReportService $sourceConversionReport,
+    ) {}
 
     #[Route('/api/dashboard', methods: ['GET'])]
     public function __invoke(): JsonResponse
@@ -31,6 +35,7 @@ final class DashboardController
 
         $today = new \DateTimeImmutable('today');
         $activityStart = $today->modify('-6 days');
+        $previousStart = $activityStart->modify('-7 days');
 
         /** @var list<JobOffer> $recentActivityJobs */
         $recentActivityJobs = $jobs->createQueryBuilder('job')
@@ -39,6 +44,15 @@ final class DashboardController
             ->getQuery()
             ->getResult();
 
+        $previousJobs = (int) $jobs->createQueryBuilder('job')
+            ->select('COUNT(job.id)')
+            ->andWhere('job.discoveredAt >= :previousStart')
+            ->andWhere('job.discoveredAt < :currentStart')
+            ->setParameter('previousStart', $previousStart)
+            ->setParameter('currentStart', $activityStart)
+            ->getQuery()
+            ->getSingleScalarResult();
+
         /** @var list<Application> $recentSubmissions */
         $recentSubmissions = $apps->createQueryBuilder('application')
             ->andWhere('application.submittedAt IS NOT NULL')
@@ -46,6 +60,16 @@ final class DashboardController
             ->setParameter('start', $activityStart)
             ->getQuery()
             ->getResult();
+
+        $previousSubmissions = (int) $apps->createQueryBuilder('application')
+            ->select('COUNT(application.id)')
+            ->andWhere('application.submittedAt IS NOT NULL')
+            ->andWhere('application.submittedAt >= :previousStart')
+            ->andWhere('application.submittedAt < :currentStart')
+            ->setParameter('previousStart', $previousStart)
+            ->setParameter('currentStart', $activityStart)
+            ->getQuery()
+            ->getSingleScalarResult();
 
         $submitted = (int) $apps->createQueryBuilder('application')
             ->select('COUNT(application.id)')
@@ -136,6 +160,9 @@ final class DashboardController
         $applicationCount = $apps->count([]);
         $jobCount = $jobs->count([]);
         $recent = $jobs->findBy([], ['discoveredAt' => 'DESC'], 5);
+        $currentJobs = count($recentActivityJobs);
+        $currentSubmissions = count($recentSubmissions);
+        $sourcePerformance = $this->sourcePerformance();
 
         return new JsonResponse([
             'period' => [
@@ -143,14 +170,18 @@ final class DashboardController
                 'from' => $activityStart->format('Y-m-d'),
                 'to' => $today->format('Y-m-d'),
             ],
+            'comparison' => [
+                'newJobs' => $this->comparison($currentJobs, $previousJobs),
+                'submitted' => $this->comparison($currentSubmissions, $previousSubmissions),
+            ],
             'counts' => [
                 'jobs' => $jobCount,
-                'newJobs' => count($recentActivityJobs),
+                'newJobs' => $currentJobs,
                 'qualifiedJobs' => $qualifiedJobs,
                 'applications' => $applicationCount,
                 'prepared' => $readyToSubmit,
                 'submitted' => $submitted,
-                'submittedRecently' => count($recentSubmissions),
+                'submittedRecently' => $currentSubmissions,
                 'interviews' => $interviews,
                 'rejected' => $rejected,
                 'positionings' => $positions->count([]),
@@ -166,6 +197,7 @@ final class DashboardController
                 'responses' => $responses,
                 'averageScore' => $averageScore,
             ],
+            'sourcePerformance' => $sourcePerformance,
             'pipeline' => [
                 ['key' => 'detected', 'label' => 'Offres détectées', 'value' => $jobCount],
                 ['key' => 'qualified', 'label' => sprintf('Score ≥ %d', $settings->getMatchingThreshold()), 'value' => $qualifiedJobs],
@@ -190,5 +222,65 @@ final class DashboardController
             ],
             'recentJobs' => array_map(static fn (JobOffer $job): array => $job->toArray(), $recent),
         ]);
+    }
+
+    /** @return array{current: int, previous: int, deltaPercent: float|null} */
+    private function comparison(int $current, int $previous): array
+    {
+        if ($previous === 0) {
+            return [
+                'current' => $current,
+                'previous' => 0,
+                'deltaPercent' => $current === 0 ? 0.0 : null,
+            ];
+        }
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'deltaPercent' => round((($current - $previous) / $previous) * 100, 1),
+        ];
+    }
+
+    /** @return array{trackedSources: int, leaders: list<array{code: string, name: string, submitted: int, responses: int, interviews: int, responseRate: float, interviewRate: float, averageMatchingScore: float, lowVolume: bool}>} */
+    private function sourcePerformance(): array
+    {
+        $report = $this->sourceConversionReport->report();
+        $trackedRows = array_values(array_filter(
+            $report['sources'],
+            static fn (array $row): bool => (int) ($row['applications'] ?? 0) > 0,
+        ));
+        $rows = array_values(array_filter(
+            $trackedRows,
+            static fn (array $row): bool => (int) ($row['submitted'] ?? 0) > 0,
+        ));
+
+        usort($rows, static function (array $left, array $right): int {
+            foreach (['submitted', 'responses', 'interviews', 'applications', 'offers'] as $metric) {
+                $comparison = (int) ($right[$metric] ?? 0) <=> (int) ($left[$metric] ?? 0);
+                if ($comparison !== 0) {
+                    return $comparison;
+                }
+            }
+
+            return strcasecmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
+        });
+
+        $leaders = array_map(static fn (array $row): array => [
+            'code' => (string) ($row['code'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'submitted' => (int) ($row['submitted'] ?? 0),
+            'responses' => (int) ($row['responses'] ?? 0),
+            'interviews' => (int) ($row['interviews'] ?? 0),
+            'responseRate' => (float) ($row['responseRate'] ?? 0),
+            'interviewRate' => (float) ($row['interviewRate'] ?? 0),
+            'averageMatchingScore' => (float) ($row['averageMatchingScore'] ?? 0),
+            'lowVolume' => (int) ($row['submitted'] ?? 0) < 3,
+        ], array_slice($rows, 0, 3));
+
+        return [
+            'trackedSources' => count($trackedRows),
+            'leaders' => $leaders,
+        ];
     }
 }

@@ -6,13 +6,19 @@
         throw new Error('JobPilot generic form detector is unavailable.');
       }
 
-      const detection = generic.detect(documentRef);
+      let detection = generic.detect(documentRef);
+
       const adapters = root.JobPilotAtsAdapters;
-      if (!adapters || typeof adapters.enhanceDetection !== 'function') {
-        return detection;
+      if (adapters && typeof adapters.enhanceDetection === 'function') {
+        detection = adapters.enhanceDetection(detection, documentRef, documentRef.location);
       }
 
-      return adapters.enhanceDetection(detection, documentRef, documentRef.location);
+      const complexAdapters = root.JobPilotComplexAtsAdapters;
+      if (complexAdapters && typeof complexAdapters.enhanceDetection === 'function') {
+        detection = complexAdapters.enhanceDetection(detection, documentRef, documentRef.location);
+      }
+
+      return detection;
     },
   };
 

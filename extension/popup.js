@@ -75,11 +75,18 @@ document.getElementById('autofill').addEventListener('click', async () => {
       }
     }
 
+    const learnedSummary = fieldReport.learnedRulesApplied > 0
+      ? ` · ${fieldReport.learnedRulesApplied} règle(s) apprise(s) appliquée(s)`
+      : '';
     show(
-      `${fieldReport.filled || 0} champ(s) rempli(s) · ${fieldReport.review || 0} à vérifier · ${fieldReport.preserved || 0} conservé(s) · ${documentSummary}. Vérifie avant d’envoyer.`,
+      `${fieldReport.filled || 0} champ(s) rempli(s) · ${fieldReport.review || 0} à vérifier · ${fieldReport.preserved || 0} conservé(s)${learnedSummary} · ${documentSummary}. Vérifie avant d’envoyer.`,
       'success',
     );
   } catch (error) {
     show(error instanceof Error ? error.message : 'Remplissage impossible.', 'error');
   }
+});
+
+document.getElementById('learnedRules')?.addEventListener('click', () => {
+  void chrome.runtime.openOptionsPage();
 });

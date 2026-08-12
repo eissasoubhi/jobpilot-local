@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JobPilot — Règles apprises</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f7fb; color: #1f2937; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 20px 48px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .intro { margin: 0 0 20px; color: #667085; font-size: 13px; line-height: 1.5; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .toolbar span { color: #667085; font-size: 12px; }
+    button { border: 0; border-radius: 8px; padding: 8px 11px; cursor: pointer; font-weight: 650; }
+    button.secondary { background: #eef1f6; color: #344054; }
+    button.danger { background: #fff1f0; color: #b42318; }
+    .rules { display: grid; gap: 10px; }
+    .rule { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(180px, 1fr) minmax(220px, 1.4fr) auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid #e4e7ec; border-radius: 12px; background: #fff; }
+    .rule strong, .rule small { display: block; }
+    .rule small { margin-top: 3px; color: #7b8494; }
+    input[type="text"] { width: 100%; box-sizing: border-box; border: 1px solid #d0d5dd; border-radius: 8px; padding: 8px 9px; }
+    .actions { display: flex; gap: 6px; align-items: center; }
+    .empty { padding: 28px; border: 1px dashed #d0d5dd; border-radius: 12px; text-align: center; color: #667085; background: #fff; }
+    .status { min-height: 20px; margin: 8px 0; color: #067647; font-size: 12px; }
+    @media (max-width: 760px) { .rule { grid-template-columns: 1fr; } .actions { justify-content: flex-start; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Règles d’autofill apprises</h1>
+    <p class="intro">Ces valeurs ont été enregistrées uniquement après confirmation explicite. Elles sont appliquées au même champ sur le même domaine. Les champs sensibles ne peuvent pas être appris automatiquement.</p>
+    <div class="toolbar">
+      <span id="count">0 règle</span>
+      <button id="clearDisabled" class="secondary" type="button">Supprimer les règles désactivées</button>
+    </div>
+    <div id="status" class="status" role="status"></div>
+    <section id="rules" class="rules"></section>
+  </main>
+  <script src="correction-learning.js"></script>
+  <script src="learned-rules.js"></script>
+</body>
+</html>

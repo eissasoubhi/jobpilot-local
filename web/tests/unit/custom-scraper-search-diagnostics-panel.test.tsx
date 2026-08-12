@@ -45,7 +45,7 @@ describe('CustomScraperSearchDiagnosticsPanel', () => {
     expect(screen.getByText('https://jobs.example.com/search?q=PHP')).toBeInTheDocument();
     expect(screen.getByText('https://jobs.example.com/search?q=Symfony')).toBeInTheDocument();
     expect(screen.getByText('Pages autorisées')).toBeInTheDocument();
-    expect(screen.getByText('10', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getAllByText('10', { selector: 'strong' })).toHaveLength(2);
   });
 
   it('renders concise per-keyword HTTP diagnostics and deduplication metrics', async () => {
@@ -102,7 +102,7 @@ describe('CustomScraperSearchDiagnosticsPanel', () => {
     expect(screen.getByText('Offres uniques')).toBeInTheDocument();
     expect(screen.getAllByText('HTTP 200')).toHaveLength(2);
     expect(screen.getByText('1,3 s')).toBeInTheDocument();
-    expect(screen.getAllByText('Fin des résultats')).toHaveLength(2);
+    expect(screen.getAllByText(/Fin des résultats/)).toHaveLength(2);
   });
 
   it('edits keywords as chips and requires saving before a network test', async () => {

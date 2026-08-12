@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
+import { MarketSkillsCard } from '@/components/dashboard/MarketSkillsCard';
 import { Badge, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -460,6 +461,8 @@ export default function DashboardPage() {
           {data.sourcePerformance.trackedSources} source(s) avec candidature(s). Classement par envois, puis réponses et entretiens. « Faible volume » signifie moins de 3 envois ; une offre trouvée sur plusieurs sources peut créditer plusieurs canaux.
         </p>
       </Card>
+
+      <MarketSkillsCard />
 
       <section className={styles.quickSection}>
         <div className={styles.sectionHeadingOutside}>

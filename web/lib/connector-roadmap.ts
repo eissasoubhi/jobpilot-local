@@ -99,7 +99,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     note: 'Les CGU Welcome to the Jungle du 27/04/2026 interdisent l’utilisation de scripts, robots, crawlers, extensions/modules de navigateur ou autres technologies pour extraire automatiquement les données du Site. L’exception limitée aux moteurs de recherche publics ne s’applique pas à JobPilot.',
     nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après accord écrit WTTJ ou publication d’un canal officiel de lecture/réutilisation.',
   },
-  underReview('cadremploi', 'Cadremploi'),
+  {
+    code: 'cadremploi',
+    name: 'Cadremploi',
+    status: 'EMAIL_OR_EXTENSION_ONLY',
+    modes: ['GMAIL', 'EXTENSION'],
+    note: 'Les CGU Cadremploi/Figaro Classifieds protègent les bases de données, limitent le contenu à un usage privé et interdisent sans autorisation écrite préalable certaines collectes ou extractions automatiques par robots, logiciels ou dispositifs automatiques. La visibilité publique des offres ne suffit donc pas à autoriser un scraper planifié.',
+    nextStep: 'Conserver Gmail et l’import assisté ; réexaminer uniquement après autorisation écrite Figaro Classifieds ou obtention d’un flux/canal officiel de redistribution.',
+  },
   {
     code: 'hellowork',
     name: 'HelloWork',

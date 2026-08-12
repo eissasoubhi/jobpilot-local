@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou et Meteojob sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou, Meteojob et Cadremploi sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -163,6 +163,21 @@ Références officielles :
 Aucun canal public officiel de lecture ou de redistribution des offres pour JobPilot n’a été identifié dans cette revue. JobPilot classe donc Meteojob en `EMAIL_OR_EXTENSION_ONLY` : aucun scraper HTTP/Browser planifié, aucune session privée automatisée et aucun endpoint non documenté. Les alertes Gmail reconnues et l’import volontaire d’une page ouverte par l’utilisateur restent les canaux admis.
 
 Cette décision ne pourra être réouverte qu’après accord écrit CleverConnect ou identification d’un canal officiel de redistribution applicable.
+
+#### Cas Cadremploi
+
+Décision revue le **11 août 2026** sur les CGU officielles Cadremploi/Figaro Classifieds et les pages publiques d’offres.
+
+Les CGU reconnaissent plusieurs bases de données protégées, accordent un droit d’usage privé, non collectif et non exclusif du contenu, et interdisent toute extraction, utilisation, stockage ou reproduction substantielle des bases. Elles interdisent également, sans autorisation écrite préalable, certaines collectes ou extractions automatiques au moyen de robots, logiciels ou autres dispositifs automatiques.
+
+Références officielles :
+
+- <https://www.cadremploi.fr/emploi/legal/conditions-generales-utilisation>
+- <https://www.cadremploi.fr/emploi>
+
+Les offres peuvent être consultées publiquement, mais cette visibilité n’autorise pas à elle seule une collecte planifiée. JobPilot classe donc Cadremploi en `EMAIL_OR_EXTENSION_ONLY` : aucun scraper HTTP/Browser planifié, aucune session privée automatisée et aucun endpoint non documenté. Les alertes Gmail reconnues et l’import volontaire d’une page ouverte par l’utilisateur restent les canaux admis.
+
+Cette décision ne pourra être réouverte qu’après autorisation écrite Figaro Classifieds ou obtention d’un flux/canal officiel de redistribution applicable.
 
 ### `UNDER_REVIEW`
 

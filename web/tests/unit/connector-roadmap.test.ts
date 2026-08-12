@@ -115,13 +115,26 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou', 'meteojob']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou', 'meteojob', 'cadremploi']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
       expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
       expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
     }
+  });
+
+  it('records why Cadremploi does not get a planned scraper', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'cadremploi');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
+    expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
+    expect(connector?.note).toContain('bases de données');
+    expect(connector?.note).toContain('autorisation écrite');
+    expect(connector?.note).toContain('robots');
+    expect(connector?.nextStep).toContain('Gmail');
+    expect(connector?.nextStep).toContain('Figaro Classifieds');
   });
 
   it('records why Meteojob does not get a planned scraper', () => {

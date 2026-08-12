@@ -42,11 +42,12 @@ Le garde-fou existant reste fixé à **10 pages de liste maximum par synchronisa
 
 Le résultat expose :
 
-- `networkRequests` et le budget global ;
+- `networkRequests`, `durationMs` et le budget global ;
 - `rawCandidateCount`, `duplicateCount` et `candidateCount` après fusion ;
 - les offres fusionnées avec `rawData.discoveredByKeywords` ;
-- un diagnostic par mot-clé : URL de départ, pages visitées, limite, nombre brut d’offres, mode recommandé, raison d’arrêt et erreur éventuelle ;
-- `requiresBrowser` lorsqu’une page publique autorisée semble nécessiter JavaScript ;
+- un diagnostic par mot-clé : URL de départ, pages visitées, limite, nombre brut d’offres, `statusCodes`, dernier statut HTTP, durée, mode recommandé, raison d’arrêt et erreur éventuelle ;
+- un historique page par page avec URL, statut HTTP et pagination détectée ;
+- `requiresBrowser` lorsqu’une page publique autorisée, y compris une page de pagination ultérieure, semble nécessiter JavaScript ;
 - `stoppedEarly` et `globalError` si la collecte doit être interrompue.
 
 Une erreur d’accès ou de transport arrête les recherches suivantes au lieu d’essayer d’autres mots-clés pour contourner un blocage. De la même façon, si le HTML indique qu’un rendu navigateur est nécessaire, JobPilot arrête la collecte HTTP et signale `requiresBrowser` sans tenter de mécanisme furtif ou de contournement.

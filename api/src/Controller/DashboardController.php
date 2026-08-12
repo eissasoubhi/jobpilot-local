@@ -11,13 +11,17 @@ use App\Entity\JobOffer;
 use App\Entity\Positioning;
 use App\Entity\SourceConnector;
 use App\Entity\UserSettings;
+use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class DashboardController
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+        private SourceConversionReportService $sourceConversionReport,
+    ) {}
 
     #[Route('/api/dashboard', methods: ['GET'])]
     public function __invoke(): JsonResponse
@@ -158,6 +162,7 @@ final class DashboardController
         $recent = $jobs->findBy([], ['discoveredAt' => 'DESC'], 5);
         $currentJobs = count($recentActivityJobs);
         $currentSubmissions = count($recentSubmissions);
+        $sourcePerformance = $this->sourcePerformance();
 
         return new JsonResponse([
             'period' => [
@@ -192,6 +197,7 @@ final class DashboardController
                 'responses' => $responses,
                 'averageScore' => $averageScore,
             ],
+            'sourcePerformance' => $sourcePerformance,
             'pipeline' => [
                 ['key' => 'detected', 'label' => 'Offres détectées', 'value' => $jobCount],
                 ['key' => 'qualified', 'label' => sprintf('Score ≥ %d', $settings->getMatchingThreshold()), 'value' => $qualifiedJobs],
@@ -233,6 +239,44 @@ final class DashboardController
             'current' => $current,
             'previous' => $previous,
             'deltaPercent' => round((($current - $previous) / $previous) * 100, 1),
+        ];
+    }
+
+    /** @return array{trackedSources: int, leaders: list<array{code: string, name: string, submitted: int, responses: int, interviews: int, responseRate: float, interviewRate: float, averageMatchingScore: float, lowVolume: bool}>} */
+    private function sourcePerformance(): array
+    {
+        $report = $this->sourceConversionReport->report();
+        $rows = array_values(array_filter(
+            $report['sources'],
+            static fn (array $row): bool => (int) ($row['applications'] ?? 0) > 0,
+        ));
+
+        usort($rows, static function (array $left, array $right): int {
+            foreach (['submitted', 'responses', 'interviews', 'applications', 'offers'] as $metric) {
+                $comparison = (int) ($right[$metric] ?? 0) <=> (int) ($left[$metric] ?? 0);
+                if ($comparison !== 0) {
+                    return $comparison;
+                }
+            }
+
+            return strcasecmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
+        });
+
+        $leaders = array_map(static fn (array $row): array => [
+            'code' => (string) ($row['code'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'submitted' => (int) ($row['submitted'] ?? 0),
+            'responses' => (int) ($row['responses'] ?? 0),
+            'interviews' => (int) ($row['interviews'] ?? 0),
+            'responseRate' => (float) ($row['responseRate'] ?? 0),
+            'interviewRate' => (float) ($row['interviewRate'] ?? 0),
+            'averageMatchingScore' => (float) ($row['averageMatchingScore'] ?? 0),
+            'lowVolume' => (int) ($row['submitted'] ?? 0) < 3,
+        ], array_slice($rows, 0, 3));
+
+        return [
+            'trackedSources' => count($rows),
+            'leaders' => $leaders,
         ];
     }
 }

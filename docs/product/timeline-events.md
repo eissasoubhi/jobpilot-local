@@ -34,7 +34,15 @@ Le modèle ne fournit aucun setter de mutation. Une correction future doit crée
 
 ## Producteurs raccordés
 
-La mise à jour manuelle d’une candidature vers `SUBMITTED` produit désormais `APPLICATION_SUBMITTED` dans la même unité de travail que le changement de statut. Une nouvelle modification d’une candidature déjà `SUBMITTED` ne produit pas de doublon. L’événement utilise la date `submittedAt` comme date métier et conserve le statut précédent dans son payload.
+La mise à jour manuelle d’une candidature vers `SUBMITTED` produit `APPLICATION_SUBMITTED` dans la même unité de travail que le changement de statut. Une nouvelle modification d’une candidature déjà `SUBMITTED` ne produit pas de doublon. L’événement utilise la date `submittedAt` comme date métier et conserve le statut précédent dans son payload.
+
+Les nouveaux messages Gmail associés à une candidature produisent maintenant un événement uniquement lorsque Doctrine observe dans la même transaction un vrai changement de statut :
+
+- `APPLICATION_REPLY` et `INFORMATION_REQUEST` → `RESPONSE_RECEIVED` ;
+- `REJECTION` → `REJECTED` ;
+- `INTERVIEW_REQUEST` → `INTERVIEW`.
+
+Ces événements utilisent la date de réception du mail comme `occurredAt`, la source `gmail-inbox`, la catégorie Gmail et le statut précédent dans un payload minimal. Un deuxième mail qui laisse la candidature dans le même statut ne produit pas de doublon. `APPLICATION_CONFIRMATION` continue à mettre à jour la candidature mais ne crée aucun événement, car aucun type métier correspondant n’est défini dans le catalogue V1.
 
 L’envoi Gmail automatique reste volontairement un raccordement séparé : l’e-mail est un effet externe irréversible et son traitement doit éviter qu’un incident d’écriture de timeline transforme un message réellement envoyé en faux échec de soumission.
 

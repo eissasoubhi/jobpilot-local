@@ -60,6 +60,7 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
         self::assertSame(4, $result['globalPageBudget']);
         self::assertFalse($result['budgetLimited']);
         self::assertSame(3, $result['networkRequests']);
+        self::assertGreaterThanOrEqual(0, $result['durationMs']);
         self::assertSame(3, $result['rawCandidateCount']);
         self::assertSame(1, $result['duplicateCount']);
         self::assertSame(2, $result['candidateCount']);
@@ -73,7 +74,11 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
         );
         self::assertSame([4, 4, 4], array_column($calls, 2));
         self::assertSame(2, $result['diagnostics'][0]['pagesFetched']);
+        self::assertSame([200, 200], $result['diagnostics'][0]['statusCodes']);
+        self::assertSame(200, $result['diagnostics'][0]['lastStatusCode']);
+        self::assertGreaterThanOrEqual(0, $result['diagnostics'][0]['durationMs']);
         self::assertSame(1, $result['diagnostics'][1]['pagesFetched']);
+        self::assertSame([200], $result['diagnostics'][1]['statusCodes']);
 
         $duplicate = null;
         foreach ($result['candidates'] as $candidate) {
@@ -105,6 +110,8 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
         self::assertSame(1, $result['executedSearchCount']);
         self::assertSame('HTTP 429 - limitation détectée.', $result['globalError']);
         self::assertSame('PAGE_FETCH_ERROR', $result['diagnostics'][0]['stopReason']);
+        self::assertSame([], $result['diagnostics'][0]['statusCodes']);
+        self::assertNull($result['diagnostics'][0]['lastStatusCode']);
         self::assertSame(0, $result['candidateCount']);
     }
 
@@ -116,10 +123,7 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
             ->method('fetch')
             ->willReturn($this->response(
                 'https://jobs.example.com/search?q=PHP',
-                '<html><body><div id="app"></div>'
-                .'<script src="/app.js"></script><script src="/chunk.js"></script>'
-                .'<script>window.__NEXT_DATA__={};window.__INITIAL_STATE__={};</script>'
-                .'</body></html>',
+                $this->javascriptShell(),
             ));
 
         $result = $this->collector($fetcher)->collect($source);
@@ -129,7 +133,36 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
         self::assertNull($result['globalError']);
         self::assertSame(1, $result['executedSearchCount']);
         self::assertSame('BROWSER_REQUIRED', $result['diagnostics'][0]['stopReason']);
+        self::assertSame([200], $result['diagnostics'][0]['statusCodes']);
         self::assertSame(0, $result['candidateCount']);
+    }
+
+    public function testJavascriptRequirementOnLaterPageAlsoStopsTheWholeSearchPlan(): void
+    {
+        $source = $this->source(['PHP', 'Symfony'], 2);
+        $fetcher = $this->createMock(CustomScraperListingPageFetcher::class);
+        $fetcher->expects(self::exactly(2))
+            ->method('fetch')
+            ->willReturnCallback(fn (string $connectorCode, string $url): HttpScrapingResult => match ($url) {
+                'https://jobs.example.com/search?q=PHP' => $this->response(
+                    $url,
+                    $this->jobHtml('job-123', 'Développeur PHP', 'Mission PHP')
+                        .'<a rel="next" href="https://jobs.example.com/search?q=PHP&amp;page=2">Next</a>',
+                ),
+                'https://jobs.example.com/search?q=PHP&page=2' => $this->response($url, $this->javascriptShell()),
+                default => throw new \RuntimeException('Le mot-clé suivant ne doit pas être sondé.'),
+            });
+
+        $result = $this->collector($fetcher)->collect($source);
+
+        self::assertTrue($result['requiresBrowser']);
+        self::assertTrue($result['stoppedEarly']);
+        self::assertSame(1, $result['executedSearchCount']);
+        self::assertSame(2, $result['diagnostics'][0]['pagesFetched']);
+        self::assertSame('BROWSER', $result['diagnostics'][0]['recommendedMode']);
+        self::assertSame('BROWSER_REQUIRED', $result['diagnostics'][0]['stopReason']);
+        self::assertSame([200, 200], $result['diagnostics'][0]['statusCodes']);
+        self::assertSame(1, $result['candidateCount']);
     }
 
     private function collector(CustomScraperListingPageFetcher $fetcher): CustomScraperMultiSearchListingCollector
@@ -166,6 +199,14 @@ final class CustomScraperMultiSearchListingCollectorTest extends TestCase
     private function response(string $url, string $html): HttpScrapingResult
     {
         return new HttpScrapingResult($url, 200, $html, [], 1, false);
+    }
+
+    private function javascriptShell(): string
+    {
+        return '<html><body><div id="app"></div>'
+            .'<script src="/app.js"></script><script src="/chunk.js"></script>'
+            .'<script>window.__NEXT_DATA__={};window.__INITIAL_STATE__={};</script>'
+            .'</body></html>';
     }
 
     private function jobHtml(

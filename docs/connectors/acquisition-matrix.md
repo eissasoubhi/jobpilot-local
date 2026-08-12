@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis et LeHibou sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou et Meteojob sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -148,6 +148,21 @@ Références officielles :
 Cette décision ne prétend pas que `robots.txt` interdit la collecte. Le point déterminant est l’absence de canal officiel réutilisable et le périmètre d’accès aux Services décrit par les CGU. Comme JobPilot interdit l’automatisation de connexion, de cookies privés ou de session utilisateur, il classe LeHibou en `EMAIL_OR_EXTENSION_ONLY` plutôt que de déduire une autorisation de scraping de simples pages SEO accessibles publiquement.
 
 Les alertes Gmail reconnues et l’import volontaire d’une page ouverte par l’utilisateur restent les canaux admis. Une collecte planifiée ne pourra être envisagée qu’après publication d’un canal officiel réutilisable ou autorisation écrite applicable.
+
+#### Cas Meteojob
+
+Décision revue le **11 août 2026** sur les CGU Meteojob/CleverConnect mises à jour en octobre 2025.
+
+Les CGU limitent la visualisation du contenu à un usage personnel et privé. Toute autre utilisation non expressément autorisée nécessite un accord exprès écrit et préalable de CleverConnect, et l’extraction de tout ou partie des bases de données du site est interdite. Les conditions professionnelles renforcent cette restriction pour le scraping et certaines extractions ou réutilisations répétées des offres.
+
+Références officielles :
+
+- <https://www.meteojob.com/conditions>
+- <https://www.meteojob.com/conditions-vente>
+
+Aucun canal public officiel de lecture ou de redistribution des offres pour JobPilot n’a été identifié dans cette revue. JobPilot classe donc Meteojob en `EMAIL_OR_EXTENSION_ONLY` : aucun scraper HTTP/Browser planifié, aucune session privée automatisée et aucun endpoint non documenté. Les alertes Gmail reconnues et l’import volontaire d’une page ouverte par l’utilisateur restent les canaux admis.
+
+Cette décision ne pourra être réouverte qu’après accord écrit CleverConnect ou identification d’un canal officiel de redistribution applicable.
 
 ### `UNDER_REVIEW`
 

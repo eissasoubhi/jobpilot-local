@@ -91,6 +91,19 @@ describe('platform acquisition matrix', () => {
     expect(connector?.nextStep).toContain('quotas');
   });
 
+  it('records EURES as a partner-only API plan without enabling scraping', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'eures');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('PLANNED');
+    expect(connector?.modes).toEqual(['API']);
+    expect(connector?.note).toContain('screen scraping');
+    expect(connector?.note).toContain('partenaires EURES');
+    expect(connector?.note).toContain('aucun scraping EURES');
+    expect(connector?.nextStep).toContain('partenaire EURES');
+    expect(connector?.nextStep).toContain('quotas');
+  });
+
   it('records Talent.com as an official Publisher API plan without enabling scraping', () => {
     const connector = connectorRoadmap.find((entry) => entry.code === 'talent-com');
 
@@ -231,13 +244,5 @@ describe('platform acquisition matrix', () => {
     expect(connector?.modes).toEqual(['API']);
     expect(connector?.note).toContain('jeton');
     expect(connector?.nextStep).toContain('entreprises');
-  });
-
-  it('does not invent a reusable EURES channel before it is confirmed', () => {
-    const connector = connectorRoadmap.find((entry) => entry.code === 'eures');
-
-    expect(connector).toBeDefined();
-    expect(connector?.status).toBe('UNDER_REVIEW');
-    expect(connector?.modes).toEqual([]);
   });
 });

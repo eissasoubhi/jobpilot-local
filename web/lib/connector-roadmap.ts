@@ -137,10 +137,14 @@ export const connectorRoadmap: readonly ConnectorRoadmapEntry[] = [
     note: 'Jobijoba propose officiellement aux sites et applications un programme d’affiliation pour intégrer ses offres via flux, API ou widget. JobPilot cible l’API ou un flux officiel d’affiliation et n’active aucun scraping Jobijoba.',
     nextStep: 'Obtenir les spécifications, accès, conditions de redistribution et quotas du programme d’affiliation Jobijoba avant de développer un connecteur exécutable.',
   },
-  underReview('eures', 'EURES', {
-    note: 'Le portail officiel expose un important catalogue public européen, mais JobPilot n’a pas encore confirmé une API ou un flux officiel d’offres réutilisable.',
-    nextStep: 'Identifier et valider un canal officiel lisible par machine avant toute implémentation.',
-  }),
+  {
+    code: 'eures',
+    name: 'EURES',
+    status: 'PLANNED',
+    modes: ['API'],
+    note: 'Le service officiel EURES interdit le screen scraping ou toute extraction destinée à retraiter ou republier les offres. L’extraction via API ou technologie similaire est réservée aux organisations partenaires EURES reconnues par un bureau national de coordination ; JobPilot ne planifie donc aucun scraping EURES.',
+    nextStep: 'Obtenir un statut ou accord partenaire EURES applicable, puis la documentation API, l’authentification, les quotas et les droits de réutilisation avant de développer un connecteur exécutable.',
+  },
   underReview('freelance-informatique', 'Freelance-Informatique'),
   {
     code: 'indeed',

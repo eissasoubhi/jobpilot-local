@@ -20,10 +20,47 @@ function tabMessage(tabId, message) {
   });
 }
 
+function injectableTab(tab) {
+  return Boolean(tab && Number.isInteger(tab.id) && /^https?:\/\//i.test(String(tab.url || '')));
+}
+
+async function capabilityAvailable(tabId, pingType) {
+  try {
+    const response = await tabMessage(tabId, { type: pingType });
+    return response?.ok === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function ensureInjected(tab, mode) {
+  if (!injectableTab(tab)) {
+    throw new Error('Cette page ne permet pas l’injection JobPilot. Ouvre une page web HTTP/HTTPS de candidature.');
+  }
+
+  const plan = globalThis.JobPilotInjectionPlan?.[mode];
+  if (!plan || !Array.isArray(plan.scripts) || !plan.pingType) {
+    throw new Error('Plan d’injection JobPilot indisponible.');
+  }
+
+  if (await capabilityAvailable(tab.id, plan.pingType)) return;
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: plan.scripts,
+  });
+
+  if (!(await capabilityAvailable(tab.id, plan.pingType))) {
+    throw new Error('Les scripts JobPilot n’ont pas pu être activés sur cette page.');
+  }
+}
+
 document.getElementById('import').addEventListener('click', async () => {
   show('Analyse de la page…');
   try {
     const tab = await activeTab();
+    await ensureInjected(tab, 'import');
+
     const payload = await tabMessage(tab.id, {type:'EXTRACT_PAGE'});
     const result = await runtimeMessage({type:'IMPORT_JOB', payload});
     if (!result?.ok) return show(result?.error || 'Import impossible.', 'error');
@@ -46,6 +83,8 @@ document.getElementById('autofill').addEventListener('click', async () => {
 
   try {
     const tab = await activeTab();
+    await ensureInjected(tab, 'autofill');
+
     const result = await runtimeMessage({type:'GET_AUTOFILL_CONTEXT', url:tab.url || ''});
     if (!result?.ok) return show(result?.error || 'Contexte Autofill indisponible.', 'error');
 

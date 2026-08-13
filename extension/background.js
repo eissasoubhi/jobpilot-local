@@ -1,5 +1,6 @@
 const API = 'http://localhost:8080/api';
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const volatileTabContexts = new Map();
 
 async function apiJson(path, options) {
   const response = await fetch(`${API}${path}`, options);
@@ -12,8 +13,10 @@ function tabContextKey(tabId) {
   return `jobpilot:tab:${tabId}`;
 }
 
-function tabStorage() {
-  return chrome.storage.session || chrome.storage.local;
+function sessionStorage() {
+  return chrome.storage?.session && typeof chrome.storage.session.get === 'function'
+    ? chrome.storage.session
+    : null;
 }
 
 async function rememberTabContext(tabId, context) {
@@ -23,19 +26,30 @@ async function rememberTabContext(tabId, context) {
     sourceUrl: String(context?.sourceUrl || ''),
     rememberedAt: new Date().toISOString(),
   };
-  await tabStorage().set({ [tabContextKey(tabId)]: value });
+  const storage = sessionStorage();
+  if (storage) {
+    await storage.set({ [tabContextKey(tabId)]: value });
+    return;
+  }
+  volatileTabContexts.set(tabId, value);
 }
 
 async function readTabContext(tabId) {
   if (!Number.isInteger(tabId) || tabId < 0) return null;
-  const key = tabContextKey(tabId);
-  const stored = await tabStorage().get(key);
-  return stored?.[key] || null;
+  const storage = sessionStorage();
+  if (storage) {
+    const key = tabContextKey(tabId);
+    const stored = await storage.get(key);
+    return stored?.[key] || null;
+  }
+  return volatileTabContexts.get(tabId) || null;
 }
 
 async function forgetTabContext(tabId) {
   if (!Number.isInteger(tabId) || tabId < 0) return;
-  await tabStorage().remove(tabContextKey(tabId));
+  const storage = sessionStorage();
+  if (storage) await storage.remove(tabContextKey(tabId));
+  volatileTabContexts.delete(tabId);
 }
 
 function hostFromUrl(value) {

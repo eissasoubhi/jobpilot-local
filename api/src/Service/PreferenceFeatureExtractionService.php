@@ -25,13 +25,25 @@ final class PreferenceFeatureExtractionService
      */
     public function extract(PreferenceSignal $signal, UserSettings $settings): array
     {
-        $job = $signal->getJobOffer();
-        $comparison = $this->technologyComparison->compare($job, $settings);
-
         return [
             'signalType' => $signal->getSignalType(),
             'origin' => $signal->getOrigin(),
             'preferenceValue' => $signal->getPreferenceValue(),
+            ...$this->extractJob($signal->getJobOffer(), $settings),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   dimensions: array<string, list<string>>,
+     *   numeric: array{salaryAnnual: ?int, tjm: ?int}
+     * }
+     */
+    public function extractJob(JobOffer $job, UserSettings $settings): array
+    {
+        $comparison = $this->technologyComparison->compare($job, $settings);
+
+        return [
             'dimensions' => [
                 'title' => $this->single($this->normalizeLabel($job->getTitle())),
                 'technologies' => $this->normalizeList($comparison['technologies']),

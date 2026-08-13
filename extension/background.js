@@ -38,6 +38,52 @@ async function forgetTabContext(tabId) {
   await tabStorage().remove(tabContextKey(tabId));
 }
 
+function hostFromUrl(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    return parsed.hostname.toLowerCase();
+  } catch (_) {
+    return '';
+  }
+}
+
+async function autofillContext(message) {
+  const host = hostFromUrl(message?.url);
+  const correctionsPromise = host
+    ? apiJson(`/autofill/corrections?host=${encodeURIComponent(host)}`)
+    : Promise.resolve([]);
+
+  const [profile, answerPayload, corrections] = await Promise.all([
+    apiJson('/profile/autofill'),
+    apiJson('/reusable-answers/resolved'),
+    correctionsPromise,
+  ]);
+
+  return {
+    schemaVersion: 1,
+    profile,
+    answers: Array.isArray(answerPayload.answers) ? answerPayload.answers : [],
+    corrections: Array.isArray(corrections) ? corrections : [],
+    minimumConfidence: 0.72,
+  };
+}
+
+async function saveAutofillCorrection(message) {
+  return apiJson('/autofill/corrections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      host: String(message?.host || '').toLowerCase(),
+      fieldFingerprint: String(message?.fieldFingerprint || ''),
+      canonicalKey: String(message?.canonicalKey || ''),
+      controlKind: String(message?.controlKind || ''),
+      originalValue: String(message?.originalValue || ''),
+      correctedValue: String(message?.correctedValue || ''),
+    }),
+  });
+}
+
 async function documentContext(message) {
   const tabId = Number(message?.tabId);
   const remembered = await readTabContext(tabId);
@@ -135,18 +181,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'GET_AUTOFILL_CONTEXT') {
-    Promise.all([
-      apiJson('/profile/autofill'),
-      apiJson('/reusable-answers/resolved'),
-    ]).then(([profile, answerPayload]) => sendResponse({
-      ok: true,
-      context: {
-        schemaVersion: 1,
-        profile,
-        answers: Array.isArray(answerPayload.answers) ? answerPayload.answers : [],
-        minimumConfidence: 0.72,
-      },
-    })).catch(error => sendResponse({ ok: false, error: error.message }));
+    autofillContext(message)
+      .then(context => sendResponse({ ok: true, context }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === 'SAVE_AUTOFILL_CORRECTION') {
+    saveAutofillCorrection(message)
+      .then(correction => sendResponse({ ok: true, correction }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 

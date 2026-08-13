@@ -46,7 +46,7 @@ document.getElementById('autofill').addEventListener('click', async () => {
 
   try {
     const tab = await activeTab();
-    const result = await runtimeMessage({type:'GET_AUTOFILL_CONTEXT'});
+    const result = await runtimeMessage({type:'GET_AUTOFILL_CONTEXT', url:tab.url || ''});
     if (!result?.ok) return show(result?.error || 'Contexte Autofill indisponible.', 'error');
 
     const response = await tabMessage(tab.id, {type:'AUTOFILL_GENERIC_PAGE', context:result.context});

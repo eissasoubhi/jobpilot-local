@@ -54,6 +54,23 @@ async function documentContext(message) {
   });
 }
 
+async function questionSuggestion(message, sender) {
+  const tabId = Number(message?.tabId) || Number(sender?.tab?.id);
+  const remembered = await readTabContext(tabId);
+  return apiJson('/extension/question-suggestion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      applicationId: Number(message?.applicationId) || undefined,
+      jobOfferId: Number(message?.jobOfferId) || Number(remembered?.jobOfferId) || undefined,
+      url: String(message?.url || sender?.tab?.url || remembered?.sourceUrl || ''),
+      question: String(message?.question || ''),
+      language: String(message?.language || 'fr'),
+      maxLength: Number(message?.maxLength) || 600,
+    }),
+  });
+}
+
 function documentFilename(response, fallback) {
   const disposition = response.headers.get('Content-Disposition') || '';
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
@@ -143,6 +160,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'FETCH_APPLICATION_DOCUMENT') {
     fetchDocument(message.downloadUrl, message.filename, message.mimeType)
       .then(document => sendResponse({ ok: true, document }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === 'GET_APPLICATION_QUESTION_SUGGESTION') {
+    questionSuggestion(message, sender)
+      .then(suggestion => sendResponse({ ok: true, suggestion }))
       .catch(error => sendResponse({ ok: false, error: error.message }));
     return true;
   }

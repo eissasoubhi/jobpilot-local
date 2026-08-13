@@ -11,6 +11,7 @@ use App\Service\ApplicationMessageUpgradeService;
 use App\Service\CoverLetterDocumentExporter;
 use App\Service\JobProfileTechnologyComparisonService;
 use App\Service\LocalDataService;
+use App\Service\PreferenceSignalRecorder;
 use App\Timeline\JobTimelineEventType;
 use App\Timeline\JobTimelineRecorder;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,6 +33,7 @@ final class ApplicationController
         private JobProfileTechnologyComparisonService $technologyComparison,
         private CoverLetterDocumentExporter $coverLetterDocumentExporter,
         private JobTimelineRecorder $timeline,
+        private PreferenceSignalRecorder $preferenceSignals,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -65,6 +67,7 @@ final class ApplicationController
             );
         }
 
+        $this->preferenceSignals->recordApplicationStatusTransition($application, $previousStatus);
         $this->em->flush();
 
         return new JsonResponse($this->serialize($application, $this->data->settings()));

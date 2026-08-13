@@ -235,6 +235,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Pin PHP 8.4 executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          php_bin="$(readlink -f "$(command -v php)")"
+          "$php_bin" -r 'if (version_compare(PHP_VERSION, "8.4.1", "<")) { fwrite(STDERR, "PHP >= 8.4.1 required\n"); exit(1); }'
+          echo "PHP_BIN=$php_bin" >> "$GITHUB_ENV"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -259,8 +267,8 @@ jobs:
         run: |
           cp -R initial-data api/initial-data
           cd api
-          php bin/console doctrine:migrations:migrate --no-interaction
-          php bin/console app:bootstrap --no-interaction
+          "$PHP_BIN" bin/console doctrine:migrations:migrate --no-interaction
+          "$PHP_BIN" bin/console app:bootstrap --no-interaction
 
       - name: Configure Symfony HTTP runtime
         run: |
@@ -280,7 +288,7 @@ jobs:
       - name: Start Symfony API
         run: |
           cd api
-          nohup env APP_ENV=dev APP_DEBUG=1 php -S 127.0.0.1:8080 -t public public/index.php > /tmp/jobpilot-api.log 2>&1 &
+          nohup env APP_ENV=dev APP_DEBUG=1 "$PHP_BIN" -S 127.0.0.1:8080 -t public public/index.php > /tmp/jobpilot-api.log 2>&1 &
           echo $! > /tmp/jobpilot-api.pid
 
       - name: Wait for Symfony API and database endpoints

@@ -14,6 +14,7 @@ final class AutomaticSubmissionService
         private EntityManagerInterface $em,
         private GmailService $gmail,
         private ApplicationEmailFactory $emailFactory,
+        private PreferenceSignalRecorder $preferenceSignals,
     ) {}
 
     /**
@@ -67,7 +68,9 @@ final class AutomaticSubmissionService
                 $email['body'],
                 $email['attachments'],
             );
+            $previousStatus = $application->getStatus();
             $application->markSubmittedAutomatically($result['id']);
+            $this->preferenceSignals->recordApplicationStatusTransition($application, $previousStatus);
             $this->em->flush();
 
             return ['status' => 'submitted', 'gmailMessageId' => $result['id']];

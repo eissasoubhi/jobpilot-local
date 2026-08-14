@@ -97,6 +97,29 @@
   background: #fbfcfe;
 }
 
+.regenerationControl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid #edf0f4;
+  color: #657087;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.regenerationControl input {
+  width: 100px;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+
+.regenerationControl :global(.btn) {
+  margin-left: auto;
+}
+
 .downloadMenu {
   position: relative;
 }
@@ -228,6 +251,16 @@
   .toolbar :global(.btn),
   .downloadMenu {
     flex: 1 1 auto;
+  }
+
+  .regenerationControl {
+    display: grid;
+    grid-template-columns: auto minmax(85px, 110px) 1fr;
+  }
+
+  .regenerationControl :global(.btn) {
+    grid-column: 1 / -1;
+    margin-left: 0;
   }
 
   .downloadMenu summary {

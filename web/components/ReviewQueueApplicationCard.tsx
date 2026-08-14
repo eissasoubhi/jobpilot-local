@@ -10,6 +10,7 @@ import { Badge } from '@/components/UI';
 import { API_URL, api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
+import { offerPublicationTiming } from '@/lib/job-publication';
 import type { Application } from '@/lib/types';
 
 type ReviewQueueApplicationCardProps = {
@@ -30,6 +31,7 @@ const TRACKING_STATUSES = [
   ['INTERVIEW', 'Entretien'],
   ['REJECTED', 'Refusée'],
   ['OFFER_RECEIVED', 'Offre reçue'],
+  ['OFFER_UNAVAILABLE', 'Offre indisponible'],
   ['IGNORED_NOT_MATCH', 'Ne correspond pas au profil'],
 ] as const;
 
@@ -46,6 +48,7 @@ export function ReviewQueueApplicationCard({
   const [currentApplication, setCurrentApplication] = useState<Application>(application);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
   const [saving, setSaving] = useState(false);
+  const [markingUnavailable, setMarkingUnavailable] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [notice, setNotice] = useState('');
@@ -98,6 +101,30 @@ export function ReviewQueueApplicationCard({
     await saveApplication(selectedStatus, 'Statut de suivi enregistré dans JobPilot.');
   };
 
+  const markOfferUnavailable = async (): Promise<void> => {
+    if (markingUnavailable || saving) return;
+
+    const confirmed = window.confirm(
+      'Confirmer que cette offre n’est plus disponible ? Elle sera retirée de la Review Queue sans être classée comme « Ne correspond pas ».',
+    );
+    if (!confirmed) return;
+
+    setMarkingUnavailable(true);
+    setNotice('');
+    setError('');
+
+    try {
+      const updated = await api<Application>(`/applications/${currentApplication.id}/offer-unavailable`, {
+        method: 'POST',
+      });
+      applyUpdatedApplication(updated);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setMarkingUnavailable(false);
+    }
+  };
+
   const copyCoverLetter = async (): Promise<void> => {
     setNotice('');
     setError('');
@@ -125,6 +152,7 @@ export function ReviewQueueApplicationCard({
   const isLowMatch = job.score < 60;
   const coverLetterWords = wordCount(currentApplication.coverLetter);
   const downloadBase = `${API_URL}/applications/${currentApplication.id}/cover-letter/download`;
+  const publicationTiming = offerPublicationTiming(job.publishedAt, job.discoveredAt);
 
   return (
     <article className={styles.card} aria-label={`Offre à examiner : ${job.title}`}>
@@ -137,12 +165,14 @@ export function ReviewQueueApplicationCard({
             {job.location && <span>{job.location}</span>}
             {job.workMode && <span>{job.workMode}</span>}
             {job.source && <span>{job.source}</span>}
+            <span title={publicationTiming.exactLabel ?? undefined}>{publicationTiming.label}</span>
           </div>
         </div>
         <div className={styles.badges}>
           <Badge tone={applicationStatusTone(currentApplication.status)}>
             {applicationBadgeLabel(currentApplication)}
           </Badge>
+          {publicationTiming.stale && <Badge tone="warn">Offre ancienne</Badge>}
           {isLowMatch && <Badge tone="warn">Match faible · {job.score}%</Badge>}
           <Badge tone={isCdi ? 'good' : 'neutral'}>{isCdi ? 'CDI' : 'Non-CDI'}</Badge>
           {!isCdi && contractLabel !== 'Non renseigné' && <Badge>{contractLabel}</Badge>}
@@ -159,6 +189,15 @@ export function ReviewQueueApplicationCard({
             </a>
           )}
 
+          <button
+            className="btn secondary small"
+            type="button"
+            disabled={saving || markingUnavailable}
+            onClick={() => void markOfferUnavailable()}
+          >
+            {markingUnavailable ? 'Enregistrement…' : 'Offre indisponible'}
+          </button>
+
           {currentApplication.cvDocument && (
             <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
               Ouvrir le CV
@@ -172,7 +211,7 @@ export function ReviewQueueApplicationCard({
             <select
               aria-label="Statut de suivi dans JobPilot"
               value={selectedStatus}
-              disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+              disabled={saving || markingUnavailable || currentApplication.status === 'SUBMISSION_PENDING'}
               onChange={(event) => setSelectedStatus(event.target.value)}
             >
               {TRACKING_STATUSES.map(([value, label]) => (
@@ -185,6 +224,7 @@ export function ReviewQueueApplicationCard({
             className="btn secondary small"
             type="button"
             disabled={saving
+              || markingUnavailable
               || currentApplication.status === 'SUBMISSION_PENDING'
               || selectedStatus === currentApplication.status}
             onClick={() => void saveTrackingStatus()}

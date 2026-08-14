@@ -58,7 +58,7 @@ describe('CoverLetterDrawer regeneration', () => {
       />,
     );
 
-    expect(screen.getByText(/caractères/)).toBeInTheDocument();
+    expect(screen.getByText(/mots · .*caractères/)).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Longueur maximale de la lettre' })).toHaveValue(1500);
     expect(screen.getByRole('button', { name: 'Régénérer' })).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('CoverLetterDrawer regeneration', () => {
     expect(screen.getByRole('status')).toHaveTextContent('limite de 900 caractères');
   });
 
-  it('asks for confirmation before overwriting a manually edited letter', async () => {
+  it('asks for confirmation before overwriting a manually edited letter', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     render(

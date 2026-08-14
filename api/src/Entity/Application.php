@@ -69,6 +69,24 @@ class Application
         return $this;
     }
 
+    public function regenerateMessage(string $message): void
+    {
+        $this->assertRegenerationAllowed();
+        $message = $this->normalizeGeneratedContent($message, 'Le message de motivation');
+        $this->message = $message;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function regenerateCoverLetter(string $coverLetter): void
+    {
+        $this->assertRegenerationAllowed();
+        $coverLetter = $this->normalizeGeneratedContent($coverLetter, 'La lettre de motivation');
+        $this->generatedCoverLetter = $coverLetter;
+        $this->coverLetter = $coverLetter;
+        $this->coverLetterEditedAt = null;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function editCoverLetter(string $coverLetter): void
     {
         $coverLetter = trim(str_replace("\r\n", "\n", $coverLetter));
@@ -240,6 +258,26 @@ class Application
             'createdAt' => $this->createdAt->format(DATE_ATOM),
             'updatedAt' => $this->updatedAt->format(DATE_ATOM),
         ];
+    }
+
+    private function assertRegenerationAllowed(): void
+    {
+        if (in_array($this->status, ['SUBMITTED', 'SUBMISSION_PENDING'], true)) {
+            throw new \LogicException('Le contenu d’une candidature déjà envoyée ou en cours d’envoi ne peut pas être régénéré.');
+        }
+    }
+
+    private function normalizeGeneratedContent(string $content, string $label): string
+    {
+        $content = trim(str_replace("\r\n", "\n", $content));
+        if ($content === '') {
+            throw new \InvalidArgumentException($label.' ne peut pas être vide.');
+        }
+        if (mb_strlen($content) > 50_000) {
+            throw new \InvalidArgumentException($label.' dépasse la taille maximale autorisée.');
+        }
+
+        return $content;
     }
 
     private function parseDate(mixed $value): ?\DateTimeImmutable

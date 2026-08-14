@@ -14,14 +14,20 @@ It currently:
 - keeps **only** applications whose persisted status is `READY_TO_SUBMIT`;
 - excludes every already-treated or non-ready status such as `SUBMITTED`, `INTERVIEW`, `REJECTED`, `OFFER_RECEIVED`, `RECRUITER_REPLIED`, `SUBMISSION_FAILED`, `OFFER_UNAVAILABLE` and `IGNORED_NOT_MATCH`;
 - shows one application at a time in a full-width decision card;
-- keeps the complete job description visible immediately instead of showing the prepared application message as the main content;
+- keeps the complete job description visible immediately;
 - exposes title, company, location, work mode, source, application state and contract type at first glance;
 - shows how long ago the offer was published when the source provides `publishedAt`;
 - falls back to **Détectée il y a…** when only JobPilot's discovery timestamp is known, so discovery time is never presented as a publication date;
 - exposes the exact publication/discovery timestamp as the tooltip of the relative-age label;
 - flags offers published at least seven days ago with an **Offre ancienne** warning;
 - explicitly identifies `CDI` versus `Non-CDI` while also showing the original contract label;
-- exposes CV/cover-letter/compensation readiness without occupying the page with the prepared message body;
+- exposes a compact **Message court de motivation** in the candidature section, separately from the full cover letter;
+- shows the current short-message character count and warns when an existing message exceeds the common 400-character portal limit;
+- defaults the short-message regeneration target to a maximum of **400 characters**, while allowing the user to choose another maximum between 50 and 5,000 characters;
+- keeps the full cover letter in its drawer and shows both word and character counts there;
+- allows independent cover-letter regeneration with a user-selected maximum between 200 and 20,000 characters;
+- confirms before regeneration when the cover letter was manually edited, because regeneration deliberately replaces that manual version;
+- exposes CV/cover-letter/compensation readiness without putting the long cover letter on the main card;
 - shows a compact **Environment & profile** comparison before the long mission description;
 - distinguishes the detected primary stack, technologies shared with the configured profile, missing must-haves and other missing technologies;
 - reuses already-recorded Gemini decision/confidence/primary-stack metadata when the existing score came from AI, without making a new provider call merely to render Review Queue;
@@ -43,7 +49,22 @@ It currently:
 
 The top of the page is intentionally compact: the oversized page description and large return action were replaced by a small title/count strip and a compact `← Offres` link. The saved vertical space belongs to the mission card.
 
-The Review Queue intentionally does not render the prepared application message as the primary review content. That material remains available through the existing Offers/Application editing flows. The Review Queue is optimized for the decision about the job itself: mission context, matching quality, contract, freshness and next action.
+The short motivation message is intentionally visible because it is useful when a job board asks for a small free-text motivation field. It is not the same artifact as the cover letter: the cover letter remains in its drawer so that the long text does not dominate the mission review experience.
+
+## Motivation content and character limits
+
+JobPilot keeps two independent motivation artifacts on an application:
+
+- `message`: the short application message, also usable as an email body;
+- `coverLetter`: the full cover letter used for manual submission/download.
+
+The Review Queue exposes separate **Régénérer** actions. A requested number is treated as a **maximum character count**, not as an exact length. The generator prefers the richest coherent version that fits the requested maximum. It only shortens further when necessary, and the backend verifies the allowed range before persistence.
+
+The default short-message maximum is 400 characters because many application forms use a small motivation field. This default does not imply that every platform has the same limit: the user can enter the actual platform limit before regenerating.
+
+Cover-letter regeneration is independent and defaults to 1,500 characters. If the current letter was edited manually, JobPilot requires confirmation before replacing it. A successful regeneration becomes the new generated version and clears the manual-edit marker. Editing and reset continue to work as before.
+
+Regeneration does not change the application status. Applications already `SUBMITTED` or `SUBMISSION_PENDING` are protected from content regeneration.
 
 ## Offer freshness
 
@@ -91,11 +112,13 @@ The candidate side is grounded only in configured `targetJobs` and `skills`. The
 The expected fast path is:
 
 1. read the publication age, mission, technology comparison and matching explanation;
-2. optionally open the source platform to verify the offer;
-3. if the source says the offer is gone, click **Offre indisponible** and confirm;
-4. if the application was submitted externally, click the green `Envoyée` decision;
-5. otherwise, if the job does not fit the profile, click the red `Ne correspond pas` decision;
-6. after the persisted status update succeeds, JobPilot automatically shows the next ready application.
+2. review/copy the short motivation message when the source uses a small text field, and regenerate it with the source's maximum if needed;
+3. open and optionally regenerate the full cover letter only when the application flow asks for it;
+4. optionally open the source platform to verify the offer;
+5. if the source says the offer is gone, click **Offre indisponible** and confirm;
+6. if the application was submitted externally, click the green `Envoyée` decision;
+7. otherwise, if the job does not fit the profile, click the red `Ne correspond pas` decision;
+8. after the persisted status update succeeds, JobPilot automatically shows the next ready application.
 
 `Précédente` and `Suivante` remain available for browsing but are visually secondary because they do not complete the review workflow.
 
@@ -107,7 +130,9 @@ The primary bottom decisions are explicit shortcuts for the two most frequent fi
 
 ## Safety and compatibility
 
-This behavior adds no database schema, connector or external-submission behavior. Publication age uses timestamps already returned by the job API. The unavailable action uses string statuses already supported by the existing entities and therefore needs no migration.
+This behavior adds no database schema, connector or external-submission behavior. Motivation regeneration reuses the existing `message`, `coverLetter` and generated-cover-letter fields, so no migration is required. The bounded motivation generator is local and grounded in the persisted offer/profile/configured skills; regeneration itself does not trigger an external AI/provider request.
+
+Publication age uses timestamps already returned by the job API. The unavailable action uses string statuses already supported by the existing entities and therefore needs no migration.
 
 `Envoyée` records that the user already submitted the application; it does not submit to an external platform. **Offre indisponible** records a user-confirmed local observation; it neither calls nor modifies the external platform. Keyboard navigation never fires while the user is interacting with a form control. The technology comparison makes no external AI call and never bypasses the AI quota/cache layer. The change does not bypass authentication, CAPTCHA, quotas, robots/compliance policy or source restrictions. Existing Offers and Applications pages remain available.
 

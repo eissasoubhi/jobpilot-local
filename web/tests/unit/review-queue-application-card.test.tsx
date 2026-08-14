@@ -20,7 +20,7 @@ function application(overrides: Partial<Application> = {}): Application {
     id: 42,
     channel: 'Préparation locale',
     status: 'READY_TO_SUBMIT',
-    message: 'Ce message préparé ne doit pas occuper la Review Queue.',
+    message: 'Ce message préparé est disponible dans la Review Queue.',
     coverLetter: 'Lettre de motivation préparée.',
     compensationAnswer: '55 000 € brut annuel',
     updatedAt: '2026-08-08T00:00:00+02:00',
@@ -101,7 +101,7 @@ describe('ReviewQueueApplicationCard', () => {
     });
   });
 
-  it('prioritizes the mission and keeps the cover letter out of the main page', () => {
+  it('prioritizes the mission while exposing compact application content', () => {
     render(<ReviewQueueApplicationCard application={applicationWithComparison()} />);
 
     expect(screen.getByRole('article', { name: /Développeur Front-end React/ })).toBeInTheDocument();
@@ -130,11 +130,12 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByRole('button', { name: 'Appliquer' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Ouvrir la plateforme' })).toHaveAttribute('href', 'https://example.test/jobs/7');
     expect(screen.getByRole('link', { name: 'Ouvrir le CV' })).toHaveAttribute('href', '/api/cvs/3/download');
-    expect(screen.queryByText('Ce message préparé ne doit pas occuper la Review Queue.')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Documents prêts à envoyer' })).toBeInTheDocument();
+    expect(screen.getByText('Ce message préparé est disponible dans la Review Queue.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contenu prêt à envoyer' })).toBeInTheDocument();
+    expect(screen.getByText('Message court de motivation')).toBeInTheDocument();
     expect(screen.getByText('Lettre de motivation')).toBeInTheDocument();
-    expect(screen.getByText('4 mots · cible 150–220')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Voir / Modifier' })).toBeInTheDocument();
+    expect(screen.getByText('4 mots dans la lettre')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir / Modifier la lettre' })).toBeInTheDocument();
     expect(screen.queryByText('Lettre de motivation préparée.')).not.toBeInTheDocument();
     expect(screen.getByText('PDF').closest('a')).toHaveAttribute(
       'href',
@@ -149,12 +150,12 @@ describe('ReviewQueueApplicationCard', () => {
   it('opens the letter in a drawer without replacing the mission context', () => {
     render(<ReviewQueueApplicationCard application={application()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Lettre de motivation' });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText('Lettre de motivation préparée.')).toBeInTheDocument();
-    expect(within(dialog).getByText(/cible 150–220/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/mots · .*caractères/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Description de la mission' })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -219,7 +220,7 @@ describe('ReviewQueueApplicationCard', () => {
       method: 'PATCH',
       body: JSON.stringify({
         status: 'INTERVIEW',
-        message: 'Ce message préparé ne doit pas occuper la Review Queue.',
+        message: 'Ce message préparé est disponible dans la Review Queue.',
         coverLetter: 'Lettre de motivation préparée.',
         compensationAnswer: '55 000 € brut annuel',
       }),
@@ -244,7 +245,7 @@ describe('ReviewQueueApplicationCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
     const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
     expect(editor).toHaveValue('Lettre de motivation préparée.');
@@ -265,7 +266,7 @@ describe('ReviewQueueApplicationCard', () => {
   it('cancels an unsaved cover letter edit in the drawer', () => {
     render(<ReviewQueueApplicationCard application={application()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
     const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
     fireEvent.change(editor, { target: { value: 'Brouillon non sauvegardé.' } });
@@ -280,7 +281,7 @@ describe('ReviewQueueApplicationCard', () => {
     copyMock.mockResolvedValueOnce(undefined);
     render(<ReviewQueueApplicationCard application={application()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copier la lettre' }));
 
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Lettre de motivation préparée.'));
     expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation copiée.');
@@ -301,7 +302,7 @@ describe('ReviewQueueApplicationCard', () => {
     apiMock.mockResolvedValueOnce(reset);
 
     render(<ReviewQueueApplicationCard application={manual} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
     fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42/cover-letter/reset', {

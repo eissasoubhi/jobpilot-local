@@ -12,7 +12,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 function application(manuallyEdited = false): Application {
-  const item = {
+  return {
     id: 61,
     channel: 'Préparation locale',
     status: 'READY_TO_SUBMIT',
@@ -20,7 +20,6 @@ function application(manuallyEdited = false): Application {
     coverLetter: 'Lettre de motivation actuellement affichée.',
     coverLetterManuallyEdited: manuallyEdited,
     coverLetterEditedAt: manuallyEdited ? '2026-08-14T18:00:00+02:00' : null,
-    compensationAnswer: null,
     updatedAt: '2026-08-14T19:00:00+02:00',
     jobOffer: {
       id: 9,
@@ -38,9 +37,7 @@ function application(manuallyEdited = false): Application {
       sources: [],
       sourceCount: 1,
     },
-  };
-
-  return item as Application;
+  } as Application & { coverLetterManuallyEdited?: boolean; coverLetterEditedAt?: string | null };
 }
 
 beforeEach(() => {

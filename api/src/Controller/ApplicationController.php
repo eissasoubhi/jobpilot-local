@@ -8,6 +8,7 @@ use App\Entity\Application;
 use App\Entity\UserSettings;
 use App\Service\ApplicationCvRepairService;
 use App\Service\ApplicationMessageUpgradeService;
+use App\Service\ApplicationMotivationRegenerator;
 use App\Service\CoverLetterDocumentExporter;
 use App\Service\JobProfileTechnologyComparisonService;
 use App\Service\LocalDataService;
@@ -32,6 +33,7 @@ final class ApplicationController
         private JobProfileTechnologyComparisonService $technologyComparison,
         private CoverLetterDocumentExporter $coverLetterDocumentExporter,
         private JobTimelineRecorder $timeline,
+        private ApplicationMotivationRegenerator $motivationRegenerator,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -63,6 +65,52 @@ final class ApplicationController
                 $application->getSubmittedAt(),
                 'manual-status',
             );
+        }
+
+        $this->em->flush();
+
+        return new JsonResponse($this->serialize($application, $this->data->settings()));
+    }
+
+    #[Route('/{id}/message/regenerate', methods: ['POST'])]
+    public function regenerateMessage(Application $application, Request $request): JsonResponse
+    {
+        try {
+            $maxCharacters = $this->maxCharacters($request, 400, 50, 5_000);
+            $message = $this->motivationRegenerator->message(
+                $application->getJobOffer(),
+                $this->data->profile(),
+                $maxCharacters,
+            );
+            $application->regenerateMessage($message);
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 400);
+        } catch (\LogicException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 409);
+        }
+
+        $this->em->flush();
+
+        return new JsonResponse($this->serialize($application, $this->data->settings()));
+    }
+
+    #[Route('/{id}/cover-letter/regenerate', methods: ['POST'])]
+    public function regenerateCoverLetter(Application $application, Request $request): JsonResponse
+    {
+        try {
+            $maxCharacters = $this->maxCharacters($request, 1_500, 200, 20_000);
+            $settings = $this->data->settings();
+            $coverLetter = $this->motivationRegenerator->coverLetter(
+                $application->getJobOffer(),
+                $this->data->profile(),
+                $settings->getSkills(),
+                $maxCharacters,
+            );
+            $application->regenerateCoverLetter($coverLetter);
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 400);
+        } catch (\LogicException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 409);
         }
 
         $this->em->flush();
@@ -148,6 +196,33 @@ final class ApplicationController
             ...$application->toArray(),
             'profileComparison' => $this->technologyComparison->compare($application->getJobOffer(), $settings),
         ];
+    }
+
+    private function maxCharacters(Request $request, int $default, int $min, int $max): int
+    {
+        $payload = $request->toArray();
+        if (!array_key_exists('maxCharacters', $payload)) {
+            return $default;
+        }
+
+        $raw = $payload['maxCharacters'];
+        if (is_int($raw)) {
+            $value = $raw;
+        } elseif (is_string($raw) && ctype_digit($raw)) {
+            $value = (int) $raw;
+        } else {
+            throw new \InvalidArgumentException('La longueur maximale doit être un nombre entier de caractères.');
+        }
+
+        if ($value < $min || $value > $max) {
+            throw new \InvalidArgumentException(sprintf(
+                'La longueur maximale doit être comprise entre %d et %d caractères.',
+                $min,
+                $max,
+            ));
+        }
+
+        return $value;
     }
 
     private function downloadResponse(string $content, string $contentType, string $filename): Response

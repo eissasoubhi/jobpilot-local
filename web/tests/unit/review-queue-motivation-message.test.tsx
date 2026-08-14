@@ -26,7 +26,6 @@ function application(message = 'Message court déjà préparé.'): Application {
     status: 'READY_TO_SUBMIT',
     message,
     coverLetter: 'Lettre longue préparée.',
-    compensationAnswer: null,
     updatedAt: '2026-08-14T19:00:00+02:00',
     jobOffer: {
       id: 8,
@@ -45,7 +44,7 @@ function application(message = 'Message court déjà préparé.'): Application {
       sources: [],
       sourceCount: 1,
     },
-  } as Application;
+  };
 }
 
 describe('Review Queue motivation message', () => {

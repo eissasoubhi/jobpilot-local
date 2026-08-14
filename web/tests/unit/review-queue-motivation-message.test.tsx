@@ -64,7 +64,7 @@ describe('Review Queue motivation message', () => {
 
     expect(screen.getByText('Message court de motivation')).toBeInTheDocument();
     expect(screen.getByText('Message court déjà préparé.')).toBeInTheDocument();
-    expect(screen.getByText('28 caractères')).toBeInTheDocument();
+    expect(screen.getByText('27 caractères')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' })).toHaveValue(400);
     expect(screen.getByRole('button', { name: 'Régénérer le message' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copier le message' })).toBeInTheDocument();

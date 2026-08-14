@@ -97,7 +97,7 @@ export type Job = {
   id: number; source: string; sourceCode?: string; sourceUrl?: string; title: string; company: string; clientName?: string;
   sources: JobSourceOccurrence[]; sourceCount: number;
   applicationEmail?: string; location: string; contractType: string; workMode: string; language: string; description: string;
-  publishedAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
+  publishedAt?: string; discoveredAt?: string; ageHours?: number; salaryMin?: number; salaryMax?: number;
   tjmFixed?: number; tjmMin?: number; tjmMax?: number; proposedTjm?: number; proposedSalary?: number;
   score: number; scoreReasons: string[]; status: string; recommendedCv?: Cv;
 };

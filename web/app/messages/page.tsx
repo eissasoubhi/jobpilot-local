@@ -5,6 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import {
+  filterMessages,
+  sortMessagesByUrgency,
+  urgencyCounts,
+  type MessageFilter,
+  type MessageUrgency,
+} from '@/lib/message-urgency';
 
 type MessageCategory =
   | 'JOB_ALERT'
@@ -36,6 +43,7 @@ type Message = {
   application: { id: number; status: string } | null;
   jobOffer: { id: number; title: string; company: string } | null;
   matchedAt: string | null;
+  urgency: MessageUrgency;
 };
 
 type GmailStatus = {
@@ -78,7 +86,7 @@ const categoryTone = (category: MessageCategory): 'good' | 'warn' | 'bad' | 'blu
 export default function MessagesPage() {
   const [items, setItems] = useState<Message[] | null>(null);
   const [status, setStatus] = useState<GmailStatus | null>(null);
-  const [filter, setFilter] = useState('ALL');
+  const [filter, setFilter] = useState<MessageFilter>('ALL');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
@@ -86,14 +94,9 @@ export default function MessagesPage() {
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      const query = filter === 'ACTION_REQUIRED'
-        ? '?actionRequired=true&processed=false'
-        : filter !== 'ALL'
-          ? `?category=${encodeURIComponent(filter)}`
-          : '';
       const [gmailStatus, messages] = await Promise.all([
         api<GmailStatus>('/integrations/gmail/status'),
-        api<Message[]>(`/integrations/gmail/messages${query}`),
+        api<Message[]>('/integrations/gmail/messages?limit=250'),
       ]);
       setStatus(gmailStatus);
       setItems(messages);
@@ -101,21 +104,28 @@ export default function MessagesPage() {
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
+    const requestedFilter = new URLSearchParams(window.location.search).get('filter');
+    if (requestedFilter) setFilter(requestedFilter);
     void load();
   }, [load]);
 
   const counts = useMemo(() => {
     const messages = items ?? [];
+    const urgency = urgencyCounts(messages);
     return {
-      actionRequired: messages.filter((message) => message.actionRequired && !message.processed).length,
-      interviews: messages.filter((message) => message.category === 'INTERVIEW_REQUEST').length,
-      recruiter: messages.filter((message) => message.category === 'RECRUITER_OPPORTUNITY').length,
-      alerts: messages.filter((message) => message.category === 'JOB_ALERT').length,
+      ...urgency,
+      interviews: messages.filter((message) => message.category === 'INTERVIEW_REQUEST' && !message.processed).length,
+      recruiter: messages.filter((message) => message.category === 'RECRUITER_OPPORTUNITY' && !message.processed).length,
     };
   }, [items]);
+
+  const visibleItems = useMemo(
+    () => sortMessagesByUrgency(filterMessages(items ?? [], filter)),
+    [filter, items],
+  );
 
   const sync = async (): Promise<void> => {
     setSyncing(true);
@@ -156,7 +166,7 @@ export default function MessagesPage() {
     <>
       <PageHeader
         title="Messagerie"
-        description="Inbox intelligente pour les alertes d’offres, recruteurs, réponses, refus et entretiens."
+        description="Inbox intelligente qui met en avant les entretiens, informations demandées, propositions directes et réponses qui nécessitent une action rapide."
         actions={readable ? (
           <button className="btn" type="button" disabled={syncing} onClick={() => void sync()}>
             {syncing ? 'Synchronisation…' : 'Synchroniser Gmail'}
@@ -174,11 +184,25 @@ export default function MessagesPage() {
       {info !== '' && <div className="notice">{info}</div>}
       {error !== '' && <ErrorBox message={error} />}
 
+      {items !== null && counts.urgent > 0 && (
+        <div className="notice warning" style={{ marginTop: 16 }} role="status">
+          <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong>{counts.urgent} message(s) urgent(s) à traiter.</strong>{' '}
+              Les raisons sont affichées sur chaque message ; JobPilot ne répond jamais automatiquement à ta place.
+            </div>
+            <button className="btn small" type="button" onClick={() => setFilter('URGENT')}>
+              Voir les urgences
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid cols-4" style={{ marginTop: 16, marginBottom: 18 }}>
-        <Card className="stat-card"><span>Actions à traiter</span><strong>{counts.actionRequired}</strong></Card>
+        <Card className="stat-card"><span>Urgents</span><strong>{counts.urgent}</strong></Card>
+        <Card className="stat-card"><span>À traiter</span><strong>{counts.actionRequired}</strong></Card>
         <Card className="stat-card"><span>Entretiens</span><strong>{counts.interviews}</strong></Card>
         <Card className="stat-card"><span>Propositions recruteurs</span><strong>{counts.recruiter}</strong></Card>
-        <Card className="stat-card"><span>Alertes emploi</span><strong>{counts.alerts}</strong></Card>
       </div>
 
       <Card>
@@ -186,6 +210,8 @@ export default function MessagesPage() {
           Afficher
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value="ALL">Tous les messages</option>
+            <option value="URGENT">Urgents uniquement</option>
+            <option value="PRIORITY">Urgents et prioritaires</option>
             <option value="ACTION_REQUIRED">Actions à traiter</option>
             {Object.entries(categoryLabels).map(([value, label]) => (
               <option value={value} key={value}>{label}</option>
@@ -195,20 +221,24 @@ export default function MessagesPage() {
 
         {items === null ? (
           <Loading />
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <Empty>
             {connected
               ? 'Aucun message ne correspond à ce filtre. Lance une synchronisation ou change le filtre.'
               : 'Connecte Gmail depuis les paramètres.'}
           </Empty>
         ) : (
-          items.map((message) => (
+          visibleItems.map((message) => (
             <div className="list-row" key={message.id}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="actions">
+                  {message.urgency.level === 'URGENT' && <Badge tone="bad">Urgent</Badge>}
+                  {message.urgency.level === 'PRIORITY' && <Badge tone="warn">Prioritaire</Badge>}
                   <Badge tone={categoryTone(message.category)}>{categoryLabels[message.category]}</Badge>
                   {message.sourcePlatform && <Badge tone="blue">{message.sourcePlatform}</Badge>}
-                  {message.actionRequired && !message.processed && <Badge tone="warn">Action requise</Badge>}
+                  {message.urgency.level === 'NORMAL' && message.actionRequired && !message.processed && (
+                    <Badge tone="warn">Action requise</Badge>
+                  )}
                   {message.processed && <Badge tone="good">Traité</Badge>}
                   <span className="muted small">
                     {new Date(message.receivedAt).toLocaleString('fr-FR')}
@@ -219,8 +249,15 @@ export default function MessagesPage() {
                 <div className="muted small">{message.sender}</div>
                 <p className="small">{message.snippet}</p>
 
+                {message.urgency.level !== 'NORMAL' && (
+                  <div className="notice warning" style={{ marginTop: 10 }}>
+                    {message.urgency.recommendedAction && <strong>{message.urgency.recommendedAction}.</strong>}{' '}
+                    {message.urgency.reasons.join(' ')}
+                  </div>
+                )}
+
                 {message.classificationReason && (
-                  <div className="muted small">Analyse : {message.classificationReason}</div>
+                  <div className="muted small" style={{ marginTop: 8 }}>Analyse : {message.classificationReason}</div>
                 )}
 
                 {message.jobOffer && (
@@ -239,7 +276,12 @@ export default function MessagesPage() {
 
                 <div className="actions" style={{ marginTop: 14 }}>
                   {message.gmailUrl && (
-                    <a className="btn secondary small" href={message.gmailUrl} target="_blank" rel="noreferrer">
+                    <a
+                      className={message.urgency.actionRequired ? 'btn small' : 'btn secondary small'}
+                      href={message.gmailUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       Ouvrir dans Gmail
                     </a>
                   )}

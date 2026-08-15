@@ -104,6 +104,16 @@ final class InboxMessage
         return $this->category;
     }
 
+    public function getSubject(): string
+    {
+        return $this->subject;
+    }
+
+    public function getSnippet(): string
+    {
+        return $this->snippet;
+    }
+
     public function getReceivedAt(): \DateTimeImmutable
     {
         return $this->receivedAt;

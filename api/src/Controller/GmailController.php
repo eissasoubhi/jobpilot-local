@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Application;
 use App\Entity\InboxMessage;
+use App\Messaging\Application\InboxMessageUrgencyEvaluator;
 use App\Service\ApplicationEmailFactory;
 use App\Service\GmailService;
 use App\Service\GmailTokenStore;
@@ -25,6 +26,7 @@ final class GmailController
         private ApplicationEmailFactory $emailFactory,
         private JobSearchSyncService $jobSync,
         private EntityManagerInterface $em,
+        private InboxMessageUrgencyEvaluator $urgencyEvaluator,
     ) {}
 
     #[Route('/status', methods: ['GET'])]
@@ -234,7 +236,7 @@ final class GmailController
         $items = $this->em->getRepository(InboxMessage::class)->findBy($criteria, ['receivedAt' => 'DESC'], $limit);
 
         return new JsonResponse(array_map(
-            static fn (InboxMessage $message): array => $message->toArray(),
+            fn (InboxMessage $message): array => $this->messagePayload($message),
             $items,
         ));
     }
@@ -251,7 +253,16 @@ final class GmailController
         $message->markProcessed($processed);
         $this->em->flush();
 
-        return new JsonResponse($message->toArray());
+        return new JsonResponse($this->messagePayload($message));
+    }
+
+    /** @return array<string, mixed> */
+    private function messagePayload(InboxMessage $message): array
+    {
+        return [
+            ...$message->toArray(),
+            'urgency' => $this->urgencyEvaluator->evaluate($message),
+        ];
     }
 
     /**

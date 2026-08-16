@@ -10,6 +10,7 @@ import { Badge } from '@/components/UI';
 import { API_URL, api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
+import { jobDescriptionToPlainText } from '@/lib/job-description';
 import { offerPublicationTiming } from '@/lib/job-publication';
 import type { Application } from '@/lib/types';
 
@@ -188,7 +189,7 @@ export function ReviewQueueApplicationCard({
   const hasCoverLetter = currentApplication.coverLetter.trim() !== '';
   const hasCompensation = (currentApplication.compensationAnswer ?? '').trim() !== '';
   const scoreReasons = job.scoreReasons ?? [];
-  const description = job.description?.trim() || 'Description non disponible.';
+  const description = jobDescriptionToPlainText(job.description) || 'Description non disponible.';
   const descriptionIsLong = description.length > 1_400 || description.split('\n').length > 18;
   const isLowMatch = job.score < 60;
   const messageCharacters = currentApplication.message.length;

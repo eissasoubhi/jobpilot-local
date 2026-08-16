@@ -70,8 +70,8 @@ final class JobPriorityScoreServiceTest extends TestCase
             'manual' => [
                 'code' => 'manual',
                 'submitted' => 20,
-                'responseRate' => 60.0,
-                'interviewRate' => 40.0,
+                'responseRate' => 80.0,
+                'interviewRate' => 70.0,
             ],
         ]);
 

@@ -7,8 +7,10 @@ namespace App\Controller;
 use App\Entity\JobOffer;
 use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\Service\ApplicationPreparationService;
+use App\Service\JobPriorityScoreService;
 use App\Service\JobProcessor;
 use App\Service\LocalDataService;
+use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +25,8 @@ final class JobController
         private JobProcessor $processor,
         private CanonicalJobOfferService $canonicalJobs,
         private ApplicationPreparationService $preparation,
+        private JobPriorityScoreService $priorityScore,
+        private SourceConversionReportService $conversionReport,
     ) {
     }
 
@@ -30,20 +34,56 @@ final class JobController
     public function list(): JsonResponse
     {
         $jobs = $this->em->getRepository(JobOffer::class)->findAll();
-        usort($jobs, static function (JobOffer $a, JobOffer $b): int {
-            $aBucket = self::freshnessBucket($a->getPublishedAt());
-            $bBucket = self::freshnessBucket($b->getPublishedAt());
+        $profile = $this->data->profile();
+        $sourcePerformance = $this->sourcePerformance();
 
-            return $aBucket === $bBucket ? $b->getScore() <=> $a->getScore() : $aBucket <=> $bBucket;
+        $ranked = array_map(function (JobOffer $job) use ($profile, $sourcePerformance): array {
+            $priority = $this->priorityScore->evaluate($job, $profile, $sourcePerformance);
+            $payload = $job->toArray();
+            $payload['priorityScore'] = $priority['score'];
+            $payload['priorityReasons'] = $priority['reasons'];
+            $payload['priorityComponents'] = $priority['components'];
+
+            return [
+                'job' => $job,
+                'payload' => $payload,
+                'priority' => $priority['score'],
+            ];
+        }, $jobs);
+
+        usort($ranked, static function (array $a, array $b): int {
+            $priorityOrder = $b['priority'] <=> $a['priority'];
+            if ($priorityOrder !== 0) {
+                return $priorityOrder;
+            }
+
+            /** @var JobOffer $aJob */
+            $aJob = $a['job'];
+            /** @var JobOffer $bJob */
+            $bJob = $b['job'];
+
+            $matchOrder = $bJob->getScore() <=> $aJob->getScore();
+            if ($matchOrder !== 0) {
+                return $matchOrder;
+            }
+
+            return ($bJob->getPublishedAt()?->getTimestamp() ?? 0)
+                <=> ($aJob->getPublishedAt()?->getTimestamp() ?? 0);
         });
 
-        return new JsonResponse(array_map(static fn (JobOffer $job): array => $job->toArray(), $jobs));
+        return new JsonResponse(array_column($ranked, 'payload'));
     }
 
     #[Route('/{id}', methods: ['GET'])]
     public function get(JobOffer $job): JsonResponse
     {
-        return new JsonResponse($job->toArray());
+        $priority = $this->priorityScore->evaluate($job, $this->data->profile(), $this->sourcePerformance());
+        $payload = $job->toArray();
+        $payload['priorityScore'] = $priority['score'];
+        $payload['priorityReasons'] = $priority['reasons'];
+        $payload['priorityComponents'] = $priority['components'];
+
+        return new JsonResponse($payload);
     }
 
     #[Route('', methods: ['POST'])]
@@ -90,19 +130,22 @@ final class JobController
         return new JsonResponse(null, 204);
     }
 
-    private static function freshnessBucket(?\DateTimeImmutable $date): int
+    /** @return array<string, array<string, int|string|float|null>> */
+    private function sourcePerformance(): array
     {
-        if ($date === null) {
-            return 5;
-        }
-        $hours = max(0, (time() - $date->getTimestamp()) / 3600);
+        $report = $this->conversionReport->report();
+        $performance = [];
 
-        return match (true) {
-            $hours < 24 => 0,
-            $hours < 72 => 1,
-            $hours < 168 => 2,
-            $hours < 336 => 3,
-            default => 4,
-        };
+        foreach ($report['sources'] ?? [] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $code = strtolower(trim((string) ($row['code'] ?? '')));
+            if ($code !== '') {
+                $performance[$code] = $row;
+            }
+        }
+
+        return $performance;
     }
 }

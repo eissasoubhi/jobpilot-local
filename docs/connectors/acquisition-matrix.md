@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou, Meteojob et Cadremploi sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, Collective.work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou, Meteojob et Cadremploi sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -76,6 +76,21 @@ La visibilité publique d’une page ne constitue pas une autorisation de scrape
 Référence officielle : <https://www.free-work.com/fr/terms>
 
 JobPilot ne doit donc pas ajouter de scraper HTTP ou navigateur planifié pour Free-Work sans autorisation écrite ou canal officiel distinct. Le connecteur Gmail et l’import assisté restent les voies sûres déjà prévues.
+
+#### Cas Collective.work
+
+Décision revue le **11 août 2026** sur les CGU officielles Collective.work et les pages publiques d’opportunités.
+
+Les CGU indiquent explicitement que le re-postage, le scraping, l’utilisation automatisée et l’utilisation à grand volume de la plateforme sont interdits. L’utilisateur ne dispose que d’un droit d’utilisation pour son propre compte. La visibilité publique des opportunités ne constitue donc pas une autorisation de collecte planifiée.
+
+Références officielles :
+
+- <https://www.collective.work/cgu>
+- <https://www.collective.work/jobs/fr>
+
+JobPilot classe Collective.work en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP/Browser planifié, aucune automatisation de session et aucun endpoint non documenté ne sont ajoutés. Les alertes Gmail lorsqu’elles existent et sont reconnues, ainsi que l’import volontaire d’une page ouverte par l’utilisateur, restent les canaux admis.
+
+Cette décision ne pourra être réouverte qu’après publication d’un canal officiel réutilisable ou autorisation écrite applicable de Collective.work.
 
 #### Cas WeLoveDevs
 

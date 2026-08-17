@@ -21,13 +21,14 @@ It currently:
 - exposes the exact publication/discovery timestamp as the tooltip of the relative-age label;
 - flags offers published at least seven days ago with an **Offre ancienne** warning;
 - explicitly identifies `CDI` versus `Non-CDI` while also showing the original contract label;
-- exposes a compact **Message court de motivation** in the candidature section, separately from the full cover letter;
-- shows the current short-message character count and warns when an existing message exceeds the common 400-character portal limit;
+- keeps the candidature section compact by showing only the readiness and character count of the **Message court**, not its full text;
+- groups the full **Lettre de motivation** and **Message court** in the same right-side **Motivation** drawer with two tabs;
+- shows the current short-message character count and warns inside its drawer tab when an existing message exceeds the common 400-character portal limit;
 - defaults the short-message regeneration target to a maximum of **400 characters**, while allowing the user to choose another maximum between 50 and 5,000 characters;
-- keeps the full cover letter in its drawer and shows both word and character counts there;
+- shows cover-letter word and character counts in the **Lettre de motivation** tab;
 - allows independent cover-letter regeneration with a user-selected maximum between 200 and 20,000 characters;
 - confirms before regeneration when the cover letter was manually edited, because regeneration deliberately replaces that manual version;
-- exposes CV/cover-letter/compensation readiness without putting the long cover letter on the main card;
+- exposes CV/message/cover-letter/compensation readiness without putting either motivation text directly on the main card;
 - shows a compact **Environment & profile** comparison before the long mission description;
 - distinguishes the detected primary stack, technologies shared with the configured profile, missing must-haves and other missing technologies;
 - reuses already-recorded Gemini decision/confidence/primary-stack metadata when the existing score came from AI, without making a new provider call merely to render Review Queue;
@@ -49,7 +50,7 @@ It currently:
 
 The top of the page is intentionally compact: the oversized page description and large return action were replaced by a small title/count strip and a compact `← Offres` link. The saved vertical space belongs to the mission card.
 
-The short motivation message is intentionally visible because it is useful when a job board asks for a small free-text motivation field. It is not the same artifact as the cover letter: the cover letter remains in its drawer so that the long text does not dominate the mission review experience.
+The motivation texts are deliberately kept out of the main Review Queue card. The candidature section only shows compact readiness information. Opening **Motivation** reveals two tabs, **Lettre de motivation** and **Message court**, so the user keeps the mission visible while all text-specific actions live in one side panel.
 
 ## Motivation content and character limits
 
@@ -58,11 +59,11 @@ JobPilot keeps two independent motivation artifacts on an application:
 - `message`: the short application message, also usable as an email body;
 - `coverLetter`: the full cover letter used for manual submission/download.
 
-The Review Queue exposes separate **Régénérer** actions. A requested number is treated as a **maximum character count**, not as an exact length. The generator prefers the richest coherent version that fits the requested maximum. It only shortens further when necessary, and the backend verifies the allowed range before persistence.
+The **Motivation** drawer exposes one tab per artifact. Each tab owns its own copy/regeneration controls and character limit. A requested number is treated as a **maximum character count**, not as an exact length. The generator prefers the richest coherent version that fits the requested maximum. It only shortens further when necessary, and the backend verifies the allowed range before persistence.
 
 The default short-message maximum is 400 characters because many application forms use a small motivation field. This default does not imply that every platform has the same limit: the user can enter the actual platform limit before regenerating.
 
-Cover-letter regeneration is independent and defaults to 1,500 characters. If the current letter was edited manually, JobPilot requires confirmation before replacing it. A successful regeneration becomes the new generated version and clears the manual-edit marker. Editing and reset continue to work as before.
+Cover-letter regeneration is independent and defaults to 1,500 characters. If the current letter was edited manually, JobPilot requires confirmation before replacing it. A successful regeneration becomes the new generated version and clears the manual-edit marker. Editing, download and reset continue to work from the cover-letter tab.
 
 Regeneration does not change the application status. Applications already `SUBMITTED` or `SUBMISSION_PENDING` are protected from content regeneration.
 
@@ -112,8 +113,8 @@ The candidate side is grounded only in configured `targetJobs` and `skills`. The
 The expected fast path is:
 
 1. read the publication age, mission, technology comparison and matching explanation;
-2. review/copy the short motivation message when the source uses a small text field, and regenerate it with the source's maximum if needed;
-3. open and optionally regenerate the full cover letter only when the application flow asks for it;
+2. open **Motivation** when a submission form asks for supporting text;
+3. use the **Message court** tab for a small free-text field, or the **Lettre de motivation** tab for the full letter, with independent copy/regeneration controls;
 4. optionally open the source platform to verify the offer;
 5. if the source says the offer is gone, click **Offre indisponible** and confirm;
 6. if the application was submitted externally, click the green `Envoyée` decision;

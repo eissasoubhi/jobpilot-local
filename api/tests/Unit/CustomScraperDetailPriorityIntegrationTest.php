@@ -57,7 +57,6 @@ HTML;
 HTML;
 
         $result = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($listing, ['http_code' => 200]),
             new MockResponse($symfonyDetail, ['http_code' => 200]),
         ]))->collect(

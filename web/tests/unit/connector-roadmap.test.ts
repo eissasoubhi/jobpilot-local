@@ -115,7 +115,7 @@ describe('platform acquisition matrix', () => {
   });
 
   it('keeps sources with restricted automated collection on user-authorized channels', () => {
-    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou', 'meteojob', 'cadremploi', 'collective-work']) {
+    for (const code of ['linkedin', 'indeed', 'free-work', 'we-love-devs', 'hellowork', 'welcome-to-the-jungle', 'lesjeudis', 'le-hibou', 'meteojob', 'cadremploi', 'collective-work', 'creme-de-la-creme']) {
       const connector = connectorRoadmap.find((entry) => entry.code === code);
 
       expect(connector).toBeDefined();
@@ -134,6 +134,19 @@ describe('platform acquisition matrix', () => {
     expect(connector?.note).toContain('scraping');
     expect(connector?.note).toContain('utilisation automatisée');
     expect(connector?.nextStep).toContain('Gmail');
+  });
+
+  it('records why Crème de la Crème stays on assisted acquisition', () => {
+    const connector = connectorRoadmap.find((entry) => entry.code === 'creme-de-la-creme');
+
+    expect(connector).toBeDefined();
+    expect(connector?.status).toBe('EMAIL_OR_EXTENSION_ONLY');
+    expect(connector?.modes).toEqual(['GMAIL', 'EXTENSION']);
+    expect(connector?.note).toContain('extractions');
+    expect(connector?.note).toContain('réutilisations');
+    expect(connector?.note).toContain('Aucun canal public officiel');
+    expect(connector?.nextStep).toContain('Gmail');
+    expect(connector?.nextStep).toContain('Crème de la Crème');
   });
 
   it('records why Cadremploi does not get a planned scraper', () => {

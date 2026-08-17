@@ -67,7 +67,7 @@ Aucune collecte automatique en arrière-plan n’est autorisée dans JobPilot. L
 - une alerte e-mail reconnue reçue par l’utilisateur ;
 - l’import volontaire d’une page ouverte par l’utilisateur dans son navigateur.
 
-LinkedIn, Indeed, Free-Work, Collective.work, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou, Meteojob et Cadremploi sont placés dans cet état.
+LinkedIn, Indeed, Free-Work, Collective.work, Crème de la Crème, WeLoveDevs, HelloWork, Welcome to the Jungle, LesJeudis, LeHibou, Meteojob et Cadremploi sont placés dans cet état.
 
 #### Cas Free-Work
 
@@ -91,6 +91,20 @@ Références officielles :
 JobPilot classe Collective.work en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP/Browser planifié, aucune automatisation de session et aucun endpoint non documenté ne sont ajoutés. Les alertes Gmail lorsqu’elles existent et sont reconnues, ainsi que l’import volontaire d’une page ouverte par l’utilisateur, restent les canaux admis.
 
 Cette décision ne pourra être réouverte qu’après publication d’un canal officiel réutilisable ou autorisation écrite applicable de Collective.work.
+
+#### Cas Crème de la Crème
+
+Décision revue le **11 août 2026** sur les conditions générales officielles Crème de la Crème.
+
+Les conditions Freelance encadrent le Site et les Services dans le cadre de la relation avec les freelances sélectionnés. Leurs clauses de propriété intellectuelle interdisent, sans autorisation de Crème de la Crème, les extractions, réutilisations, copies et plus généralement les actes de reproduction ou d’utilisation d’éléments du Site. Aucun canal public officiel de lecture ou de redistribution des missions — API, RSS/XML publisher ou export partenaire — n’a été identifié dans cette revue.
+
+Référence officielle :
+
+- <https://www.cremedelacreme.io/legal>
+
+JobPilot classe donc Crème de la Crème en `EMAIL_OR_EXTENSION_ONLY`. Aucun scraper HTTP/Browser planifié, aucune automatisation de session et aucun endpoint non documenté ne sont ajoutés. Les alertes Gmail lorsqu’elles existent et sont reconnues, ainsi que l’import volontaire d’une page ouverte par l’utilisateur, restent les canaux admis.
+
+Cette décision ne pourra être réouverte qu’après autorisation explicite de Crème de la Crème ou identification d’un canal officiel réutilisable.
 
 #### Cas WeLoveDevs
 

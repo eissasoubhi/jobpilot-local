@@ -7,7 +7,7 @@ import { CoverLetterDrawer } from '@/components/CoverLetterDrawer';
 import styles from '@/components/ReviewQueueApplicationCard.module.css';
 import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import { Badge } from '@/components/UI';
-import { API_URL, api } from '@/lib/api';
+import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
 import { jobDescriptionToPlainText } from '@/lib/job-description';
@@ -23,6 +23,8 @@ type ReviewQueueApplicationCardProps = {
 type EditableApplication = Application & {
   coverLetterManuallyEdited?: boolean;
 };
+
+type MotivationTab = 'coverLetter' | 'message';
 
 const TRACKING_STATUSES = [
   ['READY_TO_SUBMIT', 'Prête à envoyer'],
@@ -50,9 +52,8 @@ export function ReviewQueueApplicationCard({
   const [selectedStatus, setSelectedStatus] = useState(application.status);
   const [saving, setSaving] = useState(false);
   const [markingUnavailable, setMarkingUnavailable] = useState(false);
-  const [regeneratingMessage, setRegeneratingMessage] = useState(false);
-  const [messageMaxCharacters, setMessageMaxCharacters] = useState(400);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<MotivationTab>('coverLetter');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -60,8 +61,8 @@ export function ReviewQueueApplicationCard({
   useEffect(() => {
     setCurrentApplication(application);
     setSelectedStatus(application.status);
-    setMessageMaxCharacters(400);
     setDrawerOpen(false);
+    setDrawerTab('coverLetter');
     setDescriptionExpanded(false);
     setNotice('');
     setError('');
@@ -106,7 +107,7 @@ export function ReviewQueueApplicationCard({
   };
 
   const markOfferUnavailable = async (): Promise<void> => {
-    if (markingUnavailable || saving || regeneratingMessage) return;
+    if (markingUnavailable || saving) return;
 
     const confirmed = window.confirm(
       'Confirmer que cette offre n’est plus disponible ? Elle sera retirée de la Review Queue sans être classée comme « Ne correspond pas ».',
@@ -129,53 +130,9 @@ export function ReviewQueueApplicationCard({
     }
   };
 
-  const regenerateMessage = async (): Promise<void> => {
-    if (saving || markingUnavailable || regeneratingMessage) return;
-    if (messageMaxCharacters < 50 || messageMaxCharacters > 5_000) {
-      setError('La longueur maximale du message doit être comprise entre 50 et 5 000 caractères.');
-      return;
-    }
-
-    setRegeneratingMessage(true);
-    setNotice('');
-    setError('');
-
-    try {
-      const updated = await api<Application>(`/applications/${currentApplication.id}/message/regenerate`, {
-        method: 'POST',
-        body: JSON.stringify({ maxCharacters: messageMaxCharacters }),
-      });
-      applyUpdatedApplication(updated);
-      setNotice(`Message court régénéré avec une limite de ${messageMaxCharacters} caractères.`);
-    } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
-    } finally {
-      setRegeneratingMessage(false);
-    }
-  };
-
-  const copyMessage = async (): Promise<void> => {
-    setNotice('');
-    setError('');
-
-    try {
-      await navigator.clipboard.writeText(currentApplication.message);
-      setNotice('Message court copié.');
-    } catch {
-      setError('Impossible de copier le message court dans le presse-papiers.');
-    }
-  };
-
-  const copyCoverLetter = async (): Promise<void> => {
-    setNotice('');
-    setError('');
-
-    try {
-      await navigator.clipboard.writeText(currentApplication.coverLetter);
-      setNotice('Lettre de motivation copiée.');
-    } catch {
-      setError('Impossible de copier la lettre de motivation dans le presse-papiers.');
-    }
+  const openMotivationDrawer = (tab: MotivationTab): void => {
+    setDrawerTab(tab);
+    setDrawerOpen(true);
   };
 
   const job = currentApplication.jobOffer;
@@ -195,7 +152,6 @@ export function ReviewQueueApplicationCard({
   const messageCharacters = currentApplication.message.length;
   const messageOverCommonLimit = messageCharacters > 400;
   const coverLetterWords = wordCount(currentApplication.coverLetter);
-  const downloadBase = `${API_URL}/applications/${currentApplication.id}/cover-letter/download`;
   const publicationTiming = offerPublicationTiming(job.publishedAt, job.discoveredAt);
 
   return (
@@ -236,7 +192,7 @@ export function ReviewQueueApplicationCard({
           <button
             className="btn secondary small"
             type="button"
-            disabled={saving || markingUnavailable || regeneratingMessage}
+            disabled={saving || markingUnavailable}
             onClick={() => void markOfferUnavailable()}
           >
             {markingUnavailable ? 'Enregistrement…' : 'Offre indisponible'}
@@ -255,7 +211,7 @@ export function ReviewQueueApplicationCard({
             <select
               aria-label="Statut de suivi dans JobPilot"
               value={selectedStatus}
-              disabled={saving || markingUnavailable || regeneratingMessage || currentApplication.status === 'SUBMISSION_PENDING'}
+              disabled={saving || markingUnavailable || currentApplication.status === 'SUBMISSION_PENDING'}
               onChange={(event) => setSelectedStatus(event.target.value)}
             >
               {TRACKING_STATUSES.map(([value, label]) => (
@@ -269,7 +225,6 @@ export function ReviewQueueApplicationCard({
             type="button"
             disabled={saving
               || markingUnavailable
-              || regeneratingMessage
               || currentApplication.status === 'SUBMISSION_PENDING'
               || selectedStatus === currentApplication.status}
             onClick={() => void saveTrackingStatus()}
@@ -339,70 +294,19 @@ export function ReviewQueueApplicationCard({
           )}
         </div>
 
-        <div className={styles.motivationMessage}>
-          <div className={styles.motivationMessageHeader}>
-            <div>
-              <strong>Message court de motivation</strong>
-              <span>Pour les formulaires qui demandent un texte bref, souvent limité à 400 caractères.</span>
-            </div>
-            <span className={`${styles.characterCount} ${messageOverCommonLimit ? styles.characterCountWarning : ''}`}>
-              {messageCharacters} caractères
-            </span>
-          </div>
-          <div className={styles.motivationMessageText}>
-            {hasMessage ? currentApplication.message : 'Aucun message court préparé.'}
-          </div>
-          <div className={styles.motivationControls}>
-            <label className={styles.characterLimitControl} htmlFor={`message-max-characters-${currentApplication.id}`}>
-              Longueur max.
-              <span className={styles.characterLimitInput}>
-                <input
-                  id={`message-max-characters-${currentApplication.id}`}
-                  aria-label="Longueur maximale du message court"
-                  type="number"
-                  min={50}
-                  max={5_000}
-                  step={25}
-                  value={messageMaxCharacters}
-                  disabled={saving || markingUnavailable || regeneratingMessage}
-                  onChange={(event) => setMessageMaxCharacters(Number(event.target.value))}
-                />
-                <span>caractères</span>
-              </span>
-            </label>
-            <button
-              className="btn small"
-              type="button"
-              disabled={saving
-                || markingUnavailable
-                || regeneratingMessage
-                || messageMaxCharacters < 50
-                || messageMaxCharacters > 5_000}
-              onClick={() => void regenerateMessage()}
-            >
-              {regeneratingMessage ? 'Régénération…' : 'Régénérer le message'}
-            </button>
-            <button
-              className="btn secondary small"
-              type="button"
-              disabled={!hasMessage || regeneratingMessage}
-              onClick={() => void copyMessage()}
-            >
-              Copier le message
-            </button>
-          </div>
-          {messageOverCommonLimit && (
-            <div className={styles.characterWarning}>
-              Ce message dépasse 400 caractères. Choisis 400 puis régénère-le pour un formulaire qui impose cette limite.
-            </div>
-          )}
-        </div>
-
         <div className={styles.applicationContent}>
           <div className={styles.applicationDocuments}>
             <div className={styles.applicationDocument}>
               <span>CV</span>
               <strong>{currentApplication.cvDocument?.name || 'Non sélectionné'}</strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Message court de motivation</span>
+              <strong>
+                {hasMessage
+                  ? `${messageCharacters} caractères${messageOverCommonLimit ? ' · à réduire' : ''}`
+                  : 'Non préparé'}
+              </strong>
             </div>
             <div className={styles.applicationDocument}>
               <span>Lettre de motivation</span>
@@ -418,21 +322,23 @@ export function ReviewQueueApplicationCard({
             </div>
           </div>
 
-          {hasCoverLetter && (
+          {(hasMessage || hasCoverLetter) && (
             <div className={styles.applicationActions}>
-              <button className="btn small" type="button" onClick={() => setDrawerOpen(true)}>
-                Voir / Modifier la lettre
-              </button>
-              <button className="btn secondary small" type="button" onClick={() => void copyCoverLetter()}>
-                Copier la lettre
-              </button>
-              <details className={styles.downloadMenu}>
-                <summary className="btn secondary small">Télécharger</summary>
-                <div className={styles.downloadOptions}>
-                  <a href={`${downloadBase}/pdf`}>PDF</a>
-                  <a href={`${downloadBase}/docx`}>Word (.docx)</a>
-                </div>
-              </details>
+              {hasCoverLetter && (
+                <button className="btn small" type="button" onClick={() => openMotivationDrawer('coverLetter')}>
+                  Ouvrir les textes de motivation
+                </button>
+              )}
+              {!hasCoverLetter && hasMessage && (
+                <button className="btn small" type="button" onClick={() => openMotivationDrawer('message')}>
+                  Ouvrir le message court
+                </button>
+              )}
+              {hasMessage && hasCoverLetter && (
+                <button className="btn secondary small" type="button" onClick={() => openMotivationDrawer('message')}>
+                  Message court
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -441,6 +347,7 @@ export function ReviewQueueApplicationCard({
       <CoverLetterDrawer
         application={currentApplication}
         open={drawerOpen}
+        initialTab={drawerTab}
         onClose={() => setDrawerOpen(false)}
         onApplicationUpdated={applyUpdatedApplication}
       />

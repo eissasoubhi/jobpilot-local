@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoverLetterDrawer } from '@/components/CoverLetterDrawer';
 import type { Application } from '@/lib/types';
 
-const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
+const { apiMock, copyMock } = vi.hoisted(() => ({ apiMock: vi.fn(), copyMock: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({
   API_URL: '/api',
@@ -43,10 +43,15 @@ function application(manuallyEdited = false): Application {
 beforeEach(() => {
   vi.restoreAllMocks();
   apiMock.mockReset();
+  copyMock.mockReset();
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: copyMock },
+  });
 });
 
-describe('CoverLetterDrawer regeneration', () => {
-  it('shows character count and a customizable maximum length', () => {
+describe('Motivation drawer', () => {
+  it('groups the cover letter and short message into two tabs', () => {
     render(
       <CoverLetterDrawer
         application={application()}
@@ -55,9 +60,31 @@ describe('CoverLetterDrawer regeneration', () => {
       />,
     );
 
+    expect(screen.getByRole('dialog', { name: 'Motivation' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Lettre de motivation' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Message court' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText(/mots · .*caractères/)).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Longueur maximale de la lettre' })).toHaveValue(1500);
-    expect(screen.getByRole('button', { name: 'Régénérer' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Message court' }));
+
+    expect(screen.getByRole('tab', { name: 'Message court' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Message court.')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' })).toHaveValue(400);
+  });
+
+  it('can open directly on the short-message tab', () => {
+    render(
+      <CoverLetterDrawer
+        application={application()}
+        open
+        initialTab="message"
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Message court' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Message court.')).toBeInTheDocument();
   });
 
   it('regenerates the cover letter with the requested maximum length', async () => {
@@ -86,6 +113,46 @@ describe('CoverLetterDrawer regeneration', () => {
     }));
     expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
     expect(screen.getByRole('status')).toHaveTextContent('limite de 900 caractères');
+  });
+
+  it('regenerates and copies the short message from its tab', async () => {
+    const updated = { ...application(), message: 'Nouveau message court.' } as Application;
+    const onApplicationUpdated = vi.fn();
+    apiMock.mockResolvedValueOnce(updated);
+    copyMock.mockResolvedValueOnce(undefined);
+
+    const { rerender } = render(
+      <CoverLetterDrawer
+        application={application()}
+        open
+        initialTab="message"
+        onClose={vi.fn()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' }), {
+      target: { value: '250' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Régénérer' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/61/message/regenerate', {
+      method: 'POST',
+      body: JSON.stringify({ maxCharacters: 250 }),
+    }));
+    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
+
+    rerender(
+      <CoverLetterDrawer
+        application={updated}
+        open
+        initialTab="message"
+        onClose={vi.fn()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
+    await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Nouveau message court.'));
   });
 
   it('asks for confirmation before overwriting a manually edited letter', () => {

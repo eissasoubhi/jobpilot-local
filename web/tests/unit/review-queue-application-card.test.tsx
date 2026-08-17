@@ -130,36 +130,40 @@ describe('ReviewQueueApplicationCard', () => {
     expect(screen.getByRole('button', { name: 'Appliquer' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Ouvrir la plateforme' })).toHaveAttribute('href', 'https://example.test/jobs/7');
     expect(screen.getByRole('link', { name: 'Ouvrir le CV' })).toHaveAttribute('href', '/api/cvs/3/download');
-    expect(screen.getByText('Ce message préparé est disponible dans la Review Queue.')).toBeInTheDocument();
+    expect(screen.queryByText('Ce message préparé est disponible dans la Review Queue.')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Contenu prêt à envoyer' })).toBeInTheDocument();
-    expect(screen.getByText('Message court de motivation')).toBeInTheDocument();
+    expect(screen.getByText('Message court')).toBeInTheDocument();
     expect(screen.getByText('Lettre de motivation')).toBeInTheDocument();
     expect(screen.getByText('4 mots dans la lettre')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Voir / Modifier la lettre' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Message court' })).toBeInTheDocument();
     expect(screen.queryByText('Lettre de motivation préparée.')).not.toBeInTheDocument();
-    expect(screen.getByText('PDF').closest('a')).toHaveAttribute(
+    expect(screen.queryByText('PDF')).not.toBeInTheDocument();
+    expect(screen.queryByText('Word (.docx)')).not.toBeInTheDocument();
+  });
+
+  it('opens the motivation drawer without replacing the mission context', () => {
+    render(<ReviewQueueApplicationCard application={application()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Motivation' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole('tab', { name: 'Lettre de motivation' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(dialog).getByText('Lettre de motivation préparée.')).toBeInTheDocument();
+    expect(within(dialog).getByText(/mots · .*caractères/)).toBeInTheDocument();
+    expect(within(dialog).getByText('PDF').closest('a')).toHaveAttribute(
       'href',
       '/api/applications/42/cover-letter/download/pdf',
     );
-    expect(screen.getByText('Word (.docx)').closest('a')).toHaveAttribute(
+    expect(within(dialog).getByText('Word (.docx)').closest('a')).toHaveAttribute(
       'href',
       '/api/applications/42/cover-letter/download/docx',
     );
-  });
-
-  it('opens the letter in a drawer without replacing the mission context', () => {
-    render(<ReviewQueueApplicationCard application={application()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Lettre de motivation' });
-    expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText('Lettre de motivation préparée.')).toBeInTheDocument();
-    expect(within(dialog).getByText(/mots · .*caractères/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Description de la mission' })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'Lettre de motivation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Motivation' })).not.toBeInTheDocument();
   });
 
   it('keeps a long mission compact until the user expands it', () => {
@@ -245,7 +249,7 @@ describe('ReviewQueueApplicationCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
     const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
     expect(editor).toHaveValue('Lettre de motivation préparée.');
@@ -266,7 +270,7 @@ describe('ReviewQueueApplicationCard', () => {
   it('cancels an unsaved cover letter edit in the drawer', () => {
     render(<ReviewQueueApplicationCard application={application()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
     const editor = screen.getByRole('textbox', { name: 'Texte de la lettre' });
     fireEvent.change(editor, { target: { value: 'Brouillon non sauvegardé.' } });
@@ -277,11 +281,12 @@ describe('ReviewQueueApplicationCard', () => {
     expect(apiMock).not.toHaveBeenCalled();
   });
 
-  it('copies the saved cover letter from the compact candidature section', async () => {
+  it('copies the saved cover letter from the motivation drawer', async () => {
     copyMock.mockResolvedValueOnce(undefined);
     render(<ReviewQueueApplicationCard application={application()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copier la lettre' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
 
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Lettre de motivation préparée.'));
     expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation copiée.');
@@ -302,7 +307,7 @@ describe('ReviewQueueApplicationCard', () => {
     apiMock.mockResolvedValueOnce(reset);
 
     render(<ReviewQueueApplicationCard application={manual} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Voir / Modifier la lettre' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les textes de motivation' }));
     fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/42/cover-letter/reset', {

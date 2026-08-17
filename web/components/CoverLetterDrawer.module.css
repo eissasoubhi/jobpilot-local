@@ -68,6 +68,11 @@
   font-weight: 800;
 }
 
+.warningBadge {
+  background: #fff4e5;
+  color: #9a5d00;
+}
+
 .closeButton {
   display: grid;
   place-items: center;
@@ -87,14 +92,60 @@
   background: #f7f8fb;
 }
 
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 22px 0;
+  border-bottom: 1px solid #e7eaf0;
+  background: #fff;
+}
+
+.tab {
+  position: relative;
+  padding: 10px 12px 12px;
+  border: 0;
+  background: transparent;
+  color: #6c778a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+}
+
+.tab:hover {
+  color: #3149a5;
+}
+
+.tabActive {
+  color: #3149a5;
+}
+
+.tabActive::after {
+  background: #4665d8;
+}
+
+.toolbarArea {
+  border-bottom: 1px solid #edf0f4;
+  background: #fbfcfe;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px 22px;
-  border-bottom: 1px solid #edf0f4;
-  background: #fbfcfe;
 }
 
 .regenerationControl {
@@ -166,7 +217,7 @@
 }
 
 .feedback {
-  margin: 12px 22px 0;
+  margin: 0 22px 12px;
 }
 
 .body {
@@ -181,6 +232,32 @@
   line-height: 1.75;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.messagePanel {
+  display: grid;
+  gap: 18px;
+}
+
+.messageHint {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #e5e9f2;
+  border-radius: 10px;
+  background: #f8f9fc;
+  color: #657087;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.messageWarning {
+  padding: 11px 13px;
+  border: 1px solid #f0cf99;
+  border-radius: 9px;
+  background: #fff8ec;
+  color: #8a5708;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .editor {
@@ -238,14 +315,28 @@
   }
 
   .header,
+  .tabs,
   .toolbar,
   .body {
     padding-left: 15px;
     padding-right: 15px;
   }
 
+  .feedback {
+    margin-left: 15px;
+    margin-right: 15px;
+  }
+
   .titleBlock h2 {
     font-size: 20px;
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+
+  .tab {
+    flex: 1 0 auto;
   }
 
   .toolbar :global(.btn),

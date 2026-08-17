@@ -58,7 +58,7 @@ Un canal officiel réutilisable a été identifié, mais le connecteur n’est p
 
 Une source passe dans cet état uniquement après confirmation d’une API, d’un flux ou d’un export officiel. Elle ne devient `OPERATIONAL` qu’après obtention des accès ou accords nécessaires, ajout au registre backend, politique de collecte, limites, tests et documentation.
 
-Apec est dans cet état via son export XML sous convention. Talent.com l’est via son programme Publisher. Jobijoba rejoint cet état via son programme officiel d’affiliation, qui annonce des intégrations par flux, API ou widget ; JobPilot retient l’API ou un flux officiel comme voie cible et n’active aucun scraping.
+Apec est dans cet état via son export XML sous convention. Talent.com l’est via son programme Publisher. Jobijoba rejoint cet état via son programme officiel d’affiliation, qui annonce des intégrations par flux, API ou widget. EURES rejoint également cet état via son API réservée aux organisations partenaires EURES reconnues. Aucun de ces statuts `PLANNED` n’autorise JobPilot à activer un scraping de substitution.
 
 ### `EMAIL_OR_EXTENSION_ONLY`
 
@@ -276,14 +276,18 @@ La documentation détaillée est disponible dans [`le-studio-tech.md`](le-studio
 
 ## EURES
 
-Le portail officiel EURES agrège des offres provenant des services publics de l’emploi, membres et partenaires de 31 pays. Il constitue une source très importante, mais la revue actuelle de JobPilot n’a pas encore identifié une API ou un flux officiel de vacances réutilisable avec un contrat technique suffisamment clair.
+Décision revue le **11 août 2026** sur le portail officiel EURES de l’Union européenne et les conditions du service « Find a job ».
+
+Les conditions spécifiques du service interdisent le `screen scraping` ainsi que les autres systèmes automatisés ou manuels visant à extraire les données d’offres pour les retraiter ou les republier. Le portail précise que seules les **organisations partenaires EURES**, reconnues par un bureau national de coordination EURES, peuvent extraire les données d’offres via leur API ou des technologies similaires.
 
 Références officielles :
 
-- <https://eures.europa.eu/>
+- <https://europa.eu/eures/portal/>
 - <https://eures.europa.eu/employers/advertise-job_fr>
 
-EURES reste donc `UNDER_REVIEW` plutôt que d’être présenté prématurément comme un connecteur API.
+JobPilot classe donc EURES en `PLANNED` avec le mode `API`, exclusivement dans le cadre d’un accès partenaire officiel. Aucun scraper HTTP/Browser, aucun endpoint interne non documenté et aucune extraction de substitution ne sont planifiés.
+
+Étape suivante : obtenir un statut ou accord partenaire EURES applicable, la documentation API, les mécanismes d’authentification, les quotas et les droits de réutilisation. EURES ne pourra devenir `OPERATIONAL` qu’après réception de ces éléments et implémentation d’un connecteur dédié avec tests locaux/mocks, diagnostics et kill switch.
 
 ## Plateformes couvertes
 

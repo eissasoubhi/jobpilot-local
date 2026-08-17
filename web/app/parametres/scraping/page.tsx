@@ -8,6 +8,10 @@ import { getErrorMessage } from '@/lib/errors';
 
 type ScraperMode = 'AUTO' | 'HTTP' | 'BROWSER';
 type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
+type SourceFeedback = {
+  tone: 'success' | 'error';
+  message: string;
+};
 
 type CustomScraperSource = {
   id: number;
@@ -184,6 +188,7 @@ export default function CustomScrapingSettingsPage() {
   const [form, setForm] = useState<NewSourceForm>(initialForm);
   const [diagnostics, setDiagnostics] = useState<Record<number, ScraperDiagnostic>>({});
   const [previews, setPreviews] = useState<Record<number, ScraperPreview>>({});
+  const [sourceFeedback, setSourceFeedback] = useState<Record<number, SourceFeedback>>({});
   const [testingId, setTestingId] = useState<number | null>(null);
   const [previewingId, setPreviewingId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -202,6 +207,14 @@ export default function CustomScrapingSettingsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const clearSourceFeedback = (sourceId: number): void => {
+    setSourceFeedback((current) => {
+      const next = { ...current };
+      delete next[sourceId];
+      return next;
+    });
+  };
 
   const createSource = async (): Promise<void> => {
     if (!form.authorizationConfirmed) {
@@ -238,6 +251,7 @@ export default function CustomScrapingSettingsPage() {
   const patchSource = async (source: CustomScraperSource, patch: Record<string, unknown>): Promise<void> => {
     setError('');
     setMessage('');
+    clearSourceFeedback(source.id);
     try {
       const updated = await api<CustomScraperSource>(`/custom-scrapers/${source.id}`, {
         method: 'PATCH',
@@ -264,12 +278,25 @@ export default function CustomScrapingSettingsPage() {
     setTestingId(source.id);
     setError('');
     setMessage('');
+    clearSourceFeedback(source.id);
     try {
       const result = await api<ScraperDiagnostic>(`/custom-scrapers/${source.id}/diagnose`, { method: 'POST' });
       setDiagnostics((current) => ({ ...current, [source.id]: result }));
-      setMessage(`Diagnostic terminé pour ${source.name} : ${result.recommendedMode} recommandé.`);
+      setSourceFeedback((current) => ({
+        ...current,
+        [source.id]: {
+          tone: 'success',
+          message: `Diagnostic terminé pour ${source.name} : ${result.recommendedMode} recommandé.`,
+        },
+      }));
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setSourceFeedback((current) => ({
+        ...current,
+        [source.id]: {
+          tone: 'error',
+          message: getErrorMessage(caughtError),
+        },
+      }));
     } finally {
       setTestingId(null);
     }
@@ -279,12 +306,25 @@ export default function CustomScrapingSettingsPage() {
     setPreviewingId(source.id);
     setError('');
     setMessage('');
+    clearSourceFeedback(source.id);
     try {
       const result = await api<ScraperPreview>(`/custom-scrapers/${source.id}/preview`, { method: 'POST' });
       setPreviews((current) => ({ ...current, [source.id]: result }));
-      setMessage(`${result.candidateCount} candidat(s) détecté(s), dont ${result.reliableCount} extraction(s) fiable(s) pour ${source.name}.`);
+      setSourceFeedback((current) => ({
+        ...current,
+        [source.id]: {
+          tone: 'success',
+          message: `${result.candidateCount} candidat(s) détecté(s), dont ${result.reliableCount} extraction(s) fiable(s) pour ${source.name}.`,
+        },
+      }));
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setSourceFeedback((current) => ({
+        ...current,
+        [source.id]: {
+          tone: 'error',
+          message: getErrorMessage(caughtError),
+        },
+      }));
     } finally {
       setPreviewingId(null);
     }
@@ -308,6 +348,7 @@ export default function CustomScrapingSettingsPage() {
         delete next[source.id];
         return next;
       });
+      clearSourceFeedback(source.id);
       setMessage(`${source.name} a été supprimé.`);
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
@@ -397,7 +438,7 @@ export default function CustomScrapingSettingsPage() {
           <h2 className="section-title">Comment fonctionne Auto ?</h2>
           <div className="stack">
             <p className="muted">Le moteur privilégie toujours la solution la plus légère et ne lance pas Chromium si le HTML serveur suffit.</p>
-            <div className="notice"><strong>1. Probe HTTP</strong><br />Un téléchargement contrôlé, avec robots.txt, timeout, quota et limite de taille.</div>
+            <div className="notice"><strong>1. Probe HTTP</strong><br />Un téléchargement contrôlé avec timeout, quota et limite de taille. Pour une source personnalisée dont l’autorisation explicite est confirmée, robots.txt n’est pas utilisé comme blocage.</div>
             <div className="notice"><strong>2. Signaux</strong><br />JobPosting, liens d’offres, texte visible, scripts et marqueurs React/Next/Nuxt sont comparés.</div>
             <div className="notice"><strong>3. Prévisualisation</strong><br />Les candidats HTTP sont affichés sans persistance ; quelques fiches détail peuvent être enrichies de façon bornée.</div>
             <div className="notice warning"><strong>Important</strong><br />Le diagnostic ne contourne ni authentification, ni CAPTCHA, ni restriction d’accès. Browser n’est pas encore exécuté dans cette étape.</div>
@@ -415,6 +456,7 @@ export default function CustomScrapingSettingsPage() {
             {sources.map((source) => {
               const diagnostic = diagnostics[source.id];
               const preview = previews[source.id];
+              const feedback = sourceFeedback[source.id];
               return (
                 <div className="notice" key={source.id}>
                   <div className="actions" style={{ justifyContent: 'space-between' }}>
@@ -446,6 +488,14 @@ export default function CustomScrapingSettingsPage() {
                     </select>
                     <button className="btn secondary" type="button" onClick={() => void deleteSource(source)}>Supprimer</button>
                   </div>
+
+                  {feedback && (
+                    <div style={{ marginTop: 10 }}>
+                      {feedback.tone === 'error'
+                        ? <ErrorBox message={feedback.message} />
+                        : <div className="notice" role="status">{feedback.message}</div>}
+                    </div>
+                  )}
 
                   {diagnostic && (
                     <div className="notice" style={{ marginTop: 12 }}>

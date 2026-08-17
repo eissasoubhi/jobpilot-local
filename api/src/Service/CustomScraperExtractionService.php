@@ -102,6 +102,11 @@ final class CustomScraperExtractionService
         $checkedAt = is_string($data['authorizationCheckedAt'] ?? null)
             ? new \DateTimeImmutable((string) $data['authorizationCheckedAt'])
             : new \DateTimeImmutable('today');
+
+        // Custom sources are gated by authorizedSourceData() before this policy is
+        // created. When that explicit authorization is confirmed, robots.txt does not
+        // override it; request quotas, delays, URL validation and anti-bot safeguards
+        // remain enforced by ControlledHttpScrapingClient.
         $policy = new ConnectorPolicy(
             ConnectorComplianceStatus::ALLOWED,
             $checkedAt,
@@ -109,7 +114,7 @@ final class CustomScraperExtractionService
             maxRequestsPerSync: $pageLimit + $detailLimit,
             dailyQuota: $dailyQuota,
             minimumDelayMilliseconds: 1_000,
-            respectsRobotsTxt: true,
+            respectsRobotsTxt: false,
         );
 
         $pageUrl = $listingUrl;

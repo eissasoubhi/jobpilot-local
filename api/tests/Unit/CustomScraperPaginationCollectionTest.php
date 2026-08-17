@@ -40,7 +40,6 @@ final class CustomScraperPaginationCollectionTest extends TestCase
         $pageTwo = '<html><body><a href="/jobs/react">React Developer</a><a href="/jobs/vue">Vue Developer</a><a rel="next" href="https://jobs.example.test/jobs">Next</a></body></html>';
 
         $result = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($pageOne, ['http_code' => 200]),
             new MockResponse($pageTwo, ['http_code' => 200]),
         ]))->collect($source);
@@ -59,7 +58,6 @@ final class CustomScraperPaginationCollectionTest extends TestCase
         $pageTwo = '<html><body><a href="/jobs/react">React Developer</a><a href="/jobs/vue">Vue Developer</a><a rel="next" href="?page=3">Next</a></body></html>';
 
         $result = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($pageOne, ['http_code' => 200]),
             new MockResponse($pageTwo, ['http_code' => 200]),
         ]))->collect($source);

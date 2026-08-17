@@ -60,7 +60,6 @@ HTML;
         $connector = new CustomScraperJobConnector(
             $source,
             $this->extraction(new MockHttpClient([
-                new MockResponse('', ['http_code' => 404]),
                 new MockResponse($listing, ['http_code' => 200]),
                 new MockResponse($detail, ['http_code' => 200]),
             ])),
@@ -122,7 +121,6 @@ HTML;
         $connector = new CustomScraperJobConnector(
             $source,
             $this->extraction(new MockHttpClient([
-                new MockResponse('', ['http_code' => 404]),
                 new MockResponse($pageOne, ['http_code' => 200]),
                 new MockResponse($pageTwo, ['http_code' => 200]),
             ])),

@@ -10,14 +10,12 @@ use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Infrastructure\Scraping\Html\GenericHtmlModeDetector;
 use App\JobDiscovery\Infrastructure\Scraping\Http\ControlledHttpScrapingClient;
 use App\JobDiscovery\Infrastructure\Scraping\Http\HttpScrapingRequest;
-use App\JobDiscovery\Infrastructure\Scraping\Http\RobotsTxtGuard;
 
 final class CustomScraperDiagnosticService
 {
     public function __construct(
         private ControlledHttpScrapingClient $httpClient,
         private GenericHtmlModeDetector $modeDetector,
-        private RobotsTxtGuard $robotsTxtGuard,
     ) {
     }
 
@@ -36,6 +34,9 @@ final class CustomScraperDiagnosticService
             ? new \DateTimeImmutable((string) $data['authorizationCheckedAt'])
             : new \DateTimeImmutable('today');
 
+        // A custom scraper reaches this point only after the user explicitly confirms
+        // a collection authorization. robots.txt remains available for connectors that
+        // opt into it, but it is not a blocking signal for this authorized source.
         $policy = new ConnectorPolicy(
             ConnectorComplianceStatus::ALLOWED,
             $checkedAt,
@@ -43,7 +44,7 @@ final class CustomScraperDiagnosticService
             maxRequestsPerSync: 1,
             dailyQuota: 10,
             minimumDelayMilliseconds: 1_000,
-            respectsRobotsTxt: true,
+            respectsRobotsTxt: false,
         );
 
         $request = new HttpScrapingRequest(
@@ -56,10 +57,6 @@ final class CustomScraperDiagnosticService
             maxResponseBytes: 3_000_000,
         );
 
-        // Run the check explicitly so the UI can explain canonical redirects.
-        // ControlledHttpScrapingClient performs the same guard again, which reuses
-        // the robots cache and therefore does not add another network request.
-        $robots = $this->robotsTxtGuard->assertAllowed($listingUrl, $request->userAgent);
         $result = $this->httpClient->fetch($request);
 
         $analysis = $this->modeDetector->analyze($result->body);
@@ -76,7 +73,6 @@ final class CustomScraperDiagnosticService
             'reason' => $analysis['reason'],
             'browserVerificationRequired' => $analysis['browserVerificationRequired'],
             'signals' => $analysis['signals'],
-            'robots' => $robots->toArray(),
             'http' => [
                 'requestedUrl' => $listingUrl,
                 'finalUrl' => $result->url,

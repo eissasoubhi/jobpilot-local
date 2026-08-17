@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CustomScrapingSettingsPage from '@/app/parametres/scraping/page';
@@ -110,16 +110,19 @@ describe('CustomScrapingSettingsPage', () => {
     apiMock.mockReset();
   });
 
-  it('previews extraction reliability without importing candidates', async () => {
+  it('previews extraction reliability and keeps success feedback with the source', async () => {
     apiMock.mockResolvedValueOnce([source]);
     apiMock.mockResolvedValueOnce(preview);
 
     render(<CustomScrapingSettingsPage />);
 
-    await waitFor(() => expect(screen.getByText('Example Jobs')).toBeInTheDocument());
+    const sourceLabel = await screen.findByText('Example Jobs');
+    const sourceCard = sourceLabel.closest('.notice');
+    expect(sourceCard).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Prévisualiser les offres' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/custom-scrapers/42/preview', { method: 'POST' }));
+    expect(await within(sourceCard as HTMLElement).findByText('2 candidat(s) détecté(s), dont 1 extraction(s) fiable(s) pour Example Jobs.')).toBeInTheDocument();
     expect(screen.getByText('2 candidat(s)')).toBeInTheDocument();
     expect(screen.getByText('1 éligible(s) à l’import')).toBeInTheDocument();
     expect(screen.getByText('1/10 fiche(s) enrichie(s)')).toBeInTheDocument();
@@ -134,5 +137,21 @@ describe('CustomScrapingSettingsPage', () => {
     expect(screen.getByText(/ce n’est pas le score de compatibilité avec ton profil/i)).toBeInTheDocument();
     expect(screen.getByText('2 requête(s) cible · HTTP 200 · aucune offre enregistrée')).toBeInTheDocument();
     expect(screen.getAllByText(/^Qualité :/)).toHaveLength(2);
+    expect(screen.getByText(/robots\.txt n’est pas utilisé comme blocage/i)).toBeInTheDocument();
+  });
+
+  it('keeps diagnose errors with the source instead of the page header', async () => {
+    apiMock.mockResolvedValueOnce([source]);
+    apiMock.mockRejectedValueOnce(new Error('Diagnostic indisponible'));
+
+    render(<CustomScrapingSettingsPage />);
+
+    const sourceLabel = await screen.findByText('Example Jobs');
+    const sourceCard = sourceLabel.closest('.notice');
+    expect(sourceCard).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Tester le site' }));
+
+    expect(await within(sourceCard as HTMLElement).findByText('Diagnostic indisponible')).toBeInTheDocument();
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/custom-scrapers/42/diagnose', { method: 'POST' }));
   });
 });

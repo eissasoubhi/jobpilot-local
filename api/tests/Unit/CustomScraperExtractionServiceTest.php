@@ -44,7 +44,6 @@ final class CustomScraperExtractionServiceTest extends TestCase
 HTML;
 
         $preview = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($html, ['http_code' => 200]),
         ]))->preview($this->source());
 
@@ -73,7 +72,6 @@ HTML;
 HTML;
 
         $preview = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($html, ['http_code' => 200]),
         ]))->preview($this->source());
 
@@ -109,7 +107,6 @@ HTML;
 HTML;
 
         $preview = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($listing, ['http_code' => 200]),
             new MockResponse($detail, ['http_code' => 200]),
         ]))->preview($source);
@@ -138,7 +135,6 @@ HTML;
         $html = '<html><head><script id="__NEXT_DATA__">{}</script><script src="/_next/app.js"></script></head><body><div id="__next"></div></body></html>';
 
         $preview = $this->service(new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($html, ['http_code' => 200]),
         ]))->preview($this->source());
 

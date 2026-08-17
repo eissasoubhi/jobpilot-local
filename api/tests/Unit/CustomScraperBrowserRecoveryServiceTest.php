@@ -37,7 +37,7 @@ final class CustomScraperBrowserRecoveryServiceTest extends TestCase
         $this->removeDirectory($this->directory);
     }
 
-    public function testForcedBrowserSourceMustPassHttpRobotsPreflightBeforeRenderedOfferIsReturned(): void
+    public function testForcedBrowserSourceUsesExplicitAuthorizationWithoutRobotsPreflight(): void
     {
         $shell = '<html><head><script id="__NEXT_DATA__">{}</script><script src="/_next/app.js"></script></head><body><div id="__next"></div></body></html>';
         $rendered = <<<'HTML'
@@ -53,7 +53,6 @@ final class CustomScraperBrowserRecoveryServiceTest extends TestCase
 }</script></body></html>
 HTML;
         $http = new MockHttpClient([
-            new MockResponse('', ['http_code' => 404]),
             new MockResponse($shell, ['http_code' => 200]),
         ]);
         $browserClient = new class($rendered) implements BrowserRenderClientInterface {
@@ -82,6 +81,7 @@ HTML;
             ['PHP', 'Symfony'],
         );
 
+        self::assertSame(1, $http->getRequestsCount());
         self::assertSame(1, $browserClient->calls);
         self::assertCount(1, $result['offers']);
         self::assertSame('BROWSER-42', $result['offers'][0]['externalId']);
@@ -145,7 +145,7 @@ HTML;
             $robots,
         );
         return new CustomScraperBrowserRecoveryService(
-            new CustomScraperDiagnosticService($controlled, new GenericHtmlModeDetector(), $robots),
+            new CustomScraperDiagnosticService($controlled, new GenericHtmlModeDetector()),
             new CustomScraperBrowserRenderCoordinator($browserClient, new CustomScraperBrowserRenderPolicy()),
             $browserClient,
             $listingExtractor,

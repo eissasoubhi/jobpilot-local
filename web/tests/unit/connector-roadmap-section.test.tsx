@@ -37,7 +37,9 @@ describe('ConnectorRoadmapSection', () => {
     expect(smartRecruiters.getByText(/configuration requise/i)).toBeInTheDocument();
 
     const eures = within(screen.getByTestId('roadmap-connector-eures'));
-    expect(eures.getByText('Canal en revue')).toBeInTheDocument();
+    expect(eures.getByText('Canal officiel planifié')).toBeInTheDocument();
+    expect(eures.getByText('API officielle')).toBeInTheDocument();
+    expect(eures.getByText(/aucun scraping EURES/i)).toBeInTheDocument();
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Tester maintenant')).not.toBeInTheDocument();

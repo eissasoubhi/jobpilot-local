@@ -40,15 +40,15 @@ final class ApplicationEmailFactoryTest extends TestCase
 
         self::assertSame('Candidature – Développeur Symfony Senior', $email['subject']);
         self::assertSame(
-            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nConcernant la rémunération, ma proposition est de 500 € HT/jour.\n\nBien cordialement,\nAissa SOUBHI",
+            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nConcernant la rémunération, ma proposition est de 500 € HT/jour.\n\nBien cordialement,\nDemo Candidate",
             $email['body'],
         );
         self::assertStringNotContainsString('---', $email['body']);
         self::assertStringNotContainsString('Voici ma lettre de motivation', $email['body']);
         self::assertSame(1, substr_count($email['body'], 'Bien cordialement'));
-        self::assertSame(['CV_Aissa_Symfony.pdf'], $email['attachmentNames']);
+        self::assertSame(['CV_Demo_Symfony.pdf'], $email['attachmentNames']);
         self::assertSame($this->uploadDir.'/stored-cv.pdf', $email['attachments'][0]['path']);
-        self::assertSame('CV_Aissa_Symfony.pdf', $email['attachments'][0]['filename']);
+        self::assertSame('CV_Demo_Symfony.pdf', $email['attachments'][0]['filename']);
         self::assertSame('application/pdf', $email['attachments'][0]['mimeType']);
     }
 
@@ -62,7 +62,7 @@ final class ApplicationEmailFactoryTest extends TestCase
         ]);
         $application = (new Application($job))->prepare(
             $cv,
-            "Hello,\n\nMy CV is attached.\n\nBest regards,\nAissa Soubhi",
+            "Hello,\n\nMy CV is attached.\n\nBest regards,\nDemo Candidate",
             'This separate cover letter must not be sent.',
             null,
         );
@@ -71,7 +71,7 @@ final class ApplicationEmailFactoryTest extends TestCase
         $email = $factory->create($application);
 
         self::assertSame(
-            "Hello,\n\nMy CV is attached.\n\nBest regards,\nAissa Soubhi",
+            "Hello,\n\nMy CV is attached.\n\nBest regards,\nDemo Candidate",
             $email['body'],
         );
         self::assertStringNotContainsString('separate cover letter', $email['body']);
@@ -106,7 +106,7 @@ final class ApplicationEmailFactoryTest extends TestCase
     {
         return new CvDocument(
             'CV Symfony',
-            'CV_Aissa_Symfony.pdf',
+            'CV_Demo_Symfony.pdf',
             'stored-cv.pdf',
             'fr',
             'application/pdf',
@@ -128,7 +128,7 @@ final class ApplicationEmailFactoryTest extends TestCase
 
         return (new Application($job))->prepare(
             $cv,
-            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nBien cordialement,\nAissa SOUBHI",
+            "Bonjour,\n\nLe poste correspond directement à mon parcours. Vous trouverez mon CV en pièce jointe.\n\nBien cordialement,\nDemo Candidate",
             "Madame, Monsieur,\n\nVoici ma lettre de motivation.",
             '500 € HT/jour',
         );

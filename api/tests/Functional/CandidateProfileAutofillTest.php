@@ -13,13 +13,13 @@ final class CandidateProfileAutofillTest extends WebTestCase
         $client = static::createClient();
 
         $client->jsonRequest('PUT', '/api/profile', [
-            'fullName' => 'Aissa SOUBHI',
-            'firstName' => 'Aissa',
-            'lastName' => 'SOUBHI',
+            'fullName' => 'Demo Candidate',
+            'firstName' => 'Demo',
+            'lastName' => 'Candidate',
             'addressLine1' => '10 rue de Test',
             'addressLine2' => '',
-            'city' => 'Cergy',
-            'postalCode' => '95000',
+            'city' => 'Paris',
+            'postalCode' => '75000',
             'region' => 'Île-de-France',
             'country' => 'France',
             'countryCode' => 'fr',
@@ -31,14 +31,14 @@ final class CandidateProfileAutofillTest extends WebTestCase
             ],
             'desiredSalary' => 55_000,
             'desiredTjm' => 500,
-            'githubUrl' => 'https://github.com/eissasoubhi',
+            'githubUrl' => 'https://github.com/example',
             'professionalUrls' => ['https://example.test/profile'],
         ]);
 
         self::assertResponseIsSuccessful();
         $profile = $this->decodeResponse($client);
-        self::assertSame('Aissa', $profile['firstName']);
-        self::assertSame('SOUBHI', $profile['lastName']);
+        self::assertSame('Demo', $profile['firstName']);
+        self::assertSame('Candidate', $profile['lastName']);
         self::assertSame('FR', $profile['countryCode']);
         self::assertSame(8, $profile['technologyExperience']['Symfony']);
         self::assertSame(500, $profile['desiredTjm']);
@@ -49,7 +49,7 @@ final class CandidateProfileAutofillTest extends WebTestCase
         $autofill = $this->decodeResponse($client);
 
         self::assertSame(1, $autofill['schemaVersion']);
-        self::assertSame('Aissa', $autofill['identity']['firstName']);
+        self::assertSame('Demo', $autofill['identity']['firstName']);
         self::assertSame('10 rue de Test', $autofill['address']['line1']);
         self::assertSame('Senior Symfony Developer', $autofill['professional']['currentJobTitle']);
         self::assertSame(8, $autofill['professional']['technologyExperience']['Symfony']);

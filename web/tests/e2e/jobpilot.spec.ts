@@ -61,8 +61,8 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   const sourceUrl = `https://example.test/jobs/${uniqueSuffix}`;
 
   await page.goto('/profil');
-  await expect(page.getByLabel('Nom complet')).toHaveValue('Aissa SOUBHI');
-  await page.getByLabel('Ville').fill('Cergy');
+  await expect(page.getByLabel('Nom complet')).toHaveValue('Demo Candidate');
+  await page.getByLabel('Ville').fill('Paris');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.getByText('Profil enregistré.')).toBeVisible();
 
@@ -95,7 +95,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   const jobHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(jobHeading).toBeVisible();
   const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
-  await expect(jobRow.getByText('TJM proposé : 520 €')).toBeVisible();
+  await expect(jobRow.getByText('TJM proposé : 500 €')).toBeVisible();
   await expect(jobRow.getByText('PREPARED')).toBeVisible();
 
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();

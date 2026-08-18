@@ -21,7 +21,7 @@ final class ApiWorkflowTest extends WebTestCase
         $client->request('GET', '/api/profile');
         self::assertResponseIsSuccessful();
         $profile = $this->decodeResponse($client);
-        self::assertSame('Aissa SOUBHI', $profile['fullName']);
+        self::assertSame('Demo Candidate', $profile['fullName']);
 
         $temporaryCv = tempnam(sys_get_temp_dir(), 'jobpilot-cv-');
         self::assertIsString($temporaryCv);
@@ -61,7 +61,7 @@ final class ApiWorkflowTest extends WebTestCase
         self::assertResponseStatusCodeSame(201);
         $job = $this->decodeResponse($client);
         self::assertSame('fr', $job['language']);
-        self::assertSame(520, $job['proposedTjm']);
+        self::assertSame(500, $job['proposedTjm']);
         self::assertSame('PREPARED', $job['status']);
         self::assertGreaterThanOrEqual(50, $job['score']);
         self::assertSame('CV Symfony React FR', $job['recommendedCv']['name']);

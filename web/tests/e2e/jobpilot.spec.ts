@@ -61,8 +61,8 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   const sourceUrl = `https://example.test/jobs/${uniqueSuffix}`;
 
   await page.goto('/profil');
-  await expect(page.getByLabel('Nom complet')).toHaveValue('Aissa SOUBHI');
-  await page.getByLabel('Ville').fill('Cergy');
+  await expect(page.getByLabel('Nom complet')).toHaveValue('Demo Candidate');
+  await page.getByLabel('Ville').fill('Paris');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.getByText('Profil enregistré.')).toBeVisible();
 

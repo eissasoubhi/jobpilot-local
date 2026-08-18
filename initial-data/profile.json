@@ -1,17 +1,17 @@
 {
-  "fullName": "Aissa SOUBHI",
-  "firstName": "Aissa",
-  "lastName": "SOUBHI",
-  "email": "eissa.soubhi@gmail.com",
-  "phone": "+33617796780",
+  "fullName": "Demo Candidate",
+  "firstName": "Demo",
+  "lastName": "Candidate",
+  "email": "demo.candidate@example.com",
+  "phone": "+33000000000",
   "addressLine1": "",
   "addressLine2": null,
-  "city": "Cergy",
-  "postalCode": "95000",
-  "region": "",
+  "city": "Paris",
+  "postalCode": "75000",
+  "region": "Île-de-France",
   "country": "France",
   "countryCode": "FR",
-  "currentJobTitle": "",
+  "currentJobTitle": "Senior Software Developer",
   "mobility": "France",
   "preferredLocations": [
     "France"
@@ -19,7 +19,7 @@
   "workAuthorisation": "Salarié",
   "availability": "Immédiatement",
   "noticePeriod": "Aucun préavis",
-  "yearsOfExperience": 11,
+  "yearsOfExperience": 8,
   "technologyExperience": {},
   "languages": [
     {
@@ -34,14 +34,13 @@
   "acceptedContracts": [
     "CDI",
     "CDD",
-    "Portage salarial",
-    "Sous-traitance"
+    "Freelance"
   ],
   "workModePreference": "Aucune préférence",
   "desiredSalary": null,
   "desiredTjm": null,
-  "linkedinUrl": "https://linkedin.com/in/aissa0soubhi",
-  "githubUrl": "https://github.com/eissasoubhi/",
+  "linkedinUrl": null,
+  "githubUrl": null,
   "portfolioUrl": null,
   "professionalUrls": []
 }

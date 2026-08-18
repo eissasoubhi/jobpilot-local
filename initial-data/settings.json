@@ -7,7 +7,9 @@
   ],
   "exclusions": [
     "Internship",
-    "Apprenticeship"
+    "Apprenticeship",
+    "Stage",
+    "Alternance"
   ],
   "skills": [
     "PHP",

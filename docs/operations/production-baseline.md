@@ -4,6 +4,8 @@
 
 Déployer JobPilot de manière fiable sans introduire Kubernetes avant qu’il soit justifié.
 
+Ce socle reste volontairement indépendant du fournisseur d’infrastructure retenu.
+
 ## Composants cibles
 
 ```text
@@ -79,6 +81,14 @@ Les CV et documents utilisent le système de fichiers local en développement et
 - validation stricte des fichiers ;
 - journal d’audit des envois ;
 - aucune donnée personnelle dans les logs techniques.
+
+## Runbooks associés
+
+- [Sauvegarde et restauration](backup-restore.md) : RPO/RTO, restauration isolée et exercices réguliers.
+- [Monitoring et alertes](monitoring.md) : disponibilité, files, connecteurs, logs structurés et alertes.
+- [Réponse aux incidents](incident-response.md) : sévérités, kill switches, rollback et post-mortem.
+
+Ces procédures font partie du socle de production : leur présence documentaire ne suffit pas, elles doivent être exercées en staging puis validées dans l’environnement réellement retenu.
 
 ## Critères avant première production
 

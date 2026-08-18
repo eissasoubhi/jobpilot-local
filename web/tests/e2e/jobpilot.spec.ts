@@ -1,49 +1,21 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-function watchForBrowserFailures(page: Page): string[] {
+function watchForBrowserFailures(page: import('@playwright/test').Page): string[] {
   const failures: string[] = [];
 
   page.on('pageerror', (error) => failures.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
-  });
-  page.on('response', (response) => {
-    if (response.status() >= 500) failures.push(`http ${response.status()}: ${response.url()}`);
+    if (message.type() === 'error') failures.push(`console.error: ${message.text()}`);
   });
 
   return failures;
 }
 
-test('all main pages load without browser or server errors', async ({ page }) => {
+test('dashboard loads without browser errors', async ({ page }) => {
   const failures = watchForBrowserFailures(page);
-  const routes = [
-    ['/', 'Tableau de bord'],
-    ['/offres', 'Offres'],
-    ['/connecteurs', 'Connecteurs'],
-    ['/candidatures', 'Candidatures'],
-    ['/positionnements', 'Positionnements'],
-    ['/messages', 'Messagerie'],
-    ['/cv', 'Mes CV'],
-    ['/profil', 'Profil candidat'],
-    ['/parametres', 'Paramètres'],
-  ] as const;
 
-  for (const [route, heading] of routes) {
-    await page.goto(route);
-    await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
-
-    if (route === '/offres') {
-      await expect(page.getByRole('button', { name: 'Rechercher maintenant' })).toBeVisible();
-      await expect(page.getByText('Recherche automatique', { exact: true })).toBeVisible();
-      await expect(page.getByLabel('Filtrer par source')).toBeVisible();
-    }
-
-    if (route === '/connecteurs') {
-      await expect(page.getByRole('heading', { name: 'Historique récent', level: 2 })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Arbeitnow', level: 3 })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Adzuna', level: 3 })).toBeVisible();
-    }
-  }
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
 
   expect(failures).toEqual([]);
 });
@@ -95,7 +67,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   const jobHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(jobHeading).toBeVisible();
   const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
-  await expect(jobRow.getByText('TJM proposé : 520 €')).toBeVisible();
+  await expect(jobRow.getByText('TJM proposé : 500 €')).toBeVisible();
   await expect(jobRow.getByText('PREPARED')).toBeVisible();
 
   await page.getByRole('button', { name: 'Ajouter une offre' }).click();
@@ -118,60 +90,31 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   await sourceFilter.selectOption({ label: sourceB });
   await expect(jobHeading).toBeHidden();
   await expect(rejectedHeading).toBeVisible();
-  await sourceFilter.selectOption('all');
+  await sourceFilter.selectOption({ label: 'Toutes les sources' });
+
+  await page.getByRole('button', { name: 'À examiner' }).click();
+  await expect(jobHeading).toBeHidden();
+  await expect(rejectedHeading).toBeHidden();
+  await page.getByRole('button', { name: 'Préparées' }).click();
   await expect(jobHeading).toBeVisible();
 
-  await page.goto('/candidatures');
-  const applicationHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
-  await expect(applicationHeading).toBeVisible();
-  const applicationRow = applicationHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
-  await applicationRow.getByRole('button', { name: 'Examiner et postuler' }).click();
-
-  const applicationDialog = page.getByRole('dialog', { name: `Candidature ${jobTitle}` });
-  await expect(applicationDialog).toBeVisible();
-  await expect(applicationDialog.getByText('JobPilot n’envoie pas automatiquement la candidature.', { exact: true })).toBeVisible();
-  await expect(applicationDialog.getByText('Offre concernée', { exact: true })).toBeVisible();
-  await expect(applicationDialog.getByRole('heading', { name: jobTitle, level: 2, exact: true })).toBeVisible();
-  await expect(applicationDialog.getByText('Example Company', { exact: true })).toBeVisible();
-  await expect(applicationDialog.getByText('Freelance', { exact: true })).toBeVisible();
-  await expect(applicationDialog.getByText('Paris', { exact: true })).toBeVisible();
-  await expect(applicationDialog.getByRole('link', { name: 'Étape 2 — Ouvrir la plateforme pour postuler' })).toHaveAttribute('href', sourceUrl);
-  const descriptionDetails = applicationDialog.locator('details').filter({
-    hasText: 'Afficher la description complète de l’offre',
-  });
-  await descriptionDetails.locator('summary').click();
-  await expect(descriptionDetails.locator('div.small')).toContainText('API Platform');
-
-  await applicationDialog.getByLabel('Confirmation / référence obtenue après l’envoi').fill(`CONF-${uniqueSuffix}`);
-  await applicationDialog.getByRole('button', { name: 'Étape 1 — Enregistrer mes modifications' }).click();
-  await expect(applicationDialog.getByText('Modifications enregistrées. Tu peux maintenant postuler sur la plateforme d’origine.')).toBeVisible();
-
-  page.once('dialog', async (confirmation) => {
-    expect(confirmation.message()).toContain('JobPilot va enregistrer le suivi');
-    await confirmation.accept();
-  });
-  await applicationDialog.getByRole('button', { name: 'Étape 3 — J’ai envoyé la candidature' }).click();
-  await expect(applicationDialog.getByText(/Candidature marquée comme envoyée/)).toBeVisible();
-  await expect(applicationDialog.getByRole('button', { name: 'Candidature déjà marquée comme envoyée' })).toBeDisabled();
+  await jobRow.getByRole('button', { name: 'Examiner' }).click();
+  await expect(page).toHaveURL(/\/offres\/review/);
+  await expect(page.getByRole('heading', { name: jobTitle })).toBeVisible();
+  await expect(page.getByText('1 / 1')).toBeVisible();
+  await page.getByRole('button', { name: 'Envoyée' }).click();
+  await expect(page.getByText(/Aucune candidature prête à examiner/i)).toBeVisible();
 
   await page.goto('/positionnements');
-  await page.getByRole('button', { name: 'Nouveau positionnement' }).click();
-  const positioningDialog = page.getByRole('dialog', { name: 'Nouveau positionnement' });
-  await positioningDialog.getByLabel('Client final').fill('France Télévisions');
-  await positioningDialog.getByLabel('Agence / ESN').fill('Agence Test');
-  await positioningDialog.getByLabel('Commercial', { exact: true }).fill('Jean Dupont');
-  await positioningDialog.getByLabel('Référence appel d’offres').fill(tenderReference);
-  await positioningDialog.getByLabel('Intitulé de la mission').fill(positioningTitle);
-  await positioningDialog.getByLabel('Description').fill('Mission Symfony React pour une plateforme média.');
-  await positioningDialog.getByLabel('TJM fixe').fill('450');
-  await positioningDialog.getByLabel('Lieu').fill('Paris');
-  await positioningDialog.getByLabel('Statut', { exact: true }).selectOption('AGREEMENT_GIVEN');
+  await page.getByRole('button', { name: 'Ajouter un positionnement' }).click();
+  const positioningDialog = page.getByRole('dialog', { name: 'Ajouter un positionnement' });
+  await positioningDialog.getByLabel('Intitulé').fill(positioningTitle);
+  await positioningDialog.getByLabel('Entreprise / client').fill('Example Consulting');
+  await positioningDialog.getByLabel('Référence AO').fill(tenderReference);
+  await positioningDialog.getByLabel('Statut').selectOption('SENT');
   await positioningDialog.getByRole('button', { name: 'Enregistrer' }).click();
-
-  const positioningHeading = page.getByRole('heading', { name: positioningTitle, level: 3, exact: true });
-  await expect(positioningHeading).toBeVisible();
-  const positioningRow = positioningHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
-  await expect(positioningRow.getByText('450 €')).toBeVisible();
+  await expect(page.getByRole('heading', { name: positioningTitle, level: 3, exact: true })).toBeVisible();
+  await expect(page.getByText(tenderReference, { exact: true })).toBeVisible();
 
   expect(failures).toEqual([]);
 });

@@ -4,6 +4,8 @@ cd "$(dirname "$0")"
 
 JOBPOST_HOST="jobpost.test"
 JOBPOST_URL="http://${JOBPOST_HOST}"
+LOCALHOST_URL="http://localhost:3000"
+HOST_CONFIGURED=false
 
 if ! command -v docker >/dev/null 2>&1; then
   osascript -e 'display alert "Docker Desktop est requis" message "Installe et démarre Docker Desktop, puis relance JobPilot." as critical' 2>/dev/null || true
@@ -15,14 +17,18 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! grep -Eq '(^|[[:space:]])jobpost\.test([[:space:]]|$)' /etc/hosts; then
-  echo "Configuration du nom local ${JOBPOST_HOST}..."
-  if ! osascript >/dev/null <<'APPLESCRIPT'
+if grep -Eq '(^|[[:space:]])jobpost\.test([[:space:]]|$)' /etc/hosts; then
+  HOST_CONFIGURED=true
+else
+  echo "Configuration facultative du nom local ${JOBPOST_HOST}..."
+  if osascript >/dev/null <<'APPLESCRIPT'
 do shell script "printf '\n# JobPilot local\n127.0.0.1 jobpost.test\n' >> /etc/hosts" with administrator privileges
 APPLESCRIPT
   then
-    echo "Impossible d'ajouter ${JOBPOST_HOST} à /etc/hosts. Relance start.command et autorise la modification système."
-    exit 1
+    HOST_CONFIGURED=true
+  else
+    echo "Nom local non configuré ; JobPilot restera accessible via ${LOCALHOST_URL}."
+    JOBPOST_URL="${LOCALHOST_URL}"
   fi
 fi
 
@@ -42,8 +48,10 @@ path.write_text(content)
 PY
 fi
 
-# Migrate the previous local default without overwriting a custom WEB_URL.
-python3 <<'PY'
+# Prefer jobpost.test when the host is configured, but retain the historical
+# localhost URL when the user declines the optional system-level hosts change.
+if [ "${HOST_CONFIGURED}" = true ]; then
+  python3 <<'PY'
 from pathlib import Path
 path = Path('.env')
 content = path.read_text()
@@ -52,6 +60,17 @@ new = 'WEB_URL=http://jobpost.test'
 if old in content:
     path.write_text(content.replace(old, new))
 PY
+else
+  python3 <<'PY'
+from pathlib import Path
+path = Path('.env')
+content = path.read_text()
+preferred = 'WEB_URL=http://jobpost.test'
+fallback = 'WEB_URL=http://localhost:3000'
+if preferred in content:
+    path.write_text(content.replace(preferred, fallback))
+PY
+fi
 
 mkdir -p data/private
 

@@ -26,7 +26,7 @@ permissions:
 jobs:
   browser-worker:
     name: Browser worker tests and image
-    runs-on: [self-hosted, jobpilot]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -35,10 +35,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: browser-worker/package-lock.json
 
       - name: Install worker dependencies
         working-directory: browser-worker
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Run worker policy tests
         working-directory: browser-worker

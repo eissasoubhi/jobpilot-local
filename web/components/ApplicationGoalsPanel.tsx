@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react';
 
 import { api } from '@/lib/api';
 import {
-  applicationGoalDeadlineTone,
+  applicationGoalPaceTone,
   applicationGoalProgressWidth,
   enabledApplicationGoalPeriods,
-  type ApplicationGoalDeadlineTone,
+  type ApplicationGoalPaceTone,
   type ApplicationGoalSnapshot,
 } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
 
 import styles from './ApplicationGoals.module.css';
 
-function deadlineTrackClass(tone: ApplicationGoalDeadlineTone): string | undefined {
+function paceTrackClass(tone: ApplicationGoalPaceTone): string | undefined {
   if (tone === 'completed') return styles.compactTrackCompleted;
   if (tone === 'warning') return styles.compactTrackWarning;
   if (tone === 'critical') return styles.compactTrackCritical;
@@ -60,12 +60,12 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
       ) : (
         <div className={styles.compactPeriods}>
           {periods.map((period) => {
-            const deadlineTone = applicationGoalDeadlineTone(period, now);
+            const paceTone = applicationGoalPaceTone(period, now);
 
             return (
               <article
                 className={styles.compactPeriod}
-                data-deadline-tone={deadlineTone}
+                data-pace-tone={paceTone}
                 key={period.period}
               >
                 <div className={styles.compactPeriodHeader}>
@@ -74,7 +74,7 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
                 </div>
                 <div className={styles.compactTrack} aria-hidden="true">
                   <span
-                    className={deadlineTrackClass(deadlineTone)}
+                    className={paceTrackClass(paceTone)}
                     style={{ width: `${applicationGoalProgressWidth(period)}%` }}
                   />
                 </div>

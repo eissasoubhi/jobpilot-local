@@ -243,6 +243,8 @@ jobs:
           docker run --rm \
             --network host \
             --ipc host \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
             --env CI=true \
             --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
             --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \

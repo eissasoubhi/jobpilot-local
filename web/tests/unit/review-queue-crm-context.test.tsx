@@ -7,6 +7,9 @@ import type { Application, Job } from '@/lib/types';
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({ api: apiMock }));
+vi.mock('@/components/ApplicationGoalsPanel', () => ({
+  ApplicationGoalsPanel: () => null,
+}));
 vi.mock('@/components/ReviewQueueApplicationCard', () => ({
   ReviewQueueApplicationCard: ({ application }: { application: Application }) => (
     <div>{application.jobOffer.title}</div>

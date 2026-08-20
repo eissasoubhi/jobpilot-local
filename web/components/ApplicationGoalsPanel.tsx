@@ -4,17 +4,27 @@ import { useEffect, useState } from 'react';
 
 import { api } from '@/lib/api';
 import {
+  applicationGoalDeadlineTone,
   applicationGoalProgressWidth,
   enabledApplicationGoalPeriods,
+  type ApplicationGoalDeadlineTone,
   type ApplicationGoalSnapshot,
 } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
 
 import styles from './ApplicationGoals.module.css';
 
+function deadlineTrackClass(tone: ApplicationGoalDeadlineTone): string | undefined {
+  if (tone === 'completed') return styles.compactTrackCompleted;
+  if (tone === 'warning') return styles.compactTrackWarning;
+  if (tone === 'critical') return styles.compactTrackCritical;
+  return undefined;
+}
+
 export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [snapshot, setSnapshot] = useState<ApplicationGoalSnapshot | null>(null);
   const [error, setError] = useState('');
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     let active = true;
@@ -22,6 +32,7 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
       .then((result) => {
         if (!active) return;
         setSnapshot(result);
+        setNow(Date.now());
         setError('');
       })
       .catch((caughtError: unknown) => {
@@ -30,6 +41,11 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
 
     return () => { active = false; };
   }, [refreshKey]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const periods = snapshot === null ? [] : enabledApplicationGoalPeriods(snapshot);
 
@@ -43,20 +59,28 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
         <p className={styles.compactState}>Aucun objectif actif.</p>
       ) : (
         <div className={styles.compactPeriods}>
-          {periods.map((period) => (
-            <article className={styles.compactPeriod} key={period.period}>
-              <div className={styles.compactPeriodHeader}>
-                <strong>{period.label}</strong>
-                <span>{period.achieved}/{period.target} · {period.percent}%</span>
-              </div>
-              <div className={styles.compactTrack} aria-hidden="true">
-                <span
-                  className={period.completed ? styles.compactTrackCompleted : undefined}
-                  style={{ width: `${applicationGoalProgressWidth(period)}%` }}
-                />
-              </div>
-            </article>
-          ))}
+          {periods.map((period) => {
+            const deadlineTone = applicationGoalDeadlineTone(period, now);
+
+            return (
+              <article
+                className={styles.compactPeriod}
+                data-deadline-tone={deadlineTone}
+                key={period.period}
+              >
+                <div className={styles.compactPeriodHeader}>
+                  <strong>{period.label}</strong>
+                  <span>{period.achieved}/{period.target} · {period.percent}%</span>
+                </div>
+                <div className={styles.compactTrack} aria-hidden="true">
+                  <span
+                    className={deadlineTrackClass(deadlineTone)}
+                    style={{ width: `${applicationGoalProgressWidth(period)}%` }}
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

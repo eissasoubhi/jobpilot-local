@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
 import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
 import { ApplicationGoalsSettings } from '@/components/ApplicationGoalsSettings';
-import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
+import {
+  applicationGoalDeadlineTone,
+  type ApplicationGoalSnapshot,
+} from '@/lib/application-goals';
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
@@ -66,6 +69,26 @@ describe('application goals', () => {
     expect(screen.getByText('25/40 · 63%')).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'Objectif journalier de candidatures' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Enregistrer/ })).not.toBeInTheDocument();
+  });
+
+  it('changes goal urgency as the deadline approaches', () => {
+    const period = snapshot.periods.daily;
+
+    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T12:00:00+02:00'))).toBe('normal');
+    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T19:00:00+02:00'))).toBe('warning');
+    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T22:00:00+02:00'))).toBe('critical');
+    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-21T00:01:00+02:00'))).toBe('critical');
+    expect(applicationGoalDeadlineTone({ ...period, completed: true }, Date.parse('2026-08-20T23:59:00+02:00'))).toBe('completed');
+  });
+
+  it('applies the critical deadline state to the compact Review Queue progress', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-20T22:00:00+02:00'));
+    apiMock.mockResolvedValueOnce(snapshot);
+
+    render(<ApplicationGoalsPanel />);
+
+    const dailyLabel = await screen.findByText('Aujourd’hui');
+    expect(dailyLabel.closest('article')).toHaveAttribute('data-deadline-tone', 'critical');
   });
 
   it('configures daily, weekly and monthly targets from settings', async () => {

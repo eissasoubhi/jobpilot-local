@@ -52,7 +52,15 @@
   height: 100%;
   border-radius: inherit;
   background: #2563eb;
-  transition: width .2s ease;
+  transition: width .2s ease, background-color .2s ease;
+}
+
+.compactTrack span.compactTrackWarning {
+  background: #f59e0b;
+}
+
+.compactTrack span.compactTrackCritical {
+  background: #dc2626;
 }
 
 .compactTrack span.compactTrackCompleted {

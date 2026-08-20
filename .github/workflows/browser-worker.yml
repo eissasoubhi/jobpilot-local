@@ -35,12 +35,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: browser-worker/package-lock.json
 
       - name: Install worker dependencies
         working-directory: browser-worker
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Run worker policy tests
         working-directory: browser-worker

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
 import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -35,6 +36,7 @@ export default function ReviewQueuePage() {
   const [error, setError] = useState('');
   const [decisionSaving, setDecisionSaving] = useState<ReviewDecision | null>(null);
   const [decisionError, setDecisionError] = useState('');
+  const [goalRefreshKey, setGoalRefreshKey] = useState(0);
   const offerHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousCurrentIdRef = useRef<number | null>(null);
 
@@ -148,6 +150,10 @@ export default function ReviewQueuePage() {
         }),
       });
       updateApplication(updated);
+      if (status === 'SUBMITTED') {
+        setGoalRefreshKey((value) => value + 1);
+        window.dispatchEvent(new Event('jobpilot:application-goals-changed'));
+      }
     } catch (caughtError: unknown) {
       setDecisionError(getErrorMessage(caughtError));
     } finally {
@@ -183,6 +189,8 @@ export default function ReviewQueuePage() {
           <Link className="review-queue-back-link" href="/offres">← Offres</Link>
         </div>
       </header>
+
+      <ApplicationGoalsPanel refreshKey={goalRefreshKey} />
 
       <div className={styles.screenReaderStatus} role="status" aria-live="polite" aria-atomic="true">
         {accessibleQueueStatus}

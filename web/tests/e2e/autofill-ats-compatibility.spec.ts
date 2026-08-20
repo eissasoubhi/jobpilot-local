@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { expect, test } from '@playwright/test';
 
@@ -13,8 +12,7 @@ type Fixture = {
   expectedValues: Record<string, string>;
 };
 
-const testDirectory = path.dirname(fileURLToPath(import.meta.url));
-const extensionDirectory = path.resolve(testDirectory, '../../../extension');
+const extensionDirectory = path.resolve(process.cwd(), '../extension');
 const extensionScripts = [
   'form-detector.js',
   'ats-adapters.js',

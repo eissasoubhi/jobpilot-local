@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
 import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
+import { ApplicationGoalsSettings } from '@/components/ApplicationGoalsSettings';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
@@ -55,23 +56,34 @@ describe('application goals', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows progress and saves daily, weekly and monthly targets from Review Queue', async () => {
+  it('keeps Review Queue limited to compact goal progress', async () => {
+    apiMock.mockResolvedValueOnce(snapshot);
+
+    render(<ApplicationGoalsPanel />);
+
+    expect(await screen.findByText('1/2 · 50%')).toBeInTheDocument();
+    expect(screen.getByText('6/10 · 60%')).toBeInTheDocument();
+    expect(screen.getByText('25/40 · 63%')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Objectif journalier de candidatures' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enregistrer/ })).not.toBeInTheDocument();
+  });
+
+  it('configures daily, weekly and monthly targets from settings', async () => {
     apiMock.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({
       ...snapshot,
       config: { ...snapshot.config, daily: 3 },
       periods: { ...snapshot.periods, daily: { ...snapshot.periods.daily, target: 3, remaining: 2, percent: 33 } },
     });
 
-    render(<ApplicationGoalsPanel />);
+    render(<ApplicationGoalsSettings />);
 
-    expect(await screen.findByText('1 / 2 envoyée(s)')).toBeInTheDocument();
-    expect(screen.getByText('6 / 10 envoyée(s)')).toBeInTheDocument();
-    expect(screen.getByText('25 / 40 envoyée(s)')).toBeInTheDocument();
+    const dailyInput = await screen.findByRole('spinbutton', { name: 'Objectif journalier de candidatures' });
+    expect(dailyInput).toHaveValue(2);
+    expect(screen.getByRole('spinbutton', { name: 'Objectif hebdomadaire de candidatures' })).toHaveValue(10);
+    expect(screen.getByRole('spinbutton', { name: 'Objectif mensuel de candidatures' })).toHaveValue(40);
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Objectif journalier de candidatures' }), {
-      target: { value: '3' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    fireEvent.change(dailyInput, { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les objectifs' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/application-goals', {
       method: 'PUT',

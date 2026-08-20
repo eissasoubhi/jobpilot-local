@@ -40,7 +40,12 @@ export type ApplicationGoalSnapshot = {
   generatedAt: string;
 };
 
-export type ApplicationGoalDeadlineTone = 'normal' | 'warning' | 'critical' | 'completed';
+export type ApplicationGoalPaceTone = 'normal' | 'warning' | 'critical' | 'completed';
+
+const PACE_TOLERANCE = 0.10;
+const CRITICAL_LAG = 0.25;
+const CRITICAL_REMAINING = 0.10;
+const NEAR_DEADLINE_REMAINING = 0.25;
 
 export function enabledApplicationGoalPeriods(snapshot: ApplicationGoalSnapshot): ApplicationGoalPeriod[] {
   return [snapshot.periods.daily, snapshot.periods.weekly, snapshot.periods.monthly]
@@ -51,26 +56,36 @@ export function applicationGoalProgressWidth(period: ApplicationGoalPeriod): num
   return Math.max(0, Math.min(100, period.percent));
 }
 
-export function applicationGoalDeadlineTone(
+export function applicationGoalPaceTone(
   period: ApplicationGoalPeriod,
   now: number = Date.now(),
-): ApplicationGoalDeadlineTone {
+): ApplicationGoalPaceTone {
   if (period.completed) return 'completed';
 
   const start = Date.parse(period.start);
   const end = Date.parse(period.end);
 
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || period.target <= 0) {
     return 'normal';
   }
 
   if (now >= end) return 'critical';
   if (now <= start) return 'normal';
 
-  const remainingRatio = (end - now) / (end - start);
+  const elapsedRatio = Math.max(0, Math.min(1, (now - start) / (end - start)));
+  const progressRatio = Math.max(0, Math.min(1, period.achieved / period.target));
+  const paceLag = elapsedRatio - progressRatio;
 
-  if (remainingRatio <= 0.10) return 'critical';
-  if (remainingRatio <= 0.25) return 'warning';
+  // A small tolerance avoids turning an almost-on-track goal orange because
+  // applications are discrete while elapsed time is continuous.
+  if (paceLag <= PACE_TOLERANCE) return 'normal';
 
-  return 'normal';
+  const remainingRatio = 1 - elapsedRatio;
+  const severelyBehindNearDeadline = remainingRatio <= NEAR_DEADLINE_REMAINING
+    && paceLag >= CRITICAL_LAG;
+  const behindAtFinalStretch = remainingRatio <= CRITICAL_REMAINING;
+
+  if (severelyBehindNearDeadline || behindAtFinalStretch) return 'critical';
+
+  return 'warning';
 }

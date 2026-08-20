@@ -5,7 +5,7 @@ import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
 import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
 import { ApplicationGoalsSettings } from '@/components/ApplicationGoalsSettings';
 import {
-  applicationGoalDeadlineTone,
+  applicationGoalPaceTone,
   type ApplicationGoalSnapshot,
 } from '@/lib/application-goals';
 
@@ -71,24 +71,63 @@ describe('application goals', () => {
     expect(screen.queryByRole('button', { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
-  it('changes goal urgency as the deadline approaches', () => {
-    const period = snapshot.periods.daily;
+  it('colors goals from achieved pace versus elapsed time', () => {
+    const period = {
+      ...snapshot.periods.daily,
+      target: 10,
+      achieved: 6,
+      remaining: 4,
+      percent: 60,
+    };
 
-    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T12:00:00+02:00'))).toBe('normal');
-    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T19:00:00+02:00'))).toBe('warning');
-    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-20T22:00:00+02:00'))).toBe('critical');
-    expect(applicationGoalDeadlineTone(period, Date.parse('2026-08-21T00:01:00+02:00'))).toBe('critical');
-    expect(applicationGoalDeadlineTone({ ...period, completed: true }, Date.parse('2026-08-20T23:59:00+02:00'))).toBe('completed');
+    // 60% of the day elapsed and 60% achieved: on pace.
+    expect(applicationGoalPaceTone(period, Date.parse('2026-08-20T14:24:00+02:00'))).toBe('normal');
+
+    // Same time, but only 30% achieved: behind the expected pace.
+    expect(applicationGoalPaceTone(
+      { ...period, achieved: 3, remaining: 7, percent: 30 },
+      Date.parse('2026-08-20T14:24:00+02:00'),
+    )).toBe('warning');
+
+    // Deadline is very close, but 90% achieved at about 92% elapsed is still on track.
+    expect(applicationGoalPaceTone(
+      { ...period, achieved: 9, remaining: 1, percent: 90 },
+      Date.parse('2026-08-20T22:05:00+02:00'),
+    )).toBe('normal');
+
+    // Deadline is very close and the goal is far behind: critical.
+    expect(applicationGoalPaceTone(
+      { ...period, achieved: 3, remaining: 7, percent: 30 },
+      Date.parse('2026-08-20T22:48:00+02:00'),
+    )).toBe('critical');
+
+    expect(applicationGoalPaceTone(period, Date.parse('2026-08-21T00:01:00+02:00'))).toBe('critical');
+    expect(applicationGoalPaceTone(
+      { ...period, completed: true, achieved: 10, remaining: 0, percent: 100 },
+      Date.parse('2026-08-20T23:59:00+02:00'),
+    )).toBe('completed');
   });
 
-  it('applies the critical deadline state to the compact Review Queue progress', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-20T22:00:00+02:00'));
-    apiMock.mockResolvedValueOnce(snapshot);
+  it('applies the critical pace state to the compact Review Queue progress', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-20T22:48:00+02:00'));
+    apiMock.mockResolvedValueOnce({
+      ...snapshot,
+      periods: {
+        ...snapshot.periods,
+        daily: {
+          ...snapshot.periods.daily,
+          target: 10,
+          achieved: 3,
+          remaining: 7,
+          percent: 30,
+        },
+      },
+    });
 
     render(<ApplicationGoalsPanel />);
 
     const dailyLabel = await screen.findByText('Aujourd’hui');
-    expect(dailyLabel.closest('article')).toHaveAttribute('data-deadline-tone', 'critical');
+    expect(dailyLabel.closest('article')).toHaveAttribute('data-pace-tone', 'critical');
   });
 
   it('configures daily, weekly and monthly targets from settings', async () => {

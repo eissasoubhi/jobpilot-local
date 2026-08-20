@@ -14,12 +14,13 @@ class UserSettings
     #[ORM\Column(type: 'json')] private array $targetJobs = [];
     #[ORM\Column(type: 'json')] private array $exclusions = [];
     #[ORM\Column(type: 'json')] private array $skills = [];
-    /** @var array{daily:int,weekly:int,monthly:int,timezone:string} */
+    /** @var array{daily:int,weekly:int,monthly:int,timezone:string,startedAt:?string} */
     #[ORM\Column(type: 'json')] private array $applicationGoals = [
         'daily' => 0,
         'weekly' => 0,
         'monthly' => 0,
         'timezone' => 'Europe/Paris',
+        'startedAt' => null,
     ];
     #[ORM\Column] private int $matchingThreshold = 50;
     #[ORM\Column] private int $defaultIdfTjm = 500;
@@ -46,8 +47,8 @@ class UserSettings
     public function getTargetJobs(): array { return $this->targetJobs; }
     public function getExclusions(): array { return $this->exclusions; }
     public function getSkills(): array { return $this->skills; }
-    /** @return array{daily:int,weekly:int,monthly:int,timezone:string} */
-    public function getApplicationGoals(): array { return $this->normalizedApplicationGoals($this->applicationGoals); }
+    /** @return array{daily:int,weekly:int,monthly:int,timezone:string,startedAt:?string} */
+    public function getApplicationGoals(): array { return $this->normalizedApplicationGoals($this->applicationGoals, false); }
     public function getMatchingThreshold(): int { return $this->matchingThreshold; }
     public function getDefaultIdfTjm(): int { return $this->defaultIdfTjm; }
     public function getDefaultOutsideIdfTjm(): int { return $this->defaultOutsideIdfTjm; }
@@ -82,7 +83,7 @@ class UserSettings
             if (!is_array($data['applicationGoals'])) {
                 throw new \InvalidArgumentException('La configuration des objectifs doit être un objet.');
             }
-            $this->applicationGoals = $this->normalizedApplicationGoals($data['applicationGoals']);
+            $this->applicationGoals = $this->normalizedApplicationGoals($data['applicationGoals'], true);
         }
 
         foreach (['targetJobs', 'exclusions', 'skills'] as $field) {
@@ -152,9 +153,9 @@ class UserSettings
     }
 
     /** @param array<string, mixed> $goals
-     *  @return array{daily:int,weekly:int,monthly:int,timezone:string}
+     *  @return array{daily:int,weekly:int,monthly:int,timezone:string,startedAt:?string}
      */
-    private function normalizedApplicationGoals(array $goals): array
+    private function normalizedApplicationGoals(array $goals, bool $resetStartedAt): array
     {
         $daily = $this->goalValue($goals['daily'] ?? 0, 100, 'journalier');
         $weekly = $this->goalValue($goals['weekly'] ?? 0, 500, 'hebdomadaire');
@@ -169,11 +170,23 @@ class UserSettings
             throw new \InvalidArgumentException('Le fuseau horaire des objectifs est invalide.');
         }
 
+        $startedAt = null;
+        if ($resetStartedAt && ($daily > 0 || $weekly > 0 || $monthly > 0)) {
+            $startedAt = (new \DateTimeImmutable())->format(DATE_ATOM);
+        } elseif (is_string($goals['startedAt'] ?? null) && trim((string) $goals['startedAt']) !== '') {
+            try {
+                $startedAt = (new \DateTimeImmutable((string) $goals['startedAt']))->format(DATE_ATOM);
+            } catch (\Exception) {
+                $startedAt = null;
+            }
+        }
+
         return [
             'daily' => $daily,
             'weekly' => $weekly,
             'monthly' => $monthly,
             'timezone' => $timezone,
+            'startedAt' => $startedAt,
         ];
     }
 

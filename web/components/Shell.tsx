@@ -99,7 +99,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="main">
-        <ApplicationGoalAlerts />
+        {pathname !== '/offres/review' && <ApplicationGoalAlerts />}
         {children}
         {pathname === '/parametres/integrations' && <GeminiPaidQuotaPresetPanel />}
         {pathname === '/parametres' && (

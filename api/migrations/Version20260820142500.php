@@ -18,8 +18,9 @@ final class Version20260820142500 extends AbstractMigration
     {
         $this->addSql(<<<'SQL'
             ALTER TABLE user_settings
-            ADD application_goals JSON NOT NULL DEFAULT '{"daily":0,"weekly":0,"monthly":0,"timezone":"Europe/Paris"}'
+            ADD application_goals JSON NOT NULL DEFAULT '{"daily":0,"weekly":0,"monthly":0,"timezone":"Europe/Paris","startedAt":null}'
         SQL);
+        $this->addSql('ALTER TABLE user_settings ALTER application_goals DROP DEFAULT');
     }
 
     public function down(Schema $schema): void

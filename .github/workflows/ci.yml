@@ -249,6 +249,7 @@ jobs:
             --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
             --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
             --volume "$PWD/web:/workspace" \
+            --volume "$PWD/extension:/extension:ro" \
             --workdir /workspace \
             jobpilot-browser-worker:ci \
             npm run test:e2e

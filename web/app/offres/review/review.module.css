@@ -23,9 +23,9 @@
   max-width: 1432px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
+  grid-template-columns: minmax(170px, .9fr) minmax(205px, 1fr) auto minmax(170px, .9fr);
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 10px;
   border: 1px solid #dbe1ec;
   border-radius: 14px;
@@ -42,8 +42,8 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  padding: 10px 18px;
-  font-size: 15px;
+  padding: 10px 14px;
+  font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
@@ -68,6 +68,17 @@
 
 .rejectButton:not(:disabled):hover {
   box-shadow: 0 7px 18px rgba(180, 35, 24, .14);
+}
+
+.unavailableButton {
+  justify-self: stretch;
+  background: #fff8e8;
+  border-color: #f0d39c;
+  color: #8a5400;
+}
+
+.unavailableButton:not(:disabled):hover {
+  box-shadow: 0 7px 18px rgba(154, 91, 0, .14);
 }
 
 .sentButton {
@@ -151,6 +162,18 @@
   text-align: center;
 }
 
+@media (max-width: 1150px) {
+  .decisionBar {
+    grid-template-columns: minmax(150px, .9fr) minmax(180px, 1fr) auto minmax(150px, .9fr);
+    gap: 8px;
+  }
+
+  .decisionButton {
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 950px) {
   .decisionBar {
     left: 22px;
@@ -162,7 +185,7 @@
 
 @media (max-width: 650px) {
   .workspace {
-    padding-bottom: 132px;
+    padding-bottom: 194px;
   }
 
   .decisionBar {
@@ -180,9 +203,14 @@
     font-size: 13px;
   }
 
-  .secondaryNavigation {
+  .sentButton {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .secondaryNavigation {
+    grid-column: 1 / -1;
+    grid-row: 3;
     justify-self: center;
     grid-template-columns: auto minmax(90px, 130px) auto;
   }
@@ -193,6 +221,6 @@
   }
 
   .decisionError {
-    grid-row: 3;
+    grid-row: 4;
   }
 }

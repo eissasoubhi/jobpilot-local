@@ -81,10 +81,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
       - name: Install frontend dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Type-check
         run: npm run typecheck
       - name: Run frontend unit tests
@@ -157,8 +155,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
 
       - name: Install backend dependencies
         working-directory: api
@@ -169,7 +165,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: web
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build Next.js for browser tests
         working-directory: web

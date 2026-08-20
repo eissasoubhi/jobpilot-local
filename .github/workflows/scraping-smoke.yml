@@ -15,12 +15,26 @@ concurrency:
 jobs:
   le-studio-tech:
     name: Le Studio Tech live smoke
-    runs-on: [self-hosted, jobpilot]
-    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jobpilot
+          POSTGRES_USER: jobpilot
+          POSTGRES_PASSWORD: jobpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobpilot -d jobpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       APP_ENV: prod
       APP_DEBUG: 0
-      APP_SECRET: scraping-smoke-local-only
+      APP_SECRET: scraping-smoke-ci-only
       APP_ENCRYPTION_KEY: ''
       DATABASE_URL: postgresql://jobpilot:jobpilot@127.0.0.1:5432/jobpilot?serverVersion=17&charset=utf8
       LE_STUDIO_TECH_ENABLED: 1
@@ -31,8 +45,6 @@ jobs:
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
-        env:
-          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter
@@ -42,6 +54,10 @@ jobs:
       - name: Install backend dependencies
         working-directory: api
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare smoke database
+        working-directory: api
+        run: php bin/console doctrine:migrations:migrate --no-interaction
 
       - name: Run bounded live smoke test
         working-directory: api

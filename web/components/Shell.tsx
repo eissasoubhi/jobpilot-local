@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { AiSidebarStatus } from '@/components/AiSidebarStatus';
+import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
 import { CatalogResetPanel } from '@/components/CatalogResetPanel';
 import { GeminiPaidQuotaPresetPanel } from '@/components/GeminiPaidQuotaPresetPanel';
 import { ProfileCleanupPanel } from '@/components/ProfileCleanupPanel';
@@ -97,6 +98,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="main">
+        <ApplicationGoalAlerts />
         {children}
         {pathname === '/parametres/integrations' && <GeminiPaidQuotaPresetPanel />}
         {pathname === '/parametres' && (

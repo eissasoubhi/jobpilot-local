@@ -76,6 +76,7 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
       setSnapshot(result);
       setDraft(draftFromSnapshot(result));
       setSaved(true);
+      window.dispatchEvent(new Event('jobpilot:application-goals-changed'));
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {

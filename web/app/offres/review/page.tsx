@@ -27,7 +27,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName);
 }
 
-type ReviewDecision = 'IGNORED_NOT_MATCH' | 'SUBMITTED';
+type ReviewDecision = 'IGNORED_NOT_MATCH' | 'OFFER_UNAVAILABLE' | 'SUBMITTED';
 
 export default function ReviewQueuePage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
@@ -135,20 +135,31 @@ export default function ReviewQueuePage() {
   const persistDecision = useCallback(async (status: ReviewDecision): Promise<void> => {
     if (!current || decisionSaving !== null) return;
 
+    if (status === 'OFFER_UNAVAILABLE') {
+      const confirmed = window.confirm(
+        'Confirmer que cette offre n’est plus disponible ? Elle sera retirée de la Review Queue et aucune candidature ne sera envoyée.',
+      );
+      if (!confirmed) return;
+    }
+
     setDecisionSaving(status);
     setDecisionError('');
 
     try {
-      const updated = await api<Application>(`/applications/${current.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status,
-          message: current.message,
-          coverLetter: current.coverLetter,
-          compensationAnswer: current.compensationAnswer,
-          confirmationRef: current.confirmationRef,
-        }),
-      });
+      const updated = status === 'OFFER_UNAVAILABLE'
+        ? await api<Application>(`/applications/${current.id}/offer-unavailable`, {
+            method: 'POST',
+          })
+        : await api<Application>(`/applications/${current.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status,
+              message: current.message,
+              coverLetter: current.coverLetter,
+              compensationAnswer: current.compensationAnswer,
+              confirmationRef: current.confirmationRef,
+            }),
+          });
       updateApplication(updated);
       if (status === 'SUBMITTED') {
         setGoalRefreshKey((value) => value + 1);
@@ -221,6 +232,16 @@ export default function ReviewQueuePage() {
             >
               <span aria-hidden="true">✕</span>
               <span>{decisionSaving === 'IGNORED_NOT_MATCH' ? 'Enregistrement…' : 'Ne correspond pas'}</span>
+            </button>
+
+            <button
+              className={`${styles.decisionButton} ${styles.unavailableButton}`}
+              type="button"
+              disabled={decisionSaving !== null}
+              onClick={() => void persistDecision('OFFER_UNAVAILABLE')}
+            >
+              <span aria-hidden="true">⊘</span>
+              <span>{decisionSaving === 'OFFER_UNAVAILABLE' ? 'Enregistrement…' : 'N’est plus disponible'}</span>
             </button>
 
             <div className={styles.secondaryNavigation}>

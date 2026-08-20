@@ -14,55 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  runner-preflight:
-    name: Runner disk preflight
-    runs-on: [self-hosted, jobpilot]
-    timeout-minutes: 5
-    steps:
-      - name: Reclaim safe CI disk space
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Disk usage before cleanup:"
-          df -h /
-          docker system df || true
-
-          # Generated dependency/build output is recreated by the jobs below.
-          # Cleaning it here is important because service containers are started
-          # before normal job steps and therefore need free disk beforehand.
-          rm -rf \
-            "$GITHUB_WORKSPACE/web/node_modules" \
-            "$GITHUB_WORKSPACE/web/.next" \
-            "$GITHUB_WORKSPACE/web/test-results" \
-            "$GITHUB_WORKSPACE/web/playwright-report" \
-            "$GITHUB_WORKSPACE/api/vendor" \
-            "$GITHUB_WORKSPACE/api/var"
-
-          docker container prune --force || true
-          # GitHub Actions Postgres services leave anonymous data volumes behind.
-          # `docker volume prune` removes unused anonymous volumes by default and
-          # does not remove named volumes unless `--all` is explicitly supplied.
-          docker volume prune --force || true
-          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
-          docker image prune --force || true
-          docker builder prune --force || true
-
-          echo "Disk usage after cleanup:"
-          df -h /
-          docker system df || true
-
-          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
-          minimum_kb=$((4 * 1024 * 1024))
-          if [ "$available_kb" -lt "$minimum_kb" ]; then
-            echo "::error::Le runner JobPilot dispose de moins de 4 Gio libres après le nettoyage CI. Libérer de l'espace sur la VM avant de lancer les tests lourds."
-            exit 1
-          fi
-
   backend:
     name: Backend tests
-    needs: [runner-preflight]
-    runs-on: [self-hosted, jobpilot]
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:17-alpine
@@ -86,12 +40,8 @@ jobs:
       ARBEITNOW_ENABLED: 0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
-        env:
-          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
@@ -118,27 +68,23 @@ jobs:
       - name: Run PHPUnit
         working-directory: api
         run: php bin/phpunit
-      - name: Reclaim backend workspace artifacts
-        if: always()
-        run: rm -rf api/vendor api/var
 
   frontend:
     name: Frontend tests
-    needs: [runner-preflight]
-    runs-on: [self-hosted, jobpilot]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Type-check
         run: npm run typecheck
       - name: Run frontend unit tests
@@ -148,18 +94,12 @@ jobs:
           NEXT_PUBLIC_API_URL: /api
           API_INTERNAL_URL: http://127.0.0.1:8080
         run: npm run build
-      - name: Reclaim frontend workspace artifacts
-        if: always()
-        run: rm -rf node_modules .next test-results playwright-report
 
   compose-config:
     name: Docker Compose configuration
-    needs: [runner-preflight]
-    runs-on: [self-hosted, jobpilot]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - name: Validate image-only configuration
         run: docker compose -f docker-compose.yml config --quiet
       - name: Validate local development configuration
@@ -168,7 +108,7 @@ jobs:
   e2e:
     name: Chromium end-to-end tests
     needs: [backend, frontend, compose-config]
-    runs-on: [self-hosted, jobpilot]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       postgres:
@@ -196,39 +136,9 @@ jobs:
       API_INTERNAL_URL: http://127.0.0.1:8080
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-
-      - name: Reclaim disk before browser job
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf \
-            web/node_modules \
-            web/.next \
-            web/test-results \
-            web/playwright-report \
-            api/vendor \
-            api/var
-          docker container prune --force || true
-          docker volume prune --force || true
-          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
-          docker image prune --force || true
-          docker builder prune --force || true
-          echo "Disk usage before E2E dependencies:"
-          df -h /
-          docker system df || true
-          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
-          minimum_kb=$((4 * 1024 * 1024))
-          if [ "$available_kb" -lt "$minimum_kb" ]; then
-            echo "::error::Le runner JobPilot dispose de moins de 4 Gio libres avant l'E2E Chromium."
-            exit 1
-          fi
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
-        env:
-          runner: self-hosted
         with:
           php-version: '8.4'
           extensions: ctype, dom, iconv, intl, json, mbstring, pdo_pgsql, sodium, xml, xmlwriter, zip
@@ -247,6 +157,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Install backend dependencies
         working-directory: api
@@ -257,7 +169,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: web
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Build Next.js for browser tests
         working-directory: web
@@ -335,8 +247,6 @@ jobs:
           docker run --rm \
             --network host \
             --ipc host \
-            --user "$(id -u):$(id -g)" \
-            --env HOME=/tmp \
             --env CI=true \
             --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
             --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
@@ -365,19 +275,3 @@ jobs:
         run: |
           test ! -f /tmp/jobpilot-web.pid || kill "$(cat /tmp/jobpilot-web.pid)" || true
           test ! -f /tmp/jobpilot-api.pid || kill "$(cat /tmp/jobpilot-api.pid)" || true
-
-      - name: Reclaim browser CI artifacts
-        if: always()
-        run: |
-          rm -rf \
-            web/node_modules \
-            web/.next \
-            web/test-results \
-            web/playwright-report \
-            api/vendor \
-            api/var
-          docker image rm --force jobpilot-browser-worker:ci 2>/dev/null || true
-          docker container prune --force || true
-          docker image prune --force || true
-          docker builder prune --force || true
-          df -h /

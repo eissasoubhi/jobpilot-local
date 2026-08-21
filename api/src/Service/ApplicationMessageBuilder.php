@@ -20,16 +20,17 @@ final class ApplicationMessageBuilder
         $availability = trim((string) $profileData['availability']);
         $skills = $this->relevantSkills($job);
         $focus = $this->focus($job);
+        $targetCompany = TargetCompanyName::resolve($job);
 
         if ($job->getLanguage() === 'en') {
-            $company = $job->getCompany() !== '' ? ' at '.$job->getCompany() : '';
+            $company = $targetCompany !== '' ? ' at '.$targetCompany : '';
             $message = "Hello,\n\nThe {$job->getTitle()} role{$company} is a strong match for my background. I am a senior developer with {$years} years of web development experience and strong expertise in {$this->join($skills, 'en')}. My work covers {$focus['en']}, with consistent attention to code quality and production reliability.\n\nI am {$this->englishAvailability($availability)} and would be glad to discuss your needs. My CV is attached.\n\nBest regards,\n{$name}";
             $coverLetter = "Dear Hiring Team,\n\nWith {$years} years of web development experience, I have built and maintained production applications using {$this->join($skills, 'en')}. My experience in {$focus['en']} is closely aligned with the responsibilities described for the {$job->getTitle()} role.\n\nI would be pleased to discuss how I could contribute to your team and technical objectives.\n\nBest regards,\n{$name}";
 
             return ['message' => $message, 'coverLetter' => $coverLetter];
         }
 
-        $company = $job->getCompany() !== '' ? ' chez '.$job->getCompany() : '';
+        $company = $targetCompany !== '' ? ' chez '.$targetCompany : '';
         $message = "Bonjour,\n\nLe poste de {$job->getTitle()}{$company} correspond directement à mon parcours. Développeur senior avec {$years} ans d’expérience en développement web, j’ai une solide expérience en {$this->join($skills, 'fr')}. Mon travail couvre {$focus['fr']}, avec une attention constante à la qualité du code et à la fiabilité en production.\n\nJe suis disponible {$this->frenchAvailability($availability)} et serais ravi d’échanger sur vos besoins. Vous trouverez mon CV en pièce jointe.\n\nBien cordialement,\n{$name}";
         $coverLetter = "Madame, Monsieur,\n\nAvec {$years} ans d’expérience en développement web, j’ai conçu et maintenu des applications en production avec {$this->join($skills, 'fr')}. Mon expérience en {$focus['fr']} correspond directement aux responsabilités décrites pour le poste de {$job->getTitle()}.\n\nJe serais ravi d’échanger sur la manière dont je pourrais contribuer à votre équipe et à vos objectifs techniques.\n\nBien cordialement,\n{$name}";
 

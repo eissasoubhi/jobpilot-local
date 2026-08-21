@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="learned-corrections.css">
+  <title>Corrections apprises — JobPilot</title>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">JobPilot Autofill</p>
+      <h1>Corrections apprises</h1>
+      <p>Consulte, désactive ou supprime uniquement les corrections que tu as explicitement demandé à JobPilot de mémoriser.</p>
+    </header>
+
+    <form id="host-form">
+      <label for="host">Domaine du site de candidature</label>
+      <div class="host-row">
+        <input id="host" name="host" type="text" inputmode="url" autocomplete="off" placeholder="jobs.example.com" required>
+        <button type="submit">Charger</button>
+      </div>
+      <small>Tu peux saisir un domaine ou une URL. Rien n’est stocké dans l’extension.</small>
+    </form>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <section aria-labelledby="corrections-title">
+      <div class="section-heading">
+        <h2 id="corrections-title">Corrections du domaine</h2>
+        <span id="count" aria-live="polite"></span>
+      </div>
+      <p id="empty" hidden>Aucune correction mémorisée pour ce domaine.</p>
+      <ul id="corrections" aria-live="polite"></ul>
+    </section>
+  </main>
+
+  <template id="correction-template">
+    <li class="correction">
+      <div class="correction-main">
+        <strong data-key></strong>
+        <span data-kind></span>
+        <code data-value></code>
+      </div>
+      <div class="actions">
+        <button type="button" data-toggle></button>
+        <button type="button" class="danger" data-delete>Supprimer</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="learned-corrections.js"></script>
+</body>
+</html>

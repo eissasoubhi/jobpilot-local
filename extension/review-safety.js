@@ -116,10 +116,11 @@
     host.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483647;width:min(420px,calc(100vw - 36px));max-height:min(72vh,680px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
     const shadow = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
 
+    const priority = { sensitive: 0, review: 1, medium: 2 };
     const rows = fields
       .map((field, index) => ({ field, index, level: confidenceLevel(field) }))
       .filter(item => ['review', 'sensitive', 'medium'].includes(item.level))
-      .sort((left, right) => ({ sensitive: 0, review: 1, medium: 2 }[left.level] - ({ sensitive: 0, review: 1, medium: 2 }[right.level]));
+      .sort((left, right) => (priority[left.level] ?? 99) - (priority[right.level] ?? 99));
 
     const style = documentRef.createElement('style');
     style.textContent = `

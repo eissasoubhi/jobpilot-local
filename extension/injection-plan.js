@@ -18,6 +18,7 @@
         'autofill-engine.js',
         'document-uploader.js',
         'correction-learning.js',
+        'review-safety.js',
         'form-detector-bridge.js',
         'autofill-bridge.js',
         'document-upload-bridge.js',

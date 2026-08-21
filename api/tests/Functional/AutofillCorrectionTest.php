@@ -51,6 +51,20 @@ final class AutofillCorrectionTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([], $this->decode($client));
 
+        $client->request('GET', '/api/autofill/corrections', [
+            'host' => 'jobs.example.test',
+            'includeDisabled' => '1',
+        ]);
+        self::assertResponseIsSuccessful();
+        $includingDisabled = $this->decode($client);
+        self::assertCount(1, $includingDisabled);
+        self::assertSame($created['id'], $includingDisabled[0]['id']);
+        self::assertFalse($includingDisabled[0]['enabled']);
+
+        $client->jsonRequest('PATCH', '/api/autofill/corrections/'.$created['id'], ['enabled' => true]);
+        self::assertResponseIsSuccessful();
+        self::assertTrue($this->decode($client)['enabled']);
+
         $client->request('DELETE', '/api/autofill/corrections/'.$created['id']);
         self::assertResponseStatusCodeSame(204);
     }

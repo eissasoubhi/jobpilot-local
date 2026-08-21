@@ -122,3 +122,12 @@ document.getElementById('autofill').addEventListener('click', async () => {
     show(error instanceof Error ? error.message : 'Remplissage impossible.', 'error');
   }
 });
+
+document.getElementById('corrections').addEventListener('click', async () => {
+  try {
+    await chrome.runtime.openOptionsPage();
+    window.close();
+  } catch (error) {
+    show(error instanceof Error ? error.message : 'Ouverture des corrections impossible.', 'error');
+  }
+});

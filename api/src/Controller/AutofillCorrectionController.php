@@ -25,8 +25,17 @@ final class AutofillCorrectionController
             return new JsonResponse(['error' => 'Le domaine est obligatoire et invalide.'], 400);
         }
 
+        $criteria = ['host' => $host];
+        $includeDisabled = filter_var(
+            $request->query->get('includeDisabled', false),
+            FILTER_VALIDATE_BOOL,
+        );
+        if (!$includeDisabled) {
+            $criteria['enabled'] = true;
+        }
+
         $corrections = $this->em->getRepository(AutofillCorrection::class)->findBy(
-            ['host' => $host, 'enabled' => true],
+            $criteria,
             ['updatedAt' => 'DESC'],
         );
 

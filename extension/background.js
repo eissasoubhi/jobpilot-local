@@ -62,6 +62,18 @@ function hostFromUrl(value) {
   }
 }
 
+function normalizeHost(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+  return hostFromUrl(raw.includes('://') ? raw : `https://${raw}`);
+}
+
+function requireCorrectionId(value) {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id < 1) throw new Error('Identifiant de correction invalide.');
+  return id;
+}
+
 async function autofillContext(message) {
   const host = hostFromUrl(message?.url);
   const correctionsPromise = host
@@ -96,6 +108,28 @@ async function saveAutofillCorrection(message) {
       correctedValue: String(message?.correctedValue || ''),
     }),
   });
+}
+
+async function listAutofillCorrections(message) {
+  const host = normalizeHost(message?.host);
+  if (!host) throw new Error('Domaine de corrections invalide.');
+  const corrections = await apiJson(`/autofill/corrections?host=${encodeURIComponent(host)}&includeDisabled=1`);
+  return Array.isArray(corrections) ? corrections : [];
+}
+
+async function setAutofillCorrectionEnabled(message) {
+  const id = requireCorrectionId(message?.id);
+  return apiJson(`/autofill/corrections/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: message?.enabled === true }),
+  });
+}
+
+async function deleteAutofillCorrection(message) {
+  const id = requireCorrectionId(message?.id);
+  await apiJson(`/autofill/corrections/${id}`, { method: 'DELETE' });
+  return { id };
 }
 
 async function documentContext(message) {
@@ -204,6 +238,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SAVE_AUTOFILL_CORRECTION') {
     saveAutofillCorrection(message)
       .then(correction => sendResponse({ ok: true, correction }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === 'LIST_AUTOFILL_CORRECTIONS') {
+    listAutofillCorrections(message)
+      .then(corrections => sendResponse({ ok: true, corrections }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === 'SET_AUTOFILL_CORRECTION_ENABLED') {
+    setAutofillCorrectionEnabled(message)
+      .then(correction => sendResponse({ ok: true, correction }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === 'DELETE_AUTOFILL_CORRECTION') {
+    deleteAutofillCorrection(message)
+      .then(result => sendResponse({ ok: true, ...result }))
       .catch(error => sendResponse({ ok: false, error: error.message }));
     return true;
   }

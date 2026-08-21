@@ -7,5 +7,6 @@
   "host_permissions": ["http://localhost:8080/*", "http://127.0.0.1:8080/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_title": "JobPilot", "default_popup": "popup.html" },
+  "options_page": "learned-corrections.html",
   "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
 }

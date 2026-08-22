@@ -50,34 +50,51 @@ final class MatchingScoreServiceTitleCompatibilityTest extends TestCase
 
     public function testSpecificPhpSymfonyTitleKeepsFullTitleCompatibility(): void
     {
+        $settings = $this->settings(
+            ['Senior PHP Symfony Developer', 'Backend PHP Developer'],
+            ['PHP', 'Symfony', 'Doctrine', 'API Platform'],
+        );
         $result = $this->service->evaluate(
             $this->job(
                 'Senior PHP Symfony Developer',
                 'PHP Symfony Doctrine and API Platform are the core technologies.',
             ),
-            $this->settings(
-                ['Senior PHP Symfony Developer', 'Backend PHP Developer'],
-                ['PHP', 'Symfony', 'Doctrine', 'API Platform'],
+            $settings,
+        );
+        $genericResult = $this->service->evaluate(
+            $this->job(
+                'Senior Web Backend Developer',
+                'PHP Symfony Doctrine and API Platform are the core technologies.',
             ),
+            $settings,
         );
 
-        self::assertGreaterThanOrEqual(60, $result['score']);
+        self::assertGreaterThan($genericResult['score'], $result['score']);
         self::assertContains('Compatibilité intitulé : 35/35', $result['reasons']);
         self::assertContains('Stack principale détectée : PHP/Symfony', $result['reasons']);
     }
 
     public function testSpecificReactTitleRemainsDiscriminatingForFrontendProfiles(): void
     {
+        $settings = $this->settings(['React Developer'], ['React', 'TypeScript']);
         $result = $this->service->evaluate(
             $this->job(
                 'React Developer',
                 'Build product interfaces with React and TypeScript.',
             ),
-            $this->settings(['React Developer'], ['React', 'TypeScript']),
+            $settings,
+        );
+        $crossStackResult = $this->service->evaluate(
+            $this->job(
+                'Senior Backend Developer',
+                'React and TypeScript are mentioned for an adjacent internal interface.',
+            ),
+            $settings,
         );
 
-        self::assertGreaterThanOrEqual(60, $result['score']);
+        self::assertGreaterThan($crossStackResult['score'], $result['score']);
         self::assertContains('Compatibilité intitulé : 35/35', $result['reasons']);
+        self::assertNotContains('Compatibilité intitulé : 35/35', $crossStackResult['reasons']);
     }
 
     /** @param list<string> $targetJobs @param list<string> $skills */

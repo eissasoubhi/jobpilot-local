@@ -35,18 +35,32 @@ describe('Offers progressive loading', () => {
     apiMock.mockReset();
   });
 
-  it('renders the local catalog before starting application loading and connector sync', async () => {
+  it('renders the local catalog before queueing connector work outside the HTTP request', async () => {
     let resolveJobs!: (jobs: Job[]) => void;
     const jobsPromise = new Promise<Job[]>((resolve) => {
       resolveJobs = resolve;
     });
     const applicationsPromise = new Promise<never>(() => undefined);
-    const syncPromise = new Promise<never>(() => undefined);
 
     apiMock.mockImplementation((path: string) => {
       if (path === '/jobs') return jobsPromise;
       if (path === '/applications') return applicationsPromise;
-      if (path === '/job-search/sync') return syncPromise;
+      if (path === '/job-search/sync') {
+        return Promise.resolve({
+          job: {
+            id: 'run-42',
+            status: 'queued',
+            queuedAt: '2026-08-23T00:00:00+02:00',
+            startedAt: null,
+            finishedAt: null,
+            updatedAt: '2026-08-23T00:00:00+02:00',
+            progress: { completed: 0, total: 1, currentConnector: null },
+            result: null,
+            error: null,
+          },
+        });
+      }
+      if (path === '/job-search/sync/run-42') return new Promise<never>(() => undefined);
       return Promise.reject(new Error(`Unexpected API call: ${path}`));
     });
 
@@ -69,7 +83,8 @@ describe('Offers progressive loading', () => {
       expect(apiMock).toHaveBeenCalledWith('/job-search/sync', { method: 'POST' });
     });
 
-    expect(screen.getByText('Mise à jour en arrière-plan')).toBeInTheDocument();
-    expect(screen.getByText(/Les offres déjà synchronisées restent visibles/)).toBeInTheDocument();
+    expect(screen.getByText('Worker actif')).toBeInTheDocument();
+    expect(screen.getByText('Recherche mise en file…')).toBeInTheDocument();
+    expect(screen.getByText('Senior Symfony role already synchronized')).toBeInTheDocument();
   });
 });

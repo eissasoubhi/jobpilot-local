@@ -115,10 +115,9 @@ final class MatchingScoreService
 
         $seniorityScore = preg_match('/senior|lead|tech lead|confirmé|experte?|11\+?\s*ans/i', $text) ? 15 : 7;
         $contractScore = $this->contractScore($job->getContractType());
-        $locationScore = 8;
         $freshnessScore = $this->freshnessScore($job->getPublishedAt());
 
-        $score = min(100, $titleScore + $skillScore + $seniorityScore + $contractScore + $locationScore + $freshnessScore);
+        $score = min(100, $titleScore + $skillScore + $seniorityScore + $contractScore + $freshnessScore);
         $reasons[] = "Séniorité : {$seniorityScore}/15";
         $reasons[] = "Contrat : {$contractScore}/5";
         $reasons[] = "Fraîcheur : {$freshnessScore}/2";

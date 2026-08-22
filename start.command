@@ -87,6 +87,11 @@ printf 'Démarrage de JobPilot'
 for _ in {1..90}; do
   if curl -fsS "${JOBPOST_URL}/api/health" >/dev/null 2>&1; then
     echo
+    echo "Vérification des migrations de base de données..."
+    if ! docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
+      echo "Impossible d’appliquer les migrations. Consulte les logs avec : docker compose logs --tail=200 api"
+      exit 1
+    fi
     open "${JOBPOST_URL}"
     exit 0
   fi

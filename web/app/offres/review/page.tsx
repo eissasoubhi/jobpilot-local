@@ -39,6 +39,8 @@ export default function ReviewQueuePage() {
   const [goalRefreshKey, setGoalRefreshKey] = useState(0);
   const offerHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousCurrentIdRef = useRef<number | null>(null);
+  const currentIndexRef = useRef(0);
+  const queueLengthRef = useRef(0);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -74,6 +76,8 @@ export default function ReviewQueuePage() {
     || current?.jobOffer.company?.trim()
     || '';
   const crmContextHref = crmOrganizationHref(crmContextName);
+  currentIndexRef.current = currentIndex;
+  queueLengthRef.current = queue.length;
 
   useEffect(() => {
     const previousCurrentId = previousCurrentIdRef.current;
@@ -91,12 +95,12 @@ export default function ReviewQueuePage() {
   }, [currentId]);
 
   const goPrevious = useCallback((): void => {
-    if (currentIndex > 0) setIndex(currentIndex - 1);
-  }, [currentIndex]);
+    setIndex((value) => Math.max(0, value - 1));
+  }, []);
 
   const goNext = useCallback((): void => {
-    if (currentIndex < queue.length - 1) setIndex(currentIndex + 1);
-  }, [currentIndex, queue.length]);
+    setIndex((value) => Math.min(Math.max(0, queueLengthRef.current - 1), value + 1));
+  }, []);
 
   useEffect(() => {
     const navigateWithKeyboard = (event: KeyboardEvent): void => {
@@ -104,12 +108,12 @@ export default function ReviewQueuePage() {
         return;
       }
 
-      if (event.key === 'ArrowLeft' && currentIndex > 0) {
+      if (event.key === 'ArrowLeft' && currentIndexRef.current > 0) {
         event.preventDefault();
         goPrevious();
       }
 
-      if (event.key === 'ArrowRight' && currentIndex < queue.length - 1) {
+      if (event.key === 'ArrowRight' && currentIndexRef.current < queueLengthRef.current - 1) {
         event.preventDefault();
         goNext();
       }
@@ -117,7 +121,7 @@ export default function ReviewQueuePage() {
 
     window.addEventListener('keydown', navigateWithKeyboard);
     return () => window.removeEventListener('keydown', navigateWithKeyboard);
-  }, [currentIndex, goNext, goPrevious, queue.length]);
+  }, [goNext, goPrevious]);
 
   const updateApplication = useCallback((updated: Application): void => {
     const completedCurrentDecision = current?.id === updated.id

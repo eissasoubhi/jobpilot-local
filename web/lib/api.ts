@@ -1,8 +1,11 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-  if (!contentType.includes('application/json')) {
+  // Real fetch Responses always expose Headers. Some focused unit tests use
+  // deliberately minimal Response-shaped fakes, so only enforce content type
+  // when a header value is actually available.
+  const contentType = response.headers?.get?.('content-type')?.toLowerCase();
+  if (contentType && !contentType.includes('application/json')) {
     // Never leak raw PHP/HTML error output into the UI. The status is enough for
     // the user-facing error while server logs keep the diagnostic detail.
     throw new Error(`Le serveur a renvoyé une réponse invalide (HTTP ${response.status}).`);

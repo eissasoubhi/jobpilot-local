@@ -59,6 +59,25 @@ final class JobPriorityScoreServiceTest extends TestCase
         self::assertGreaterThan($poor['score'], $good['score']);
     }
 
+    public function testCompensationUsesRangeMidpointInsteadOfOptimisticUpperBound(): void
+    {
+        $profile = (new CandidateProfile())->fill([
+            'preferredLocations' => ['Paris'],
+            'acceptedContracts' => ['CDI'],
+            'workModePreference' => 'Hybride',
+            'desiredSalary' => 55000,
+        ]);
+        $job = $this->job(80, '-12 hours', 'CDI', 'Paris', 'Hybride', null);
+        $job->fill([
+            'salaryMin' => 40000,
+            'salaryMax' => 60000,
+        ]);
+
+        $priority = $this->service->evaluate($job, $profile);
+
+        self::assertSame(80, $priority['components']['compensation']);
+    }
+
     public function testAiConfidenceAndHistoricalConversionAreUsedWithShrinkage(): void
     {
         $profile = $this->profile();

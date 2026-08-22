@@ -158,7 +158,12 @@ final class JobPriorityScoreService
                 return 50;
             }
 
-            $value = $job->getProposedTjm() ?? $job->getTjmFixed() ?? $job->getTjmMax() ?? $job->getTjmMin();
+            $value = $this->representativeCompensation(
+                $job->getProposedTjm() ?? $job->getTjmFixed(),
+                $job->getTjmMin(),
+                $job->getTjmMax(),
+            );
+
             return $this->ratioScore($value, $target);
         }
 
@@ -167,9 +172,32 @@ final class JobPriorityScoreService
             return 50;
         }
 
-        $value = $job->getProposedSalary() ?? $job->getSalaryMax() ?? $job->getSalaryMin();
+        $value = $this->representativeCompensation(
+            $job->getProposedSalary(),
+            $job->getSalaryMin(),
+            $job->getSalaryMax(),
+        );
 
         return $this->ratioScore($value, $target);
+    }
+
+    private function representativeCompensation(?int $proposed, ?int $minimum, ?int $maximum): ?int
+    {
+        if ($proposed !== null && $proposed > 0) {
+            return $proposed;
+        }
+
+        $hasMinimum = $minimum !== null && $minimum > 0;
+        $hasMaximum = $maximum !== null && $maximum > 0;
+        if ($hasMinimum && $hasMaximum) {
+            return (int) round(($minimum + $maximum) / 2);
+        }
+
+        if ($hasMinimum) {
+            return $minimum;
+        }
+
+        return $hasMaximum ? $maximum : null;
     }
 
     private function ratioScore(?int $value, int $target): int

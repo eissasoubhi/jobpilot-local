@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 final class JobSearchSyncQueue
 {
     private const STALE_AFTER_SECONDS = 1800;
 
-    public function __construct(private string $privateDir)
+    public function __construct(#[Autowire('%private_dir%')] private string $privateDir)
     {
     }
 
@@ -180,7 +182,6 @@ final class JobSearchSyncQueue
         });
     }
 
-    /** @template T */
     private function withLock(callable $callback): mixed
     {
         $this->ensureDirectory();

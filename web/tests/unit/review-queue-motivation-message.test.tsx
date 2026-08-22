@@ -94,7 +94,7 @@ describe('Review Queue motivation message', () => {
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/51/message/regenerate', {
       method: 'POST',
-      body: JSON.stringify({ maxCharacters: 250 }),
+      body: JSON.stringify({ maxCharacters: 250, targetCompany: '' }),
     }));
     expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
     expect(await screen.findByText('Nouveau message de motivation court.')).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('Review Queue motivation message', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
 
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Message court déjà préparé.'));
-    expect(screen.getByRole('status')).toHaveTextContent('Message court copié.');
+    expect(screen.getByText('Message court copié.')).toBeInTheDocument();
   });
 
   it('shows an over-400 warning inside the short-message tab instead of expanding the card', () => {

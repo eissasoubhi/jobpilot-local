@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from '@/components/CoverLetterDrawer.module.css';
 import { API_URL, api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { jobTargetCompany, targetCompanyMissingHint } from '@/lib/job-target-company';
 import type { Application } from '@/lib/types';
 
 type EditableApplication = Application & {
@@ -48,6 +49,7 @@ export function CoverLetterDrawer({
   const [regeneratingMessage, setRegeneratingMessage] = useState(false);
   const [maxCharacters, setMaxCharacters] = useState(1_500);
   const [messageMaxCharacters, setMessageMaxCharacters] = useState(400);
+  const [targetCompany, setTargetCompany] = useState(jobTargetCompany(application.jobOffer));
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -76,13 +78,14 @@ export function CoverLetterDrawer({
       setEditing(false);
       setMaxCharacters(1_500);
       setMessageMaxCharacters(400);
+      setTargetCompany(jobTargetCompany(application.jobOffer));
       setNotice('');
       setError('');
     }
 
     previousApplicationIdRef.current = application.id;
     previousOpenRef.current = open;
-  }, [application.coverLetter, application.id, initialTab, open]);
+  }, [application.coverLetter, application.id, application.jobOffer, initialTab, open]);
 
   useEffect(() => {
     if (!editing) setDraft(application.coverLetter);
@@ -149,7 +152,7 @@ export function CoverLetterDrawer({
     try {
       const updated = await api<EditableApplication>(`/applications/${application.id}/cover-letter/regenerate`, {
         method: 'POST',
-        body: JSON.stringify({ maxCharacters }),
+        body: JSON.stringify({ maxCharacters, targetCompany: targetCompany.trim() }),
       });
       setEditing(false);
       setDraft(updated.coverLetter);
@@ -176,7 +179,7 @@ export function CoverLetterDrawer({
     try {
       const updated = await api<Application>(`/applications/${application.id}/message/regenerate`, {
         method: 'POST',
-        body: JSON.stringify({ maxCharacters: messageMaxCharacters }),
+        body: JSON.stringify({ maxCharacters: messageMaxCharacters, targetCompany: targetCompany.trim() }),
       });
       setNotice(`Message court régénéré avec une limite de ${messageMaxCharacters} caractères.`);
       onApplicationUpdated?.(updated);
@@ -329,6 +332,20 @@ export function CoverLetterDrawer({
 
         <div className={styles.toolbarArea}>
           <div className={styles.toolbar}>
+            <div className={styles.regenerationControl}>
+              <label htmlFor={`motivation-target-company-${application.id}`}>Entreprise ciblée</label>
+              <input
+                id={`motivation-target-company-${application.id}`}
+                aria-label="Entreprise ciblée pour la motivation"
+                type="text"
+                maxLength={160}
+                value={targetCompany}
+                disabled={saving || regenerating || regeneratingMessage}
+                style={{ width: 'min(240px, 46vw)' }}
+                placeholder="Nom de l’entreprise"
+                onChange={(event) => setTargetCompany(event.target.value)}
+              />
+            </div>
             {activeTab === 'coverLetter' ? (
               <>
                 {!editing ? (
@@ -426,6 +443,11 @@ export function CoverLetterDrawer({
             )}
           </div>
 
+          {targetCompany.trim() === '' && (
+            <div className={`small muted ${styles.feedback}`} role="status">
+              {targetCompanyMissingHint(application.jobOffer)}
+            </div>
+          )}
           {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
           {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
         </div>

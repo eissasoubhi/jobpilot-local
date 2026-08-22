@@ -64,12 +64,14 @@ describe('Motivation drawer', () => {
     expect(screen.getByRole('tab', { name: 'Lettre de motivation' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Message court' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText(/mots · .*caractères/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Entreprise ciblée pour la motivation' })).toHaveValue('Example');
     expect(screen.getByRole('spinbutton', { name: 'Longueur maximale de la lettre' })).toHaveValue(1500);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Message court' }));
 
     expect(screen.getByRole('tab', { name: 'Message court' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Message court.')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Entreprise ciblée pour la motivation' })).toHaveValue('Example');
     expect(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' })).toHaveValue(400);
   });
 
@@ -87,7 +89,7 @@ describe('Motivation drawer', () => {
     expect(screen.getByText('Message court.')).toBeInTheDocument();
   });
 
-  it('regenerates the cover letter with the requested maximum length', async () => {
+  it('regenerates the cover letter with the requested maximum length and target company', async () => {
     const original = application();
     const updated = { ...application(), coverLetter: 'Nouvelle lettre plus concise.' } as Application;
     const onApplicationUpdated = vi.fn();
@@ -102,6 +104,9 @@ describe('Motivation drawer', () => {
       />,
     );
 
+    fireEvent.change(screen.getByRole('textbox', { name: 'Entreprise ciblée pour la motivation' }), {
+      target: { value: 'Proton' },
+    });
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Longueur maximale de la lettre' }), {
       target: { value: '900' },
     });
@@ -109,13 +114,13 @@ describe('Motivation drawer', () => {
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/61/cover-letter/regenerate', {
       method: 'POST',
-      body: JSON.stringify({ maxCharacters: 900 }),
+      body: JSON.stringify({ maxCharacters: 900, targetCompany: 'Proton' }),
     }));
-    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
-    expect(screen.getByRole('status')).toHaveTextContent('limite de 900 caractères');
+    expect(await screen.findByText('Lettre régénérée avec une limite de 900 caractères.')).toBeInTheDocument();
+    await waitFor(() => expect(onApplicationUpdated).toHaveBeenCalledWith(updated));
   });
 
-  it('regenerates and copies the short message from its tab', async () => {
+  it('regenerates and copies the short message from its tab with the same target company', async () => {
     const updated = { ...application(), message: 'Nouveau message court.' } as Application;
     const onApplicationUpdated = vi.fn();
     apiMock.mockResolvedValueOnce(updated);
@@ -131,6 +136,9 @@ describe('Motivation drawer', () => {
       />,
     );
 
+    fireEvent.change(screen.getByRole('textbox', { name: 'Entreprise ciblée pour la motivation' }), {
+      target: { value: 'Proton' },
+    });
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' }), {
       target: { value: '250' },
     });
@@ -138,9 +146,9 @@ describe('Motivation drawer', () => {
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/61/message/regenerate', {
       method: 'POST',
-      body: JSON.stringify({ maxCharacters: 250 }),
+      body: JSON.stringify({ maxCharacters: 250, targetCompany: 'Proton' }),
     }));
-    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
+    await waitFor(() => expect(onApplicationUpdated).toHaveBeenCalledWith(updated));
 
     rerender(
       <CoverLetterDrawer

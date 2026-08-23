@@ -81,15 +81,19 @@ if [ ! -f data/private/.storage-migrated ]; then
   touch data/private/.storage-migrated
 fi
 
-# The scheduler command evolves with JobPilot. Recreate it on every explicit
-# local start so a long-lived container cannot keep an older worker command
-# after the repository has been updated.
-docker compose up -d --remove-orphans --force-recreate scheduler
+# Explicit local startup is also the update boundary after a git pull. Recreate
+# every long-lived application process so Next, Symfony and the async worker all
+# execute the checked-out source instead of keeping an old runtime alive.
+docker compose up -d --remove-orphans --force-recreate api scheduler web
 docker compose up -d --remove-orphans
 
 printf 'Démarrage de JobPilot'
 for _ in {1..90}; do
-  if curl -fsS "${JOBPOST_URL}/api/health" >/dev/null 2>&1; then
+  # /api/health only proves that HTTP routing works. Also require a small
+  # database-backed endpoint so the browser is not opened on a shell whose API
+  # requests will stay pending indefinitely.
+  if curl --max-time 5 -fsS "${JOBPOST_URL}/api/health" >/dev/null 2>&1 \
+    && curl --max-time 5 -fsS "${JOBPOST_URL}/api/settings/ai" >/dev/null 2>&1; then
     echo
     echo "Vérification des migrations de base de données..."
     if ! docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
@@ -104,5 +108,8 @@ for _ in {1..90}; do
 done
 
 echo
-echo "JobPilot prend trop de temps à démarrer. Lance : docker compose logs --tail=200"
+echo "JobPilot répond au healthcheck mais l’application n’est pas complètement prête."
+echo "Vérifie l’API et le frontend avec :"
+echo "  docker compose ps"
+echo "  docker compose logs --tail=200 api web scheduler"
 exit 1

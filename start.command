@@ -81,6 +81,10 @@ if [ ! -f data/private/.storage-migrated ]; then
   touch data/private/.storage-migrated
 fi
 
+# The scheduler command evolves with JobPilot. Recreate it on every explicit
+# local start so a long-lived container cannot keep an older worker command
+# after the repository has been updated.
+docker compose up -d --remove-orphans --force-recreate scheduler
 docker compose up -d --remove-orphans
 
 printf 'Démarrage de JobPilot'

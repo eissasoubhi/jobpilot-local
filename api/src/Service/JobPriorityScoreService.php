@@ -86,7 +86,9 @@ final class JobPriorityScoreService
     {
         $publishedAt = $job->getPublishedAt();
         if ($publishedAt === null) {
-            return 35;
+            // Missing publication data is uncertainty, not evidence that the offer is stale.
+            // Keep it neutral so known-fresh offers still win while genuinely old offers decay.
+            return 50;
         }
 
         $ageHours = max(0.0, (time() - $publishedAt->getTimestamp()) / 3600);

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from '@/components/CoverLetterDrawer.module.css';
 import { API_URL, api } from '@/lib/api';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
@@ -60,6 +61,7 @@ export function CoverLetterDrawer({
   const characters = displayedLetter.length;
   const messageCharacters = application.message.length;
   const messageOverCommonLimit = messageCharacters > 400;
+  const messageOverSelectedLimit = messageCharacters > messageMaxCharacters;
   const hasMessage = application.message.trim() !== '';
   const downloadBase = `${API_URL}/applications/${application.id}/cover-letter/download`;
   const editedAt = editableApplication.coverLetterEditedAt
@@ -215,7 +217,7 @@ export function CoverLetterDrawer({
     setError('');
 
     try {
-      await navigator.clipboard.writeText(application.coverLetter);
+      await copyTextToClipboard(application.coverLetter);
       setNotice('Lettre de motivation copiée.');
     } catch {
       setError('Impossible de copier la lettre de motivation dans le presse-papiers.');
@@ -227,7 +229,7 @@ export function CoverLetterDrawer({
     setError('');
 
     try {
-      await navigator.clipboard.writeText(application.message);
+      await copyTextToClipboard(application.message);
       setNotice('Message court copié.');
     } catch {
       setError('Impossible de copier le message court dans le presse-papiers.');
@@ -419,7 +421,11 @@ export function CoverLetterDrawer({
                       || messageMaxCharacters > 5_000}
                     onClick={() => void regenerateMessage()}
                   >
-                    {regeneratingMessage ? 'Régénération…' : 'Régénérer'}
+                    {regeneratingMessage
+                      ? 'Régénération…'
+                      : messageOverSelectedLimit
+                        ? `Réduire à ${messageMaxCharacters}`
+                        : 'Régénérer'}
                   </button>
                 </div>
               </>
@@ -494,9 +500,9 @@ export function CoverLetterDrawer({
                 Ce texte est prévu pour les formulaires qui demandent un message de motivation court. La limite courante est souvent de 400 caractères.
               </p>
               <div className={styles.preview}>{hasMessage ? application.message : 'Aucun message court préparé.'}</div>
-              {messageOverCommonLimit && (
+              {messageOverSelectedLimit && (
                 <div className={styles.messageWarning}>
-                  Ce message dépasse 400 caractères. Garde 400 dans « Longueur max. » puis régénère-le si le formulaire impose cette limite.
+                  Ce message fait {messageCharacters} caractères et dépasse la limite choisie de {messageMaxCharacters}. Utilise « Réduire à {messageMaxCharacters} » pour générer une version compatible.
                 </div>
               )}
             </div>

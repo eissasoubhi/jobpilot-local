@@ -9,6 +9,7 @@ use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\Service\ApplicationPreparationService;
 use App\Service\JobPriorityScoreService;
 use App\Service\JobProcessor;
+use App\Service\JobRankingOrderService;
 use App\Service\LocalDataService;
 use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,6 +28,7 @@ final class JobController
         private ApplicationPreparationService $preparation,
         private JobPriorityScoreService $priorityScore,
         private SourceConversionReportService $conversionReport,
+        private JobRankingOrderService $rankingOrder,
     ) {
     }
 
@@ -51,24 +53,13 @@ final class JobController
             ];
         }, $jobs);
 
-        usort($ranked, static function (array $a, array $b): int {
-            $priorityOrder = $b['priority'] <=> $a['priority'];
-            if ($priorityOrder !== 0) {
-                return $priorityOrder;
-            }
-
+        usort($ranked, function (array $a, array $b): int {
             /** @var JobOffer $aJob */
             $aJob = $a['job'];
             /** @var JobOffer $bJob */
             $bJob = $b['job'];
 
-            $matchOrder = $bJob->getScore() <=> $aJob->getScore();
-            if ($matchOrder !== 0) {
-                return $matchOrder;
-            }
-
-            return ($bJob->getPublishedAt()?->getTimestamp() ?? 0)
-                <=> ($aJob->getPublishedAt()?->getTimestamp() ?? 0);
+            return $this->rankingOrder->compare($aJob, (int) $a['priority'], $bJob, (int) $b['priority']);
         });
 
         return new JsonResponse(array_column($ranked, 'payload'));

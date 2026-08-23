@@ -18,6 +18,8 @@ type ReviewQueueApplicationCardProps = {
   application: Application;
   headingRef?: Ref<HTMLHeadingElement>;
   onApplicationUpdated?: (application: Application) => void;
+  onOfferUnavailableRequested?: () => void;
+  decisionActionsDisabled?: boolean;
 };
 
 type EditableApplication = Application & {
@@ -47,6 +49,8 @@ export function ReviewQueueApplicationCard({
   application,
   headingRef,
   onApplicationUpdated,
+  onOfferUnavailableRequested,
+  decisionActionsDisabled = false,
 }: ReviewQueueApplicationCardProps) {
   const [currentApplication, setCurrentApplication] = useState<Application>(application);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
@@ -75,7 +79,7 @@ export function ReviewQueueApplicationCard({
   };
 
   const saveApplication = async (status: string, successMessage: string): Promise<void> => {
-    if (saving) return;
+    if (saving || decisionActionsDisabled) return;
 
     setSaving(true);
     setNotice('');
@@ -107,7 +111,12 @@ export function ReviewQueueApplicationCard({
   };
 
   const markOfferUnavailable = async (): Promise<void> => {
-    if (markingUnavailable || saving) return;
+    if (decisionActionsDisabled || markingUnavailable || saving) return;
+
+    if (onOfferUnavailableRequested) {
+      onOfferUnavailableRequested();
+      return;
+    }
 
     setMarkingUnavailable(true);
     setNotice('');
@@ -187,7 +196,7 @@ export function ReviewQueueApplicationCard({
           <button
             className="btn secondary small"
             type="button"
-            disabled={saving || markingUnavailable}
+            disabled={saving || markingUnavailable || decisionActionsDisabled}
             onClick={() => void markOfferUnavailable()}
           >
             {markingUnavailable ? 'Enregistrement…' : 'Offre indisponible'}
@@ -206,7 +215,7 @@ export function ReviewQueueApplicationCard({
             <select
               aria-label="Statut de suivi dans JobPilot"
               value={selectedStatus}
-              disabled={saving || markingUnavailable || currentApplication.status === 'SUBMISSION_PENDING'}
+              disabled={saving || markingUnavailable || decisionActionsDisabled || currentApplication.status === 'SUBMISSION_PENDING'}
               onChange={(event) => setSelectedStatus(event.target.value)}
             >
               {TRACKING_STATUSES.map(([value, label]) => (
@@ -220,6 +229,7 @@ export function ReviewQueueApplicationCard({
             type="button"
             disabled={saving
               || markingUnavailable
+              || decisionActionsDisabled
               || currentApplication.status === 'SUBMISSION_PENDING'
               || selectedStatus === currentApplication.status}
             onClick={() => void saveTrackingStatus()}

@@ -8,6 +8,7 @@ import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
 import { ApplicationGoalsSettings } from '@/components/ApplicationGoalsSettings';
 import { CatalogResetPanel } from '@/components/CatalogResetPanel';
 import { GeminiPaidQuotaPresetPanel } from '@/components/GeminiPaidQuotaPresetPanel';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import { ProfileCleanupPanel } from '@/components/ProfileCleanupPanel';
 
 type NavigationLink = readonly [href: string, label: string, icon: string];
@@ -99,6 +100,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="main">
+        <NotificationCenter />
         {pathname !== '/offres/review' && <ApplicationGoalAlerts />}
         {children}
         {pathname === '/parametres/integrations' && <GeminiPaidQuotaPresetPanel />}

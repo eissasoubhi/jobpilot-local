@@ -23,6 +23,8 @@ final class JobSearchSyncWorkerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->queue->touchWorkerHeartbeat();
+
         $job = $this->queue->claim();
         if ($job === null) {
             return Command::SUCCESS;

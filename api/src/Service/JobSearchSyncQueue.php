@@ -10,6 +10,7 @@ final class JobSearchSyncQueue
 {
     private const QUEUED_STALE_AFTER_SECONDS = 30;
     private const RUNNING_STALE_AFTER_SECONDS = 1800;
+    private const WORKER_HEARTBEAT_STALE_AFTER_SECONDS = 10;
 
     public function __construct(#[Autowire('%private_dir%')] private string $privateDir)
     {
@@ -77,6 +78,53 @@ final class JobSearchSyncQueue
 
             return $state;
         });
+    }
+
+    public function touchWorkerHeartbeat(): void
+    {
+        $this->ensureDirectory();
+        $payload = json_encode([
+            'updatedAt' => $this->now(),
+            'pid' => getmypid() ?: null,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $temporary = $this->workerHeartbeatPath().'.tmp.'.bin2hex(random_bytes(4));
+        if (file_put_contents($temporary, $payload, LOCK_EX) === false || !rename($temporary, $this->workerHeartbeatPath())) {
+            @unlink($temporary);
+            throw new \RuntimeException('Impossible d’enregistrer le heartbeat du worker de synchronisation.');
+        }
+    }
+
+    /** @return array{status: 'active'|'stale'|'missing', updatedAt: string|null} */
+    public function workerStatus(): array
+    {
+        $path = $this->workerHeartbeatPath();
+        if (!is_file($path)) {
+            return ['status' => 'missing', 'updatedAt' => null];
+        }
+
+        $contents = file_get_contents($path);
+        if ($contents === false || trim($contents) === '') {
+            return ['status' => 'missing', 'updatedAt' => null];
+        }
+
+        try {
+            $decoded = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+            $updatedAt = is_array($decoded) ? (string) ($decoded['updatedAt'] ?? '') : '';
+            $timestamp = $updatedAt !== '' ? new \DateTimeImmutable($updatedAt) : null;
+        } catch (\Throwable) {
+            return ['status' => 'stale', 'updatedAt' => null];
+        }
+
+        if ($timestamp === null) {
+            return ['status' => 'stale', 'updatedAt' => null];
+        }
+
+        return [
+            'status' => $timestamp->getTimestamp() >= time() - self::WORKER_HEARTBEAT_STALE_AFTER_SECONDS
+                ? 'active'
+                : 'stale',
+            'updatedAt' => $updatedAt,
+        ];
     }
 
     /** @param array<string, mixed> $result */
@@ -216,7 +264,7 @@ final class JobSearchSyncQueue
         $state['error'] = [
             'code' => $wasQueued ? 'sync_worker_not_started' : 'sync_worker_stale',
             'message' => $wasQueued
-                ? 'Le worker de recherche n’a pas démarré. Vérifie que le service scheduler est lancé, puis relance la recherche.'
+                ? 'Le worker de recherche n’a pas démarré. Redémarre JobPilot pour recréer le scheduler avec la version courante, puis relance la recherche.'
                 : 'Le worker de recherche ne répond plus. Une nouvelle recherche peut être lancée.',
         ];
     }
@@ -349,6 +397,11 @@ final class JobSearchSyncQueue
     private function statePath(): string
     {
         return $this->queueDirectory().'/current.json';
+    }
+
+    private function workerHeartbeatPath(): string
+    {
+        return $this->queueDirectory().'/worker-heartbeat.json';
     }
 
     private function now(): string

@@ -11,9 +11,11 @@ test('job search sync is queued immediately and does not block the HTTP API', as
 
   const payload = await syncResponse.json() as {
     job?: { id?: string; status?: string };
+    worker?: { status?: string };
   };
   expect(payload.job?.id).toBeTruthy();
   expect(['queued', 'running']).toContain(payload.job?.status);
+  expect(['active', 'stale', 'missing']).toContain(payload.worker?.status);
 
   const profileStartedAt = Date.now();
   const profileResponse = await request.get('/api/profile');
@@ -33,6 +35,7 @@ test('offers page reconnects to the current synchronization after reload', async
   await expect(syncTitle).toBeVisible();
   const syncHeader = syncTitle.locator('..');
   await expect(syncHeader.getByText(/Mise en file|Worker actif|Terminée|Échec/)).toBeVisible();
+  await expect(syncHeader.getByText(/Worker prêt|Worker indisponible/)).toBeVisible();
 
   await page.reload();
   await expect(page.getByText('Synchronisation des offres', { exact: true })).toBeVisible();

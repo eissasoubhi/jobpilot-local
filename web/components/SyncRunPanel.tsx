@@ -46,9 +46,15 @@ type ConnectorSnapshot = {
   };
 };
 
+type WorkerSnapshot = {
+  status: 'active' | 'stale' | 'missing';
+  updatedAt: string | null;
+};
+
 type SyncSnapshot = {
   job: SyncJob | null;
   connectors: ConnectorSnapshot[];
+  worker: WorkerSnapshot;
 };
 
 function isTerminal(status: SyncStatus): boolean {
@@ -114,6 +120,7 @@ export function SyncRunPanel() {
   }, [pathname]);
 
   const job = snapshot?.job ?? null;
+  const worker = snapshot?.worker ?? { status: 'missing' as const, updatedAt: null };
   const connectors = useMemo(
     () => (snapshot?.connectors ?? []).filter((connector) => (
       connector.enabled !== false
@@ -129,6 +136,7 @@ export function SyncRunPanel() {
   const completed = states.filter(({ state }) => state === 'done' || state === 'error').length;
   const current = states.find(({ state }) => state === 'running')?.connector;
   const terminal = isTerminal(job.status);
+  const workerUnavailable = job.status === 'queued' && worker.status !== 'active';
   const progress = terminal ? 100 : connectors.length > 0 ? Math.round((completed / connectors.length) * 100) : 0;
   const statusLabel = job.status === 'queued'
     ? 'Mise en file'
@@ -149,14 +157,21 @@ export function SyncRunPanel() {
             <Badge tone={job.status === 'failed' ? 'bad' : job.status === 'partial' ? 'warn' : terminal ? 'good' : 'blue'}>
               {statusLabel}
             </Badge>
+            {!terminal && (
+              <Badge tone={worker.status === 'active' ? 'good' : 'warn'}>
+                {worker.status === 'active' ? 'Worker prêt' : 'Worker indisponible'}
+              </Badge>
+            )}
             <Badge>{elapsed(job, now)}</Badge>
           </div>
           <div className="small muted" style={{ marginTop: 7 }}>
-            {job.status === 'queued'
-              ? 'La demande est acceptée. Le worker doit maintenant la prendre en charge.'
-              : current
-                ? `Source active : ${current.name}`
-                : job.error?.message ?? job.result?.message ?? 'Suivi du run en temps réel.'}
+            {workerUnavailable
+              ? 'Le worker asynchrone n’est pas détecté. Redémarre JobPilot pour recréer le scheduler avec la version courante.'
+              : job.status === 'queued'
+                ? 'La demande est acceptée. Le worker doit maintenant la prendre en charge.'
+                : current
+                  ? `Source active : ${current.name}`
+                  : job.error?.message ?? job.result?.message ?? 'Suivi du run en temps réel.'}
           </div>
         </div>
         <div className="small muted">
@@ -170,6 +185,15 @@ export function SyncRunPanel() {
       >
         <div style={{ height: '100%', width: `${progress}%`, background: 'currentColor', transition: 'width 200ms ease' }} />
       </div>
+
+      {workerUnavailable && (
+        <div className="notice" style={{ marginTop: 14 }}>
+          <strong>Scheduler à redémarrer</strong>
+          <div className="small" style={{ marginTop: 5 }}>
+            Le conteneur peut être encore actif avec une ancienne commande. Relance JobPilot, puis relance la recherche ; tes offres locales restent disponibles.
+          </div>
+        </div>
+      )}
 
       {job.error?.message && (
         <div className="notice" style={{ marginTop: 14 }}>

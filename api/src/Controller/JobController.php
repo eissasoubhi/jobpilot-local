@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Application;
+use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
 use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\Service\ApplicationPreparationService;
 use App\Service\JobPriorityScoreService;
 use App\Service\JobProcessor;
 use App\Service\JobRankingOrderService;
+use App\Service\JobReactionPreferenceScoreService;
 use App\Service\LocalDataService;
 use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +32,7 @@ final class JobController
         private JobPriorityScoreService $priorityScore,
         private SourceConversionReportService $conversionReport,
         private JobRankingOrderService $rankingOrder,
+        private JobReactionPreferenceScoreService $reactionPreferences,
     ) {
     }
 
@@ -36,11 +40,12 @@ final class JobController
     public function list(): JsonResponse
     {
         $jobs = $this->em->getRepository(JobOffer::class)->findAll();
+        $applications = $this->em->getRepository(Application::class)->findAll();
         $profile = $this->data->profile();
         $sourcePerformance = $this->sourcePerformance();
 
-        $ranked = array_map(function (JobOffer $job) use ($profile, $sourcePerformance): array {
-            $priority = $this->priorityScore->evaluate($job, $profile, $sourcePerformance);
+        $ranked = array_map(function (JobOffer $job) use ($profile, $sourcePerformance, $applications): array {
+            $priority = $this->adaptivePriority($job, $profile, $sourcePerformance, $applications);
             $payload = $job->toArray();
             $payload['priorityScore'] = $priority['score'];
             $payload['priorityReasons'] = $priority['reasons'];
@@ -68,7 +73,12 @@ final class JobController
     #[Route('/{id}', methods: ['GET'])]
     public function get(JobOffer $job): JsonResponse
     {
-        $priority = $this->priorityScore->evaluate($job, $this->data->profile(), $this->sourcePerformance());
+        $priority = $this->adaptivePriority(
+            $job,
+            $this->data->profile(),
+            $this->sourcePerformance(),
+            $this->em->getRepository(Application::class)->findAll(),
+        );
         $payload = $job->toArray();
         $payload['priorityScore'] = $priority['score'];
         $payload['priorityReasons'] = $priority['reasons'];
@@ -119,6 +129,35 @@ final class JobController
         $this->em->flush();
 
         return new JsonResponse(null, 204);
+    }
+
+    /**
+     * @param array<string, array<string, int|string|float|null>> $sourcePerformance
+     * @param iterable<Application> $applications
+     * @return array{score:int,reasons:list<string>,components:array<string,int>}
+     */
+    private function adaptivePriority(
+        JobOffer $job,
+        CandidateProfile $profile,
+        array $sourcePerformance,
+        iterable $applications,
+    ): array {
+        $priority = $this->priorityScore->evaluate($job, $profile, $sourcePerformance);
+        $reaction = $this->reactionPreferences->evaluate($job, $applications);
+        $adjustment = $job->getStatus() === 'REJECTED_BY_FILTER' ? 0 : $reaction['adjustment'];
+
+        $priority['score'] = max(0, min(100, $priority['score'] + $adjustment));
+        $priority['components']['reactions'] = $reaction['score'];
+        $priority['reasons'][] = $reaction['evidence'] === 0
+            ? 'Apprentissage selon tes décisions : 50/100 · neutre (pas encore de signal similaire).'
+            : sprintf(
+                'Apprentissage selon tes décisions : %d/100 · %d signal(s) similaire(s) · ajustement %+d.',
+                $reaction['score'],
+                $reaction['evidence'],
+                $adjustment,
+            );
+
+        return $priority;
     }
 
     /** @return array<string, array<string, int|string|float|null>> */

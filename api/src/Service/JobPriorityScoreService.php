@@ -16,6 +16,8 @@ final class JobPriorityScoreService
     private const CONFIDENCE_WEIGHT = 0.05;
     private const HISTORY_WEIGHT = 0.03;
     private const FRESHNESS_HALF_LIFE_HOURS = 72.0;
+    private const HISTORY_PRIOR_SAMPLE_SIZE = 10;
+    private const HISTORY_PRIOR_SCORE = 50.0;
 
     /**
      * @param array<string, array<string, int|string|float|null>> $sourcePerformance
@@ -67,7 +69,7 @@ final class JobPriorityScoreService
                 sprintf('Préférences contrat / lieu / télétravail : %d/100 · poids 10%%', $preferences),
                 sprintf('Rémunération par rapport à la cible : %d/100 · poids 7%%', $compensation),
                 sprintf('Confiance et qualité des données : %d/100 · poids 5%%', $confidence),
-                sprintf('Historique de conversion de la source : %d/100 · poids 3%%', $history),
+                sprintf('Historique de conversion des sources : %d/100 · poids 3%%', $history),
             ],
             'components' => [
                 'match' => $match,
@@ -257,7 +259,8 @@ final class JobPriorityScoreService
             return 50;
         }
 
-        $scores = [];
+        $totalSubmitted = 0;
+        $weightedObserved = 0.0;
         $sources = $job->toArray()['sources'] ?? [];
         foreach (is_array($sources) ? $sources : [] as $source) {
             if (!is_array($source)) {
@@ -277,16 +280,21 @@ final class JobPriorityScoreService
             $responseRate = max(0.0, min(100.0, (float) ($row['responseRate'] ?? 0.0)));
             $interviewRate = max(0.0, min(100.0, (float) ($row['interviewRate'] ?? 0.0)));
             $observed = 0.35 * $responseRate + 0.65 * $interviewRate;
-
-            // Bayesian-style shrinkage toward a neutral 50 until enough applications exist.
-            $scores[] = (10 * 50 + $submitted * $observed) / (10 + $submitted);
+            $totalSubmitted += $submitted;
+            $weightedObserved += $submitted * $observed;
         }
 
-        if ($scores === []) {
+        if ($totalSubmitted === 0) {
             return 50;
         }
 
-        return (int) round(max($scores));
+        // Pool all observed source outcomes before applying one neutral prior. A canonical
+        // offer should not inherit the best source's result while ignoring weaker evidence
+        // from its other occurrences.
+        return (int) round(
+            (self::HISTORY_PRIOR_SAMPLE_SIZE * self::HISTORY_PRIOR_SCORE + $weightedObserved)
+            / (self::HISTORY_PRIOR_SAMPLE_SIZE + $totalSubmitted),
+        );
     }
 
     private function termsMatch(string $normalizedJobValue, string $candidateValue): bool

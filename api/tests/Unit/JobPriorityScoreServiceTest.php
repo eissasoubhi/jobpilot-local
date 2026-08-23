@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
+use App\Entity\JobSourceOccurrence;
 use App\Service\JobPriorityScoreService;
 use PHPUnit\Framework\TestCase;
 
@@ -97,6 +98,29 @@ final class JobPriorityScoreServiceTest extends TestCase
         self::assertGreaterThanOrEqual(80, $priority['components']['confidence']);
         self::assertGreaterThan(50, $priority['components']['history']);
         self::assertCount(6, $priority['reasons']);
+    }
+
+    public function testMultiSourceHistoryPoolsEvidenceInsteadOfTakingBestSource(): void
+    {
+        $profile = $this->profile();
+        $job = $this->job(85, '-8 hours', 'CDI', 'Paris', 'Hybride', 55000);
+        new JobSourceOccurrence($job, 'source-a', 'Source A', 'a-1');
+        new JobSourceOccurrence($job, 'source-b', 'Source B', 'b-1');
+
+        $priority = $this->service->evaluate($job, $profile, [
+            'source-a' => [
+                'submitted' => 20,
+                'responseRate' => 100.0,
+                'interviewRate' => 100.0,
+            ],
+            'source-b' => [
+                'submitted' => 20,
+                'responseRate' => 0.0,
+                'interviewRate' => 0.0,
+            ],
+        ]);
+
+        self::assertSame(50, $priority['components']['history']);
     }
 
     public function testHardRejectedOfferHasZeroPriority(): void

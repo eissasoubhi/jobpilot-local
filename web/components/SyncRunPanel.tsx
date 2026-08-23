@@ -157,7 +157,7 @@ export function SyncRunPanel() {
             <Badge tone={job.status === 'failed' ? 'bad' : job.status === 'partial' ? 'warn' : terminal ? 'good' : 'blue'}>
               {statusLabel}
             </Badge>
-            {!terminal && (
+            {job.status === 'queued' && (
               <Badge tone={worker.status === 'active' ? 'good' : 'warn'}>
                 {worker.status === 'active' ? 'Worker prêt' : 'Worker indisponible'}
               </Badge>

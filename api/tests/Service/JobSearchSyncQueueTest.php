@@ -37,6 +37,25 @@ final class JobSearchSyncQueueTest extends TestCase
         self::assertArrayNotHasKey('trigger', $current);
     }
 
+    public function testWorkerHeartbeatDistinguishesMissingActiveAndStaleRuntime(): void
+    {
+        $queue = new JobSearchSyncQueue($this->privateDir);
+
+        self::assertSame('missing', $queue->workerStatus()['status']);
+
+        $queue->touchWorkerHeartbeat();
+        $active = $queue->workerStatus();
+        self::assertSame('active', $active['status']);
+        self::assertNotNull($active['updatedAt']);
+
+        $path = $this->privateDir.'/job-search-async/worker-heartbeat.json';
+        $heartbeat = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $heartbeat['updatedAt'] = (new \DateTimeImmutable('-11 seconds'))->format(DATE_ATOM);
+        file_put_contents($path, json_encode($heartbeat, JSON_THROW_ON_ERROR));
+
+        self::assertSame('stale', $queue->workerStatus()['status']);
+    }
+
     public function testQueuedRunFailsFastWhenNoWorkerClaimsIt(): void
     {
         $queue = new JobSearchSyncQueue($this->privateDir);
@@ -51,7 +70,7 @@ final class JobSearchSyncQueueTest extends TestCase
         self::assertNotNull($snapshot);
         self::assertSame('failed', $snapshot['status']);
         self::assertSame('sync_worker_not_started', $snapshot['error']['code']);
-        self::assertStringContainsString('scheduler', $snapshot['error']['message']);
+        self::assertStringContainsString('Redémarre JobPilot', $snapshot['error']['message']);
     }
 
     public function testRunningRunKeepsTheLongerStaleWindow(): void

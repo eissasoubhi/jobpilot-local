@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 
 describe('api', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -53,5 +54,19 @@ describe('api', () => {
     expect(message).toBe('Erreur HTTP 500 : réponse serveur non JSON.');
     expect(message).not.toContain('Fatal error');
     expect(message).not.toContain('HttpClientTrait.php');
+  });
+
+  it('fails a stalled GET instead of leaving the UI loading forever', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        reject(new DOMException('Aborted', 'AbortError'));
+      });
+    })));
+
+    const rejection = expect(api('/dashboard')).rejects.toThrow('Le serveur local ne répond pas');
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await rejection;
   });
 });

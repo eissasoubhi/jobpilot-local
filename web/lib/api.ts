@@ -1,5 +1,7 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
+const READ_TIMEOUT_MS = 15_000;
+
 async function readJsonResponse<T>(response: Response): Promise<T> {
   // Real fetch Responses always expose Headers. Some focused unit tests use
   // deliberately minimal Response-shaped fakes, so only enforce content type
@@ -25,11 +27,38 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  // Read-only screens must never stay on "Chargement…" forever when the local
+  // proxy, API or database is unhealthy. Mutations keep their explicit caller
+  // semantics because some local generation/import operations can legitimately
+  // take longer. Supplying a signal also opts out so specialized callers can
+  // own cancellation themselves.
+  const method = (init.method ?? 'GET').toUpperCase();
+  const timeoutController = method === 'GET' && init.signal === undefined
+    ? new AbortController()
+    : null;
+  const timeoutId = timeoutController === null
+    ? null
+    : globalThis.setTimeout(() => timeoutController.abort(), READ_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+      signal: init.signal ?? timeoutController?.signal,
+      cache: 'no-store',
+    });
+  } catch (error) {
+    if (timeoutController?.signal.aborted) {
+      throw new Error('Le serveur local ne répond pas. Vérifie les services API et base de données, puis recharge la page.');
+    }
+
+    throw error;
+  } finally {
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId);
+    }
+  }
 
   if (response.status === 204) {
     if (!response.ok) {

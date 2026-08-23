@@ -45,11 +45,11 @@ services:
     volumes:
       - ./web:/app
       - web_node_modules:/app/node_modules
-      - web_next:/app/.next
+    tmpfs:
+      - /app/.next
 
 volumes:
   api_vendor:
   api_cache:
   api_logs:
   web_node_modules:
-  web_next:

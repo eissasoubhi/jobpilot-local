@@ -61,16 +61,16 @@ describe('ReviewQueue unavailable decision', () => {
     vi.restoreAllMocks();
   });
 
-  it('removes an unavailable offer from the queue without submitting an application', async () => {
+  it('marks an unavailable offer immediately without a confirmation or submission', async () => {
     const first = application(1, 'First role');
     const second = application(2, 'Second role');
+    const confirmSpy = vi.spyOn(window, 'confirm');
     mockInitialLoad([first, second]);
     apiMock.mockResolvedValueOnce({
       ...first,
       status: 'OFFER_UNAVAILABLE',
       jobOffer: { ...first.jobOffer, status: 'UNAVAILABLE' },
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'First role' })).toBeInTheDocument());
@@ -80,24 +80,63 @@ describe('ReviewQueue unavailable decision', () => {
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/offer-unavailable', {
       method: 'POST',
     }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('aucune candidature ne sera envoyée'));
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(apiMock).not.toHaveBeenCalledWith('/applications/1', expect.objectContaining({ method: 'PATCH' }));
     expect(screen.queryByRole('heading', { name: 'First role' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Second role' })).toBeInTheDocument();
-    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Annuler la dernière action sur First role' })).toBeInTheDocument();
   });
 
-  it('keeps the offer in the queue when the unavailable decision is cancelled', async () => {
+  it('undoes the unavailable decision and restores the offer at its previous position', async () => {
     const first = application(1, 'First role');
-    mockInitialLoad([first]);
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const second = application(2, 'Second role');
+    const unavailable: Application = {
+      ...first,
+      status: 'OFFER_UNAVAILABLE',
+      jobOffer: { ...first.jobOffer, status: 'UNAVAILABLE' },
+    } as Application;
+    mockInitialLoad([first, second]);
+    apiMock
+      .mockResolvedValueOnce(unavailable)
+      .mockResolvedValueOnce(first);
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'First role' })).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Second role' })).toBeInTheDocument());
 
-    expect(apiMock).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole('heading', { name: 'First role' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First role' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/review-decision/undo', {
+      method: 'POST',
+    }));
+    expect(await screen.findByRole('heading', { name: 'First role' })).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Annuler la dernière action sur First role' })).not.toBeInTheDocument();
+  });
+
+  it('keeps undo available when the decision empties the queue', async () => {
+    const only = application(1, 'Only role');
+    mockInitialLoad([only]);
+    apiMock
+      .mockResolvedValueOnce({
+        ...only,
+        status: 'OFFER_UNAVAILABLE',
+        jobOffer: { ...only.jobOffer, status: 'UNAVAILABLE' },
+      })
+      .mockResolvedValueOnce(only);
+
+    render(<ReviewQueuePage />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Only role' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
+
+    expect(await screen.findByText('Aucune candidature prête à envoyer dans la Review Queue.')).toBeInTheDocument();
+    const undo = screen.getByRole('button', { name: 'Annuler la dernière action sur Only role' });
+    expect(undo).toBeInTheDocument();
+
+    fireEvent.click(undo);
+    expect(await screen.findByRole('heading', { name: 'Only role' })).toBeInTheDocument();
   });
 });

@@ -8,7 +8,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final class JobSearchSyncQueue
 {
-    private const STALE_AFTER_SECONDS = 1800;
+    private const QUEUED_STALE_AFTER_SECONDS = 30;
+    private const RUNNING_STALE_AFTER_SECONDS = 1800;
 
     public function __construct(#[Autowire('%private_dir%')] private string $privateDir)
     {
@@ -57,6 +58,13 @@ final class JobSearchSyncQueue
         return $this->withLock(function (): ?array {
             $state = $this->readState();
             if (!is_array($state) || ($state['status'] ?? null) !== 'queued') {
+                return null;
+            }
+
+            if ($this->isStale($state)) {
+                $this->markStale($state);
+                $this->writeState($state);
+
                 return null;
             }
 
@@ -165,21 +173,52 @@ final class JobSearchSyncQueue
                 return null;
             }
 
-            if ($this->isActive($state) && $this->isStale($state)) {
-                $state['status'] = 'failed';
-                $state['finishedAt'] = $this->now();
-                $state['updatedAt'] = $state['finishedAt'];
-                $state['error'] = [
-                    'code' => 'sync_worker_stale',
-                    'message' => 'Le worker de recherche ne répond plus. Une nouvelle recherche peut être lancée.',
-                ];
-                $this->writeState($state);
+            return $this->publicState($state);
+        });
+    }
+
+    /** @return array<string, mixed>|null */
+    public function current(): ?array
+    {
+        return $this->withLock(function (): ?array {
+            $state = $this->readState();
+            if (!is_array($state)) {
+                return null;
             }
 
-            unset($state['force'], $state['connectorCode'], $state['trigger']);
-
-            return $state;
+            return $this->publicState($state);
         });
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     * @return array<string, mixed>
+     */
+    private function publicState(array $state): array
+    {
+        if ($this->isActive($state) && $this->isStale($state)) {
+            $this->markStale($state);
+            $this->writeState($state);
+        }
+
+        unset($state['force'], $state['connectorCode'], $state['trigger']);
+
+        return $state;
+    }
+
+    /** @param array<string, mixed> $state */
+    private function markStale(array &$state): void
+    {
+        $wasQueued = ($state['status'] ?? null) === 'queued';
+        $state['status'] = 'failed';
+        $state['finishedAt'] = $this->now();
+        $state['updatedAt'] = $state['finishedAt'];
+        $state['error'] = [
+            'code' => $wasQueued ? 'sync_worker_not_started' : 'sync_worker_stale',
+            'message' => $wasQueued
+                ? 'Le worker de recherche n’a pas démarré. Vérifie que le service scheduler est lancé, puis relance la recherche.'
+                : 'Le worker de recherche ne répond plus. Une nouvelle recherche peut être lancée.',
+        ];
     }
 
     private function withLock(callable $callback): mixed
@@ -259,7 +298,11 @@ final class JobSearchSyncQueue
             return true;
         }
 
-        return $updatedAt->getTimestamp() < time() - self::STALE_AFTER_SECONDS;
+        $staleAfter = ($state['status'] ?? null) === 'queued'
+            ? self::QUEUED_STALE_AFTER_SECONDS
+            : self::RUNNING_STALE_AFTER_SECONDS;
+
+        return $updatedAt->getTimestamp() < time() - $staleAfter;
     }
 
     /** @return list<array<string, mixed>> */

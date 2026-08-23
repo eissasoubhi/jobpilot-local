@@ -107,6 +107,17 @@ services:
       - sh
       - -c
       - |
+        worker_loop() {
+          while true; do
+            php bin/console app:jobs:sync-worker || true
+            sleep 1
+          done
+        }
+
+        worker_loop &
+        worker_pid=$$!
+        trap 'kill "$$worker_pid" 2>/dev/null || true' TERM INT EXIT
+
         while true; do
           php bin/console app:jobs:repair-contaminated-gmail --limit=50 || true
           php bin/console app:jobs:sync || true

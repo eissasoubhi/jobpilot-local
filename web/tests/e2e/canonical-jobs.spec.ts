@@ -74,17 +74,28 @@ test('one canonical offer displays all sources and filters by any occurrence', a
   });
   await page.route('**/api/job-search/sync**', async (route) => {
     await fulfillJson(route, {
-      configured: true,
-      providers: [],
-      lastSyncedAt: '2026-08-05T09:00:00+02:00',
-      nextSyncAt: '2026-08-05T15:00:00+02:00',
-      due: false,
-      imported: 0,
-      merged: 1,
-      duplicates: 0,
-      failed: 0,
-      message: '0 nouvelle offre, 1 nouvelle source fusionnée.',
-    });
+      job: {
+        id: 'canonical-sync',
+        status: 'success',
+        queuedAt: '2026-08-05T09:00:00+02:00',
+        startedAt: '2026-08-05T09:00:00+02:00',
+        finishedAt: '2026-08-05T09:00:01+02:00',
+        updatedAt: '2026-08-05T09:00:01+02:00',
+        result: {
+          configured: true,
+          providers: [],
+          lastSyncedAt: '2026-08-05T09:00:00+02:00',
+          nextSyncAt: '2026-08-05T15:00:00+02:00',
+          due: false,
+          imported: 0,
+          merged: 1,
+          duplicates: 0,
+          failed: 0,
+          message: '0 nouvelle offre, 1 nouvelle source fusionnée.',
+        },
+        error: null,
+      },
+    }, 202);
   });
 
   await page.goto('/offres');

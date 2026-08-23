@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Service\JobCatalogResetService;
 use App\Service\JobProfileCleanupService;
+use App\Service\JobSearchSyncQueue;
 use App\Service\JobSearchSyncService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,7 @@ final class JobSearchController
 {
     public function __construct(
         private JobSearchSyncService $syncService,
+        private JobSearchSyncQueue $syncQueue,
         private JobCatalogResetService $catalogReset,
         private JobProfileCleanupService $profileCleanup,
     ) {
@@ -31,12 +33,30 @@ final class JobSearchController
     public function sync(Request $request): JsonResponse
     {
         $force = filter_var($request->query->get('force', '0'), FILTER_VALIDATE_BOOL);
-
-        return new JsonResponse($this->syncService->sync(
+        $queued = $this->syncQueue->enqueue(
             $force,
             null,
             $force ? 'manual' : 'page-load',
-        ));
+        );
+        $id = (string) ($queued['id'] ?? '');
+
+        return new JsonResponse([
+            'job' => $id !== '' ? $this->syncQueue->get($id) : null,
+        ], JsonResponse::HTTP_ACCEPTED);
+    }
+
+    #[Route('/sync/{runId}', methods: ['GET'])]
+    public function syncRun(string $runId): JsonResponse
+    {
+        $job = $this->syncQueue->get($runId);
+        if ($job === null) {
+            return new JsonResponse([
+                'error' => 'sync_not_found',
+                'message' => 'Cette recherche d’offres est introuvable ou a été remplacée.',
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse(['job' => $job]);
     }
 
     #[Route('/cleanup-profile-mismatches', methods: ['POST'])]
@@ -87,15 +107,13 @@ final class JobSearchController
             ], 409);
         }
 
-        $sync = $this->syncService->sync(true, null, 'catalog-reset');
-        $syncBusy = (bool) ($sync['busy'] ?? false);
+        $queued = $this->syncQueue->enqueue(true, null, 'catalog-reset');
+        $id = (string) ($queued['id'] ?? '');
 
         return new JsonResponse([
-            'message' => $syncBusy
-                ? 'Catalogue supprimé. Une autre synchronisation a démarré et va recharger les offres.'
-                : 'Catalogue supprimé puis resynchronisé depuis les sources actives.',
+            'message' => 'Catalogue supprimé. La resynchronisation a été placée en arrière-plan.',
             'reset' => $reset,
-            'sync' => $sync,
-        ]);
+            'sync' => $id !== '' ? $this->syncQueue->get($id) : null,
+        ], JsonResponse::HTTP_ACCEPTED);
     }
 }

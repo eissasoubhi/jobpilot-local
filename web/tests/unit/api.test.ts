@@ -35,4 +35,23 @@ describe('api', () => {
 
     await expect(api('/jobs')).rejects.toThrow('Requête invalide');
   });
+
+  it('does not expose an HTML/PHP error body when a JSON endpoint crashes', async () => {
+    const fatalBody = '<br /><b>Fatal error</b>: Maximum execution time exceeded in HttpClientTrait.php';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      fatalBody,
+      { status: 500, headers: { 'Content-Type': 'text/html; charset=UTF-8' } },
+    )));
+
+    let message = '';
+    try {
+      await api('/job-search/sync?force=1');
+    } catch (caughtError) {
+      message = caughtError instanceof Error ? caughtError.message : String(caughtError);
+    }
+
+    expect(message).toBe('Erreur HTTP 500 : réponse serveur non JSON.');
+    expect(message).not.toContain('Fatal error');
+    expect(message).not.toContain('HttpClientTrait.php');
+  });
 });

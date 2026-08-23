@@ -43,11 +43,11 @@ type ProviderSync = {
 };
 
 type SyncResult = {
-  configured: boolean;
+  configured?: boolean;
   providers: ProviderSync[];
   lastSyncedAt: string | null;
   nextSyncAt: string | null;
-  due: boolean;
+  due?: boolean;
   busy?: boolean;
   skipped?: boolean;
   message?: string;
@@ -58,6 +58,28 @@ type SyncResult = {
   failed?: number;
   errors?: string[];
 };
+
+type SyncJob = {
+  id: string;
+  status: 'queued' | 'running' | 'success' | 'partial' | 'failed';
+  queuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string;
+  deduplicated?: boolean;
+  progress?: {
+    completed: number;
+    total: number;
+    currentConnector?: string | null;
+  };
+  result: SyncResult | null;
+  error?: {
+    code?: string;
+    message?: string;
+  } | null;
+};
+
+type SyncJobResponse = { job: SyncJob };
 
 const initialForm: JobForm = {
   source: 'Manuel',
@@ -132,6 +154,14 @@ function matchLabel(matchType: string): string {
   }[matchType] ?? matchType;
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function isTerminalSync(status: SyncJob['status']): boolean {
+  return status === 'success' || status === 'partial' || status === 'failed';
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [applications, setApplications] = useState<Application[] | null>(null);
@@ -143,6 +173,7 @@ export default function JobsPage() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [syncing, setSyncing] = useState(false);
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
+  const [syncRun, setSyncRun] = useState<SyncJob | null>(null);
 
   const loadJobs = useCallback(async (): Promise<void> => {
     try {
@@ -168,18 +199,42 @@ export default function JobsPage() {
     await Promise.all([loadJobs(), loadApplications()]);
   }, [loadApplications, loadJobs]);
 
+  const pollSync = useCallback(async (initialJob: SyncJob): Promise<SyncJob> => {
+    let job = initialJob;
+    setSyncRun(job);
+
+    while (!isTerminalSync(job.status)) {
+      await wait(1000);
+      const response = await api<SyncJobResponse>(`/job-search/sync/${encodeURIComponent(job.id)}`);
+      job = response.job;
+      setSyncRun(job);
+    }
+
+    return job;
+  }, []);
+
   const syncJobs = useCallback(async (force: boolean): Promise<void> => {
     setSyncing(true);
     if (force) setError('');
 
     try {
-      const result = await api<SyncResult>(`/job-search/sync${force ? '?force=1' : ''}`, {
+      const queued = await api<SyncJobResponse>(`/job-search/sync${force ? '?force=1' : ''}`, {
         method: 'POST',
       });
-      setSyncInfo(result);
+      const completed = await pollSync(queued.job);
 
-      // Keep the already rendered local catalog visible while the refreshed catalog
-      // is fetched. New or updated offers replace the list only when the request ends.
+      if (completed.result) {
+        setSyncInfo({
+          ...completed.result,
+          providers: completed.result.providers ?? [],
+        });
+      }
+      if (completed.status === 'failed') {
+        throw new Error(completed.error?.message ?? 'La recherche d’offres a échoué.');
+      }
+
+      // Keep the already rendered local catalog visible while the background worker
+      // refreshes it, then replace it only after the run reaches a terminal state.
       await loadJobs();
       void loadApplications();
     } catch (caughtError: unknown) {
@@ -187,7 +242,7 @@ export default function JobsPage() {
     } finally {
       setSyncing(false);
     }
-  }, [loadApplications, loadJobs]);
+  }, [loadApplications, loadJobs, pollSync]);
 
   useEffect(() => {
     let active = true;
@@ -269,10 +324,23 @@ export default function JobsPage() {
     [jobs, filter, sourceFilter, applicationsByJobId, inboxView],
   );
 
-  const providerNames = syncInfo?.providers
+  const providerNames = (syncInfo?.providers ?? [])
     .filter((provider) => provider.configured !== false && provider.enabled !== false)
     .map((provider) => provider.name)
     .join(', ');
+
+  const progress = syncRun?.progress;
+  const syncStatusMessage = syncRun?.status === 'queued'
+    ? 'Recherche mise en file…'
+    : syncRun?.status === 'running'
+      ? progress && progress.total > 0
+        ? `Recherche en arrière-plan (${progress.completed}/${progress.total})…`
+        : 'Recherche en arrière-plan…'
+      : syncRun?.status === 'partial'
+        ? 'Recherche terminée avec certaines sources indisponibles.'
+        : syncRun?.status === 'success'
+          ? 'Recherche terminée.'
+          : null;
 
   return (
     <>
@@ -304,14 +372,14 @@ export default function JobsPage() {
             <div className="actions" style={{ alignItems: 'center' }}>
               <strong>Recherche automatique</strong>
               <Badge tone={syncing ? 'blue' : 'good'}>
-                {syncing ? 'Mise à jour en arrière-plan' : 'Données locales affichées'}
+                {syncing ? 'Worker actif' : 'Données locales affichées'}
               </Badge>
               {applications === null && <Badge>Suivi candidatures en cours…</Badge>}
             </div>
             <div className="muted small" style={{ marginTop: 7 }}>
               {syncing
-                ? 'Les offres déjà synchronisées restent visibles pendant que JobPilot consulte les connecteurs actifs, normalise et fusionne les nouvelles occurrences.'
-                : syncInfo?.message ?? 'Les offres locales sont affichées en premier. La recherche automatique complète ensuite la liste sans bloquer la page.'}
+                ? syncStatusMessage ?? 'La recherche est exécutée en arrière-plan sans bloquer JobPilot.'
+                : syncInfo?.message ?? syncStatusMessage ?? 'Les offres locales sont affichées en premier. La recherche automatique complète ensuite la liste sans bloquer la page.'}
             </div>
           </div>
           <div className="small muted">

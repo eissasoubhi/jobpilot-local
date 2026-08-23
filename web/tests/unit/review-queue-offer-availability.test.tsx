@@ -66,8 +66,8 @@ describe('ReviewQueueApplicationCard offer availability', () => {
     expect(screen.getByRole('button', { name: 'Offre indisponible' })).toBeInTheDocument();
   });
 
-  it('marks an unavailable offer through the dedicated endpoint after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('marks an unavailable offer immediately through the dedicated endpoint', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
     const onApplicationUpdated = vi.fn();
     const original = readyApplication();
     const updated: Application = {
@@ -89,16 +89,7 @@ describe('ReviewQueueApplicationCard offer availability', () => {
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith('/applications/41/offer-unavailable', { method: 'POST' });
     });
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('retirée de la Review Queue'));
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
-  });
-
-  it('does nothing when the user cancels the action', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-
-    render(<ReviewQueueApplicationCard application={readyApplication()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Offre indisponible' }));
-
-    expect(apiMock).not.toHaveBeenCalled();
   });
 });

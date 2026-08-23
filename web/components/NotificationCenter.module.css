@@ -1,0 +1,264 @@
+.root {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 40;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.bell,
+.panel,
+.toast {
+  pointer-events: auto;
+}
+
+.bell {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d9deea;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .96);
+  color: #26344b;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 24px rgba(25, 39, 77, .10);
+  backdrop-filter: blur(12px);
+}
+
+.bell:hover,
+.bell:focus-visible {
+  border-color: #536dfe;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(62, 92, 230, .12), 0 8px 24px rgba(25, 39, 77, .10);
+}
+
+.count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  background: #b42318;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.panel {
+  width: min(430px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 84px));
+  overflow: hidden;
+  border: 1px solid #dfe4ef;
+  border-radius: 17px;
+  background: white;
+  box-shadow: 0 18px 50px rgba(20, 31, 59, .18);
+}
+
+.panel:focus {
+  outline: none;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid #e6e9f0;
+}
+
+.header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.header strong {
+  font-size: 16px;
+}
+
+.header span {
+  color: #687386;
+  font-size: 12px;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: #f1f3f7;
+  color: #536072;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.close:focus-visible,
+.action:focus-visible,
+.toast button:focus-visible {
+  outline: 3px solid rgba(62, 92, 230, .18);
+  outline-offset: 2px;
+}
+
+.list {
+  max-height: 540px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.item {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid #e4e8f0;
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.item + .item {
+  margin-top: 8px;
+}
+
+.item[data-severity='critical'] {
+  border-left-color: #b42318;
+  background: #fff7f6;
+}
+
+.item[data-severity='action'] {
+  border-left-color: #d88613;
+  background: #fffbf4;
+}
+
+.item[data-severity='warning'] {
+  border-left-color: #d5a11e;
+}
+
+.item[data-severity='info'] {
+  border-left-color: #536dfe;
+}
+
+.itemTopLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.severity,
+.new {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.severity {
+  color: #687386;
+}
+
+.new {
+  color: #314ac7;
+}
+
+.item > strong {
+  color: #26344b;
+  font-size: 14px;
+}
+
+.item p {
+  margin: 0;
+  color: #536072;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  width: fit-content;
+  margin-top: 2px;
+  border-radius: 8px;
+  background: #edf0ff;
+  color: #314ac7;
+  padding: 7px 9px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.empty {
+  padding: 30px 18px;
+  text-align: center;
+  color: #687386;
+  font-size: 13px;
+}
+
+.toast {
+  width: min(410px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  border: 1px solid #ead8b4;
+  border-radius: 13px;
+  padding: 12px 13px;
+  background: #fffaf0;
+  box-shadow: 0 12px 34px rgba(20, 31, 59, .13);
+}
+
+.toast strong,
+.toast span {
+  min-width: 0;
+}
+
+.toast strong {
+  font-size: 13px;
+}
+
+.toast span {
+  grid-column: 1;
+  color: #6f5a31;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.toast button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: #3e5ce6;
+  color: white;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+@media (max-width: 950px) {
+  .root {
+    top: 12px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 650px) {
+  .panel {
+    max-height: calc(100vh - 72px);
+  }
+
+  .list {
+    max-height: calc(100vh - 145px);
+  }
+
+  .toast {
+    display: none;
+  }
+}

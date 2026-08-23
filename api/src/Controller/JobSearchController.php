@@ -40,9 +40,16 @@ final class JobSearchController
         );
         $id = (string) ($queued['id'] ?? '');
 
-        return new JsonResponse([
-            'job' => $id !== '' ? $this->syncQueue->get($id) : null,
-        ], JsonResponse::HTTP_ACCEPTED);
+        return new JsonResponse(
+            $id !== '' ? $this->syncSnapshot($this->syncQueue->get($id)) : ['job' => null, 'connectors' => []],
+            JsonResponse::HTTP_ACCEPTED,
+        );
+    }
+
+    #[Route('/sync/current', methods: ['GET'], priority: 10)]
+    public function currentSyncRun(): JsonResponse
+    {
+        return new JsonResponse($this->syncSnapshot($this->syncQueue->current()));
     }
 
     #[Route('/sync/{runId}', methods: ['GET'])]
@@ -56,7 +63,7 @@ final class JobSearchController
             ], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse(['job' => $job]);
+        return new JsonResponse($this->syncSnapshot($job));
     }
 
     #[Route('/cleanup-profile-mismatches', methods: ['POST'])]
@@ -115,5 +122,17 @@ final class JobSearchController
             'reset' => $reset,
             'sync' => $id !== '' ? $this->syncQueue->get($id) : null,
         ], JsonResponse::HTTP_ACCEPTED);
+    }
+
+    /**
+     * @param array<string, mixed>|null $job
+     * @return array{job: array<string, mixed>|null, connectors: list<array<string, mixed>>}
+     */
+    private function syncSnapshot(?array $job): array
+    {
+        return [
+            'job' => $job,
+            'connectors' => $job === null ? [] : $this->syncService->connectors(),
+        ];
     }
 }

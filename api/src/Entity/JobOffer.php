@@ -135,6 +135,8 @@ class JobOffer
     public function getProposedTjm(): ?int { return $this->proposedTjm; }
     public function getProposedSalary(): ?int { return $this->proposedSalary; }
     public function getScore(): int { return $this->score; }
+    /** @return list<string> */
+    public function getScoreReasons(): array { return $this->scoreReasons; }
     public function getStatus(): string { return $this->status; }
     public function getRecommendedCv(): ?CvDocument { return $this->recommendedCv; }
     public function getPublishedAt(): ?\DateTimeImmutable { return $this->publishedAt; }
@@ -285,6 +287,18 @@ class JobOffer
         $this->status = $status;
         $this->recommendedCv = $cv;
         $this->preparedAt = $status === 'PREPARED' ? new \DateTimeImmutable() : null;
+    }
+
+    /**
+     * Rafraîchit uniquement le matching, sans modifier le statut de workflow,
+     * la préparation, le CV recommandé ni les montants proposés.
+     *
+     * @param list<string> $reasons
+     */
+    public function refreshMatchingScore(int $score, array $reasons): void
+    {
+        $this->score = max(0, min(100, $score));
+        $this->scoreReasons = array_values($reasons);
     }
 
     public function markPrepared(): void

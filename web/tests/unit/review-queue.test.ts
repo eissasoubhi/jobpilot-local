@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildReviewQueue,
   clampReviewQueueIndex,
   currentReviewQueueItem,
+  isOfferWithinReviewWindow,
   isReadyToSubmitReviewItem,
   nextReviewQueueIndexAfterDecision,
 } from '@/lib/review-queue';
-import type { Application } from '@/lib/types';
+import type { Application, Job } from '@/lib/types';
 
 describe('Review Queue helpers', () => {
   it('keeps only applications that are ready to submit', () => {
@@ -17,6 +19,39 @@ describe('Review Queue helpers', () => {
     expect(isReadyToSubmitReviewItem(application('INTERVIEW'))).toBe(false);
     expect(isReadyToSubmitReviewItem(application('REJECTED'))).toBe(false);
     expect(isReadyToSubmitReviewItem(application('IGNORED_NOT_MATCH'))).toBe(false);
+  });
+
+  it('keeps offers through day 30 and expires them after that', () => {
+    const now = new Date('2026-08-23T21:00:00.000Z');
+    const job = (publishedAt: string): Job => ({ publishedAt }) as Job;
+
+    expect(isOfferWithinReviewWindow(job('2026-07-25T21:00:00.000Z'), now)).toBe(true);
+    expect(isOfferWithinReviewWindow(job('2026-07-24T21:00:00.000Z'), now)).toBe(true);
+    expect(isOfferWithinReviewWindow(job('2026-07-23T21:00:00.000Z'), now)).toBe(false);
+  });
+
+  it('falls back to discoveredAt when publication date is unknown', () => {
+    const now = new Date('2026-08-23T21:00:00.000Z');
+
+    expect(isOfferWithinReviewWindow({ discoveredAt: '2026-07-23T20:59:59.000Z' } as Job, now)).toBe(false);
+    expect(isOfferWithinReviewWindow({ discoveredAt: '2026-08-01T10:00:00.000Z' } as Job, now)).toBe(true);
+  });
+
+  it('keeps unknown dates neutral instead of inventing staleness', () => {
+    expect(isOfferWithinReviewWindow({} as Job, new Date('2026-08-23T21:00:00.000Z'))).toBe(true);
+  });
+
+  it('removes expired ready applications from the active queue without changing their status', () => {
+    const now = new Date('2026-08-23T21:00:00.000Z');
+    const freshJob = { id: 1, publishedAt: '2026-08-10T10:00:00.000Z' } as Job;
+    const oldJob = { id: 2, publishedAt: '2026-07-01T10:00:00.000Z' } as Job;
+    const freshApplication = { id: 11, status: 'READY_TO_SUBMIT', jobOffer: freshJob } as Application;
+    const oldApplication = { id: 12, status: 'READY_TO_SUBMIT', jobOffer: oldJob } as Application;
+
+    const queue = buildReviewQueue([oldApplication, freshApplication], [oldJob, freshJob], now);
+
+    expect(queue).toEqual([freshApplication]);
+    expect(oldApplication.status).toBe('READY_TO_SUBMIT');
   });
 
   it('keeps the current index inside queue bounds', () => {

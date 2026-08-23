@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import { Shell } from '@/components/Shell';
+import { SyncRunPanel } from '@/components/SyncRunPanel';
 
 import './globals.css';
 
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="fr" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <Shell>{children}</Shell>
+        <Shell>
+          <SyncRunPanel />
+          {children}
+        </Shell>
       </body>
     </html>
   );

@@ -15,8 +15,6 @@ test('job search sync is queued immediately and does not block the HTTP API', as
   expect(payload.job?.id).toBeTruthy();
   expect(['queued', 'running']).toContain(payload.job?.status);
 
-  // This is the regression that matters for the original incident: while the
-  // connector work is pending, unrelated JobPilot endpoints must still answer.
   const profileStartedAt = Date.now();
   const profileResponse = await request.get('/api/profile');
   const profileDurationMs = Date.now() - profileStartedAt;
@@ -24,4 +22,17 @@ test('job search sync is queued immediately and does not block the HTTP API', as
   expect(profileResponse.status()).toBe(200);
   expect(profileResponse.headers()['content-type']).toContain('application/json');
   expect(profileDurationMs).toBeLessThan(5_000);
+});
+
+test('offers page reconnects to the current synchronization after reload', async ({ page, request }) => {
+  const syncResponse = await request.post('/api/job-search/sync?force=1');
+  expect(syncResponse.status()).toBe(202);
+
+  await page.goto('/offres');
+  await expect(page.getByText('Synchronisation des offres')).toBeVisible();
+  await expect(page.getByText(/Mise en file|Worker actif|Terminée|Échec/)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText('Synchronisation des offres')).toBeVisible();
+  await expect(page.getByLabel(/Progression de la synchronisation/)).toBeVisible();
 });

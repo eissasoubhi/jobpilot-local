@@ -41,7 +41,7 @@ final class JobSearchController
         $id = (string) ($queued['id'] ?? '');
 
         return new JsonResponse(
-            $id !== '' ? $this->syncSnapshot($this->syncQueue->get($id)) : ['job' => null, 'connectors' => []],
+            $this->syncSnapshot($id !== '' ? $this->syncQueue->get($id) : null),
             JsonResponse::HTTP_ACCEPTED,
         );
     }
@@ -126,13 +126,18 @@ final class JobSearchController
 
     /**
      * @param array<string, mixed>|null $job
-     * @return array{job: array<string, mixed>|null, connectors: list<array<string, mixed>>}
+     * @return array{
+     *   job: array<string, mixed>|null,
+     *   connectors: list<array<string, mixed>>,
+     *   worker: array{status: 'active'|'stale'|'missing', updatedAt: string|null}
+     * }
      */
     private function syncSnapshot(?array $job): array
     {
         return [
             'job' => $job,
             'connectors' => $job === null ? [] : $this->syncService->connectors(),
+            'worker' => $this->syncQueue->workerStatus(),
         ];
     }
 }

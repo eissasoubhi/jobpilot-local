@@ -267,54 +267,85 @@ export function ReviewQueueApplicationCard({
         )}
       </section>
 
-      <section className={styles.scorePanel} aria-label="Explication du score de correspondance">
-        <div className={styles.scoreValue}>{job.score}%</div>
-        <div className={styles.scoreText}>
-          <div className={styles.eyebrow}>Matching JobPilot</div>
-          <h3>Pourquoi ce score ?</h3>
+      <section className={`${styles.scorePanel} ${isLowMatch ? styles.scorePanelLow : ''}`} aria-labelledby={`score-title-${currentApplication.id}`}>
+        <div className={styles.scoreSummary}>
+          <div className={styles.scoreValue}>{job.score}%</div>
+          <div className={styles.scoreHeader}>
+            <div>
+              <div className={styles.eyebrow}>Matching JobPilot</div>
+              <h3 id={`score-title-${currentApplication.id}`}>Pourquoi ce score ?</h3>
+              {isLowMatch && <div className={styles.lowMatchHint}>Correspondance faible : vérification recommandée avant envoi.</div>}
+            </div>
+          </div>
         </div>
-        <ul className={styles.scoreReasons}>
-          {scoreReasons.length > 0
-            ? scoreReasons.map((reason, reasonIndex) => <li key={`${reason}-${reasonIndex}`}>{reason}</li>)
-            : <li>Aucune explication détaillée disponible.</li>}
-        </ul>
+
+        {scoreReasons.length > 0 ? (
+          <ul className={styles.scoreReasons}>
+            {scoreReasons.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        ) : (
+          <div className="muted">Aucune explication détaillée disponible.</div>
+        )}
       </section>
 
-      <section className={styles.applicationContent} aria-labelledby={`application-content-title-${currentApplication.id}`}>
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionTitleBlock}>
+      <section className={styles.applicationSummary} aria-labelledby={`application-summary-title-${currentApplication.id}`}>
+        <div className={styles.applicationSummaryHeader}>
+          <div>
             <div className={styles.eyebrow}>Candidature</div>
-            <h3 id={`application-content-title-${currentApplication.id}`}>Contenu prêt à envoyer</h3>
+            <h3 id={`application-summary-title-${currentApplication.id}`}>Contenu prêt à envoyer</h3>
           </div>
-          <span className={styles.coverLetterCount}>{coverLetterWords} mots dans la lettre</span>
+          {hasCoverLetter && (
+            <span className={styles.letterLength}>{coverLetterWords} mots dans la lettre</span>
+          )}
         </div>
 
-        <div className={styles.contentGrid}>
-          <div className={styles.contentItem}>
-            <span>CV</span>
-            <strong>{currentApplication.cvDocument?.filename ?? 'Manquant'}</strong>
+        <div className={styles.applicationContent}>
+          <div className={styles.applicationDocuments}>
+            <div className={styles.applicationDocument}>
+              <span>CV</span>
+              <strong>{currentApplication.cvDocument?.name || 'Non sélectionné'}</strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Message court de motivation</span>
+              <strong>
+                {hasMessage
+                  ? `${messageCharacters} caractères${messageOverCommonLimit ? ' · à réduire' : ''}`
+                  : 'Non préparé'}
+              </strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Lettre de motivation</span>
+              <strong>
+                {hasCoverLetter
+                  ? editableApplication.coverLetterManuallyEdited ? 'Prête · modifiée' : 'Prête'
+                  : 'Non préparée'}
+              </strong>
+            </div>
+            <div className={styles.applicationDocument}>
+              <span>Rémunération</span>
+              <strong>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</strong>
+            </div>
           </div>
-          <div className={styles.contentItem}>
-            <span>Message court de motivation</span>
-            <strong>{hasMessage ? `${messageCharacters} caractères${messageOverCommonLimit ? ' · à réduire' : ''}` : 'Non préparé'}</strong>
-          </div>
-          <div className={styles.contentItem}>
-            <span>Lettre de motivation</span>
-            <strong>{hasCoverLetter ? (editableApplication.coverLetterManuallyEdited ? 'Modifiée manuellement' : 'Prête') : 'Non préparée'}</strong>
-          </div>
-          <div className={styles.contentItem}>
-            <span>Rémunération</span>
-            <strong>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</strong>
-          </div>
-        </div>
 
-        <div className={styles.contentActions}>
-          <button className="btn small" type="button" onClick={() => openMotivationDrawer('coverLetter')}>
-            Ouvrir les textes de motivation
-          </button>
-          <button className="btn secondary small" type="button" onClick={() => openMotivationDrawer('message')}>
-            Message court
-          </button>
+          {(hasMessage || hasCoverLetter) && (
+            <div className={styles.applicationActions}>
+              {hasCoverLetter && (
+                <button className="btn small" type="button" onClick={() => openMotivationDrawer('coverLetter')}>
+                  Ouvrir les textes de motivation
+                </button>
+              )}
+              {!hasCoverLetter && hasMessage && (
+                <button className="btn small" type="button" onClick={() => openMotivationDrawer('message')}>
+                  Ouvrir le message court
+                </button>
+              )}
+              {hasMessage && hasCoverLetter && (
+                <button className="btn secondary small" type="button" onClick={() => openMotivationDrawer('message')}>
+                  Message court
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

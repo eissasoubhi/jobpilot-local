@@ -113,13 +113,16 @@ describe('ReviewQueuePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Offre 2 sur 2 : First Symfony role');
   });
 
-  it('marks the current application as submitted, advances and focuses the next offer', async () => {
+  it('marks the current application as submitted, advances, then can undo the local decision', async () => {
+    const first = application(1, 'First Symfony role', 'READY_TO_SUBMIT');
     const applications = [
-      application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
+      first,
       application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
     ];
     mockInitialLoad(applications);
-    apiMock.mockResolvedValueOnce(application(1, 'First Symfony role', 'SUBMITTED'));
+    apiMock
+      .mockResolvedValueOnce(application(1, 'First Symfony role', 'SUBMITTED'))
+      .mockResolvedValueOnce(first);
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
@@ -138,16 +141,27 @@ describe('ReviewQueuePage', () => {
     expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Carte complète Second Symfony role' })).toHaveFocus());
-    expect(screen.getByRole('status')).toHaveTextContent('Offre 1 sur 1 : Second Symfony role');
+    expect(screen.getByText('Offre 1 sur 1 : Second Symfony role')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First Symfony role' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/review-decision/undo', {
+      method: 'POST',
+    }));
+    expect(await screen.findByText('Carte complète First Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
   });
 
-  it('marks the current application as not matching and immediately advances to the next ready item', async () => {
+  it('marks the current application as not matching and can undo the preference signal', async () => {
+    const first = application(1, 'First Symfony role', 'READY_TO_SUBMIT');
     const applications = [
-      application(1, 'First Symfony role', 'READY_TO_SUBMIT'),
+      first,
       application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
     ];
     mockInitialLoad(applications);
-    apiMock.mockResolvedValueOnce(application(1, 'First Symfony role', 'IGNORED_NOT_MATCH'));
+    apiMock
+      .mockResolvedValueOnce(application(1, 'First Symfony role', 'IGNORED_NOT_MATCH'))
+      .mockResolvedValueOnce(first);
 
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
@@ -164,7 +178,15 @@ describe('ReviewQueuePage', () => {
     }));
     expect(screen.queryByText('Carte complète First Symfony role')).not.toBeInTheDocument();
     expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
-    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Annuler la dernière action sur First Symfony role' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First Symfony role' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/review-decision/undo', {
+      method: 'POST',
+    }));
+    expect(await screen.findByText('Carte complète First Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
   });
 
   it('navigates with left and right arrow keys outside interactive controls and moves focus with the offer', async () => {

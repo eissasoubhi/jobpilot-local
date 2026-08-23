@@ -292,6 +292,8 @@ export default function ReviewQueuePage() {
             application={current}
             headingRef={offerHeadingRef}
             onApplicationUpdated={updateApplication}
+            onOfferUnavailableRequested={() => void persistDecision('OFFER_UNAVAILABLE')}
+            decisionActionsDisabled={decisionBusy}
           />
 
           <nav className={styles.decisionBar} aria-label="Décision et navigation dans la Review Queue">

@@ -75,6 +75,42 @@ final class JobPriorityScoreServiceTest extends TestCase
         self::assertGreaterThan($poor['score'], $good['score']);
     }
 
+    public function testFullRemoteDoesNotLosePreferenceScoreBecauseOfItsReportedCity(): void
+    {
+        $profile = (new CandidateProfile())->fill([
+            'preferredLocations' => ['Paris', 'Île-de-France'],
+            'acceptedContracts' => ['CDI'],
+            'workModePreference' => 'Remote ou hybride',
+            'desiredSalary' => 50000,
+        ]);
+        $remoteParis = $this->job(80, '-12 hours', 'CDI', 'Paris', 'Full remote', 50000);
+        $remoteLyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Full remote', 50000);
+        $onsiteLyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Présentiel', 50000);
+
+        $remoteParisPriority = $this->service->evaluate($remoteParis, $profile);
+        $remoteLyonPriority = $this->service->evaluate($remoteLyon, $profile);
+        $onsiteLyonPriority = $this->service->evaluate($onsiteLyon, $profile);
+
+        self::assertSame($remoteParisPriority['components']['preferences'], $remoteLyonPriority['components']['preferences']);
+        self::assertSame($remoteParisPriority['score'], $remoteLyonPriority['score']);
+        self::assertGreaterThan($onsiteLyonPriority['components']['preferences'], $remoteLyonPriority['components']['preferences']);
+    }
+
+    public function testUnknownLocationRemainsNeutralInsteadOfBecomingPositiveOrRejected(): void
+    {
+        $profile = $this->profile();
+        $unknown = $this->job(80, '-12 hours', 'CDI', '', 'Hybride', 50000);
+        $preferred = $this->job(80, '-12 hours', 'CDI', 'Paris', 'Hybride', 50000);
+        $outside = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Hybride', 50000);
+
+        $unknownPriority = $this->service->evaluate($unknown, $profile);
+        $preferredPriority = $this->service->evaluate($preferred, $profile);
+        $outsidePriority = $this->service->evaluate($outside, $profile);
+
+        self::assertGreaterThan($unknownPriority['components']['preferences'], $preferredPriority['components']['preferences']);
+        self::assertGreaterThan($outsidePriority['components']['preferences'], $unknownPriority['components']['preferences']);
+    }
+
     public function testCompensationUsesRangeMidpointInsteadOfOptimisticUpperBound(): void
     {
         $profile = (new CandidateProfile())->fill([

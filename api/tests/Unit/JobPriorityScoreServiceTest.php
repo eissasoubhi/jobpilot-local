@@ -115,6 +115,30 @@ final class JobPriorityScoreServiceTest extends TestCase
         self::assertGreaterThan($outsidePriority['components']['preferences'], $unknownPriority['components']['preferences']);
     }
 
+    public function testIleDeFrancePreferenceRecognizesRegionalAliasesAndPostalCodes(): void
+    {
+        $profile = (new CandidateProfile())->fill([
+            'preferredLocations' => ['Île-de-France'],
+            'acceptedContracts' => ['CDI'],
+            'workModePreference' => 'Hybride',
+            'desiredSalary' => 50000,
+        ]);
+        $paris = $this->job(80, '-12 hours', 'CDI', 'Paris', 'Hybride', 50000);
+        $cergy = $this->job(80, '-12 hours', 'CDI', 'Cergy (95000)', 'Hybride', 50000);
+        $hautsDeSeine = $this->job(80, '-12 hours', 'CDI', 'Hauts-de-Seine', 'Hybride', 50000);
+        $lyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Hybride', 50000);
+
+        $parisPriority = $this->service->evaluate($paris, $profile);
+        $cergyPriority = $this->service->evaluate($cergy, $profile);
+        $hautsDeSeinePriority = $this->service->evaluate($hautsDeSeine, $profile);
+        $lyonPriority = $this->service->evaluate($lyon, $profile);
+
+        self::assertSame(100, $parisPriority['components']['preferences']);
+        self::assertSame($parisPriority['components']['preferences'], $cergyPriority['components']['preferences']);
+        self::assertSame($parisPriority['components']['preferences'], $hautsDeSeinePriority['components']['preferences']);
+        self::assertGreaterThan($lyonPriority['components']['preferences'], $parisPriority['components']['preferences']);
+    }
+
     public function testCompensationUsesRangeMidpointInsteadOfOptimisticUpperBound(): void
     {
         $profile = (new CandidateProfile())->fill([

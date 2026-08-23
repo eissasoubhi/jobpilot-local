@@ -127,7 +127,7 @@ final class JobPriorityScoreService
             if ($location === '') {
                 $scores[] = 50;
             } else {
-                $matches = array_filter($preferredLocations, fn (string $preferred): bool => $this->termsMatch($location, $preferred));
+                $matches = array_filter($preferredLocations, fn (string $preferred): bool => $this->locationMatches($location, $preferred));
                 $scores[] = $matches !== [] ? 100 : 35;
             }
         }
@@ -306,6 +306,48 @@ final class JobPriorityScoreService
 
         return str_contains($normalizedJobValue, $normalizedCandidate)
             || str_contains($normalizedCandidate, $normalizedJobValue);
+    }
+
+    private function locationMatches(string $normalizedLocation, string $candidateValue): bool
+    {
+        if ($this->termsMatch($normalizedLocation, $candidateValue)) {
+            return true;
+        }
+
+        $preferred = $this->normalize($candidateValue);
+        if (!$this->isIleDeFrancePreference($preferred)) {
+            return false;
+        }
+
+        return $this->isIleDeFranceLocation($normalizedLocation);
+    }
+
+    private function isIleDeFrancePreference(string $value): bool
+    {
+        return $value === 'idf'
+            || str_contains($value, 'ile-de-france')
+            || str_contains($value, 'ile de france')
+            || str_contains($value, 'region parisienne');
+    }
+
+    private function isIleDeFranceLocation(string $location): bool
+    {
+        if (preg_match('/\b(75|77|78|91|92|93|94|95)\d{3}\b/', $location) === 1) {
+            return true;
+        }
+
+        foreach ([
+            'paris', 'ile-de-france', 'ile de france', 'region parisienne',
+            'hauts-de-seine', 'hauts de seine', 'seine-saint-denis', 'seine saint denis',
+            'val-de-marne', 'val de marne', 'val-d-oise', 'val d oise', 'val-doise',
+            'yvelines', 'essonne', 'seine-et-marne', 'seine et marne',
+        ] as $token) {
+            if (str_contains($location, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function workModesMatch(string $workMode, string $preference): bool

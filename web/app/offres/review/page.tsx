@@ -29,12 +29,27 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 type ReviewDecision = 'IGNORED_NOT_MATCH' | 'OFFER_UNAVAILABLE' | 'SUBMITTED';
 
+type UndoableDecision = {
+  applicationId: number;
+  decision: ReviewDecision;
+  previousIndex: number;
+  jobTitle: string;
+};
+
+function decisionFeedback(decision: ReviewDecision): string {
+  if (decision === 'IGNORED_NOT_MATCH') return 'Offre marquée « Ne correspond pas ».';
+  if (decision === 'OFFER_UNAVAILABLE') return 'Offre marquée indisponible.';
+  return 'Candidature marquée envoyée.';
+}
+
 export default function ReviewQueuePage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [index, setIndex] = useState(0);
   const [error, setError] = useState('');
   const [decisionSaving, setDecisionSaving] = useState<ReviewDecision | null>(null);
+  const [undoSaving, setUndoSaving] = useState(false);
+  const [undoableDecision, setUndoableDecision] = useState<UndoableDecision | null>(null);
   const [decisionError, setDecisionError] = useState('');
   const [goalRefreshKey, setGoalRefreshKey] = useState(0);
   const offerHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -76,6 +91,7 @@ export default function ReviewQueuePage() {
     || current?.jobOffer.company?.trim()
     || '';
   const crmContextHref = crmOrganizationHref(crmContextName);
+  const decisionBusy = decisionSaving !== null || undoSaving;
   currentIndexRef.current = currentIndex;
   queueLengthRef.current = queue.length;
 
@@ -123,6 +139,12 @@ export default function ReviewQueuePage() {
     return () => window.removeEventListener('keydown', navigateWithKeyboard);
   }, [goNext, goPrevious]);
 
+  const replaceApplication = useCallback((updated: Application): void => {
+    setApplications((items) => items?.map((application) => (
+      application.id === updated.id ? updated : application
+    )) ?? items);
+  }, []);
+
   const updateApplication = useCallback((updated: Application): void => {
     const completedCurrentDecision = current?.id === updated.id
       && !isReadyToSubmitReviewItem(updated);
@@ -131,20 +153,16 @@ export default function ReviewQueuePage() {
       setIndex(nextReviewQueueIndexAfterDecision(currentIndex, queue.length));
     }
 
-    setApplications((items) => items?.map((application) => (
-      application.id === updated.id ? updated : application
-    )) ?? items);
-  }, [current?.id, currentIndex, queue.length]);
+    replaceApplication(updated);
+  }, [current?.id, currentIndex, queue.length, replaceApplication]);
+
+  const refreshGoals = useCallback((): void => {
+    setGoalRefreshKey((value) => value + 1);
+    window.dispatchEvent(new Event('jobpilot:application-goals-changed'));
+  }, []);
 
   const persistDecision = useCallback(async (status: ReviewDecision): Promise<void> => {
-    if (!current || decisionSaving !== null) return;
-
-    if (status === 'OFFER_UNAVAILABLE') {
-      const confirmed = window.confirm(
-        'Confirmer que cette offre n’est plus disponible ? Elle sera retirée de la Review Queue et aucune candidature ne sera envoyée.',
-      );
-      if (!confirmed) return;
-    }
+    if (!current || decisionBusy) return;
 
     setDecisionSaving(status);
     setDecisionError('');
@@ -164,17 +182,47 @@ export default function ReviewQueuePage() {
               confirmationRef: current.confirmationRef,
             }),
           });
+
+      setUndoableDecision({
+        applicationId: current.id,
+        decision: status,
+        previousIndex: currentIndex,
+        jobTitle: current.jobOffer.title,
+      });
       updateApplication(updated);
       if (status === 'SUBMITTED') {
-        setGoalRefreshKey((value) => value + 1);
-        window.dispatchEvent(new Event('jobpilot:application-goals-changed'));
+        refreshGoals();
       }
     } catch (caughtError: unknown) {
       setDecisionError(getErrorMessage(caughtError));
     } finally {
       setDecisionSaving(null);
     }
-  }, [current, decisionSaving, updateApplication]);
+  }, [current, currentIndex, decisionBusy, refreshGoals, updateApplication]);
+
+  const undoLastDecision = useCallback(async (): Promise<void> => {
+    if (!undoableDecision || decisionBusy) return;
+
+    setUndoSaving(true);
+    setDecisionError('');
+
+    try {
+      const updated = await api<Application>(
+        `/applications/${undoableDecision.applicationId}/review-decision/undo`,
+        { method: 'POST' },
+      );
+      replaceApplication(updated);
+      setIndex(undoableDecision.previousIndex);
+      if (undoableDecision.decision === 'SUBMITTED') {
+        refreshGoals();
+      }
+      setUndoableDecision(null);
+    } catch (caughtError: unknown) {
+      setDecisionError(getErrorMessage(caughtError));
+    } finally {
+      setUndoSaving(false);
+    }
+  }, [decisionBusy, refreshGoals, replaceApplication, undoableDecision]);
 
   const accessibleQueueStatus = loading
     ? 'Chargement de la Review Queue.'
@@ -211,6 +259,25 @@ export default function ReviewQueuePage() {
         {accessibleQueueStatus}
       </div>
 
+      {undoableDecision && (
+        <div className={styles.undoNotice} role="status" aria-live="polite">
+          <span>{decisionFeedback(undoableDecision.decision)}</span>
+          <button
+            className={styles.undoButton}
+            type="button"
+            disabled={decisionBusy}
+            aria-label={`Annuler la dernière action sur ${undoableDecision.jobTitle}`}
+            onClick={() => void undoLastDecision()}
+          >
+            ↶ {undoSaving ? 'Annulation…' : 'Annuler'}
+          </button>
+        </div>
+      )}
+
+      {decisionError !== '' && (
+        <div className={styles.globalDecisionError} role="alert">{decisionError}</div>
+      )}
+
       {error !== '' && <ErrorBox message={error} />}
 
       {loading ? (
@@ -231,7 +298,7 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.rejectButton}`}
               type="button"
-              disabled={decisionSaving !== null}
+              disabled={decisionBusy}
               onClick={() => void persistDecision('IGNORED_NOT_MATCH')}
             >
               <span aria-hidden="true">✕</span>
@@ -241,7 +308,7 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.unavailableButton}`}
               type="button"
-              disabled={decisionSaving !== null}
+              disabled={decisionBusy}
               onClick={() => void persistDecision('OFFER_UNAVAILABLE')}
             >
               <span aria-hidden="true">⊘</span>
@@ -255,7 +322,7 @@ export default function ReviewQueuePage() {
                 aria-label="Précédente"
                 aria-keyshortcuts="ArrowLeft"
                 title="Précédente — flèche gauche"
-                disabled={currentIndex === 0 || decisionSaving !== null}
+                disabled={currentIndex === 0 || decisionBusy}
                 onClick={goPrevious}
               >
                 ← <span>Préc.</span>
@@ -277,7 +344,7 @@ export default function ReviewQueuePage() {
                 aria-label="Suivante"
                 aria-keyshortcuts="ArrowRight"
                 title="Suivante — flèche droite"
-                disabled={currentIndex >= queue.length - 1 || decisionSaving !== null}
+                disabled={currentIndex >= queue.length - 1 || decisionBusy}
                 onClick={goNext}
               >
                 <span>Suiv.</span> →
@@ -287,16 +354,12 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.sentButton}`}
               type="button"
-              disabled={decisionSaving !== null}
+              disabled={decisionBusy}
               onClick={() => void persistDecision('SUBMITTED')}
             >
               <span aria-hidden="true">✓</span>
               <span>{decisionSaving === 'SUBMITTED' ? 'Enregistrement…' : 'Envoyée'}</span>
             </button>
-
-            {decisionError !== '' && (
-              <div className={styles.decisionError} role="alert">{decisionError}</div>
-            )}
           </nav>
         </div>
       ) : null}

@@ -64,9 +64,9 @@ describe('api', () => {
       });
     })));
 
-    const request = api('/dashboard');
+    const rejection = expect(api('/dashboard')).rejects.toThrow('Le serveur local ne répond pas');
     await vi.advanceTimersByTimeAsync(15_000);
 
-    await expect(request).rejects.toThrow('Le serveur local ne répond pas');
+    await rejection;
   });
 });

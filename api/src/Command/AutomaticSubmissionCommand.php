@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Application;
 use App\Service\AutomaticSubmissionService;
+use App\Service\JobOfferActionabilityPolicy;
 use App\Service\LocalDataService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,6 +25,7 @@ final class AutomaticSubmissionCommand extends Command
         private EntityManagerInterface $em,
         private LocalDataService $data,
         private AutomaticSubmissionService $submission,
+        private JobOfferActionabilityPolicy $actionability,
     ) {
         parent::__construct();
     }
@@ -46,8 +48,15 @@ final class AutomaticSubmissionCommand extends Command
         $submitted = 0;
         $failed = 0;
         $skipped = 0;
+        $expired = 0;
 
         foreach ($applications as $application) {
+            if (!$this->actionability->isWithinReviewWindow($application->getJobOffer())) {
+                ++$skipped;
+                ++$expired;
+                continue;
+            }
+
             $result = $this->submission->submitIfEligible($application, $settings);
 
             if ($result['status'] === 'submitted') {
@@ -69,10 +78,12 @@ final class AutomaticSubmissionCommand extends Command
         }
 
         $io->success(sprintf(
-            '%d envoyée(s), %d échec(s), %d ignorée(s).',
+            '%d envoyée(s), %d échec(s), %d ignorée(s), dont %d offre(s) hors fenêtre de %d jours.',
             $submitted,
             $failed,
             $skipped,
+            $expired,
+            JobOfferActionabilityPolicy::REVIEW_WINDOW_DAYS,
         ));
 
         return $failed > 0 ? Command::FAILURE : Command::SUCCESS;

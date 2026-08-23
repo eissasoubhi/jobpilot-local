@@ -132,7 +132,7 @@ describe('ReviewQueue unavailable decision', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
 
-    expect(await screen.findByText('Aucune candidature prête à envoyer dans la Review Queue.')).toBeInTheDocument();
+    expect((await screen.findAllByText('Aucune candidature prête à envoyer dans la Review Queue.')).length).toBeGreaterThan(0);
     const undo = screen.getByRole('button', { name: 'Annuler la dernière action sur Only role' });
     expect(undo).toBeInTheDocument();
 

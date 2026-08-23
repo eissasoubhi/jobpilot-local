@@ -86,8 +86,6 @@ final class JobPriorityScoreService
     {
         $publishedAt = $job->getPublishedAt();
         if ($publishedAt === null) {
-            // Missing publication data is uncertainty, not evidence that the offer is stale.
-            // Keep it neutral so known-fresh offers still win while genuinely old offers decay.
             return 50;
         }
 
@@ -116,11 +114,15 @@ final class JobPriorityScoreService
             }
         }
 
+        $workMode = $this->normalize($job->getWorkMode());
         $preferredLocations = array_values(array_filter(array_map(
             static fn (mixed $value): string => trim((string) $value),
             is_array($data['preferredLocations'] ?? null) ? $data['preferredLocations'] : [],
         )));
-        if ($preferredLocations !== []) {
+        if ($preferredLocations !== [] && !$this->isFullyRemote($workMode)) {
+            // For a genuinely full-remote offer, the posting city is informational rather than
+            // a job constraint. Excluding the location dimension is neutral: it neither rewards
+            // nor penalizes the offer because a source happens to report an HQ or admin city.
             $location = $this->normalize($job->getLocation());
             if ($location === '') {
                 $scores[] = 50;
@@ -132,7 +134,6 @@ final class JobPriorityScoreService
 
         $workModePreference = trim((string) ($data['workModePreference'] ?? ''));
         if ($this->isMeaningfulPreference($workModePreference)) {
-            $workMode = $this->normalize($job->getWorkMode());
             $preference = $this->normalize($workModePreference);
             if ($workMode === '') {
                 $scores[] = 50;
@@ -290,9 +291,6 @@ final class JobPriorityScoreService
             return 50;
         }
 
-        // Pool all observed source outcomes before applying one neutral prior. A canonical
-        // offer should not inherit the best source's result while ignoring weaker evidence
-        // from its other occurrences.
         return (int) round(
             (self::HISTORY_PRIOR_SAMPLE_SIZE * self::HISTORY_PRIOR_SCORE + $weightedObserved)
             / (self::HISTORY_PRIOR_SAMPLE_SIZE + $totalSubmitted),
@@ -327,6 +325,20 @@ final class JobPriorityScoreService
         }
 
         return str_contains($workMode, $preference) || str_contains($preference, $workMode);
+    }
+
+    private function isFullyRemote(string $workMode): bool
+    {
+        if ($workMode === '') {
+            return false;
+        }
+
+        return str_contains($workMode, 'full remote')
+            || str_contains($workMode, '100% remote')
+            || str_contains($workMode, '100 % remote')
+            || str_contains($workMode, 'remote complet')
+            || str_contains($workMode, 'teletravail complet')
+            || $workMode === 'remote';
     }
 
     private function isMeaningfulPreference(string $value): bool

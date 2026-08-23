@@ -85,14 +85,18 @@ final class JobPriorityScoreServiceTest extends TestCase
         ]);
         $remoteParis = $this->job(80, '-12 hours', 'CDI', 'Paris', 'Full remote', 50000);
         $remoteLyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Full remote', 50000);
+        $remotePercentLyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', '100 % remote', 50000);
         $onsiteLyon = $this->job(80, '-12 hours', 'CDI', 'Lyon', 'Présentiel', 50000);
 
         $remoteParisPriority = $this->service->evaluate($remoteParis, $profile);
         $remoteLyonPriority = $this->service->evaluate($remoteLyon, $profile);
+        $remotePercentLyonPriority = $this->service->evaluate($remotePercentLyon, $profile);
         $onsiteLyonPriority = $this->service->evaluate($onsiteLyon, $profile);
 
         self::assertSame($remoteParisPriority['components']['preferences'], $remoteLyonPriority['components']['preferences']);
+        self::assertSame($remoteParisPriority['components']['preferences'], $remotePercentLyonPriority['components']['preferences']);
         self::assertSame($remoteParisPriority['score'], $remoteLyonPriority['score']);
+        self::assertSame($remoteParisPriority['score'], $remotePercentLyonPriority['score']);
         self::assertGreaterThan($onsiteLyonPriority['components']['preferences'], $remoteLyonPriority['components']['preferences']);
     }
 

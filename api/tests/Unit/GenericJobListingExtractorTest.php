@@ -85,6 +85,27 @@ HTML;
         self::assertSame('React Engineer', $offers[1]['title']);
     }
 
+    public function testPrefersHeadingInsideClickableCardOverConcatenatedCardText(): void
+    {
+        $html = <<<'HTML'
+<html><body><main>
+<a href="/missions/918" class="job-card">
+  <span>Kicklox</span>
+  <span>Offre publiée il y a 7 jours</span>
+  <h2>Développeur PHP Symfony H/F</h2>
+  <span>CDI</span>
+  <span>Paris, 75005, France</span>
+</a>
+</main></body></html>
+HTML;
+
+        $offers = (new GenericJobListingExtractor())->extract($html, 'https://jobs.example.com/missions', 'Kicklox');
+
+        self::assertCount(1, $offers);
+        self::assertSame('Développeur PHP Symfony H/F', $offers[0]['title']);
+        self::assertSame('https://jobs.example.com/missions/918', $offers[0]['sourceUrl']);
+    }
+
     public function testStructuredDataTakesPriorityOverHeuristicLinks(): void
     {
         $html = <<<'HTML'

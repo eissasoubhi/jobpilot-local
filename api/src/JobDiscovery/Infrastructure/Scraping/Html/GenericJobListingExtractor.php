@@ -218,6 +218,16 @@ final class GenericJobListingExtractor
 
     private function candidateTitle(\DOMXPath $xpath, \DOMElement $link): string
     {
+        $headings = $xpath->query('.//*[self::h1 or self::h2 or self::h3 or self::h4]', $link);
+        if ($headings instanceof \DOMNodeList) {
+            foreach ($headings as $headingNode) {
+                $heading = $this->clean($headingNode->textContent ?? '');
+                if ($heading !== '' && !$this->genericLinkText($heading) && mb_strlen($heading) >= 5) {
+                    return mb_substr($heading, 0, 240);
+                }
+            }
+        }
+
         $text = $this->clean($link->textContent ?? '');
         if ($text !== '' && !$this->genericLinkText($text) && mb_strlen($text) >= 5) {
             return mb_substr($text, 0, 240);

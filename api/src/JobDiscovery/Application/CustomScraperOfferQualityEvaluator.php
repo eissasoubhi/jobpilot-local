@@ -22,7 +22,7 @@ final class CustomScraperOfferQualityEvaluator
             return [
                 'reliable' => false,
                 'score' => 0,
-                'reasons' => ['Titre absent, trop court ou générique.'],
+                'reasons' => ['Titre absent, trop court, générique ou contaminé par le contenu de la page.'],
             ];
         }
         $score += mb_strlen($title) >= 10 ? 25 : 15;
@@ -53,6 +53,20 @@ final class CustomScraperOfferQualityEvaluator
         }
 
         $descriptionLength = mb_strlen($description);
+        if (!$structured && $detailEnriched && $descriptionLength >= 60) {
+            $distinctiveTokens = $this->distinctiveTitleTokens($title);
+            if ($distinctiveTokens !== [] && !$this->containsAnyToken($description, $distinctiveTokens)) {
+                return [
+                    'reliable' => false,
+                    'score' => min(55, $score),
+                    'reasons' => [
+                        ...$reasons,
+                        'La fiche détail non structurée ne contient aucun terme distinctif du titre : contenu de page potentiellement contaminé.',
+                    ],
+                ];
+            }
+        }
+
         if ($descriptionLength >= 200) {
             $score += 25;
             $reasons[] = 'Description détaillée.';
@@ -103,8 +117,61 @@ final class CustomScraperOfferQualityEvaluator
         }
 
         $normalized = $this->normalize($title);
+        if (preg_match('/^(offre|emploi|job|mission|poste|voir|voir l offre|voir le poste|postuler|candidater|details?|en savoir plus)$/', $normalized) === 1) {
+            return false;
+        }
 
-        return preg_match('/^(offre|emploi|job|mission|poste|voir|voir l offre|voir le poste|postuler|candidater|details?|en savoir plus)$/', $normalized) !== 1;
+        return preg_match('/\b(?:offre publiee il y a|missions entreprises candidats|candidats freelances|retour vers)\b/', $normalized) !== 1;
+    }
+
+    /** @return list<string> */
+    private function distinctiveTitleTokens(string $title): array
+    {
+        $normalized = $this->tokenText($title);
+        $generic = array_fill_keys([
+            'developpeur', 'developpeuse', 'developer', 'developper', 'engineer', 'ingenieur', 'ingenieure',
+            'senior', 'junior', 'lead', 'tech', 'technical', 'full', 'stack', 'fullstack', 'backend', 'frontend',
+            'front', 'back', 'software', 'cloud', 'web', 'application', 'applications', 'product', 'manager', 'consultant',
+            'architecte', 'architect', 'responsable', 'expert', 'specialiste', 'specialist', 'h', 'f', 'hf', 'fh', 'cdi',
+            'cdd', 'freelance', 'contractor', 'stage', 'alternance', 'remote', 'hybride', 'hybrid', 'paris', 'france',
+        ], true);
+
+        $tokens = [];
+        foreach (preg_split('/\s+/', $normalized) ?: [] as $token) {
+            if (strlen($token) < 3 || ctype_digit($token) || isset($generic[$token])) {
+                continue;
+            }
+            $tokens[$token] = true;
+        }
+
+        return array_keys($tokens);
+    }
+
+    /** @param list<string> $tokens */
+    private function containsAnyToken(string $description, array $tokens): bool
+    {
+        $description = ' '.$this->tokenText($description).' ';
+        foreach ($tokens as $token) {
+            if (str_contains($description, ' '.$token.' ')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function tokenText(string $value): string
+    {
+        $value = mb_strtolower($this->clean($value));
+        $value = str_replace(
+            ['next.js', 'node.js', 'vue.js', '.net', 'c#'],
+            ['nextjs', 'nodejs', 'vuejs', ' dotnet ', ' csharp '],
+            $value,
+        );
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $value = strtolower($ascii === false ? $value : $ascii);
+
+        return trim(preg_replace('/[^a-z0-9]+/', ' ', $value) ?? $value);
     }
 
     private function sameHttpsDomain(string $url, string $expectedDomain): bool

@@ -78,6 +78,88 @@ final class CustomScraperOfferQualityEvaluatorTest extends TestCase
         self::assertSame(0, $quality['score']);
     }
 
+    public function testRejectsKickloxLikeTitleContaminatedByCardMetadata(): void
+    {
+        $quality = $this->evaluator()->evaluate([
+            'title' => 'Kicklox 918 Offre publiée il y a 7 jours Développeur PHP Symfony H/F CDI Paris 75005 France',
+            'sourceUrl' => 'https://jobs.example.test/jobs/918',
+            'description' => str_repeat('Développeur PHP Symfony pour une mission produit. ', 6),
+            'rawData' => [
+                'extractionMethod' => 'JOB_LINK',
+                'detailEnriched' => true,
+                'detailExtractionMethod' => 'DOM',
+            ],
+        ], 'jobs.example.test');
+
+        self::assertFalse($quality['reliable']);
+        self::assertSame(0, $quality['score']);
+        self::assertStringContainsString('contaminé', implode(' ', $quality['reasons']));
+    }
+
+    public function testRejectsLongDomShellWhenItDoesNotContainDistinctiveTitleTechnology(): void
+    {
+        $quality = $this->evaluator()->evaluate([
+            'title' => 'Développeur PHP Symfony H/F',
+            'sourceUrl' => 'https://jobs.example.test/jobs/918',
+            'company' => 'Example Jobs',
+            'description' => str_repeat(
+                'Missions Entreprises Candidats Freelances Ressources Contactez-nous Déposer une offre Retour vers les offres. ',
+                5,
+            ),
+            'rawData' => [
+                'extractionMethod' => 'JOB_LINK',
+                'detailEnriched' => true,
+                'detailExtractionMethod' => 'DOM',
+            ],
+        ], 'jobs.example.test');
+
+        self::assertFalse($quality['reliable']);
+        self::assertLessThan(70, $quality['score']);
+        self::assertStringContainsString('aucun terme distinctif du titre', implode(' ', $quality['reasons']));
+    }
+
+    public function testAcceptsUnstructuredDetailWhenItContainsDistinctiveTitleTechnology(): void
+    {
+        $quality = $this->evaluator()->evaluate([
+            'title' => 'Développeur PHP Symfony H/F',
+            'sourceUrl' => 'https://jobs.example.test/jobs/918',
+            'company' => 'Example Jobs',
+            'location' => 'Paris',
+            'contractType' => 'CDI',
+            'description' => str_repeat(
+                'Nous recherchons un développeur pour maintenir une application Symfony et développer des API PHP. ',
+                4,
+            ),
+            'rawData' => [
+                'extractionMethod' => 'JOB_LINK',
+                'detailEnriched' => true,
+                'detailExtractionMethod' => 'DOM',
+            ],
+        ], 'jobs.example.test');
+
+        self::assertTrue($quality['reliable']);
+        self::assertGreaterThanOrEqual(70, $quality['score']);
+    }
+
+    public function testDoesNotRequireSemanticOverlapForPurelyGenericRoleTitles(): void
+    {
+        $quality = $this->evaluator()->evaluate([
+            'title' => 'Senior Backend Engineer',
+            'sourceUrl' => 'https://jobs.example.test/jobs/77',
+            'company' => 'Example Jobs',
+            'location' => 'Paris',
+            'contractType' => 'CDI',
+            'description' => str_repeat('Conception de services distribués, qualité logicielle et travail en équipe produit. ', 4),
+            'rawData' => [
+                'extractionMethod' => 'JOB_LINK',
+                'detailEnriched' => true,
+                'detailExtractionMethod' => 'DOM',
+            ],
+        ], 'jobs.example.test');
+
+        self::assertTrue($quality['reliable']);
+    }
+
     private function evaluator(): CustomScraperOfferQualityEvaluator
     {
         return new CustomScraperOfferQualityEvaluator();

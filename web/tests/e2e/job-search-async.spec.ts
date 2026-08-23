@@ -29,10 +29,12 @@ test('offers page reconnects to the current synchronization after reload', async
   expect(syncResponse.status()).toBe(202);
 
   await page.goto('/offres');
-  await expect(page.getByText('Synchronisation des offres')).toBeVisible();
-  await expect(page.getByText(/Mise en file|Worker actif|Terminée|Échec/)).toBeVisible();
+  const syncTitle = page.getByText('Synchronisation des offres', { exact: true });
+  await expect(syncTitle).toBeVisible();
+  const syncHeader = syncTitle.locator('..');
+  await expect(syncHeader.getByText(/Mise en file|Worker actif|Terminée|Échec/)).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText('Synchronisation des offres')).toBeVisible();
+  await expect(page.getByText('Synchronisation des offres', { exact: true })).toBeVisible();
   await expect(page.getByLabel(/Progression de la synchronisation/)).toBeVisible();
 });

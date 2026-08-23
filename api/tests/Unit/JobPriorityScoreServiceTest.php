@@ -46,6 +46,21 @@ final class JobPriorityScoreServiceTest extends TestCase
         self::assertGreaterThan($after['components']['freshness'], $before['components']['freshness']);
     }
 
+    public function testMissingPublicationDateIsNeutralInsteadOfAssumedStale(): void
+    {
+        $profile = $this->profile();
+        $unknown = $this->job(80, '-1 hour', 'CDI', 'Paris', 'Hybride', 55000);
+        $unknown->fill(['publishedAt' => null]);
+        $stale = $this->job(80, '-10 days', 'CDI', 'Paris', 'Hybride', 55000);
+
+        $unknownPriority = $this->service->evaluate($unknown, $profile);
+        $stalePriority = $this->service->evaluate($stale, $profile);
+
+        self::assertSame(50, $unknownPriority['components']['freshness']);
+        self::assertGreaterThan($stalePriority['components']['freshness'], $unknownPriority['components']['freshness']);
+        self::assertGreaterThan($stalePriority['score'], $unknownPriority['score']);
+    }
+
     public function testPreferencesAndCompensationImprovePriority(): void
     {
         $profile = $this->profile();

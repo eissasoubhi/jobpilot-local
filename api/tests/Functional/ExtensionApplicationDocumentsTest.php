@@ -59,7 +59,14 @@ final class ExtensionApplicationDocumentsTest extends WebTestCase
             }
         }
 
-        self::assertIsArray($application);
+        self::assertIsArray(
+            $application,
+            'Expected a prepared application for imported job: '.json_encode([
+                'status' => $job['status'] ?? null,
+                'score' => $job['score'] ?? null,
+                'scoreReasons' => $job['scoreReasons'] ?? null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        );
         self::assertSame('cv-autofill-fr.pdf', $application['cvDocument']['originalName']);
         self::assertNotSame('', trim((string) $application['coverLetter']));
 

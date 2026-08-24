@@ -16,10 +16,13 @@ final class JobSearchSyncQueue
     {
     }
 
-    /** @return array<string, mixed> */
-    public function enqueue(bool $force, ?string $connectorCode, string $trigger): array
+    /**
+     * @param list<string>|null $targetConnectorCodes
+     * @return array<string, mixed>
+     */
+    public function enqueue(bool $force, ?string $connectorCode, string $trigger, ?array $targetConnectorCodes = null): array
     {
-        return $this->withLock(function () use ($force, $connectorCode, $trigger): array {
+        return $this->withLock(function () use ($force, $connectorCode, $trigger, $targetConnectorCodes): array {
             $current = $this->readState();
             if (is_array($current) && $this->isActive($current) && !$this->isStale($current)) {
                 $current['deduplicated'] = true;
@@ -27,6 +30,7 @@ final class JobSearchSyncQueue
                 return $current;
             }
 
+            $targets = $this->normalizeConnectorCodes($targetConnectorCodes);
             $now = $this->now();
             $state = [
                 'id' => bin2hex(random_bytes(16)),
@@ -34,13 +38,14 @@ final class JobSearchSyncQueue
                 'force' => $force,
                 'connectorCode' => $connectorCode,
                 'trigger' => $trigger,
+                'targetConnectorCodes' => $targets,
                 'queuedAt' => $now,
                 'startedAt' => null,
                 'finishedAt' => null,
                 'updatedAt' => $now,
                 'progress' => [
                     'completed' => 0,
-                    'total' => 1,
+                    'total' => $targets === null ? 1 : count($targets),
                     'currentConnector' => null,
                 ],
                 'result' => null,
@@ -77,6 +82,25 @@ final class JobSearchSyncQueue
             $this->writeState($state);
 
             return $state;
+        });
+    }
+
+    public function updateProgress(string $id, int $completed, int $total, ?string $currentConnector): void
+    {
+        $this->withLock(function () use ($id, $completed, $total, $currentConnector): void {
+            $state = $this->readMatchingState($id);
+            if ($state === null || ($state['status'] ?? null) !== 'running') {
+                return;
+            }
+
+            $safeTotal = max(1, $total);
+            $state['progress'] = [
+                'completed' => min(max(0, $completed), $safeTotal),
+                'total' => $safeTotal,
+                'currentConnector' => $currentConnector,
+            ];
+            $state['updatedAt'] = $this->now();
+            $this->writeState($state);
         });
     }
 
@@ -144,9 +168,10 @@ final class JobSearchSyncQueue
             $state['status'] = $failed > 0 || $errors !== [] ? 'partial' : 'success';
             $state['finishedAt'] = $this->now();
             $state['updatedAt'] = $state['finishedAt'];
+            $total = max(1, (int) ($state['progress']['total'] ?? 1));
             $state['progress'] = [
-                'completed' => 1,
-                'total' => 1,
+                'completed' => $total,
+                'total' => $total,
                 'currentConnector' => null,
             ];
             $state['result'] = [
@@ -182,9 +207,10 @@ final class JobSearchSyncQueue
             $state['status'] = 'failed';
             $state['finishedAt'] = $this->now();
             $state['updatedAt'] = $state['finishedAt'];
+            $total = max(1, (int) ($state['progress']['total'] ?? 1));
             $state['progress'] = [
-                'completed' => 1,
-                'total' => 1,
+                'completed' => min(max(0, (int) ($state['progress']['completed'] ?? 0)), $total),
+                'total' => $total,
                 'currentConnector' => null,
             ];
             $state['result'] = null;
@@ -380,6 +406,29 @@ final class JobSearchSyncQueue
         }
 
         return $safe;
+    }
+
+    /** @param list<string>|null $codes
+     * @return list<string>|null
+     */
+    private function normalizeConnectorCodes(?array $codes): ?array
+    {
+        if ($codes === null) {
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($codes as $code) {
+            if (!is_string($code)) {
+                continue;
+            }
+            $code = strtolower(trim($code));
+            if ($code !== '' && !in_array($code, $normalized, true)) {
+                $normalized[] = $code;
+            }
+        }
+
+        return $normalized;
     }
 
     private function ensureDirectory(): void

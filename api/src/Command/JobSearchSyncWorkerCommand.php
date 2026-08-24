@@ -36,20 +36,25 @@ final class JobSearchSyncWorkerCommand extends Command
         }
 
         try {
+            $targetConnectorCodes = is_array($job['targetConnectorCodes'] ?? null)
+                ? array_values(array_filter($job['targetConnectorCodes'], 'is_string'))
+                : null;
             $connectorCode = isset($job['connectorCode']) && is_string($job['connectorCode'])
                 ? trim($job['connectorCode'])
                 : '';
-            $connectorCodes = $connectorCode === ''
+            $connectorCodes = $targetConnectorCodes ?? ($connectorCode === ''
                 ? []
-                : array_values(array_filter(array_map('trim', explode(',', $connectorCode))));
+                : array_values(array_filter(array_map('trim', explode(',', $connectorCode)))));
 
             $result = count($connectorCodes) > 1
                 ? $this->syncSelectedConnectors(
+                    $id,
                     (bool) ($job['force'] ?? false),
                     $connectorCodes,
                     (string) ($job['trigger'] ?? 'async'),
                 )
-                : $this->syncService->sync(
+                : $this->syncSingleConnector(
+                    $id,
                     (bool) ($job['force'] ?? false),
                     $connectorCodes[0] ?? null,
                     (string) ($job['trigger'] ?? 'async'),
@@ -74,11 +79,23 @@ final class JobSearchSyncWorkerCommand extends Command
         }
     }
 
+    /** @return array<string, mixed> */
+    private function syncSingleConnector(string $id, bool $force, ?string $connectorCode, string $trigger): array
+    {
+        $this->queue->updateProgress($id, 0, 1, $connectorCode);
+        $result = $this->syncService->sync($force, $connectorCode, $trigger);
+        if (!(bool) ($result['busy'] ?? false)) {
+            $this->queue->updateProgress($id, 1, 1, null);
+        }
+
+        return $result;
+    }
+
     /**
      * @param list<string> $connectorCodes
      * @return array<string, mixed>
      */
-    private function syncSelectedConnectors(bool $force, array $connectorCodes, string $trigger): array
+    private function syncSelectedConnectors(string $id, bool $force, array $connectorCodes, string $trigger): array
     {
         $aggregate = [
             'received' => 0,
@@ -94,8 +111,10 @@ final class JobSearchSyncWorkerCommand extends Command
             'skipped' => false,
         ];
         $lastResult = null;
+        $total = count($connectorCodes);
 
-        foreach ($connectorCodes as $connectorCode) {
+        foreach ($connectorCodes as $index => $connectorCode) {
+            $this->queue->updateProgress($id, $index, $total, $connectorCode);
             $result = $this->syncService->sync($force, $connectorCode, $trigger);
             if ((bool) ($result['busy'] ?? false)) {
                 return $result;
@@ -116,6 +135,7 @@ final class JobSearchSyncWorkerCommand extends Command
                     $aggregate['errors'][] = $error;
                 }
             }
+            $this->queue->updateProgress($id, $index + 1, $total, null);
         }
 
         if (is_array($lastResult)) {

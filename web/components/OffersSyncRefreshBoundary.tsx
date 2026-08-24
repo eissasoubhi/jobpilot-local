@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { type ReactNode, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useState } from 'react';
 
 type Props = { children: ReactNode };
 
@@ -18,5 +18,5 @@ export function OffersSyncRefreshBoundary({ children }: Props) {
     return () => window.removeEventListener('jobpilot:offers-sync-completed', refresh);
   }, [pathname]);
 
-  return <div key={`${pathname}:${revision}`}>{children}</div>;
+  return <Fragment key={`${pathname}:${revision}`}>{children}</Fragment>;
 }

@@ -155,6 +155,54 @@ describe('Motivation drawer', () => {
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Nouveau message court.'));
   });
 
+  it('offers a direct reduction action when the current message exceeds the selected limit', async () => {
+    const original = { ...application(), message: 'x'.repeat(581) } as Application;
+    const updated = { ...original, message: 'x'.repeat(398) } as Application;
+    const onApplicationUpdated = vi.fn();
+    apiMock.mockResolvedValueOnce(updated);
+
+    render(
+      <CoverLetterDrawer
+        application={original}
+        open
+        initialTab="message"
+        onClose={vi.fn()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Réduire à 400' })).toBeInTheDocument();
+    expect(screen.getByText(/581 caractères et dépasse la limite choisie de 400/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire à 400' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/61/message/regenerate', {
+      method: 'POST',
+      body: JSON.stringify({ maxCharacters: 400 }),
+    }));
+    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
+  });
+
+  it('does not present reduction as required when the selected limit already fits the message', () => {
+    const original = { ...application(), message: 'x'.repeat(581) } as Application;
+
+    render(
+      <CoverLetterDrawer
+        application={original}
+        open
+        initialTab="message"
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Longueur maximale du message court' }), {
+      target: { value: '600' },
+    });
+
+    expect(screen.getByRole('button', { name: 'Régénérer' })).toBeInTheDocument();
+    expect(screen.queryByText(/dépasse la limite choisie/)).not.toBeInTheDocument();
+  });
+
   it('asks for confirmation before overwriting a manually edited letter', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
 

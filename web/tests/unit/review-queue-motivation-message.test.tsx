@@ -111,13 +111,15 @@ describe('Review Queue motivation message', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Message court copié.');
   });
 
-  it('shows an over-400 warning inside the short-message tab instead of expanding the card', () => {
+  it('shows an actionable over-limit warning inside the short-message tab instead of expanding the card', () => {
     render(<ReviewQueueApplicationCard application={application('x'.repeat(401))} />);
 
     expect(screen.getByText('401 caractères · à réduire')).toBeInTheDocument();
-    expect(screen.queryByText(/Ce message dépasse 400 caractères/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/dépasse la limite choisie de 400/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Message court' }));
-    expect(screen.getByText(/Ce message dépasse 400 caractères/)).toBeInTheDocument();
+
+    expect(screen.getByText(/Ce message fait 401 caractères et dépasse la limite choisie de 400/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Réduire à 400' })).toBeInTheDocument();
   });
 });

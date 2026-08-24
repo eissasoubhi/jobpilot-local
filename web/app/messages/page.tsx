@@ -16,6 +16,7 @@ import {
 type MessageCategory =
   | 'JOB_ALERT'
   | 'RECRUITER_OPPORTUNITY'
+  | 'RECRUITER_INFORMATIONAL'
   | 'APPLICATION_CONFIRMATION'
   | 'APPLICATION_REPLY'
   | 'INTERVIEW_REQUEST'
@@ -67,6 +68,7 @@ type SyncResult = {
 const categoryLabels: Record<MessageCategory, string> = {
   JOB_ALERT: 'Alerte emploi',
   RECRUITER_OPPORTUNITY: 'Proposition recruteur',
+  RECRUITER_INFORMATIONAL: 'Info recruteur',
   APPLICATION_CONFIRMATION: 'Candidature reçue',
   APPLICATION_REPLY: 'Réponse candidature',
   INTERVIEW_REQUEST: 'Entretien',
@@ -79,7 +81,7 @@ const categoryTone = (category: MessageCategory): 'good' | 'warn' | 'bad' | 'blu
   if (category === 'INTERVIEW_REQUEST') return 'good';
   if (category === 'REJECTION') return 'bad';
   if (category === 'INFORMATION_REQUEST' || category === 'RECRUITER_OPPORTUNITY') return 'warn';
-  if (category === 'UNKNOWN') return 'neutral';
+  if (category === 'RECRUITER_INFORMATIONAL' || category === 'UNKNOWN') return 'neutral';
   return 'blue';
 };
 

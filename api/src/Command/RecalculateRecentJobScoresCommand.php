@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\JobOffer;
+use App\Entity\JobOfferMatchingScoreState;
 use App\Entity\UserSettings;
 use App\Service\MatchingScoreService;
+use App\Service\MatchingScoreVersion;
 use App\Service\MatchingScoreVersionStore;
 use App\Service\RequiredPrimaryTechnologyGuard;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'app:jobs:recalculate-recent-scores',
-    description: 'Recalcule les scores locaux des offres âgées de moins d’un mois sans modifier leur workflow.',
+    description: 'Recalcule les scores locaux stale des offres âgées de moins d’un mois sans modifier leur workflow.',
 )]
 final class RecalculateRecentJobScoresCommand extends Command
 {
@@ -42,9 +44,16 @@ final class RecalculateRecentJobScoresCommand extends Command
         $jobs = $this->em->createQueryBuilder()
             ->select('j')
             ->from(JobOffer::class, 'j')
-            ->where('(j.publishedAt IS NOT NULL AND j.publishedAt >= :cutoff)')
-            ->orWhere('(j.publishedAt IS NULL AND j.discoveredAt >= :cutoff)')
+            ->leftJoin(
+                JobOfferMatchingScoreState::class,
+                'scoreState',
+                'WITH',
+                'scoreState.jobOffer = j',
+            )
+            ->where('((j.publishedAt IS NOT NULL AND j.publishedAt >= :cutoff) OR (j.publishedAt IS NULL AND j.discoveredAt >= :cutoff))')
+            ->andWhere('(scoreState.id IS NULL OR scoreState.version < :currentVersion)')
             ->setParameter('cutoff', $cutoff)
+            ->setParameter('currentVersion', MatchingScoreVersion::CURRENT)
             ->orderBy('j.publishedAt', 'DESC')
             ->addOrderBy('j.discoveredAt', 'DESC')
             ->getQuery()
@@ -77,6 +86,10 @@ final class RecalculateRecentJobScoresCommand extends Command
             if ($requiredTechnology['hardRejected']) {
                 if ($requiredTechnology['scoreCap'] !== null) {
                     $score = min($score, $requiredTechnology['scoreCap']);
+                    $capReason = sprintf('Score plafonné à %d/100 : technologie principale obligatoire manquante.', $requiredTechnology['scoreCap']);
+                    if (!in_array($capReason, $reasons, true)) {
+                        $reasons[] = $capReason;
+                    }
                 }
                 foreach ($requiredTechnology['reasons'] as $reason) {
                     if (!in_array($reason, $reasons, true)) {
@@ -99,7 +112,8 @@ final class RecalculateRecentJobScoresCommand extends Command
         $this->em->flush();
 
         $output->writeln(sprintf(
-            '<info>Recalcul terminé : %d offre(s) récente(s), %d mise(s) à jour, %d inchangée(s), %d score(s) IA conservé(s).</info>',
+            '<info>Recalcul version %d terminé : %d offre(s) récente(s) stale(s), %d mise(s) à jour, %d inchangée(s), %d score(s) IA conservé(s).</info>',
+            MatchingScoreVersion::CURRENT,
             count($jobs),
             $updated,
             $unchanged,

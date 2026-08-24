@@ -35,6 +35,51 @@ final class JobSearchSyncQueueTest extends TestCase
         self::assertArrayNotHasKey('force', $current);
         self::assertArrayNotHasKey('connectorCode', $current);
         self::assertArrayNotHasKey('trigger', $current);
+        self::assertNull($current['targetConnectorCodes']);
+    }
+
+    public function testSelectedConnectorScopeSurvivesRefreshAndDefinesProgressTotal(): void
+    {
+        $queue = new JobSearchSyncQueue($this->privateDir);
+        $created = $queue->enqueue(true, 'adzuna,france-travail', 'manual-selection', [
+            'Adzuna',
+            'france-travail',
+            'adzuna',
+        ]);
+
+        $current = $queue->current();
+
+        self::assertNotNull($current);
+        self::assertSame($created['id'], $current['id']);
+        self::assertSame(['adzuna', 'france-travail'], $current['targetConnectorCodes']);
+        self::assertSame(0, $current['progress']['completed']);
+        self::assertSame(2, $current['progress']['total']);
+        self::assertArrayNotHasKey('connectorCode', $current);
+    }
+
+    public function testRunningProgressTracksOnlySelectedConnectors(): void
+    {
+        $queue = new JobSearchSyncQueue($this->privateDir);
+        $created = $queue->enqueue(true, 'adzuna,france-travail', 'manual-selection', ['adzuna', 'france-travail']);
+        self::assertNotNull($queue->claim());
+
+        $queue->updateProgress((string) $created['id'], 1, 2, 'france-travail');
+        $current = $queue->current();
+
+        self::assertNotNull($current);
+        self::assertSame('running', $current['status']);
+        self::assertSame(['adzuna', 'france-travail'], $current['targetConnectorCodes']);
+        self::assertSame([
+            'completed' => 1,
+            'total' => 2,
+            'currentConnector' => 'france-travail',
+        ], $current['progress']);
+
+        $queue->complete((string) $created['id'], ['failed' => 0, 'errors' => []]);
+        $completed = $queue->current();
+        self::assertNotNull($completed);
+        self::assertSame(2, $completed['progress']['completed']);
+        self::assertSame(2, $completed['progress']['total']);
     }
 
     public function testWorkerHeartbeatDistinguishesMissingActiveAndStaleRuntime(): void

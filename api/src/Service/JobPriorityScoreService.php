@@ -127,8 +127,17 @@ final class JobPriorityScoreService
             if ($location === '') {
                 $scores[] = 50;
             } else {
-                $matches = array_filter($preferredLocations, fn (string $preferred): bool => $this->locationMatches($location, $preferred));
-                $scores[] = $matches !== [] ? 100 : 35;
+                $locationScores = array_map(
+                    fn (string $preferred): int => $this->locationPreferenceScore($location, $preferred),
+                    $preferredLocations,
+                );
+                if (in_array(100, $locationScores, true)) {
+                    $scores[] = 100;
+                } elseif (in_array(50, $locationScores, true)) {
+                    $scores[] = 50;
+                } else {
+                    $scores[] = 35;
+                }
             }
         }
 
@@ -308,18 +317,43 @@ final class JobPriorityScoreService
             || str_contains($normalizedCandidate, $normalizedJobValue);
     }
 
-    private function locationMatches(string $normalizedLocation, string $candidateValue): bool
+    private function locationPreferenceScore(string $normalizedLocation, string $candidateValue): int
     {
         if ($this->termsMatch($normalizedLocation, $candidateValue)) {
-            return true;
+            return 100;
         }
 
         $preferred = $this->normalize($candidateValue);
-        if (!$this->isIleDeFrancePreference($preferred)) {
-            return false;
+        if ($this->isFranceWidePreference($preferred)) {
+            return $this->hasExplicitFranceEvidence($normalizedLocation) ? 100 : 50;
         }
 
-        return $this->isIleDeFranceLocation($normalizedLocation);
+        if ($this->isIleDeFrancePreference($preferred)) {
+            return $this->isIleDeFranceLocation($normalizedLocation) ? 100 : 35;
+        }
+
+        return 35;
+    }
+
+    private function isFranceWidePreference(string $value): bool
+    {
+        return $value === 'france'
+            || str_contains($value, 'france entiere')
+            || str_contains($value, 'toute la france')
+            || str_contains($value, 'partout en france')
+            || str_contains($value, 'france-wide');
+    }
+
+    private function hasExplicitFranceEvidence(string $location): bool
+    {
+        if (preg_match('/(?<![\p{L}])france(?![\p{L}])/u', $location) === 1) {
+            return true;
+        }
+
+        return preg_match(
+            '/\b(?:0[1-9]\d{3}|[1-8]\d{4}|9[0-5]\d{3}|97[1-6]\d{2}|98[4678]\d{2})\b/',
+            $location,
+        ) === 1;
     }
 
     private function isIleDeFrancePreference(string $value): bool

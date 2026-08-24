@@ -44,6 +44,12 @@ final class GmailMessageClassifier
                 false,
             ),
 
+            $this->isRecruiterInformationalAcknowledgement($text) => $this->result(
+                'RECRUITER_INFORMATIONAL',
+                'Le recruteur confirme la prise en compte et indique qu’il reviendra vers le candidat sans demander d’action immédiate.',
+                false,
+            ),
+
             $this->containsAny($text, [
                 'nouvelle mission', 'opportunite', 'opportunité', 'nous recherchons',
                 'je recherche', 'votre profil a retenu mon attention', 'votre profil nous intéresse',
@@ -58,6 +64,27 @@ final class GmailMessageClassifier
 
             default => $this->result('UNKNOWN', 'Aucune règle métier suffisamment fiable ne correspond au message.', false),
         };
+    }
+
+    private function isRecruiterInformationalAcknowledgement(string $text): bool
+    {
+        $acknowledgement = $this->containsAny($text, [
+            'merci pour votre retour', 'merci pour ces informations', 'merci pour les informations',
+            'merci pour votre candidature', 'bien reçu', 'well received', 'thanks for the information',
+            'thank you for the information', 'thanks for your reply', 'thank you for your reply',
+        ]);
+        $handoff = $this->containsAny($text, [
+            'je transmets votre cv', 'je transmets votre profil', 'je partage votre cv',
+            'je partage votre profil', 'je transfere votre cv', 'je transfère votre cv',
+            'i have forwarded your cv', 'i forwarded your cv', 'i have shared your profile',
+        ]);
+        $followUpLater = $this->containsAny($text, [
+            'je reviens vers vous', 'nous revenons vers vous', 'je vous tiens au courant',
+            'nous vous tenons au courant', 'i will get back to you', "i'll get back to you",
+            'we will get back to you', "we'll get back to you", 'i will keep you posted',
+        ]);
+
+        return ($acknowledgement || $handoff) && $followUpLater;
     }
 
     private function isPlatformAlert(string $subject, string $sender, string $body): bool

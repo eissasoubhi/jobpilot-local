@@ -5,10 +5,12 @@ import { SelectiveConnectorSyncPanel } from '@/components/SelectiveConnectorSync
 import type { SourceConnector } from '@/lib/types';
 
 function connector(overrides: Partial<SourceConnector> & Pick<SourceConnector, 'code' | 'name'>): SourceConnector {
+  const { code, name, ...rest } = overrides;
+
   return {
     id: 1,
-    code: overrides.code,
-    name: overrides.name,
+    code,
+    name,
     mode: 'API',
     enabled: true,
     configured: true,
@@ -53,7 +55,7 @@ function connector(overrides: Partial<SourceConnector> & Pick<SourceConnector, '
     lastResult: { received: 0, imported: 0, merged: 0, duplicates: 0, failed: 0 },
     lastError: null,
     updatedAt: '2026-08-24T05:00:00Z',
-    ...overrides,
+    ...rest,
   };
 }
 

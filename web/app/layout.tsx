@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import { OffersSelectiveSyncPanel } from '@/components/OffersSelectiveSyncPanel';
+import { OffersSyncRefreshBoundary } from '@/components/OffersSyncRefreshBoundary';
 import { Shell } from '@/components/Shell';
 import { SyncRunPanel } from '@/components/SyncRunPanel';
 
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <Shell>
           <OffersSelectiveSyncPanel />
           <SyncRunPanel />
-          {children}
+          <OffersSyncRefreshBoundary>{children}</OffersSyncRefreshBoundary>
         </Shell>
       </body>
     </html>

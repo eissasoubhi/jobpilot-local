@@ -203,16 +203,20 @@
   box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
 }
 
-.downloadOptions a {
+.downloadOptions button {
   padding: 8px 10px;
+  border: 0;
   border-radius: 7px;
+  background: transparent;
   color: #27344a;
+  font: inherit;
   font-size: 12px;
   font-weight: 700;
-  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
 }
 
-.downloadOptions a:hover {
+.downloadOptions button:hover {
   background: #f4f6fb;
 }
 

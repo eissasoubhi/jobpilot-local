@@ -152,14 +152,8 @@ describe('ReviewQueueApplicationCard', () => {
     expect(within(dialog).getByRole('tab', { name: 'Lettre de motivation' })).toHaveAttribute('aria-selected', 'true');
     expect(within(dialog).getByText('Lettre de motivation préparée.')).toBeInTheDocument();
     expect(within(dialog).getByText(/mots · .*caractères/)).toBeInTheDocument();
-    expect(within(dialog).getByText('PDF').closest('a')).toHaveAttribute(
-      'href',
-      '/api/applications/42/cover-letter/download/pdf',
-    );
-    expect(within(dialog).getByText('Word (.docx)').closest('a')).toHaveAttribute(
-      'href',
-      '/api/applications/42/cover-letter/download/docx',
-    );
+    expect(within(dialog).getByRole('button', { name: 'PDF' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Word (.docx)' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Description de la mission' })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });

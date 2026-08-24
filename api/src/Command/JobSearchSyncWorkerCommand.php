@@ -36,13 +36,24 @@ final class JobSearchSyncWorkerCommand extends Command
         }
 
         try {
-            $result = $this->syncService->sync(
-                (bool) ($job['force'] ?? false),
-                isset($job['connectorCode']) && is_string($job['connectorCode']) && trim($job['connectorCode']) !== ''
-                    ? trim($job['connectorCode'])
-                    : null,
-                (string) ($job['trigger'] ?? 'async'),
-            );
+            $connectorCode = isset($job['connectorCode']) && is_string($job['connectorCode'])
+                ? trim($job['connectorCode'])
+                : '';
+            $connectorCodes = $connectorCode === ''
+                ? []
+                : array_values(array_filter(array_map('trim', explode(',', $connectorCode))));
+
+            $result = count($connectorCodes) > 1
+                ? $this->syncSelectedConnectors(
+                    (bool) ($job['force'] ?? false),
+                    $connectorCodes,
+                    (string) ($job['trigger'] ?? 'async'),
+                )
+                : $this->syncService->sync(
+                    (bool) ($job['force'] ?? false),
+                    $connectorCodes[0] ?? null,
+                    (string) ($job['trigger'] ?? 'async'),
+                );
 
             if ((bool) ($result['busy'] ?? false)) {
                 $this->queue->requeue($id);
@@ -61,5 +72,67 @@ final class JobSearchSyncWorkerCommand extends Command
 
             return Command::FAILURE;
         }
+    }
+
+    /**
+     * @param list<string> $connectorCodes
+     * @return array<string, mixed>
+     */
+    private function syncSelectedConnectors(bool $force, array $connectorCodes, string $trigger): array
+    {
+        $aggregate = [
+            'received' => 0,
+            'imported' => 0,
+            'merged' => 0,
+            'duplicates' => 0,
+            'profileFiltered' => 0,
+            'failed' => 0,
+            'providers' => [],
+            'connectorResults' => [],
+            'errors' => [],
+            'busy' => false,
+            'skipped' => false,
+        ];
+        $lastResult = null;
+
+        foreach ($connectorCodes as $connectorCode) {
+            $result = $this->syncService->sync($force, $connectorCode, $trigger);
+            if ((bool) ($result['busy'] ?? false)) {
+                return $result;
+            }
+
+            $lastResult = $result;
+            foreach (['received', 'imported', 'merged', 'duplicates', 'profileFiltered', 'failed'] as $counter) {
+                $aggregate[$counter] += max(0, (int) ($result[$counter] ?? 0));
+            }
+            foreach (($result['connectorResults'] ?? $result['providers'] ?? []) as $provider) {
+                if (is_array($provider)) {
+                    $aggregate['providers'][] = $provider;
+                    $aggregate['connectorResults'][] = $provider;
+                }
+            }
+            foreach (($result['errors'] ?? []) as $error) {
+                if (is_string($error) && trim($error) !== '' && count($aggregate['errors']) < 5) {
+                    $aggregate['errors'][] = $error;
+                }
+            }
+        }
+
+        if (is_array($lastResult)) {
+            foreach (['configured', 'lastSyncedAt', 'nextSyncAt', 'due', 'intervalSeconds'] as $key) {
+                if (array_key_exists($key, $lastResult)) {
+                    $aggregate[$key] = $lastResult[$key];
+                }
+            }
+        }
+
+        $aggregate['message'] = sprintf(
+            '%d connecteur(s) ciblé(s) synchronisé(s) : %d nouvelle(s) offre(s), %d source(s) fusionnée(s).',
+            count($connectorCodes),
+            $aggregate['imported'],
+            $aggregate['merged'],
+        );
+
+        return $aggregate;
     }
 }

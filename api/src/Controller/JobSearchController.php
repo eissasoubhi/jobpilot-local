@@ -33,10 +33,39 @@ final class JobSearchController
     public function sync(Request $request): JsonResponse
     {
         $force = filter_var($request->query->get('force', '0'), FILTER_VALIDATE_BOOL);
+        $connectorCode = null;
+        $trigger = $force ? 'manual' : 'page-load';
+
+        if ($request->getContent() !== '') {
+            try {
+                $payload = $request->toArray();
+            } catch (\Throwable) {
+                return new JsonResponse([
+                    'error' => 'invalid_sync_selection',
+                    'message' => 'La sélection de connecteurs est invalide.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            if (array_key_exists('connectorCodes', $payload)) {
+                try {
+                    $selected = $this->validateConnectorSelection($payload['connectorCodes']);
+                } catch (\InvalidArgumentException $exception) {
+                    return new JsonResponse([
+                        'error' => 'invalid_sync_selection',
+                        'message' => $exception->getMessage(),
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+                }
+
+                $force = true;
+                $connectorCode = implode(',', $selected);
+                $trigger = 'manual-selection';
+            }
+        }
+
         $queued = $this->syncQueue->enqueue(
             $force,
-            null,
-            $force ? 'manual' : 'page-load',
+            $connectorCode,
+            $trigger,
         );
         $id = (string) ($queued['id'] ?? '');
 
@@ -122,6 +151,52 @@ final class JobSearchController
             'reset' => $reset,
             'sync' => $id !== '' ? $this->syncQueue->get($id) : null,
         ], JsonResponse::HTTP_ACCEPTED);
+    }
+
+    /** @return list<string> */
+    private function validateConnectorSelection(mixed $value): array
+    {
+        if (!is_array($value)) {
+            throw new \InvalidArgumentException('connectorCodes doit être une liste de connecteurs.');
+        }
+
+        $selected = [];
+        foreach ($value as $code) {
+            if (!is_string($code) || trim($code) === '') {
+                throw new \InvalidArgumentException('Chaque code de connecteur sélectionné doit être une chaîne non vide.');
+            }
+            $selected[] = strtolower(trim($code));
+        }
+        $selected = array_values(array_unique($selected));
+        if ($selected === []) {
+            throw new \InvalidArgumentException('Sélectionne au moins un connecteur à synchroniser.');
+        }
+
+        $available = [];
+        foreach ($this->syncService->connectors() as $connector) {
+            $code = strtolower(trim((string) ($connector['code'] ?? '')));
+            if ($code !== '') {
+                $available[$code] = $connector;
+            }
+        }
+
+        foreach ($selected as $code) {
+            if (!isset($available[$code])) {
+                throw new \InvalidArgumentException(sprintf('Connecteur inconnu : %s.', $code));
+            }
+            $connector = $available[$code];
+            if (($connector['enabled'] ?? true) === false) {
+                throw new \InvalidArgumentException(sprintf('Le connecteur %s est désactivé.', $code));
+            }
+            if (($connector['configured'] ?? true) === false) {
+                throw new \InvalidArgumentException(sprintf('Le connecteur %s n’est pas configuré.', $code));
+            }
+            if (($connector['collectionAllowed'] ?? true) === false) {
+                throw new \InvalidArgumentException(sprintf('La politique de collecte bloque le connecteur %s.', $code));
+            }
+        }
+
+        return $selected;
     }
 
     /**

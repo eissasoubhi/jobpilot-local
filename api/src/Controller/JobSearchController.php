@@ -34,6 +34,7 @@ final class JobSearchController
     {
         $force = filter_var($request->query->get('force', '0'), FILTER_VALIDATE_BOOL);
         $connectorCode = null;
+        $selectedConnectorCodes = null;
         $trigger = $force ? 'manual' : 'page-load';
 
         if ($request->getContent() !== '') {
@@ -48,7 +49,7 @@ final class JobSearchController
 
             if (array_key_exists('connectorCodes', $payload)) {
                 try {
-                    $selected = $this->validateConnectorSelection($payload['connectorCodes']);
+                    $selectedConnectorCodes = $this->validateConnectorSelection($payload['connectorCodes']);
                 } catch (\InvalidArgumentException $exception) {
                     return new JsonResponse([
                         'error' => 'invalid_sync_selection',
@@ -57,7 +58,7 @@ final class JobSearchController
                 }
 
                 $force = true;
-                $connectorCode = implode(',', $selected);
+                $connectorCode = implode(',', $selectedConnectorCodes);
                 $trigger = 'manual-selection';
             }
         }
@@ -66,6 +67,7 @@ final class JobSearchController
             $force,
             $connectorCode,
             $trigger,
+            $selectedConnectorCodes,
         );
         $id = (string) ($queued['id'] ?? '');
 
@@ -209,9 +211,25 @@ final class JobSearchController
      */
     private function syncSnapshot(?array $job): array
     {
+        $connectors = $job === null ? [] : $this->syncService->connectors();
+        $targets = is_array($job['targetConnectorCodes'] ?? null)
+            ? array_values(array_filter($job['targetConnectorCodes'], 'is_string'))
+            : null;
+
+        if ($targets !== null) {
+            $connectors = array_values(array_filter(
+                $connectors,
+                static fn (array $connector): bool => in_array(
+                    strtolower((string) ($connector['code'] ?? '')),
+                    $targets,
+                    true,
+                ),
+            ));
+        }
+
         return [
             'job' => $job,
-            'connectors' => $job === null ? [] : $this->syncService->connectors(),
+            'connectors' => $connectors,
             'worker' => $this->syncQueue->workerStatus(),
         ];
     }

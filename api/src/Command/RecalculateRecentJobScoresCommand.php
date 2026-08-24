@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\JobOffer;
 use App\Entity\UserSettings;
 use App\Service\MatchingScoreService;
+use App\Service\MatchingScoreVersionStore;
 use App\Service\RequiredPrimaryTechnologyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -23,6 +24,7 @@ final class RecalculateRecentJobScoresCommand extends Command
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
+        private readonly MatchingScoreVersionStore $matchingScoreVersionStore,
     ) {
         parent::__construct();
     }
@@ -62,6 +64,7 @@ final class RecalculateRecentJobScoresCommand extends Command
             }
 
             if ($this->hasAiEvaluation($job)) {
+                $this->matchingScoreVersionStore->mark($job);
                 ++$skippedAi;
                 continue;
             }
@@ -83,11 +86,13 @@ final class RecalculateRecentJobScoresCommand extends Command
             }
 
             if ($job->getScore() === $score && $job->getScoreReasons() === $reasons) {
+                $this->matchingScoreVersionStore->mark($job);
                 ++$unchanged;
                 continue;
             }
 
             $job->refreshMatchingScore($score, $reasons);
+            $this->matchingScoreVersionStore->mark($job);
             ++$updated;
         }
 

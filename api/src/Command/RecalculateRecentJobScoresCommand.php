@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\JobOffer;
 use App\Entity\UserSettings;
 use App\Service\MatchingScoreService;
+use App\Service\RequiredPrimaryTechnologyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -19,8 +20,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 final class RecalculateRecentJobScoresCommand extends Command
 {
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
+    ) {
         parent::__construct();
     }
 
@@ -66,6 +69,18 @@ final class RecalculateRecentJobScoresCommand extends Command
             $evaluation = $localScorer->evaluate($job, $settings);
             $score = (int) $evaluation['score'];
             $reasons = array_values($evaluation['reasons']);
+            $requiredTechnology = $this->requiredTechnologyGuard->evaluate($job, $settings);
+
+            if ($requiredTechnology['hardRejected']) {
+                if ($requiredTechnology['scoreCap'] !== null) {
+                    $score = min($score, $requiredTechnology['scoreCap']);
+                }
+                foreach ($requiredTechnology['reasons'] as $reason) {
+                    if (!in_array($reason, $reasons, true)) {
+                        $reasons[] = $reason;
+                    }
+                }
+            }
 
             if ($job->getScore() === $score && $job->getScoreReasons() === $reasons) {
                 ++$unchanged;

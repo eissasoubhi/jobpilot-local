@@ -13,6 +13,15 @@ final class ExtensionApplicationDocumentsTest extends WebTestCase
     {
         $client = static::createClient();
 
+        // Other functional tests intentionally exercise editable candidate settings.
+        // This scenario needs an explicit Symfony/React profile so its preparation
+        // contract does not depend on suite execution order.
+        $client->jsonRequest('PUT', '/api/settings', [
+            'targetJobs' => ['Senior Full-Stack PHP Symfony React Developer'],
+            'skills' => ['PHP', 'Symfony', 'React', 'TypeScript', 'Docker', 'PostgreSQL'],
+        ]);
+        self::assertResponseIsSuccessful();
+
         $temporaryCv = tempnam(sys_get_temp_dir(), 'jobpilot-extension-cv-');
         self::assertIsString($temporaryCv);
         file_put_contents($temporaryCv, "%PDF-1.4\n% Autofill document test CV\n%%EOF\n");
@@ -59,7 +68,14 @@ final class ExtensionApplicationDocumentsTest extends WebTestCase
             }
         }
 
-        self::assertIsArray($application);
+        self::assertIsArray(
+            $application,
+            'Expected a prepared application for imported job: '.json_encode([
+                'status' => $job['status'] ?? null,
+                'score' => $job['score'] ?? null,
+                'scoreReasons' => $job['scoreReasons'] ?? null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        );
         self::assertSame('cv-autofill-fr.pdf', $application['cvDocument']['originalName']);
         self::assertNotSame('', trim((string) $application['coverLetter']));
 

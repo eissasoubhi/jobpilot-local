@@ -17,6 +17,7 @@ final class JobProcessor
         private CvSelector $cvSelector,
         private ApplicationEmailExtractor $emailExtractor,
         private ApplicationPreparationService $preparation,
+        private RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
         private EntityManagerInterface $em,
     ) {}
 
@@ -24,8 +25,22 @@ final class JobProcessor
     {
         $language = $this->languageDetector->detect($job->getTitle().' '.$job->getDescription());
         $evaluation = $this->matching->evaluate($job, $settings);
+        $score = (int) $evaluation['score'];
         $reasons = $evaluation['reasons'];
         $hardRejected = $evaluation['hardRejected'];
+
+        $requiredTechnology = $this->requiredTechnologyGuard->evaluate($job, $settings);
+        if ($requiredTechnology['hardRejected']) {
+            $hardRejected = true;
+            if ($requiredTechnology['scoreCap'] !== null) {
+                $score = min($score, $requiredTechnology['scoreCap']);
+            }
+            foreach ($requiredTechnology['reasons'] as $reason) {
+                if (!in_array($reason, $reasons, true)) {
+                    $reasons[] = $reason;
+                }
+            }
+        }
 
         if ($job->getApplicationEmail() === null) {
             $job->setApplicationEmail($this->emailExtractor->extract($job->getTitle().' '.$job->getDescription()));
@@ -51,7 +66,7 @@ final class JobProcessor
         $cv = $this->cvSelector->select($language, $job->getTitle().' '.$job->getDescription());
         $status = $hardRejected ? 'REJECTED_BY_FILTER' : 'PREPARED';
 
-        $job->setEvaluation($language, $evaluation['score'], $reasons, $proposedTjm, $salary['proposed'], $status, $cv);
+        $job->setEvaluation($language, $score, $reasons, $proposedTjm, $salary['proposed'], $status, $cv);
         $this->em->persist($job);
         $this->em->flush();
 

@@ -20,6 +20,7 @@ final class JobProfileTechnologyComparisonService
         'JavaScript' => ['javascript'],
         'Vue.js' => ['vue.js', 'vuejs', 'vue 3', 'vue3'],
         'Nuxt' => ['nuxt', 'nuxt.js', 'nuxtjs'],
+        'Angular' => ['angular', 'angularjs'],
         'Doctrine' => ['doctrine'],
         'API Platform' => ['api platform'],
         'Drupal' => ['drupal'],

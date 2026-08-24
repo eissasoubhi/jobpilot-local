@@ -81,4 +81,37 @@ final class JobProfileTechnologyComparisonServiceTest extends TestCase
         self::assertSame([], $comparison['missingMustHaves']);
         self::assertContains('Kubernetes', $comparison['missingNiceToHaves']);
     }
+
+    public function testAngularIsRecognizedAsPrimaryMissingTechnology(): void
+    {
+        $job = (new JobOffer())->fill([
+            'title' => 'Développeur PHP Symfony Angular',
+            'description' => 'PHP 8, Symfony 7.4, PostgreSQL et Angular 21.',
+        ]);
+        $job->setEvaluation(
+            'fr',
+            75,
+            [
+                'Analyse IA : REVIEW · confiance 90%',
+                'Stack principale détectée par IA : PHP, Symfony, PostgreSQL, Angular',
+                'Prérequis principaux manquants : Angular',
+            ],
+            null,
+            null,
+            'PREPARED',
+            null,
+        );
+        $settings = (new UserSettings())->fill([
+            'targetJobs' => ['Senior Full Stack PHP Symfony React Developer'],
+            'skills' => ['PHP', 'Symfony', 'React', 'Next.js', 'TypeScript', 'PostgreSQL'],
+        ]);
+
+        $comparison = (new JobProfileTechnologyComparisonService())->compare($job, $settings);
+
+        self::assertSame('AI_REUSED', $comparison['source']);
+        self::assertContains('Angular', $comparison['primaryTechnologies']);
+        self::assertContains('Angular', $comparison['missingTechnologies']);
+        self::assertContains('Angular', $comparison['missingMustHaves']);
+        self::assertNotContains('Angular', $comparison['matchingTechnologies']);
+    }
 }

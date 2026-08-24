@@ -14,6 +14,7 @@ final class AutomaticSubmissionService
         private EntityManagerInterface $em,
         private GmailService $gmail,
         private ApplicationEmailFactory $emailFactory,
+        private RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
     ) {}
 
     /**
@@ -25,6 +26,10 @@ final class AutomaticSubmissionService
 
         if (!$settings->isAutoSubmitEnabled()) {
             return ['status' => 'skipped', 'reason' => 'disabled'];
+        }
+
+        if ($this->requiredTechnologyGuard->evaluate($job, $settings)['hardRejected']) {
+            return ['status' => 'skipped', 'reason' => 'required_primary_stack_missing'];
         }
 
         if ($job->getScore() < $settings->getAutoSubmitThreshold()) {

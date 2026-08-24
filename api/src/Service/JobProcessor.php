@@ -18,6 +18,7 @@ final class JobProcessor
         private ApplicationEmailExtractor $emailExtractor,
         private ApplicationPreparationService $preparation,
         private RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
+        private MatchingScoreVersionStore $matchingScoreVersionStore,
         private EntityManagerInterface $em,
     ) {}
 
@@ -68,6 +69,7 @@ final class JobProcessor
 
         $job->setEvaluation($language, $score, $reasons, $proposedTjm, $salary['proposed'], $status, $cv);
         $this->em->persist($job);
+        $this->matchingScoreVersionStore->mark($job);
         $this->em->flush();
 
         if ($status === 'PREPARED') {

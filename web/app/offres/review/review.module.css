@@ -70,7 +70,7 @@
   max-width: 1432px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(170px, .9fr) minmax(205px, 1fr) auto minmax(170px, .9fr);
+  grid-template-columns: minmax(160px, .9fr) minmax(195px, 1fr) auto minmax(160px, .9fr) minmax(160px, .9fr);
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -126,6 +126,17 @@
 
 .unavailableButton:not(:disabled):hover {
   box-shadow: 0 7px 18px rgba(154, 91, 0, .14);
+}
+
+.alreadyAppliedButton {
+  justify-self: stretch;
+  background: #eef4ff;
+  border-color: #bfd0ff;
+  color: #3157b7;
+}
+
+.alreadyAppliedButton:not(:disabled):hover {
+  box-shadow: 0 7px 18px rgba(49, 87, 183, .16);
 }
 
 .sentButton {
@@ -209,13 +220,13 @@
   text-align: center;
 }
 
-@media (max-width: 1150px) {
+@media (max-width: 1250px) {
   .workspace {
     padding-bottom: 136px;
   }
 
   .decisionBar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -234,8 +245,13 @@
     grid-row: 1;
   }
 
-  .sentButton {
+  .alreadyAppliedButton {
     grid-column: 3;
+    grid-row: 1;
+  }
+
+  .sentButton {
+    grid-column: 4;
     grid-row: 1;
   }
 
@@ -289,8 +305,13 @@
     grid-row: 1;
   }
 
+  .alreadyAppliedButton {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
   .sentButton {
-    grid-column: 1 / -1;
+    grid-column: 2;
     grid-row: 2;
   }
 

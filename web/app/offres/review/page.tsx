@@ -27,7 +27,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName);
 }
 
-type ReviewDecision = 'IGNORED_NOT_MATCH' | 'OFFER_UNAVAILABLE' | 'SUBMITTED';
+type ReviewDecision = 'IGNORED_NOT_MATCH' | 'OFFER_UNAVAILABLE' | 'SUBMITTED' | 'ALREADY_APPLIED';
 
 type UndoableDecision = {
   applicationId: number;
@@ -39,6 +39,7 @@ type UndoableDecision = {
 function decisionFeedback(decision: ReviewDecision): string {
   if (decision === 'IGNORED_NOT_MATCH') return 'Offre marquée « Ne correspond pas ».';
   if (decision === 'OFFER_UNAVAILABLE') return 'Offre marquée indisponible.';
+  if (decision === 'ALREADY_APPLIED') return 'Candidature marquée « Déjà postulé ».';
   return 'Candidature marquée envoyée.';
 }
 
@@ -161,14 +162,15 @@ export default function ReviewQueuePage() {
     window.dispatchEvent(new Event('jobpilot:application-goals-changed'));
   }, []);
 
-  const persistDecision = useCallback(async (status: ReviewDecision): Promise<void> => {
+  const persistDecision = useCallback(async (decision: ReviewDecision): Promise<void> => {
     if (!current || decisionBusy) return;
 
-    setDecisionSaving(status);
+    setDecisionSaving(decision);
     setDecisionError('');
 
     try {
-      const updated = status === 'OFFER_UNAVAILABLE'
+      const status = decision === 'ALREADY_APPLIED' ? 'SUBMITTED' : decision;
+      const updated = decision === 'OFFER_UNAVAILABLE'
         ? await api<Application>(`/applications/${current.id}/offer-unavailable`, {
             method: 'POST',
           })
@@ -176,6 +178,7 @@ export default function ReviewQueuePage() {
             method: 'PATCH',
             body: JSON.stringify({
               status,
+              ...(decision === 'ALREADY_APPLIED' ? { channel: 'Candidature externe' } : {}),
               message: current.message,
               coverLetter: current.coverLetter,
               compensationAnswer: current.compensationAnswer,
@@ -185,7 +188,7 @@ export default function ReviewQueuePage() {
 
       setUndoableDecision({
         applicationId: current.id,
-        decision: status,
+        decision,
         previousIndex: currentIndex,
         jobTitle: current.jobOffer.title,
       });
@@ -213,7 +216,7 @@ export default function ReviewQueuePage() {
       );
       replaceApplication(updated);
       setIndex(undoableDecision.previousIndex);
-      if (undoableDecision.decision === 'SUBMITTED') {
+      if (undoableDecision.decision === 'SUBMITTED' || undoableDecision.decision === 'ALREADY_APPLIED') {
         refreshGoals();
       }
       setUndoableDecision(null);
@@ -352,6 +355,16 @@ export default function ReviewQueuePage() {
                 <span>Suiv.</span> →
               </button>
             </div>
+
+            <button
+              className={`${styles.decisionButton} ${styles.alreadyAppliedButton}`}
+              type="button"
+              disabled={decisionBusy}
+              onClick={() => void persistDecision('ALREADY_APPLIED')}
+            >
+              <span aria-hidden="true">↗</span>
+              <span>{decisionSaving === 'ALREADY_APPLIED' ? 'Enregistrement…' : 'Déjà postulé'}</span>
+            </button>
 
             <button
               className={`${styles.decisionButton} ${styles.sentButton}`}

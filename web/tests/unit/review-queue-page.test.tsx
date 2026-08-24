@@ -98,6 +98,7 @@ describe('ReviewQueuePage', () => {
     expect(screen.getByText('2 prêtes à envoyer')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Décision et navigation dans la Review Queue' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ne correspond pas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Déjà postulé' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Envoyée' })).toBeInTheDocument();
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Offre 1 sur 2 : Second Symfony role');
@@ -142,6 +143,49 @@ describe('ReviewQueuePage', () => {
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Carte complète Second Symfony role' })).toHaveFocus());
     expect(screen.getByText('Offre 1 sur 1 : Second Symfony role')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First Symfony role' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/review-decision/undo', {
+      method: 'POST',
+    }));
+    expect(await screen.findByText('Carte complète First Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+  });
+
+  it('records an already-applied offer as an external submission and can undo it', async () => {
+    const first = application(1, 'First Symfony role', 'READY_TO_SUBMIT');
+    const applications = [
+      first,
+      application(2, 'Second Symfony role', 'READY_TO_SUBMIT'),
+    ];
+    const alreadyApplied = {
+      ...application(1, 'First Symfony role', 'SUBMITTED'),
+      channel: 'Candidature externe',
+      submittedAt: '2026-08-24T03:40:00+02:00',
+    } as Application;
+    mockInitialLoad(applications);
+    apiMock
+      .mockResolvedValueOnce(alreadyApplied)
+      .mockResolvedValueOnce(first);
+
+    render(<ReviewQueuePage />);
+    await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Déjà postulé' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'SUBMITTED',
+        channel: 'Candidature externe',
+        message: '',
+        coverLetter: '',
+      }),
+    }));
+    expect(screen.queryByText('Carte complète First Symfony role')).not.toBeInTheDocument();
+    expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument();
+    expect(screen.getByText('Candidature marquée « Déjà postulé ».')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First Symfony role' }));
 

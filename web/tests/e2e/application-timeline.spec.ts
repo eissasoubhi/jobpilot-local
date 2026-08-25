@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('application timeline shows stored application and associated Gmail events', async ({ page }) => {
+test('application timeline shows only persisted business events for the selected offer', async ({ page }) => {
   await page.route('**/api/applications', async (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -8,11 +8,7 @@ test('application timeline shows stored application and associated Gmail events'
       id: 12,
       channel: 'Gmail automatique',
       status: 'INTERVIEW',
-      createdAt: '2026-08-01T08:00:00+00:00',
       updatedAt: '2026-08-04T12:00:00+00:00',
-      submittedAt: '2026-08-02T09:01:00+00:00',
-      submissionAttemptedAt: '2026-08-02T09:00:00+00:00',
-      submissionError: null,
       message: '',
       coverLetter: '',
       jobOffer: {
@@ -35,39 +31,40 @@ test('application timeline shows stored application and associated Gmail events'
     }]),
   }));
 
-  await page.route('**/api/integrations/gmail/messages', async (route) => route.fulfill({
+  await page.route('**/api/jobs/30/timeline', async (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify([{
-      id: 90,
-      gmailMessageId: 'gmail-90',
-      threadId: 'thread-90',
-      gmailUrl: 'https://mail.google.com/mail/u/0/#inbox/90',
-      sender: 'recruteur@acme.test',
-      recipient: 'candidate@test.local',
-      replyTo: null,
-      subject: 'Entretien jeudi',
-      snippet: 'Disponible jeudi ?',
-      bodyText: null,
-      receivedAt: '2026-08-04T11:00:00+00:00',
-      category: 'INTERVIEW_REQUEST',
-      classificationReason: 'Invitation explicite',
-      sourcePlatform: null,
-      actionRequired: true,
-      processed: false,
-      application: { id: 12, status: 'INTERVIEW' },
-      jobOffer: { id: 30, title: 'Senior Symfony Developer', company: 'Acme' },
-      matchedAt: '2026-08-04T11:01:00+00:00',
-    }]),
+    body: JSON.stringify([
+      {
+        id: 15,
+        jobOfferId: 30,
+        applicationId: 12,
+        type: 'INTERVIEW',
+        source: 'gmail-inbox',
+        payload: { category: 'INTERVIEW_REQUEST' },
+        occurredAt: '2026-08-04T11:00:00+00:00',
+        recordedAt: '2026-08-04T11:00:01+00:00',
+      },
+      {
+        id: 14,
+        jobOfferId: 30,
+        applicationId: 12,
+        type: 'APPLICATION_SUBMITTED',
+        source: 'manual-status',
+        payload: { previousStatus: 'DRAFT' },
+        occurredAt: '2026-08-02T09:01:00+00:00',
+        recordedAt: '2026-08-02T09:01:01+00:00',
+      },
+    ]),
   }));
 
   await page.goto('/parcours-candidatures');
 
   await expect(page.getByRole('heading', { name: 'Parcours des candidatures', level: 1 })).toBeVisible();
   await expect(page.getByLabel('Candidature')).toHaveValue('12');
-  await expect(page.getByText('Invitation à un entretien reçue')).toBeVisible();
-  await expect(page.getByText(/Entretien jeudi.*recruteur@acme.test.*action requise/)).toBeVisible();
+  await expect(page.getByText('2 événement(s) persisté(s)')).toBeVisible();
+  await expect(page.getByText('Entretien proposé')).toBeVisible();
   await expect(page.getByText('Candidature envoyée')).toBeVisible();
-  await expect(page.getByText('Candidature préparée')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ouvrir dans Gmail' })).toHaveAttribute('href', 'https://mail.google.com/mail/u/0/#inbox/90');
+  await expect(page.getByText('Candidature préparée')).toHaveCount(0);
+  await expect(page.getByText(/Le statut courant reste visible comme contexte/)).toBeVisible();
 });

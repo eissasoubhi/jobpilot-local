@@ -1,35 +1,34 @@
 # Application activity timeline
 
-The **Parcours des candidatures** page provides a read-only chronological view of the events already stored by JobPilot for one application.
+The **Parcours des candidatures** page provides a read-only chronological view of the persistent business events already stored by JobPilot for the selected application's offer.
 
 ## Included events
 
-The timeline can display:
+The timeline can display the V1 business event catalogue:
 
-- application creation;
-- an authorized submission attempt;
+- offer import and source occurrence merge;
+- preparation creation and update;
 - successful submission;
-- a stored submission failure;
-- Gmail messages already associated with the application;
-- the current application status and its last update date.
+- response, rejection or interview detected from Gmail;
+- follow-up.
 
-Gmail events retain their existing category, sender, subject, action-required state and direct Gmail link when available.
+The current application status remains visible in the offer summary as context, outside the event list.
 
 ## Data integrity
 
-The page does not create or infer historical records. It combines existing dates from the application with Gmail messages that already reference the same application ID.
+The page does not create or infer historical records. It reads `GET /api/jobs/{id}/timeline`, which returns the 200 most recent append-only events for one canonical offer in reverse chronological order.
 
-A manual status change for which JobPilot has no source event is shown only as the current status. The interface explicitly states this limitation instead of inventing an earlier transition date.
+A transition for which JobPilot has no persisted source event remains absent from history. The interface explicitly states this limitation instead of deriving an event from application dates or Gmail messages.
 
 ## Safety and privacy
 
 - read-only interface;
-- no external request beyond the existing local API calls;
+- no external request beyond the local timeline API;
 - no Gmail synchronization or message sending;
 - no connector, credential, quota or compliance-policy change;
-- no message body displayed in the timeline;
+- no Gmail body, subject or sender displayed in the timeline payload;
 - no database migration.
 
 ## Rollback
 
-The feature is frontend-only. Rollback consists of removing the timeline page, its navigation entry and its helper/tests. Stored application and Gmail data are unaffected.
+The page now reads the persistent offer timeline exposed by `GET /api/jobs/{id}/timeline`. It displays only stored business events; application status is contextual information and is not synthesized into history. Rolling back the UI does not alter stored timeline events, applications or Gmail data.

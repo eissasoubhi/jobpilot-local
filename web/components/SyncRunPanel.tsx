@@ -27,6 +27,17 @@ type SyncJob = {
   error?: { code?: string; message?: string } | null;
 };
 
+type SearchDiagnostics = {
+  source?: string;
+  messagesMatched?: number;
+  messagesImported?: number;
+  messagesAlreadyKnown?: number;
+  messagesFailed?: number;
+  offersExtracted?: number;
+  messagesAssociated?: number;
+  messagesActionRequired?: number;
+};
+
 type ConnectorSnapshot = {
   code: string;
   name: string;
@@ -37,6 +48,7 @@ type ConnectorSnapshot = {
   due?: boolean;
   lastSyncedAt?: string | null;
   lastError?: string | null;
+  searchDiagnostics?: SearchDiagnostics | null;
   lastResult?: {
     received?: number;
     imported?: number;
@@ -88,6 +100,30 @@ function connectorLabel(state: ReturnType<typeof connectorState>): string {
   if (state === 'done') return 'Terminé';
   if (state === 'error') return 'Terminé avec erreur';
   return 'En attente';
+}
+
+function formatCount(value: number | undefined, singular: string, plural: string): string {
+  const count = value ?? 0;
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function GmailDiagnostics({ diagnostics }: { diagnostics: SearchDiagnostics }) {
+  const matched = diagnostics.messagesMatched ?? 0;
+  const alreadyKnown = diagnostics.messagesAlreadyKnown ?? 0;
+  const imported = diagnostics.messagesImported ?? 0;
+  const extracted = diagnostics.offersExtracted ?? 0;
+  const failed = diagnostics.messagesFailed ?? 0;
+
+  return (
+    <div className="small muted" style={{ marginTop: 7 }}>
+      <strong>Lecture Gmail :</strong>{' '}
+      {formatCount(matched, 'email trouvé', 'emails trouvés')} ·{' '}
+      {formatCount(alreadyKnown, 'déjà traité', 'déjà traités')} ·{' '}
+      {formatCount(imported, 'email importé', 'emails importés')} ·{' '}
+      {formatCount(extracted, 'offre extraite', 'offres extraites')}
+      {failed > 0 && ` · ${formatCount(failed, 'email en échec', 'emails en échec')}`}
+    </div>
+  );
 }
 
 export function SyncRunPanel() {
@@ -207,6 +243,10 @@ export function SyncRunPanel() {
           {states.map(({ connector, state }) => {
             const result = connector.lastResult ?? {};
             const showResult = happenedDuringRun(connector.lastSyncedAt, job.startedAt);
+            const gmailDiagnostics = connector.code === 'gmail' && connector.searchDiagnostics?.source === 'gmail'
+              ? connector.searchDiagnostics
+              : null;
+
             return (
               <div className="notice" key={connector.code}>
                 <div className="actions" style={{ alignItems: 'center' }}>
@@ -222,13 +262,14 @@ export function SyncRunPanel() {
                 )}
                 {showResult && (
                   <div className="actions small" style={{ marginTop: 7 }}>
-                    <span>{result.received ?? 0} reçue(s)</span>
-                    <span>{result.imported ?? 0} nouvelle(s)</span>
-                    <span>{result.merged ?? 0} fusionnée(s)</span>
-                    <span>{result.duplicates ?? 0} connue(s)</span>
-                    {(result.failed ?? 0) > 0 && <span>{result.failed} échec(s)</span>}
+                    <span>{formatCount(result.received, 'offre récupérée', 'offres récupérées')}</span>
+                    <span>{formatCount(result.imported, 'nouvelle offre', 'nouvelles offres')}</span>
+                    <span>{formatCount(result.merged, 'source fusionnée', 'sources fusionnées')}</span>
+                    <span>{formatCount(result.duplicates, 'offre déjà connue', 'offres déjà connues')}</span>
+                    {(result.failed ?? 0) > 0 && <span>{formatCount(result.failed, 'échec', 'échecs')}</span>}
                   </div>
                 )}
+                {showResult && gmailDiagnostics && <GmailDiagnostics diagnostics={gmailDiagnostics} />}
                 {state === 'error' && connector.lastError && (
                   <div className="small" style={{ marginTop: 6 }}>{connector.lastError}</div>
                 )}
@@ -240,12 +281,12 @@ export function SyncRunPanel() {
 
       {job.result && terminal && (
         <div className="actions" style={{ marginTop: 14 }}>
-          {job.result.received != null && <Badge>{job.result.received} reçue(s)</Badge>}
-          {job.result.imported != null && <Badge tone="good">{job.result.imported} nouvelle(s)</Badge>}
-          {job.result.merged != null && <Badge tone="blue">{job.result.merged} fusionnée(s)</Badge>}
-          {job.result.duplicates != null && <Badge>{job.result.duplicates} connue(s)</Badge>}
-          {job.result.profileFiltered != null && <Badge>{job.result.profileFiltered} hors profil</Badge>}
-          {(job.result.failed ?? 0) > 0 && <Badge tone="warn">{job.result.failed} échec(s)</Badge>}
+          {job.result.received != null && <Badge>{formatCount(job.result.received, 'offre récupérée', 'offres récupérées')}</Badge>}
+          {job.result.imported != null && <Badge tone="good">{formatCount(job.result.imported, 'nouvelle offre', 'nouvelles offres')}</Badge>}
+          {job.result.merged != null && <Badge tone="blue">{formatCount(job.result.merged, 'source fusionnée', 'sources fusionnées')}</Badge>}
+          {job.result.duplicates != null && <Badge>{formatCount(job.result.duplicates, 'offre déjà connue', 'offres déjà connues')}</Badge>}
+          {job.result.profileFiltered != null && <Badge>{formatCount(job.result.profileFiltered, 'offre hors profil', 'offres hors profil')}</Badge>}
+          {(job.result.failed ?? 0) > 0 && <Badge tone="warn">{formatCount(job.result.failed, 'échec', 'échecs')}</Badge>}
         </div>
       )}
     </Card>

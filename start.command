@@ -23,7 +23,7 @@ if grep -Eq '(^|[[:space:]])jobpilot\.test([[:space:]]|$)' /etc/hosts; then
 else
   echo "Configuration facultative du nom local ${JOBPILOT_HOST}..."
   if osascript >/dev/null <<'APPLESCRIPT'
-do shell script "printf '\n# JobPilot local\n127.0.0.1 jobpilot.test jobpost.test\n' >> /etc/hosts" with administrator privileges
+do shell script "printf '\n# JobPilot local\n127.0.0.1 jobpilot.test\n' >> /etc/hosts" with administrator privileges
 APPLESCRIPT
   then
     HOST_CONFIGURED=true
@@ -49,34 +49,32 @@ path.write_text(content)
 PY
 fi
 
-# Prefer jobpilot.test when the host is configured, but retain the historical
-# localhost URL when the user declines the optional system-level hosts change.
+# Keep the configured callback URL aligned with the hostname actually used by
+# this launch, without depending on historical local aliases.
 if [ "${HOST_CONFIGURED}" = true ]; then
-  python3 <<'PY'
-from pathlib import Path
-path = Path('.env')
-content = path.read_text()
-for old in ('WEB_URL=http://localhost:3000', 'WEB_URL=http://jobpost.test'):
-    content = content.replace(old, 'WEB_URL=http://jobpilot.test')
-path.write_text(content)
-PY
+  WEB_URL_VALUE='http://jobpilot.test'
 else
-  python3 <<'PY'
+  WEB_URL_VALUE='http://localhost:3000'
+fi
+
+python3 - "$WEB_URL_VALUE" <<'PY'
 from pathlib import Path
+import re
+import sys
+
 path = Path('.env')
 content = path.read_text()
-fallback = 'WEB_URL=http://localhost:3000'
-for preferred in ('WEB_URL=http://jobpilot.test', 'WEB_URL=http://jobpost.test'):
-    content = content.replace(preferred, fallback)
+replacement = 'WEB_URL=' + sys.argv[1]
+if re.search(r'^WEB_URL=.*$', content, flags=re.MULTILINE):
+    content = re.sub(r'^WEB_URL=.*$', replacement, content, flags=re.MULTILINE)
+else:
+    content = content.rstrip() + '\n' + replacement + '\n'
 path.write_text(content)
 PY
-fi
 
 mkdir -p data/private
 
 # Port 80 belongs to one global local reverse proxy shared by local projects.
-# The helper also removes the legacy JobPilot/MPC containers that used to bind
-# port 80 directly during the one-time migration to this setup.
 bash scripts/ensure-local-dev-proxy.sh
 
 if [ ! -f data/private/.storage-migrated ]; then
@@ -106,7 +104,7 @@ http:
     jobpilot-web:
       entryPoints:
         - web
-      rule: "Host(`jobpilot.test`) || Host(`jobpost.test`)"
+      rule: "Host(`jobpilot.test`)"
       service: jobpilot-web
   services:
     jobpilot-web:

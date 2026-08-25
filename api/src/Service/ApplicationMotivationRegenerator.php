@@ -11,14 +11,18 @@ final class ApplicationMotivationRegenerator
 {
     public function __construct(private GroundedCoverLetterBuilder $coverLetterBuilder) {}
 
-    public function message(JobOffer $job, CandidateProfile $profile, int $maxCharacters = 400): string
-    {
+    public function message(
+        JobOffer $job,
+        CandidateProfile $profile,
+        int $maxCharacters = 400,
+        ?string $targetCompany = null,
+    ): string {
         $profileData = $profile->toArray();
         $name = $this->inline((string) ($profileData['fullName'] ?? ''), 70);
         $years = max(0, (int) ($profileData['yearsOfExperience'] ?? 0));
         $availability = trim((string) ($profileData['availability'] ?? ''));
         $role = $this->inline($job->getTitle(), 95);
-        $company = $this->inline($job->getCompany(), 70);
+        $company = $this->inline(TargetCompanyName::resolve($job, $targetCompany), 70);
 
         $candidates = $job->getLanguage() === 'en'
             ? $this->englishMessageCandidates($role, $company, $name, $years, $availability)
@@ -35,14 +39,15 @@ final class ApplicationMotivationRegenerator
         CandidateProfile $profile,
         array $profileSkills,
         int $maxCharacters = 1_500,
+        ?string $targetCompany = null,
     ): string {
-        $full = $this->coverLetterBuilder->build($job, $profile, $profileSkills);
+        $full = $this->coverLetterBuilder->build($job, $profile, $profileSkills, $targetCompany);
         $profileData = $profile->toArray();
         $name = $this->inline((string) ($profileData['fullName'] ?? ''), 70);
         $years = max(0, (int) ($profileData['yearsOfExperience'] ?? 0));
         $availability = trim((string) ($profileData['availability'] ?? ''));
         $role = $this->inline($job->getTitle(), 110);
-        $company = $this->inline($job->getCompany(), 80);
+        $company = $this->inline(TargetCompanyName::resolve($job, $targetCompany), 80);
         $skills = $this->matchingSkills($job, $profileSkills);
 
         $candidates = $job->getLanguage() === 'en'

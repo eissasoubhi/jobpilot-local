@@ -6,6 +6,7 @@ JOBPOST_HOST="jobpost.test"
 JOBPOST_URL="http://${JOBPOST_HOST}"
 LOCALHOST_URL="http://localhost:3000"
 HOST_CONFIGURED=false
+PROXY_NETWORK="${LOCAL_DEV_PROXY_NETWORK:-local-dev-proxy}"
 
 if ! command -v docker >/dev/null 2>&1; then
   osascript -e 'display alert "Docker Desktop est requis" message "Installe et démarre Docker Desktop, puis relance JobPilot." as critical' 2>/dev/null || true
@@ -74,6 +75,11 @@ fi
 
 mkdir -p data/private
 
+# Port 80 belongs to one global local reverse proxy shared by local projects.
+# The helper also removes the legacy JobPilot/MPC containers that used to bind
+# port 80 directly during the one-time migration to this setup.
+bash scripts/ensure-local-dev-proxy.sh
+
 if [ ! -f data/private/.storage-migrated ]; then
   echo "Migration des documents privés vers data/private..."
   docker compose stop api scheduler >/dev/null 2>&1 || true
@@ -86,6 +92,29 @@ fi
 # execute the checked-out source instead of keeping an old runtime alive.
 docker compose up -d --remove-orphans --force-recreate api scheduler web
 docker compose up -d --remove-orphans
+
+WEB_CONTAINER_ID="$(docker compose ps -q web)"
+if [ -z "$WEB_CONTAINER_ID" ]; then
+  echo "Impossible de trouver le conteneur web JobPilot."
+  exit 1
+fi
+
+docker network connect --alias jobpilot-web "$PROXY_NETWORK" "$WEB_CONTAINER_ID"
+
+cat <<'YAML' | bash scripts/register-local-dev-proxy-config.sh jobpilot.yml
+http:
+  routers:
+    jobpilot-web:
+      entryPoints:
+        - web
+      rule: "Host(`jobpost.test`)"
+      service: jobpilot-web
+  services:
+    jobpilot-web:
+      loadBalancer:
+        servers:
+          - url: "http://jobpilot-web:3000"
+YAML
 
 printf 'Démarrage de JobPilot'
 for _ in {1..90}; do
@@ -109,7 +138,8 @@ done
 
 echo
 echo "JobPilot répond au healthcheck mais l’application n’est pas complètement prête."
-echo "Vérifie l’API et le frontend avec :"
+echo "Vérifie l’API, le frontend et le proxy partagé avec :"
 echo "  docker compose ps"
 echo "  docker compose logs --tail=200 api web scheduler"
+echo "  docker logs --tail=100 ${LOCAL_DEV_PROXY_CONTAINER:-local-dev-proxy}"
 exit 1

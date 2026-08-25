@@ -9,8 +9,8 @@ import { SyncRunPanel } from '@/components/SyncRunPanel';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'JobPilot Local',
-  description: 'Gestion locale des candidatures',
+  title: 'JobPilot',
+  description: 'Gestion des candidatures',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

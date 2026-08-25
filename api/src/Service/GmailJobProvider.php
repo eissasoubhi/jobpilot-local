@@ -8,8 +8,9 @@ use App\JobDiscovery\Domain\Connector\ConnectorComplianceStatus;
 use App\JobDiscovery\Domain\Connector\ConnectorMode;
 use App\JobDiscovery\Domain\Connector\ConnectorPolicy;
 use App\JobDiscovery\Domain\Connector\GovernedJobSourceConnector;
+use App\JobDiscovery\Domain\Connector\SearchDiagnosticsConnector;
 
-final class GmailJobProvider implements GovernedJobSourceConnector
+final class GmailJobProvider implements GovernedJobSourceConnector, SearchDiagnosticsConnector
 {
     public function __construct(
         private GmailService $gmail,
@@ -77,5 +78,22 @@ final class GmailJobProvider implements GovernedJobSourceConnector
         }
 
         return $this->gmail->collectJobOffers();
+    }
+
+    /** @return array<string, mixed> */
+    public function searchDiagnostics(): array
+    {
+        $summary = $this->gmail->lastSyncSummary();
+
+        return [
+            'source' => 'gmail',
+            'messagesMatched' => (int) ($summary['found'] ?? 0),
+            'messagesImported' => (int) ($summary['imported'] ?? 0),
+            'messagesAlreadyKnown' => (int) ($summary['duplicates'] ?? 0),
+            'messagesFailed' => (int) ($summary['failed'] ?? 0),
+            'offersExtracted' => (int) ($summary['offersFound'] ?? 0),
+            'messagesAssociated' => (int) ($summary['associated'] ?? 0),
+            'messagesActionRequired' => (int) ($summary['actionRequired'] ?? 0),
+        ];
     }
 }

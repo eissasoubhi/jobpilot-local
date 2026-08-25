@@ -209,6 +209,12 @@ final class GmailService
         ];
         $offers = [];
         $offerIds = [];
+        /** @var array<string, list<InboxMessage>> $importedThreadMessages */
+        $importedThreadMessages = [];
+        /** @var array<string, \DateTimeImmutable> $latestSentAtByThread */
+        $latestSentAtByThread = [];
+        /** @var array<int, InboxMessage> $newActionMessages */
+        $newActionMessages = [];
         $messageIds = $this->listMessageIds($token);
         $summary['found'] = count($messageIds);
         $inboxRepository = $this->em->getRepository(InboxMessage::class);
@@ -227,6 +233,11 @@ final class GmailService
                     $decoded['sender'],
                     $decoded['plainBody'] !== '' ? $decoded['plainBody'] : $decoded['snippet'],
                 );
+                $sentByUser = $this->isSentByUser($data);
+                $actionRequired = !$sentByUser && $classification['actionRequired'];
+                $classificationReason = $sentByUser
+                    ? 'Message envoyé depuis le compte Gmail connecté : aucune action utilisateur en attente.'
+                    : $classification['reason'];
                 $sourcePlatform = $this->detectSourcePlatform(
                     $decoded['sender'].' '.$decoded['subject'].' '.$decoded['plainBody'].' '.$decoded['htmlBody'],
                 );
@@ -240,26 +251,59 @@ final class GmailService
                     $decoded['recipient'],
                     $decoded['replyTo'],
                     $decoded['plainBody'],
-                    $classification['actionRequired'],
-                    $classification['reason'],
+                    $actionRequired,
+                    $classificationReason,
                     $sourcePlatform,
                 );
 
-                $application = $this->matchApplication(
-                    $classification['category'],
-                    $decoded['subject'].' '.$decoded['plainBody'].' '.$decoded['snippet'],
-                );
-                if ($application !== null) {
-                    $application->applyInboxCategory($classification['category']);
-                    $message->associate($application);
-                    ++$summary['associated'];
+                $threadId = trim($decoded['threadId']);
+                if ($sentByUser) {
+                    $message->markProcessed();
+                    if ($threadId !== '') {
+                        $previousCutoff = $latestSentAtByThread[$threadId] ?? null;
+                        if ($previousCutoff === null || $decoded['receivedAt'] > $previousCutoff) {
+                            $latestSentAtByThread[$threadId] = $decoded['receivedAt'];
+                        }
+                        foreach ($importedThreadMessages[$threadId] ?? [] as $previousMessage) {
+                            if ($previousMessage->getReceivedAt() <= $decoded['receivedAt']) {
+                                $previousMessage->markProcessed();
+                            }
+                        }
+                        $this->closePersistedThreadActions($threadId, $decoded['receivedAt']);
+                    }
+                } elseif (
+                    $threadId !== ''
+                    && isset($latestSentAtByThread[$threadId])
+                    && $decoded['receivedAt'] <= $latestSentAtByThread[$threadId]
+                ) {
+                    $message->markProcessed();
                 }
-                if ($classification['actionRequired']) {
-                    ++$summary['actionRequired'];
+
+                if ($threadId !== '') {
+                    $importedThreadMessages[$threadId][] = $message;
+                }
+
+                if (!$sentByUser) {
+                    $application = $this->matchApplication(
+                        $classification['category'],
+                        $decoded['subject'].' '.$decoded['plainBody'].' '.$decoded['snippet'],
+                    );
+                    if ($application !== null) {
+                        $application->applyInboxCategory($classification['category']);
+                        $message->associate($application);
+                        ++$summary['associated'];
+                    }
+                }
+                if ($actionRequired) {
+                    $newActionMessages[spl_object_id($message)] = $message;
                 }
 
                 $this->em->persist($message);
                 ++$summary['imported'];
+
+                if ($sentByUser) {
+                    continue;
+                }
 
                 foreach ($this->jobExtractor->extract(
                     $decoded['gmailMessageId'],
@@ -283,6 +327,10 @@ final class GmailService
         }
 
         $summary['offersFound'] = count($offers);
+        $summary['actionRequired'] = count(array_filter(
+            $newActionMessages,
+            static fn (InboxMessage $message): bool => !$message->isProcessed(),
+        ));
         $this->lastSyncSummary = $summary;
         if ($flush) {
             $this->em->flush();
@@ -367,6 +415,41 @@ final class GmailService
         }
 
         return $data;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function isSentByUser(array $data): bool
+    {
+        $labels = $data['labelIds'] ?? [];
+        if (!is_array($labels)) {
+            return false;
+        }
+
+        foreach ($labels as $label) {
+            if (is_string($label) && strtoupper(trim($label)) === 'SENT') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function closePersistedThreadActions(string $threadId, \DateTimeImmutable $sentAt): void
+    {
+        $messages = $this->em->getRepository(InboxMessage::class)->findBy(
+            [
+                'threadId' => $threadId,
+                'actionRequired' => true,
+                'processed' => false,
+            ],
+            ['receivedAt' => 'DESC'],
+        );
+
+        foreach ($messages as $message) {
+            if ($message instanceof InboxMessage && $message->getReceivedAt() <= $sentAt) {
+                $message->markProcessed();
+            }
+        }
     }
 
     private function matchApplication(string $category, string $text): ?Application

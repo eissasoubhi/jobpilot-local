@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Application;
 use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
+use App\Http\ApiPagination;
 use App\JobCatalog\Application\CanonicalJobOfferService;
 use App\Service\ApplicationPreparationService;
 use App\Service\JobPriorityScoreService;
@@ -37,13 +38,20 @@ final class JobController
     }
 
     #[Route('', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $jobs = $this->em->getRepository(JobOffer::class)->createQueryBuilder('job')
+        $status = trim((string) $request->query->get('status', ''));
+        $query = $this->em->getRepository(JobOffer::class)->createQueryBuilder('job')
             ->leftJoin('job.occurrences', 'occurrence')
             ->addSelect('occurrence')
             ->leftJoin('job.recommendedCv', 'recommendedCv')
-            ->addSelect('recommendedCv')
+            ->addSelect('recommendedCv');
+        if ($status !== '') {
+            $query
+                ->andWhere('job.status = :status')
+                ->setParameter('status', $status);
+        }
+        $jobs = $query
             ->getQuery()
             ->getResult();
         $applications = $this->em->getRepository(Application::class)->findAll();
@@ -80,7 +88,16 @@ final class JobController
             return $this->rankingOrder->compare($aJob, (int) $a['priority'], $bJob, (int) $b['priority']);
         });
 
-        return new JsonResponse(array_column($ranked, 'payload'));
+        $payloads = array_column($ranked, 'payload');
+        $pagination = ApiPagination::fromRequest($request);
+        if ($pagination === null) {
+            return new JsonResponse($payloads);
+        }
+
+        return new JsonResponse([
+            'items' => array_slice($payloads, $pagination->offset(), $pagination->limit),
+            'pagination' => $pagination->metadata(count($payloads)),
+        ]);
     }
 
     #[Route('/{id}', methods: ['GET'])]

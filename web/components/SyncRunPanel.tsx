@@ -3,8 +3,9 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Badge, Card } from '@/components/UI';
+import { Badge, Card, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 
 type SyncStatus = 'queued' | 'running' | 'success' | 'partial' | 'failed';
 
@@ -69,8 +70,14 @@ type SyncSnapshot = {
   worker: WorkerSnapshot;
 };
 
+type SyncJobResponse = { job: SyncJob };
+
 function isTerminal(status: SyncStatus): boolean {
   return status === 'success' || status === 'partial' || status === 'failed';
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 function happenedDuringRun(value: string | null | undefined, startedAt: string | null): boolean {
@@ -130,6 +137,8 @@ export function SyncRunPanel() {
   const pathname = usePathname();
   const [snapshot, setSnapshot] = useState<SyncSnapshot | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState('');
 
   useEffect(() => {
     if (pathname !== '/offres') return;
@@ -172,6 +181,9 @@ export function SyncRunPanel() {
   const completed = states.filter(({ state }) => state === 'done' || state === 'error').length;
   const current = states.find(({ state }) => state === 'running')?.connector;
   const terminal = isTerminal(job.status);
+  const failedConnectorCodes = terminal
+    ? states.filter(({ state }) => state === 'error').map(({ connector }) => connector.code)
+    : [];
   const workerUnavailable = job.status === 'queued' && worker.status !== 'active';
   const progress = terminal ? 100 : connectors.length > 0 ? Math.round((completed / connectors.length) * 100) : 0;
   const statusLabel = job.status === 'queued'
@@ -183,6 +195,39 @@ export function SyncRunPanel() {
         : job.status === 'partial'
           ? 'Terminée partiellement'
           : 'Échec';
+
+  const retryFailedConnectors = async (): Promise<void> => {
+    if (retrying || failedConnectorCodes.length === 0) return;
+
+    setRetrying(true);
+    setRetryError('');
+
+    try {
+      let response = await api<SyncJobResponse>('/job-search/sync?force=1', {
+        method: 'POST',
+        body: JSON.stringify({ connectorCodes: failedConnectorCodes }),
+      });
+
+      while (!isTerminal(response.job.status)) {
+        await wait(1000);
+        response = await api<SyncJobResponse>(`/job-search/sync/${encodeURIComponent(response.job.id)}`);
+      }
+
+      if (response.job.status === 'failed') {
+        throw new Error(response.job.error?.message ?? 'La nouvelle tentative a échoué.');
+      }
+
+      const next = await api<SyncSnapshot>('/job-search/sync/current');
+      setSnapshot(next);
+      window.dispatchEvent(new CustomEvent('jobpilot:offers-sync-completed', {
+        detail: { connectorCodes: failedConnectorCodes, status: response.job.status },
+      }));
+    } catch (caughtError: unknown) {
+      setRetryError(getErrorMessage(caughtError));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   return (
     <Card>
@@ -289,6 +334,28 @@ export function SyncRunPanel() {
           {(job.result.failed ?? 0) > 0 && <Badge tone="warn">{formatCount(job.result.failed, 'échec', 'échecs')}</Badge>}
         </div>
       )}
+
+      {failedConnectorCodes.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            className="btn secondary small"
+            disabled={retrying}
+            onClick={() => void retryFailedConnectors()}
+          >
+            {retrying
+              ? 'Nouvelle tentative…'
+              : failedConnectorCodes.length === 1
+                ? 'Réessayer la source en erreur'
+                : `Réessayer les ${failedConnectorCodes.length} sources en erreur`}
+          </button>
+          <div className="small muted" style={{ marginTop: 6 }}>
+            Seules les sources en échec seront relancées ; les sources déjà terminées ne seront pas rejouées.
+          </div>
+        </div>
+      )}
+
+      {retryError !== '' && <div style={{ marginTop: 12 }}><ErrorBox message={retryError} /></div>}
     </Card>
   );
 }

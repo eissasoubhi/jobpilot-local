@@ -3,9 +3,11 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { ConnectorSyncResultRow, type ConnectorSyncVisualState } from '@/components/ConnectorSyncResultRow';
 import { Badge, Card, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { formatCount } from '@/lib/formatCount';
 
 type SyncStatus = 'queued' | 'running' | 'success' | 'partial' | 'failed';
 
@@ -55,6 +57,7 @@ type ConnectorSnapshot = {
     imported?: number;
     merged?: number;
     duplicates?: number;
+    profileFiltered?: number;
     failed?: number;
   };
 };
@@ -102,35 +105,14 @@ function connectorState(connector: ConnectorSnapshot, job: SyncJob): 'running' |
   return 'waiting';
 }
 
-function connectorLabel(state: ReturnType<typeof connectorState>): string {
-  if (state === 'running') return 'Recherche et import en cours';
-  if (state === 'done') return 'Terminé';
-  if (state === 'error') return 'Terminé avec erreur';
-  return 'En attente';
-}
-
-function formatCount(value: number | undefined, singular: string, plural: string): string {
-  const count = value ?? 0;
-  return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function GmailDiagnostics({ diagnostics }: { diagnostics: SearchDiagnostics }) {
-  const matched = diagnostics.messagesMatched ?? 0;
-  const alreadyKnown = diagnostics.messagesAlreadyKnown ?? 0;
-  const imported = diagnostics.messagesImported ?? 0;
-  const extracted = diagnostics.offersExtracted ?? 0;
-  const failed = diagnostics.messagesFailed ?? 0;
-
-  return (
-    <div className="small muted" style={{ marginTop: 7 }}>
-      <strong>Lecture Gmail :</strong>{' '}
-      {formatCount(matched, 'email trouvé', 'emails trouvés')} ·{' '}
-      {formatCount(alreadyKnown, 'déjà traité', 'déjà traités')} ·{' '}
-      {formatCount(imported, 'email importé', 'emails importés')} ·{' '}
-      {formatCount(extracted, 'offre extraite', 'offres extraites')}
-      {failed > 0 && ` · ${formatCount(failed, 'email en échec', 'emails en échec')}`}
-    </div>
-  );
+function connectorVisualState(
+  connector: ConnectorSnapshot,
+  state: ReturnType<typeof connectorState>,
+): ConnectorSyncVisualState {
+  if (state === 'running') return 'running';
+  if (state === 'done') return 'success';
+  if (state === 'error') return connector.status === 'PARTIAL' ? 'warning' : 'error';
+  return 'waiting';
 }
 
 export function SyncRunPanel() {
@@ -286,39 +268,20 @@ export function SyncRunPanel() {
       {states.length > 0 && (
         <div className="stack" style={{ gap: 8, marginTop: 14 }}>
           {states.map(({ connector, state }) => {
-            const result = connector.lastResult ?? {};
             const showResult = happenedDuringRun(connector.lastSyncedAt, job.startedAt);
             const gmailDiagnostics = connector.code === 'gmail' && connector.searchDiagnostics?.source === 'gmail'
               ? connector.searchDiagnostics
               : null;
 
             return (
-              <div className="notice" key={connector.code}>
-                <div className="actions" style={{ alignItems: 'center' }}>
-                  <strong>{connector.name}</strong>
-                  <Badge tone={state === 'running' ? 'blue' : state === 'done' ? 'good' : state === 'error' ? 'warn' : 'neutral'}>
-                    {connectorLabel(state)}
-                  </Badge>
-                </div>
-                {state === 'running' && (
-                  <div className="small muted" style={{ marginTop: 6 }}>
-                    Connexion à la source, récupération puis normalisation/import des offres…
-                  </div>
-                )}
-                {showResult && (
-                  <div className="actions small" style={{ marginTop: 7 }}>
-                    <span>{formatCount(result.received, 'offre récupérée', 'offres récupérées')}</span>
-                    <span>{formatCount(result.imported, 'nouvelle offre', 'nouvelles offres')}</span>
-                    <span>{formatCount(result.merged, 'source fusionnée', 'sources fusionnées')}</span>
-                    <span>{formatCount(result.duplicates, 'offre déjà connue', 'offres déjà connues')}</span>
-                    {(result.failed ?? 0) > 0 && <span>{formatCount(result.failed, 'échec', 'échecs')}</span>}
-                  </div>
-                )}
-                {showResult && gmailDiagnostics && <GmailDiagnostics diagnostics={gmailDiagnostics} />}
-                {state === 'error' && connector.lastError && (
-                  <div className="small" style={{ marginTop: 6 }}>{connector.lastError}</div>
-                )}
-              </div>
+              <ConnectorSyncResultRow
+                key={connector.code}
+                name={connector.name}
+                state={connectorVisualState(connector, state)}
+                result={showResult ? connector.lastResult : null}
+                diagnostics={showResult ? gmailDiagnostics : null}
+                error={showResult && state === 'error' ? connector.lastError : null}
+              />
             );
           })}
         </div>
@@ -331,7 +294,7 @@ export function SyncRunPanel() {
           {job.result.merged != null && <Badge tone="blue">{formatCount(job.result.merged, 'source fusionnée', 'sources fusionnées')}</Badge>}
           {job.result.duplicates != null && <Badge>{formatCount(job.result.duplicates, 'offre déjà connue', 'offres déjà connues')}</Badge>}
           {job.result.profileFiltered != null && <Badge>{formatCount(job.result.profileFiltered, 'offre hors profil', 'offres hors profil')}</Badge>}
-          {(job.result.failed ?? 0) > 0 && <Badge tone="warn">{formatCount(job.result.failed, 'échec', 'échecs')}</Badge>}
+          {(job.result.failed ?? 0) > 0 && <Badge tone="warn">{formatCount(job.result.failed ?? 0, 'échec', 'échecs')}</Badge>}
         </div>
       )}
 

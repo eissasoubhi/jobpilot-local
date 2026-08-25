@@ -56,7 +56,7 @@ describe('SyncRunPanel failed connector retry', () => {
     apiMock.mockReset();
   });
 
-  it('retries only connectors that failed during the completed run', async () => {
+  it('renders compact connector results and retries only connectors that failed during the completed run', async () => {
     apiMock.mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === '/job-search/sync/current') return snapshot;
       if (path === '/job-search/sync?force=1') {
@@ -72,7 +72,10 @@ describe('SyncRunPanel failed connector retry', () => {
 
     render(<SyncRunPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Réessayer la source en erreur' }));
+    expect(await screen.findByText('0 nouvelles offres · 0 déjà connues · 1 échec')).toBeInTheDocument();
+    expect(screen.getByText('2 nouvelles offres · 8 déjà connues')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réessayer la source en erreur' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith(
       '/job-search/sync?force=1',

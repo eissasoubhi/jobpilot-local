@@ -39,13 +39,26 @@ final class JobController
     #[Route('', methods: ['GET'])]
     public function list(): JsonResponse
     {
-        $jobs = $this->em->getRepository(JobOffer::class)->findAll();
+        $jobs = $this->em->getRepository(JobOffer::class)->createQueryBuilder('job')
+            ->leftJoin('job.occurrences', 'occurrence')
+            ->addSelect('occurrence')
+            ->leftJoin('job.recommendedCv', 'recommendedCv')
+            ->addSelect('recommendedCv')
+            ->getQuery()
+            ->getResult();
         $applications = $this->em->getRepository(Application::class)->findAll();
         $profile = $this->data->profile();
         $sourcePerformance = $this->sourcePerformance();
+        $reactions = $this->reactionPreferences->evaluateMany($jobs, $applications);
 
-        $ranked = array_map(function (JobOffer $job) use ($profile, $sourcePerformance, $applications): array {
-            $priority = $this->adaptivePriority($job, $profile, $sourcePerformance, $applications);
+        $ranked = array_map(function (JobOffer $job) use ($profile, $sourcePerformance, $applications, $reactions): array {
+            $priority = $this->adaptivePriority(
+                $job,
+                $profile,
+                $sourcePerformance,
+                $applications,
+                $reactions[spl_object_id($job)] ?? null,
+            );
             $payload = $job->toArray();
             $payload['priorityScore'] = $priority['score'];
             $payload['priorityReasons'] = $priority['reasons'];
@@ -134,6 +147,7 @@ final class JobController
     /**
      * @param array<string, array<string, int|string|float|null>> $sourcePerformance
      * @param iterable<Application> $applications
+     * @param array{score:int, adjustment:int, evidence:int, similarityWeight:float}|null $reaction
      * @return array{score:int,reasons:list<string>,components:array<string,int>}
      */
     private function adaptivePriority(
@@ -141,9 +155,10 @@ final class JobController
         CandidateProfile $profile,
         array $sourcePerformance,
         iterable $applications,
+        ?array $reaction = null,
     ): array {
         $priority = $this->priorityScore->evaluate($job, $profile, $sourcePerformance);
-        $reaction = $this->reactionPreferences->evaluate($job, $applications);
+        $reaction ??= $this->reactionPreferences->evaluate($job, $applications);
         $adjustment = $job->getStatus() === 'REJECTED_BY_FILTER' ? 0 : $reaction['adjustment'];
 
         $priority['score'] = max(0, min(100, $priority['score'] + $adjustment));

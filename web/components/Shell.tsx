@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 import { AiSidebarStatus } from '@/components/AiSidebarStatus';
 import { ApplicationGoalAlerts } from '@/components/ApplicationGoalAlerts';
@@ -68,21 +69,43 @@ const navigation: readonly NavigationGroup[] = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">JP</span>
-          <div><strong>JobPilot</strong><small>Local</small></div>
+        <div className="sidebar-heading">
+          <div className="brand">
+            <span className="brand-mark">JP</span>
+            <div><strong>JobPilot</strong><small>Local</small></div>
+          </div>
+          <button
+            className="mobile-menu-button"
+            type="button"
+            aria-expanded={mobileNavigationOpen}
+            aria-controls="primary-navigation"
+            onClick={() => setMobileNavigationOpen((current) => !current)}
+          >
+            <span aria-hidden="true">{mobileNavigationOpen ? '×' : '☰'}</span>
+            <span>{mobileNavigationOpen ? 'Fermer' : 'Menu'}</span>
+          </button>
         </div>
-        <nav className="sidebar-nav" aria-label="Navigation principale">
+        <nav
+          id="primary-navigation"
+          className={`sidebar-nav${mobileNavigationOpen ? ' is-open' : ''}`}
+          aria-label="Navigation principale"
+        >
           {navigation.map((group) => (
             <div className="sidebar-nav-group" key={group.label}>
               <div className="sidebar-nav-title">{group.label}</div>
               <div className="sidebar-nav-links">
                 {group.links.map(([href, label, icon]) => (
-                  <Link key={href} href={href} className={pathname === href ? 'active' : ''}>
+                  <Link
+                    key={href}
+                    href={href}
+                    className={pathname === href ? 'active' : ''}
+                    onClick={() => setMobileNavigationOpen(false)}
+                  >
                     <span>{icon}</span>{label}
                   </Link>
                 ))}
@@ -90,12 +113,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <AiSidebarStatus />
-        <div className="sidebar-footer">
-          <div className="local-badge">● Données locales</div>
-          <div className="job-source-links" aria-label="Sources des offres">
-            <a href="https://www.arbeitnow.com" target="_blank" rel="noreferrer">Jobs by Arbeitnow</a>
-            <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Jobs by Adzuna</a>
+        <div className={`sidebar-details${mobileNavigationOpen ? ' is-open' : ''}`}>
+          <AiSidebarStatus />
+          <div className="sidebar-footer">
+            <div className="local-badge">● Données locales</div>
+            <div className="job-source-links" aria-label="Sources des offres">
+              <a href="https://www.arbeitnow.com" target="_blank" rel="noreferrer">Jobs by Arbeitnow</a>
+              <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Jobs by Adzuna</a>
+            </div>
           </div>
         </div>
       </aside>

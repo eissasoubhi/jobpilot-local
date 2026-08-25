@@ -19,12 +19,30 @@ final class JobReactionPreferenceScoreService
      */
     public function evaluate(JobOffer $job, iterable $applications): array
     {
-        $signedWeight = 0.0;
-        $totalWeight = 0.0;
-        $evidence = 0;
+        $results = $this->evaluateMany([$job], $applications);
+
+        return $results[spl_object_id($job)];
+    }
+
+    /**
+     * Evaluate a catalog without comparing every offer with every application.
+     *
+     * A pair cannot reach MIN_SIMILARITY without at least one shared title or
+     * technology token: context contributes at most 0.20. Indexing those tokens
+     * therefore removes only pairs that the scoring rule would reject anyway.
+     *
+     * @param iterable<JobOffer> $jobs
+     * @param iterable<Application> $applications
+     * @return array<int, array{score:int, adjustment:int, evidence:int, similarityWeight:float}>
+     */
+    public function evaluateMany(iterable $jobs, iterable $applications): array
+    {
+        $featureCache = [];
+        $decisions = [];
+        $decisionIndex = [];
 
         foreach ($applications as $application) {
-            if (!$application instanceof Application || $this->sameJob($job, $application->getJobOffer())) {
+            if (!$application instanceof Application) {
                 continue;
             }
 
@@ -33,12 +51,74 @@ final class JobReactionPreferenceScoreService
                 continue;
             }
 
-            $similarity = $this->similarity($job, $application->getJobOffer());
+            $decisionJob = $application->getJobOffer();
+            $features = $this->features($decisionJob, $featureCache);
+            $decisionId = count($decisions);
+            $decisions[] = [
+                'application' => $application,
+                'job' => $decisionJob,
+                'signal' => $signal,
+                'features' => $features,
+            ];
+
+            foreach (array_unique([...$features['title'], ...$features['technologies']]) as $token) {
+                $decisionIndex[$token][$decisionId] = true;
+            }
+        }
+
+        $results = [];
+        foreach ($jobs as $job) {
+            if (!$job instanceof JobOffer) {
+                continue;
+            }
+
+            $features = $this->features($job, $featureCache);
+            $candidateIds = [];
+            foreach (array_unique([...$features['title'], ...$features['technologies']]) as $token) {
+                foreach ($decisionIndex[$token] ?? [] as $decisionId => $_) {
+                    $candidateIds[$decisionId] = true;
+                }
+            }
+
+            $candidates = [];
+            foreach (array_keys($candidateIds) as $decisionId) {
+                $candidates[] = $decisions[$decisionId];
+            }
+
+            $results[spl_object_id($job)] = $this->evaluateCandidates($job, $features, $candidates);
+        }
+
+        return $results;
+    }
+
+    /**
+     * @param array{title:list<string>, technologies:list<string>} $jobFeatures
+     * @param list<array{application:Application, job:JobOffer, signal:int, features:array{title:list<string>, technologies:list<string>}}> $decisions
+     * @return array{score:int, adjustment:int, evidence:int, similarityWeight:float}
+     */
+    private function evaluateCandidates(JobOffer $job, array $jobFeatures, array $decisions): array
+    {
+        $signedWeight = 0.0;
+        $totalWeight = 0.0;
+        $evidence = 0;
+
+        foreach ($decisions as $decision) {
+            $application = $decision['application'];
+            if ($this->sameJob($job, $application->getJobOffer())) {
+                continue;
+            }
+
+            $similarity = $this->similarity(
+                $job,
+                $jobFeatures,
+                $decision['job'],
+                $decision['features'],
+            );
             if ($similarity < self::MIN_SIMILARITY) {
                 continue;
             }
 
-            $signedWeight += $signal * $similarity;
+            $signedWeight += $decision['signal'] * $similarity;
             $totalWeight += $similarity;
             ++$evidence;
         }
@@ -94,16 +174,35 @@ final class JobReactionPreferenceScoreService
             && $left->getId() === $right->getId();
     }
 
-    private function similarity(JobOffer $left, JobOffer $right): float
+    /**
+     * @param array<int, array{title:list<string>, technologies:list<string>}> $cache
+     * @return array{title:list<string>, technologies:list<string>}
+     */
+    private function features(JobOffer $job, array &$cache): array
     {
-        $leftTitle = $this->titleTokens($left);
-        $rightTitle = $this->titleTokens($right);
-        $titleSimilarity = $this->jaccard($leftTitle, $rightTitle);
+        $id = spl_object_id($job);
 
-        $leftTechnologies = $this->technologyTokens($left);
-        $rightTechnologies = $this->technologyTokens($right);
-        $hasTechnologyEvidence = $leftTechnologies !== [] || $rightTechnologies !== [];
-        $technologySimilarity = $this->jaccard($leftTechnologies, $rightTechnologies);
+        return $cache[$id] ??= [
+            'title' => $this->titleTokens($job),
+            'technologies' => $this->technologyTokens($job),
+        ];
+    }
+
+    /**
+     * @param array{title:list<string>, technologies:list<string>} $leftFeatures
+     * @param array{title:list<string>, technologies:list<string>} $rightFeatures
+     */
+    private function similarity(
+        JobOffer $left,
+        array $leftFeatures,
+        JobOffer $right,
+        array $rightFeatures,
+    ): float
+    {
+        $titleSimilarity = $this->jaccard($leftFeatures['title'], $rightFeatures['title']);
+
+        $hasTechnologyEvidence = $leftFeatures['technologies'] !== [] || $rightFeatures['technologies'] !== [];
+        $technologySimilarity = $this->jaccard($leftFeatures['technologies'], $rightFeatures['technologies']);
 
         $contextSimilarity = $this->contextSimilarity($left, $right);
 

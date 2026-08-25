@@ -93,6 +93,23 @@ final class JobReactionPreferenceScoreServiceTest extends TestCase
         self::assertSame(0, $result['adjustment']);
     }
 
+    public function testBatchEvaluationKeepsIndependentResultsForMultipleTargets(): void
+    {
+        $phpTarget = $this->job('PHP Symfony Developer', 'PHP Symfony API Platform');
+        $javaTarget = $this->job('Java Spring Developer', 'Java Spring Boot Kafka');
+        $applications = [
+            $this->decision($this->job('Senior PHP Symfony Engineer', 'PHP Symfony API'), 'SUBMITTED'),
+            $this->decision($this->job('Java Spring Backend', 'Java Spring Boot'), 'IGNORED_NOT_MATCH'),
+        ];
+
+        $results = $this->service->evaluateMany([$phpTarget, $javaTarget], $applications);
+
+        self::assertGreaterThan(50, $results[spl_object_id($phpTarget)]['score']);
+        self::assertLessThan(50, $results[spl_object_id($javaTarget)]['score']);
+        self::assertSame(1, $results[spl_object_id($phpTarget)]['evidence']);
+        self::assertSame(1, $results[spl_object_id($javaTarget)]['evidence']);
+    }
+
     private function decision(JobOffer $job, string $status): Application
     {
         return (new Application($job))->fill(['status' => $status]);

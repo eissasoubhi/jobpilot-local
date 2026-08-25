@@ -1,3 +1,5 @@
+import offlineStyles from './offline-state.module.css';
+
 export function PageHeader({ title, description, actions }: { title:string; description?:string; actions?:React.ReactNode }) {
   return <div className="page-header"><div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div>{actions}</div>}</div>;
 }
@@ -21,13 +23,13 @@ export function OfflineState({
   retryLabel?: string;
 }) {
   return (
-    <section className="offline-state" role="status" aria-live="polite">
-      <div className="offline-state-icon" aria-hidden="true">☁</div>
-      <div className="offline-state-content">
-        <strong className="offline-state-title">{title}</strong>
+    <section className={offlineStyles.state} role="status" aria-live="polite">
+      <div className={offlineStyles.icon} aria-hidden="true">☁</div>
+      <div className={offlineStyles.content}>
+        <strong className={offlineStyles.title}>{title}</strong>
         <p>{message}</p>
         {technicalDetail && (
-          <div className="offline-state-detail">Détail technique : {technicalDetail}</div>
+          <div className={offlineStyles.detail}>Détail technique : {technicalDetail}</div>
         )}
         <button className="btn secondary small" type="button" onClick={onRetry}>
           {retryLabel}

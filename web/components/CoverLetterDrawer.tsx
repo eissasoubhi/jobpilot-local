@@ -113,6 +113,13 @@ export function CoverLetterDrawer({
 
   if (!open) return null;
 
+  const targetCompanyOverride = (): { targetCompany?: string } => {
+    const resolved = jobTargetCompany(application.jobOffer).trim();
+    const requested = targetCompany.trim();
+
+    return requested === resolved ? {} : { targetCompany: requested };
+  };
+
   const save = async (): Promise<void> => {
     if (saving || regenerating || regeneratingMessage || draft.trim() === '') return;
 
@@ -154,7 +161,7 @@ export function CoverLetterDrawer({
     try {
       const updated = await api<EditableApplication>(`/applications/${application.id}/cover-letter/regenerate`, {
         method: 'POST',
-        body: JSON.stringify({ maxCharacters, targetCompany: targetCompany.trim() }),
+        body: JSON.stringify({ maxCharacters, ...targetCompanyOverride() }),
       });
       setEditing(false);
       setDraft(updated.coverLetter);
@@ -181,7 +188,7 @@ export function CoverLetterDrawer({
     try {
       const updated = await api<Application>(`/applications/${application.id}/message/regenerate`, {
         method: 'POST',
-        body: JSON.stringify({ maxCharacters: messageMaxCharacters, targetCompany: targetCompany.trim() }),
+        body: JSON.stringify({ maxCharacters: messageMaxCharacters, ...targetCompanyOverride() }),
       });
       setNotice(`Message court régénéré avec une limite de ${messageMaxCharacters} caractères.`);
       onApplicationUpdated?.(updated);

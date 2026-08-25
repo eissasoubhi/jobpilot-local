@@ -57,6 +57,7 @@ docker compose up --build
 Ouvrir ensuite :
 
 - Interface : http://localhost:3000
+- Nom local recommandé (après `start.command`) : http://jobpilot.test
 - API : http://localhost:8080/api/health
 
 Les ports sont liés à `127.0.0.1`, donc l'application n'est pas exposée au réseau local.

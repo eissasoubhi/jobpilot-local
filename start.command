@@ -2,8 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-JOBPOST_HOST="jobpost.test"
-JOBPOST_URL="http://${JOBPOST_HOST}"
+JOBPILOT_HOST="jobpilot.test"
+JOBPILOT_URL="http://${JOBPILOT_HOST}"
 LOCALHOST_URL="http://localhost:3000"
 HOST_CONFIGURED=false
 PROXY_NETWORK="${LOCAL_DEV_PROXY_NETWORK:-local-dev-proxy}"
@@ -18,18 +18,18 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-if grep -Eq '(^|[[:space:]])jobpost\.test([[:space:]]|$)' /etc/hosts; then
+if grep -Eq '(^|[[:space:]])jobpilot\.test([[:space:]]|$)' /etc/hosts; then
   HOST_CONFIGURED=true
 else
-  echo "Configuration facultative du nom local ${JOBPOST_HOST}..."
+  echo "Configuration facultative du nom local ${JOBPILOT_HOST}..."
   if osascript >/dev/null <<'APPLESCRIPT'
-do shell script "printf '\n# JobPilot local\n127.0.0.1 jobpost.test\n' >> /etc/hosts" with administrator privileges
+do shell script "printf '\n# JobPilot local\n127.0.0.1 jobpilot.test jobpost.test\n' >> /etc/hosts" with administrator privileges
 APPLESCRIPT
   then
     HOST_CONFIGURED=true
   else
     echo "Nom local non configuré ; JobPilot restera accessible via ${LOCALHOST_URL}."
-    JOBPOST_URL="${LOCALHOST_URL}"
+    JOBPILOT_URL="${LOCALHOST_URL}"
   fi
 fi
 
@@ -49,27 +49,26 @@ path.write_text(content)
 PY
 fi
 
-# Prefer jobpost.test when the host is configured, but retain the historical
+# Prefer jobpilot.test when the host is configured, but retain the historical
 # localhost URL when the user declines the optional system-level hosts change.
 if [ "${HOST_CONFIGURED}" = true ]; then
   python3 <<'PY'
 from pathlib import Path
 path = Path('.env')
 content = path.read_text()
-old = 'WEB_URL=http://localhost:3000'
-new = 'WEB_URL=http://jobpost.test'
-if old in content:
-    path.write_text(content.replace(old, new))
+for old in ('WEB_URL=http://localhost:3000', 'WEB_URL=http://jobpost.test'):
+    content = content.replace(old, 'WEB_URL=http://jobpilot.test')
+path.write_text(content)
 PY
 else
   python3 <<'PY'
 from pathlib import Path
 path = Path('.env')
 content = path.read_text()
-preferred = 'WEB_URL=http://jobpost.test'
 fallback = 'WEB_URL=http://localhost:3000'
-if preferred in content:
-    path.write_text(content.replace(preferred, fallback))
+for preferred in ('WEB_URL=http://jobpilot.test', 'WEB_URL=http://jobpost.test'):
+    content = content.replace(preferred, fallback)
+path.write_text(content)
 PY
 fi
 
@@ -107,7 +106,7 @@ http:
     jobpilot-web:
       entryPoints:
         - web
-      rule: "Host(`jobpost.test`)"
+      rule: "Host(`jobpilot.test`) || Host(`jobpost.test`)"
       service: jobpilot-web
   services:
     jobpilot-web:
@@ -121,15 +120,15 @@ for _ in {1..90}; do
   # /api/health only proves that HTTP routing works. Also require a small
   # database-backed endpoint so the browser is not opened on a shell whose API
   # requests will stay pending indefinitely.
-  if curl --max-time 5 -fsS "${JOBPOST_URL}/api/health" >/dev/null 2>&1 \
-    && curl --max-time 5 -fsS "${JOBPOST_URL}/api/settings/ai" >/dev/null 2>&1; then
+  if curl --max-time 5 -fsS "${JOBPILOT_URL}/api/health" >/dev/null 2>&1 \
+    && curl --max-time 5 -fsS "${JOBPILOT_URL}/api/settings/ai" >/dev/null 2>&1; then
     echo
     echo "Vérification des migrations de base de données..."
     if ! docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
       echo "Impossible d’appliquer les migrations. Consulte les logs avec : docker compose logs --tail=200 api"
       exit 1
     fi
-    open "${JOBPOST_URL}"
+    open "${JOBPILOT_URL}"
     exit 0
   fi
   printf '.'

@@ -5,7 +5,7 @@ const apiInternalUrl =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: ['jobpost.test'],
+  allowedDevOrigins: ['jobpilot.test', 'jobpost.test'],
 
   // Manual job discovery can legitimately take longer than Next.js' default
   // external rewrite proxy timeout because connectors are queried serially and

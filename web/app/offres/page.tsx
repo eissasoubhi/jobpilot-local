@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Card, Empty, ErrorBox, Loading, OfflineState, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { matchesOfferInboxView, type OfferInboxView } from '@/lib/offer-inbox';
@@ -167,6 +167,7 @@ export default function JobsPage() {
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [form, setForm] = useState<JobForm>(initialForm);
   const [error, setError] = useState('');
+  const [catalogError, setCatalogError] = useState('');
   const [show, setShow] = useState(false);
   const [filter, setFilter] = useState('all');
   const [inboxView, setInboxView] = useState<OfferInboxView>('actionable');
@@ -175,13 +176,15 @@ export default function JobsPage() {
   const [syncInfo, setSyncInfo] = useState<SyncResult | null>(null);
   const [syncRun, setSyncRun] = useState<SyncJob | null>(null);
 
-  const loadJobs = useCallback(async (): Promise<void> => {
+  const loadJobs = useCallback(async (): Promise<boolean> => {
     try {
       const result = await api<Job[]>('/jobs');
       setJobs(result);
+      setCatalogError('');
+      return true;
     } catch (caughtError: unknown) {
-      setJobs((current) => current ?? []);
-      setError(getErrorMessage(caughtError));
+      setCatalogError(getErrorMessage(caughtError));
+      return false;
     }
   }, []);
 
@@ -244,14 +247,24 @@ export default function JobsPage() {
     }
   }, [loadApplications, loadJobs, pollSync]);
 
+  const retryWorkspace = useCallback(async (): Promise<void> => {
+    setError('');
+    setCatalogError('');
+    const loaded = await loadJobs();
+    if (!loaded) return;
+
+    void loadApplications();
+    void syncJobs(false);
+  }, [loadApplications, loadJobs, syncJobs]);
+
   useEffect(() => {
     let active = true;
 
     void (async () => {
       // The local catalog is the first paint. Applications and connector sync are
       // intentionally started only after those already synchronized offers render.
-      await loadJobs();
-      if (!active) return;
+      const loaded = await loadJobs();
+      if (!active || !loaded) return;
 
       void loadApplications();
       void syncJobs(false);
@@ -341,6 +354,7 @@ export default function JobsPage() {
         : syncRun?.status === 'success'
           ? 'Recherche terminée.'
           : null;
+  const isCatalogOffline = catalogError !== '';
 
   return (
     <>
@@ -353,224 +367,236 @@ export default function JobsPage() {
             <button
               className="btn secondary"
               type="button"
-              disabled={syncing}
+              disabled={syncing || isCatalogOffline}
               onClick={() => void syncJobs(true)}
             >
               {syncing ? 'Recherche en cours…' : 'Rechercher maintenant'}
             </button>
-            <button className="btn" type="button" onClick={() => setShow(true)}>
+            <button className="btn" type="button" disabled={isCatalogOffline} onClick={() => setShow(true)}>
               Ajouter une offre
             </button>
           </div>
         }
       />
-      {error !== '' && <ErrorBox message={error} />}
 
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div>
-            <div className="actions" style={{ alignItems: 'center' }}>
-              <strong>Recherche automatique</strong>
-              <Badge tone={syncing ? 'blue' : 'good'}>
-                {syncing ? 'Worker actif' : 'Données locales affichées'}
-              </Badge>
-              {applications === null && <Badge>Suivi candidatures en cours…</Badge>}
-            </div>
-            <div className="muted small" style={{ marginTop: 7 }}>
-              {syncing
-                ? syncStatusMessage ?? 'La recherche est exécutée en arrière-plan sans bloquer JobPilot.'
-                : syncInfo?.message ?? syncStatusMessage ?? 'Les offres locales sont affichées en premier. La recherche automatique complète ensuite la liste sans bloquer la page.'}
-            </div>
-          </div>
-          <div className="small muted">
-            Dernière recherche : <strong>{formatDate(syncInfo?.lastSyncedAt)}</strong>
-          </div>
-        </div>
+      {isCatalogOffline ? (
+        <OfflineState
+          title="JobPilot ne peut pas charger les offres"
+          message="L’API locale est indisponible pour le moment. Les données et la synchronisation restent en pause jusqu’au retour du service."
+          technicalDetail={catalogError}
+          onRetry={() => void retryWorkspace()}
+        />
+      ) : (
+        <>
+          {error !== '' && <ErrorBox message={error} />}
 
-        {syncInfo && (
-          <div className="actions" style={{ marginTop: 12 }}>
-            <Badge tone="blue">Sources : {providerNames || 'aucune'}</Badge>
-            {syncInfo.imported != null && <Badge tone="good">{syncInfo.imported} nouvelle(s)</Badge>}
-            {syncInfo.merged != null && <Badge tone="blue">{syncInfo.merged} source(s) fusionnée(s)</Badge>}
-            {syncInfo.duplicates != null && <Badge>{syncInfo.duplicates} occurrence(s) connue(s)</Badge>}
-            {syncInfo.failed != null && syncInfo.failed > 0 && <Badge tone="warn">{syncInfo.failed} échec(s)</Badge>}
-          </div>
-        )}
-
-        {syncInfo?.errors && syncInfo.errors.length > 0 && (
-          <details style={{ marginTop: 10 }}>
-            <summary className="small muted">Détails des sources indisponibles</summary>
-            <ul>
-              {syncInfo.errors.map((syncError) => <li className="small" key={syncError}>{syncError}</li>)}
-            </ul>
-          </details>
-        )}
-
-        <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
-          Une nouvelle plateforme ajoute une occurrence à l’offre existante lorsqu’URL, entreprise et intitulé correspondent avec une confiance suffisante.
-        </p>
-      </Card>
-
-      <Card>
-        <label style={{ maxWidth: 360 }}>
-          Filtrer par source
-          <select
-            aria-label="Filtrer par source"
-            value={sourceFilter}
-            onChange={(event) => setSourceFilter(event.target.value)}
-          >
-            <option value="all">Toutes les sources</option>
-            {sources.map((source) => <option key={source} value={source}>{source}</option>)}
-          </select>
-        </label>
-      </Card>
-
-      <div className="tabs" aria-label="Boîte des offres">
-        {[
-          ['actionable', 'À traiter'],
-          ['submitted', 'Envoyées'],
-          ['ignored', 'Ignorées'],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            className={inboxView === value ? 'active' : ''}
-            type="button"
-            onClick={() => setInboxView(value as OfferInboxView)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="tabs" aria-label="Filtres des offres">
-        {[
-          ['all', 'Toutes'],
-          ['PREPARED', 'Préparées'],
-          ['MATCHED', 'À examiner'],
-          ['REJECTED_BY_FILTER', 'Exclues'],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            className={filter === value ? 'active' : ''}
-            type="button"
-            onClick={() => setFilter(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <Card>
-        {jobs === null ? (
-          <Loading />
-        ) : displayed.length === 0 ? (
-          <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>
-        ) : (
-          displayed.map((job) => {
-            const jobOccurrences = occurrences(job);
-            const application = applicationsByJobId.get(job.id);
-
-            return (
-              <div className="list-row" key={job.id}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="actions" style={{ marginBottom: 6 }}>
-                    <Badge tone={tone(job.status)}>{job.status}</Badge>
-                    <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
-                    <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
-                    <Badge tone={jobOccurrences.length > 1 ? 'blue' : 'neutral'}>
-                      {jobOccurrences.length} source{jobOccurrences.length > 1 ? 's' : ''}
-                    </Badge>
-                    {jobOccurrences.slice(0, 4).map((source) => (
-                      <Badge key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
-                        {source.sourceName}
-                      </Badge>
-                    ))}
-                    {jobOccurrences.length > 4 && <Badge>+{jobOccurrences.length - 4}</Badge>}
-                    {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
-                    {job.proposedSalary != null && (
-                      <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
-                    )}
-                  </div>
-                  <h3>{job.title}</h3>
-                  <div className="muted small">
-                    {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
-                  </div>
-                  {job.recommendedCv && (
-                    <div className="small" style={{ marginTop: 7 }}>
-                      CV conseillé : <strong>{job.recommendedCv.name}</strong>
-                    </div>
-                  )}
-                  {application && (
-                    <OfferApplicationSummary
-                      application={application}
-                      onApplicationUpdated={updateApplication}
-                    />
-                  )}
-                  <details style={{ marginTop: 8 }}>
-                    <summary className="small muted">Pourquoi ce score ?</summary>
-                    <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
-                  </details>
-                  <details style={{ marginTop: 8 }}>
-                    <summary className="small muted">
-                      Sources de cette offre ({jobOccurrences.length})
-                    </summary>
-                    <div className="stack" style={{ gap: 8, marginTop: 10 }}>
-                      {jobOccurrences.map((source) => (
-                        <div className="notice" key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
-                          <div className="actions">
-                            <strong>{source.sourceName}</strong>
-                            <Badge tone={source.matchType === 'PRIMARY' || source.matchType === 'LEGACY' ? 'neutral' : 'blue'}>
-                              {matchLabel(source.matchType)}
-                            </Badge>
-                            {source.matchType !== 'PRIMARY' && source.matchType !== 'LEGACY' && (
-                              <Badge>{source.matchScore} %</Badge>
-                            )}
-                          </div>
-                          {source.matchReasons.length > 0 && (
-                            <div className="small muted" style={{ marginTop: 6 }}>
-                              {source.matchReasons.join(' ')}
-                            </div>
-                          )}
-                          {source.sourceUrl && (
-                            <a
-                              className="btn secondary small"
-                              href={source.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ marginTop: 8 }}
-                            >
-                              Ouvrir sur {source.sourceName}
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                  <div className="actions" style={{ marginTop: 10 }}>
-                    {job.sourceUrl && (
-                      <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
-                        Ouvrir la source principale
-                      </a>
-                    )}
-                    {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
-                      <button className="btn small" type="button" onClick={() => void prepare(job.id)}>
-                        Préparer
-                      </button>
-                    )}
-                  </div>
+          <Card>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div>
+                <div className="actions" style={{ alignItems: 'center' }}>
+                  <strong>Recherche automatique</strong>
+                  <Badge tone={syncing ? 'blue' : 'good'}>
+                    {syncing ? 'Worker actif' : 'Données locales affichées'}
+                  </Badge>
+                  {applications === null && <Badge>Suivi candidatures en cours…</Badge>}
                 </div>
-                <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
+                <div className="muted small" style={{ marginTop: 7 }}>
+                  {syncing
+                    ? syncStatusMessage ?? 'La recherche est exécutée en arrière-plan sans bloquer JobPilot.'
+                    : syncInfo?.message ?? syncStatusMessage ?? 'Les offres locales sont affichées en premier. La recherche automatique complète ensuite la liste sans bloquer la page.'}
+                </div>
               </div>
-            );
-          })
-        )}
+              <div className="small muted">
+                Dernière recherche : <strong>{formatDate(syncInfo?.lastSyncedAt)}</strong>
+              </div>
+            </div>
 
-        {jobs?.some((job) => occurrences(job).some((source) => source.sourceName === 'Adzuna')) && (
-          <p className="small muted" style={{ marginBottom: 0, marginTop: 16 }}>
-            Jobs by <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Adzuna</a>
-          </p>
-        )}
-      </Card>
+            {syncInfo && (
+              <div className="actions" style={{ marginTop: 12 }}>
+                <Badge tone="blue">Sources : {providerNames || 'aucune'}</Badge>
+                {syncInfo.imported != null && <Badge tone="good">{syncInfo.imported} nouvelle(s)</Badge>}
+                {syncInfo.merged != null && <Badge tone="blue">{syncInfo.merged} source(s) fusionnée(s)</Badge>}
+                {syncInfo.duplicates != null && <Badge>{syncInfo.duplicates} occurrence(s) connue(s)</Badge>}
+                {syncInfo.failed != null && syncInfo.failed > 0 && <Badge tone="warn">{syncInfo.failed} échec(s)</Badge>}
+              </div>
+            )}
+
+            {syncInfo?.errors && syncInfo.errors.length > 0 && (
+              <details style={{ marginTop: 10 }}>
+                <summary className="small muted">Détails des sources indisponibles</summary>
+                <ul>
+                  {syncInfo.errors.map((syncError) => <li className="small" key={syncError}>{syncError}</li>)}
+                </ul>
+              </details>
+            )}
+
+            <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
+              Une nouvelle plateforme ajoute une occurrence à l’offre existante lorsqu’URL, entreprise et intitulé correspondent avec une confiance suffisante.
+            </p>
+          </Card>
+
+          <Card>
+            <label style={{ maxWidth: 360 }}>
+              Filtrer par source
+              <select
+                aria-label="Filtrer par source"
+                value={sourceFilter}
+                onChange={(event) => setSourceFilter(event.target.value)}
+              >
+                <option value="all">Toutes les sources</option>
+                {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+              </select>
+            </label>
+          </Card>
+
+          <div className="tabs" aria-label="Boîte des offres">
+            {[
+              ['actionable', 'À traiter'],
+              ['submitted', 'Envoyées'],
+              ['ignored', 'Ignorées'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                className={inboxView === value ? 'active' : ''}
+                type="button"
+                onClick={() => setInboxView(value as OfferInboxView)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="tabs" aria-label="Filtres des offres">
+            {[
+              ['all', 'Toutes'],
+              ['PREPARED', 'Préparées'],
+              ['MATCHED', 'À examiner'],
+              ['REJECTED_BY_FILTER', 'Exclues'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                className={filter === value ? 'active' : ''}
+                type="button"
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <Card>
+            {jobs === null ? (
+              <Loading />
+            ) : displayed.length === 0 ? (
+              <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>
+            ) : (
+              displayed.map((job) => {
+                const jobOccurrences = occurrences(job);
+                const application = applicationsByJobId.get(job.id);
+
+                return (
+                  <div className="list-row" key={job.id}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="actions" style={{ marginBottom: 6 }}>
+                        <Badge tone={tone(job.status)}>{job.status}</Badge>
+                        <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
+                        <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
+                        <Badge tone={jobOccurrences.length > 1 ? 'blue' : 'neutral'}>
+                          {jobOccurrences.length} source{jobOccurrences.length > 1 ? 's' : ''}
+                        </Badge>
+                        {jobOccurrences.slice(0, 4).map((source) => (
+                          <Badge key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                            {source.sourceName}
+                          </Badge>
+                        ))}
+                        {jobOccurrences.length > 4 && <Badge>+{jobOccurrences.length - 4}</Badge>}
+                        {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
+                        {job.proposedSalary != null && (
+                          <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
+                        )}
+                      </div>
+                      <h3>{job.title}</h3>
+                      <div className="muted small">
+                        {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
+                      </div>
+                      {job.recommendedCv && (
+                        <div className="small" style={{ marginTop: 7 }}>
+                          CV conseillé : <strong>{job.recommendedCv.name}</strong>
+                        </div>
+                      )}
+                      {application && (
+                        <OfferApplicationSummary
+                          application={application}
+                          onApplicationUpdated={updateApplication}
+                        />
+                      )}
+                      <details style={{ marginTop: 8 }}>
+                        <summary className="small muted">Pourquoi ce score ?</summary>
+                        <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
+                      </details>
+                      <details style={{ marginTop: 8 }}>
+                        <summary className="small muted">
+                          Sources de cette offre ({jobOccurrences.length})
+                        </summary>
+                        <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+                          {jobOccurrences.map((source) => (
+                            <div className="notice" key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                              <div className="actions">
+                                <strong>{source.sourceName}</strong>
+                                <Badge tone={source.matchType === 'PRIMARY' || source.matchType === 'LEGACY' ? 'neutral' : 'blue'}>
+                                  {matchLabel(source.matchType)}
+                                </Badge>
+                                {source.matchType !== 'PRIMARY' && source.matchType !== 'LEGACY' && (
+                                  <Badge>{source.matchScore} %</Badge>
+                                )}
+                              </div>
+                              {source.matchReasons.length > 0 && (
+                                <div className="small muted" style={{ marginTop: 6 }}>
+                                  {source.matchReasons.join(' ')}
+                                </div>
+                              )}
+                              {source.sourceUrl && (
+                                <a
+                                  className="btn secondary small"
+                                  href={source.sourceUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{ marginTop: 8 }}
+                                >
+                                  Ouvrir sur {source.sourceName}
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                      <div className="actions" style={{ marginTop: 10 }}>
+                        {job.sourceUrl && (
+                          <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
+                            Ouvrir la source principale
+                          </a>
+                        )}
+                        {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
+                          <button className="btn small" type="button" onClick={() => void prepare(job.id)}>
+                            Préparer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
+                  </div>
+                );
+              })
+            )}
+
+            {jobs?.some((job) => occurrences(job).some((source) => source.sourceName === 'Adzuna')) && (
+              <p className="small muted" style={{ marginBottom: 0, marginTop: 16 }}>
+                Jobs by <a href="https://www.adzuna.fr" target="_blank" rel="noreferrer">Adzuna</a>
+              </p>
+            )}
+          </Card>
+        </>
+      )}
 
       {show && (
         <div className="modal-backdrop" onMouseDown={() => setShow(false)}>

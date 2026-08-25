@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { formatCount } from '@/lib/formatCount';
 import type { ConnectorSyncRun, SourceConnector } from '@/lib/types';
 
 function formatDate(value: string | null | undefined): string {
@@ -164,7 +165,7 @@ export default function ConnectorsPage() {
       {activeAlerts.length > 0 && (
         <Card>
           <div className="actions" style={{ marginBottom: 8 }}>
-            <Badge tone="bad">{activeAlerts.length} alerte(s) connecteur</Badge>
+            <Badge tone="bad">{formatCount(activeAlerts.length, 'alerte connecteur', 'alertes connecteur')}</Badge>
           </div>
           {activeAlerts.map((connector) => (
             <p className="small" key={connector.code} style={{ marginBottom: 6 }}>
@@ -232,10 +233,10 @@ export default function ConnectorsPage() {
                     <div className="actions" style={{ marginTop: 12 }}>
                       <Badge>Revue : {formatReviewDate(connector.policy.reviewedAt)}</Badge>
                       {connector.policy.maxRequestsPerSync != null && (
-                        <Badge>{connector.policy.maxRequestsPerSync} requête(s) max/sync</Badge>
+                        <Badge>{formatCount(connector.policy.maxRequestsPerSync, 'requête max/sync', 'requêtes max/sync')}</Badge>
                       )}
                       {connector.policy.dailyQuota != null && (
-                        <Badge>{connector.policy.dailyQuota} requête(s) max/jour</Badge>
+                        <Badge>{formatCount(connector.policy.dailyQuota, 'requête max/jour', 'requêtes max/jour')}</Badge>
                       )}
                       {connector.policy.minimumDelayMilliseconds > 0 && (
                         <Badge>Délai min. {duration(connector.policy.minimumDelayMilliseconds)}</Badge>
@@ -244,14 +245,14 @@ export default function ConnectorsPage() {
                     </div>
 
                     <div className="actions" style={{ marginTop: 12 }}>
-                      <Badge>Référence : {connector.health.sampleSize} sync(s)</Badge>
+                      <Badge>Référence : {formatCount(connector.health.sampleSize, 'sync', 'syncs')}</Badge>
                       <Badge>Taux récent : {percentage(connector.health.lastExtractionRate)}</Badge>
                       {connector.health.baselineAverageReceived != null && (
-                        <Badge>Moyenne positive : {connector.health.baselineAverageReceived} offre(s)</Badge>
+                        <Badge>Moyenne positive : {formatCount(connector.health.baselineAverageReceived, 'offre', 'offres')}</Badge>
                       )}
                       {connector.health.consecutiveZeroRuns > 0 && (
                         <Badge tone={connector.health.alert ? 'warn' : 'neutral'}>
-                          {connector.health.consecutiveZeroRuns} sync(s) vide(s)
+                          {formatCount(connector.health.consecutiveZeroRuns, 'sync vide', 'syncs vides')}
                         </Badge>
                       )}
                     </div>
@@ -266,7 +267,7 @@ export default function ConnectorsPage() {
                         </Badge>
                         <Badge>Qualité globale : {percentage(connector.fieldQuality.overallCompleteness)}</Badge>
                         {connector.fieldQuality.missingRequiredRecords > 0 && (
-                          <Badge tone="bad">{connector.fieldQuality.missingRequiredRecords} offre(s) incomplète(s)</Badge>
+                          <Badge tone="bad">{formatCount(connector.fieldQuality.missingRequiredRecords, 'offre incomplète', 'offres incomplètes')}</Badge>
                         )}
                       </div>
                     )}
@@ -275,7 +276,7 @@ export default function ConnectorsPage() {
                       <div className="actions" style={{ marginTop: 9 }}>
                         {missingFields.map(([field, metrics]) => (
                           <Badge key={field} tone={metrics.category === 'required' ? 'bad' : 'warn'}>
-                            {fieldLabel(field)} : {metrics.missing} absent(s)
+                            {fieldLabel(field)} : {formatCount(metrics.missing, 'absent', 'absents')}
                           </Badge>
                         ))}
                       </div>
@@ -284,10 +285,10 @@ export default function ConnectorsPage() {
                     <div className="actions" style={{ marginTop: 12 }}>
                       <Badge>Dernière sync : {formatDate(connector.lastSyncedAt)}</Badge>
                       <Badge>Prochaine : {connector.enabled && connector.configured && connector.collectionAllowed ? formatDate(connector.nextSyncAt) : 'non planifiée'}</Badge>
-                      <Badge tone="good">{connector.lastResult.imported} nouvelle(s)</Badge>
-                      <Badge tone="blue">{connector.lastResult.merged} source(s) fusionnée(s)</Badge>
-                      <Badge>{connector.lastResult.duplicates} occurrence(s) connue(s)</Badge>
-                      {connector.lastResult.failed > 0 && <Badge tone="warn">{connector.lastResult.failed} échec(s)</Badge>}
+                      <Badge tone="good">{formatCount(connector.lastResult.imported, 'nouvelle', 'nouvelles')}</Badge>
+                      <Badge tone="blue">{formatCount(connector.lastResult.merged, 'source fusionnée', 'sources fusionnées')}</Badge>
+                      <Badge>{formatCount(connector.lastResult.duplicates, 'occurrence connue', 'occurrences connues')}</Badge>
+                      {connector.lastResult.failed > 0 && <Badge tone="warn">{formatCount(connector.lastResult.failed, 'échec', 'échecs')}</Badge>}
                     </div>
 
                     <div className="actions" style={{ marginTop: 14 }}>
@@ -339,18 +340,18 @@ export default function ConnectorsPage() {
                     <Badge>Qualité {percentage(run.details.fieldQuality.overallCompleteness)}</Badge>
                   )}
                   {run.details.fieldQuality && run.details.fieldQuality.missingRequiredRecords > 0 && (
-                    <Badge tone="bad">{run.details.fieldQuality.missingRequiredRecords} incomplète(s)</Badge>
+                    <Badge tone="bad">{formatCount(run.details.fieldQuality.missingRequiredRecords, 'incomplète', 'incomplètes')}</Badge>
                   )}
                   {run.details.zeroResults && <Badge tone="warn">Aucun résultat</Badge>}
                 </div>
                 <h3>{run.connector.name}</h3>
                 <div className="muted small">{formatDate(run.startedAt)}</div>
                 <div className="actions" style={{ marginTop: 9 }}>
-                  <Badge>{run.received} reçue(s)</Badge>
-                  <Badge tone="good">{run.imported} nouvelle(s)</Badge>
-                  <Badge tone="blue">{run.merged} source(s) fusionnée(s)</Badge>
-                  <Badge>{run.duplicates} occurrence(s) connue(s)</Badge>
-                  {run.failed > 0 && <Badge tone="warn">{run.failed} échec(s)</Badge>}
+                  <Badge>{formatCount(run.received, 'offre reçue', 'offres reçues')}</Badge>
+                  <Badge tone="good">{formatCount(run.imported, 'nouvelle', 'nouvelles')}</Badge>
+                  <Badge tone="blue">{formatCount(run.merged, 'source fusionnée', 'sources fusionnées')}</Badge>
+                  <Badge>{formatCount(run.duplicates, 'occurrence connue', 'occurrences connues')}</Badge>
+                  {run.failed > 0 && <Badge tone="warn">{formatCount(run.failed, 'échec', 'échecs')}</Badge>}
                 </div>
                 {run.error && <p className="small" style={{ marginBottom: 0 }}>{run.error}</p>}
               </div>

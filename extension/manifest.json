@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "JobPilot Local",
+  "name": "JobPilot",
   "version": "1.0.0",
   "description": "Importe les offres visibles dans JobPilot et préremplit les formulaires avec validation manuelle.",
   "permissions": ["activeTab", "storage", "scripting"],

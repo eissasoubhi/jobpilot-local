@@ -1,6 +1,6 @@
-# JobPilot Local
+# JobPilot
 
-Application locale en français pour centraliser, rechercher, scorer, préparer et suivre les candidatures CDI, CDD et freelance.
+Application en français pour centraliser, rechercher, scorer, préparer et suivre les candidatures CDI, CDD et freelance.
 
 La documentation produit, architecture, développement et exploitation se trouve dans [`docs/`](docs/README.md).
 

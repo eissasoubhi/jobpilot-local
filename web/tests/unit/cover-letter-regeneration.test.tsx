@@ -25,7 +25,7 @@ function application(manuallyEdited = false): Application {
       id: 9,
       source: 'France Travail',
       title: 'Développeur Symfony',
-      company: 'Example',
+      company: 'Acme',
       location: 'Paris',
       contractType: 'CDI',
       workMode: 'Hybride',

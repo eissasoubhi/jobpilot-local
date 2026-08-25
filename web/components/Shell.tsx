@@ -77,7 +77,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-heading">
           <div className="brand">
             <span className="brand-mark">JP</span>
-            <div><strong>JobPilot</strong><small>Local</small></div>
+            <div><strong>JobPilot</strong></div>
           </div>
           <button
             className="mobile-menu-button"

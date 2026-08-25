@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { connectorRoadmap } from '../../lib/connector-roadmap';
@@ -35,7 +38,35 @@ const requestedPlatformNames = [
   'France Travail',
 ] as const;
 
+function renderDocumentedRoadmap(): string {
+  const rows = connectorRoadmap.map((connector) => {
+    const modes = connector.modes.length > 0
+      ? connector.modes.map((mode) => `\`${mode}\``).join(', ')
+      : '—';
+
+    return `| ${connector.name} | \`${connector.code}\` | \`${connector.status}\` | ${modes} |`;
+  });
+
+  return [
+    '| Source | Code | Status | Intended modes |',
+    '| --- | --- | --- | --- |',
+    ...rows,
+  ].join('\n');
+}
+
 describe('platform acquisition matrix', () => {
+  it('keeps the documented catalog in parity with the frontend source of truth', () => {
+    const catalog = readFileSync(
+      resolve(process.cwd(), '../docs/connectors/roadmap-catalog.md'),
+      'utf8',
+    );
+    const documentedRoadmap = catalog.match(
+      /<!-- connector-roadmap:start -->\n([\s\S]*?)\n<!-- connector-roadmap:end -->/,
+    )?.[1];
+
+    expect(documentedRoadmap).toBe(renderDocumentedRoadmap());
+  });
+
   it('uses stable unique source codes and covers every requested platform', () => {
     const codes = connectorRoadmap.map((connector) => connector.code);
     const names = connectorRoadmap.map((connector) => connector.name);

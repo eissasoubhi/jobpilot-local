@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Application;
 use App\Entity\UserSettings;
+use App\Http\ApiPagination;
 use App\Service\ApplicationCvRepairService;
 use App\Service\ApplicationMessageUpgradeService;
 use App\Service\ApplicationMotivationRegenerator;
@@ -37,17 +38,36 @@ final class ApplicationController
     ) {}
 
     #[Route('', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $items = $this->em->getRepository(Application::class)->findBy([], ['updatedAt' => 'DESC']);
+        $status = trim((string) $request->query->get('status', ''));
+        $criteria = $status === '' ? [] : ['status' => $status];
+        $pagination = ApiPagination::fromRequest($request);
+        $repository = $this->em->getRepository(Application::class);
+        $total = $pagination === null ? null : $repository->count($criteria);
+        $items = $repository->findBy(
+            $criteria,
+            ['updatedAt' => 'DESC'],
+            $pagination?->limit,
+            $pagination?->offset(),
+        );
         $this->cvRepair->repairAll($items);
         $this->messageUpgrade->upgradeLegacyMessages($items);
         $settings = $this->data->settings();
 
-        return new JsonResponse(array_map(
+        $serialized = array_map(
             fn (Application $application): array => $this->serialize($application, $settings),
             $items,
-        ));
+        );
+
+        if ($pagination !== null && $total !== null) {
+            return new JsonResponse([
+                'items' => $serialized,
+                'pagination' => $pagination->metadata($total),
+            ]);
+        }
+
+        return new JsonResponse($serialized);
     }
 
     #[Route('/{id}', methods: ['PATCH'])]

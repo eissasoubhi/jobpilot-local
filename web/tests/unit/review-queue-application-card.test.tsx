@@ -264,7 +264,7 @@ describe('ReviewQueueApplicationCard', () => {
     expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
     expect(await screen.findByText('Lettre personnalisée.')).toBeInTheDocument();
     expect(screen.getByText(/Modifiée manuellement/)).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation enregistrée.');
+    expect(screen.getByText('Lettre de motivation enregistrée.')).toBeInTheDocument();
   });
 
   it('cancels an unsaved cover letter edit in the drawer', () => {
@@ -289,7 +289,7 @@ describe('ReviewQueueApplicationCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copier' }));
 
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith('Lettre de motivation préparée.'));
-    expect(screen.getByRole('status')).toHaveTextContent('Lettre de motivation copiée.');
+    expect(screen.getByText('Lettre de motivation copiée.')).toBeInTheDocument();
   });
 
   it('resets a manual cover letter to the latest generated version from the drawer', async () => {

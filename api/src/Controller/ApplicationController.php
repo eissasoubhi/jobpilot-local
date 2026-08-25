@@ -77,10 +77,12 @@ final class ApplicationController
     {
         try {
             $maxCharacters = $this->maxCharacters($request, 400, 50, 5_000);
+            $targetCompany = $this->targetCompany($request);
             $message = $this->motivationRegenerator->message(
                 $application->getJobOffer(),
                 $this->data->profile(),
                 $maxCharacters,
+                $targetCompany,
             );
             $application->regenerateMessage($message);
         } catch (\InvalidArgumentException $exception) {
@@ -99,12 +101,14 @@ final class ApplicationController
     {
         try {
             $maxCharacters = $this->maxCharacters($request, 1_500, 200, 20_000);
+            $targetCompany = $this->targetCompany($request);
             $settings = $this->data->settings();
             $coverLetter = $this->motivationRegenerator->coverLetter(
                 $application->getJobOffer(),
                 $this->data->profile(),
                 $settings->getSkills(),
                 $maxCharacters,
+                $targetCompany,
             );
             $application->regenerateCoverLetter($coverLetter);
         } catch (\InvalidArgumentException $exception) {
@@ -196,6 +200,25 @@ final class ApplicationController
             ...$application->toArray(),
             'profileComparison' => $this->technologyComparison->compare($application->getJobOffer(), $settings),
         ];
+    }
+
+    private function targetCompany(Request $request): ?string
+    {
+        $payload = $request->toArray();
+        if (!array_key_exists('targetCompany', $payload)) {
+            return null;
+        }
+
+        if (!is_string($payload['targetCompany'])) {
+            throw new \InvalidArgumentException('Le nom de l’entreprise ciblée doit être du texte.');
+        }
+
+        $value = trim(preg_replace('/\s+/u', ' ', strip_tags($payload['targetCompany'])) ?? '');
+        if (mb_strlen($value) > 160) {
+            throw new \InvalidArgumentException('Le nom de l’entreprise ciblée ne peut pas dépasser 160 caractères.');
+        }
+
+        return $value;
     }
 
     private function maxCharacters(Request $request, int $default, int $min, int $max): int

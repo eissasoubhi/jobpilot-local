@@ -31,7 +31,7 @@ function application(message = 'Message court déjà préparé.'): Application {
       source: 'France Travail',
       sourceUrl: 'https://example.test/job/8',
       title: 'Développeur Symfony',
-      company: 'Example',
+      company: 'Acme',
       location: 'Paris',
       contractType: 'CDI',
       workMode: 'Hybride',

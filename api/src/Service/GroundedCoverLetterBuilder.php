@@ -12,17 +12,22 @@ final class GroundedCoverLetterBuilder
     /**
      * @param list<string> $profileSkills
      */
-    public function build(JobOffer $job, CandidateProfile $profile, array $profileSkills = []): string
-    {
+    public function build(
+        JobOffer $job,
+        CandidateProfile $profile,
+        array $profileSkills = [],
+        ?string $targetCompany = null,
+    ): string {
         $profileData = $profile->toArray();
         $name = trim((string) ($profileData['fullName'] ?? ''));
         $years = max(0, (int) ($profileData['yearsOfExperience'] ?? 0));
         $availability = trim((string) ($profileData['availability'] ?? ''));
         $matchingSkills = $this->matchingSkills($job, $profileSkills);
+        $company = TargetCompanyName::resolve($job, $targetCompany);
 
         return $job->getLanguage() === 'en'
-            ? $this->english($job, $name, $years, $availability, $matchingSkills)
-            : $this->french($job, $name, $years, $availability, $matchingSkills);
+            ? $this->english($job, $name, $years, $availability, $matchingSkills, $company)
+            : $this->french($job, $name, $years, $availability, $matchingSkills, $company);
     }
 
     /**
@@ -34,8 +39,8 @@ final class GroundedCoverLetterBuilder
         int $years,
         string $availability,
         array $matchingSkills,
+        string $company,
     ): string {
-        $company = trim($job->getCompany());
         $role = trim($job->getTitle()) !== '' ? trim($job->getTitle()) : 'proposé';
         $companySuffix = $company !== '' ? ' chez '.$company : '';
         $experience = $years > 0
@@ -62,8 +67,8 @@ final class GroundedCoverLetterBuilder
         int $years,
         string $availability,
         array $matchingSkills,
+        string $company,
     ): string {
-        $company = trim($job->getCompany());
         $role = trim($job->getTitle()) !== '' ? trim($job->getTitle()) : 'this role';
         $companySuffix = $company !== '' ? ' at '.$company : '';
         $experience = $years > 0

@@ -4,11 +4,17 @@ set -euo pipefail
 PROXY_NETWORK="${LOCAL_DEV_PROXY_NETWORK:-local-dev-proxy}"
 PROXY_CONTAINER="${LOCAL_DEV_PROXY_CONTAINER:-local-dev-proxy}"
 PROXY_IMAGE="${LOCAL_DEV_PROXY_IMAGE:-traefik:v3.5}"
-PROXY_LABEL="local.dev.proxy=traefik-v1"
+PROXY_CONFIG_VOLUME="${LOCAL_DEV_PROXY_CONFIG_VOLUME:-local-dev-proxy-config}"
+PROXY_KIND="traefik-file-v1"
 
 if ! docker network inspect "$PROXY_NETWORK" >/dev/null 2>&1; then
   echo "Creating shared Docker network $PROXY_NETWORK..."
   docker network create "$PROXY_NETWORK" >/dev/null
+fi
+
+if ! docker volume inspect "$PROXY_CONFIG_VOLUME" >/dev/null 2>&1; then
+  echo "Creating shared proxy config volume $PROXY_CONFIG_VOLUME..."
+  docker volume create "$PROXY_CONFIG_VOLUME" >/dev/null
 fi
 
 uses_host_port_80() {
@@ -43,7 +49,7 @@ done
 
 if docker container inspect "$PROXY_CONTAINER" >/dev/null 2>&1; then
   proxy_kind="$(docker inspect -f '{{ index .Config.Labels "local.dev.proxy" }}' "$PROXY_CONTAINER" 2>/dev/null || true)"
-  if [[ "$proxy_kind" != "traefik-v1" ]]; then
+  if [[ "$proxy_kind" != "$PROXY_KIND" ]]; then
     echo "A container named $PROXY_CONTAINER already exists but is not the managed local proxy."
     echo "Rename/remove it, or set LOCAL_DEV_PROXY_CONTAINER to another name."
     exit 1
@@ -67,12 +73,11 @@ docker run -d \
   --restart unless-stopped \
   --network "$PROXY_NETWORK" \
   --publish 127.0.0.1:80:80 \
-  --volume /var/run/docker.sock:/var/run/docker.sock:ro \
-  --label "$PROXY_LABEL" \
+  --volume "$PROXY_CONFIG_VOLUME:/etc/traefik/dynamic:ro" \
+  --label "local.dev.proxy=$PROXY_KIND" \
   "$PROXY_IMAGE" \
-  --providers.docker=true \
-  --providers.docker.exposedbydefault=false \
-  --providers.docker.network="$PROXY_NETWORK" \
+  --providers.file.directory=/etc/traefik/dynamic \
+  --providers.file.watch=true \
   --entrypoints.web.address=:80 \
   --api.dashboard=false \
   --log.level=WARN >/dev/null

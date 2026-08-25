@@ -5,18 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
-  buildApplicationTimeline,
-  type TimelineApplication,
-  type TimelineMessage,
+  presentJobTimeline,
+  type PersistedJobTimelineEvent,
 } from '@/lib/application-timeline';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
-
-type ApplicationWithDates = Application & TimelineApplication;
-
-type MessageResponse = TimelineMessage & {
-  jobOffer: { id: number; title: string; company: string } | null;
-};
 
 function companyName(application: Application): string {
   return application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
@@ -30,22 +23,21 @@ function formatDate(value: string): string {
 }
 
 export default function ApplicationTimelinePage() {
-  const [applications, setApplications] = useState<ApplicationWithDates[] | null>(null);
-  const [messages, setMessages] = useState<MessageResponse[] | null>(null);
+  const [applications, setApplications] = useState<Application[] | null>(null);
+  const [timelineState, setTimelineState] = useState<{
+    jobOfferId: number;
+    events: PersistedJobTimelineEvent[];
+  } | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
 
-    void Promise.all([
-      api<ApplicationWithDates[]>('/applications'),
-      api<MessageResponse[]>('/integrations/gmail/messages'),
-    ])
-      .then(([loadedApplications, loadedMessages]) => {
+    void api<Application[]>('/applications')
+      .then((loadedApplications) => {
         if (!active) return;
         setApplications(loadedApplications);
-        setMessages(loadedMessages);
         setSelectedId((current) => current || (loadedApplications[0] ? String(loadedApplications[0].id) : ''));
         setError('');
       })
@@ -59,28 +51,57 @@ export default function ApplicationTimelinePage() {
   }, []);
 
   const selected = applications?.find((application) => String(application.id) === selectedId) ?? null;
+  const selectedJobId = selected?.jobOffer.id ?? null;
+
+  useEffect(() => {
+    if (selectedJobId === null) {
+      return;
+    }
+
+    let active = true;
+    void api<PersistedJobTimelineEvent[]>(`/jobs/${selectedJobId}/timeline`)
+      .then((events) => {
+        if (!active) return;
+        setTimelineState({ jobOfferId: selectedJobId, events });
+        setError('');
+      })
+      .catch((caughtError: unknown) => {
+        if (!active) return;
+        setTimelineState({ jobOfferId: selectedJobId, events: [] });
+        setError(getErrorMessage(caughtError));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedJobId]);
+
+  const persistedEvents = selectedJobId !== null && timelineState?.jobOfferId === selectedJobId
+    ? timelineState.events
+    : null;
+
   const timeline = useMemo(
-    () => selected && messages ? buildApplicationTimeline(selected, messages) : [],
-    [messages, selected],
+    () => presentJobTimeline(persistedEvents ?? []),
+    [persistedEvents],
   );
 
   return (
     <>
       <PageHeader
         title="Parcours des candidatures"
-        description="Chronologie locale et en lecture seule des candidatures, envois et messages Gmail déjà associés."
+        description="Historique métier persistant et en lecture seule de chaque opportunité."
       />
 
       {error !== '' && <ErrorBox message={error} />}
 
       <Card>
-        {applications === null || messages === null ? (
+        {applications === null ? (
           <Loading />
         ) : applications.length === 0 ? (
-          <Empty>Aucune candidature n’est disponible pour construire une chronologie.</Empty>
+          <Empty>Aucune candidature n’est disponible pour afficher une chronologie.</Empty>
         ) : (
-          <>
-            <label htmlFor="timeline-application" style={{ maxWidth: 620 }}>
+          <div className="stack">
+            <label htmlFor="timeline-application">
               Candidature
               <select
                 id="timeline-application"
@@ -96,41 +117,41 @@ export default function ApplicationTimelinePage() {
             </label>
 
             {selected && (
-              <div className="notice" style={{ marginTop: 16 }}>
+              <div className="notice">
                 <strong>{selected.jobOffer.title}</strong> — {companyName(selected)}
-                <div className="actions" style={{ marginTop: 8 }}>
+                <div className="actions">
                   <Badge tone="blue">Candidature #{selected.id}</Badge>
                   <Badge>{selected.channel}</Badge>
-                  <Badge>{timeline.length} événement(s)</Badge>
+                  <Badge>{selected.status}</Badge>
+                  {persistedEvents !== null && <Badge>{timeline.length} événement(s) persisté(s)</Badge>}
                 </div>
               </div>
             )}
 
-            <div style={{ marginTop: 18 }}>
-              {timeline.map((event) => (
-                <div className="list-row" key={event.key}>
-                  <div style={{ flex: 1 }}>
-                    <div className="actions" style={{ marginBottom: 6 }}>
-                      <Badge tone={event.tone}>{event.title}</Badge>
-                      <span className="muted small">{formatDate(event.occurredAt)}</span>
-                    </div>
-                    <div className="small">{event.description}</div>
-                    {event.href && (
-                      <div style={{ marginTop: 10 }}>
-                        <a className="btn secondary small" href={event.href} target="_blank" rel="noreferrer">
-                          Ouvrir dans Gmail
-                        </a>
+            {persistedEvents === null ? (
+              <Loading />
+            ) : timeline.length === 0 ? (
+              <Empty>Aucun événement métier n’a encore été enregistré pour cette offre.</Empty>
+            ) : (
+              <div>
+                {timeline.map((event) => (
+                  <div className="list-row" key={event.key}>
+                    <div>
+                      <div className="actions">
+                        <Badge tone={event.tone}>{event.title}</Badge>
+                        <span className="muted small">{formatDate(event.occurredAt)}</span>
                       </div>
-                    )}
+                      <p className="small">{event.description}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className="notice warning" style={{ marginTop: 16 }}>
-              Cette vue ne fabrique aucun historique. Elle affiche uniquement les dates stockées sur la candidature et les messages Gmail déjà associés. Un ancien changement manuel sans événement source reste visible seulement comme statut actuel.
+            <div className="notice warning">
+              Cette vue affiche uniquement les événements métier persistés. Le statut courant reste visible comme contexte, mais ne crée pas artificiellement un événement historique.
             </div>
-          </>
+          </div>
         )}
       </Card>
     </>

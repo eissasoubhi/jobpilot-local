@@ -46,6 +46,12 @@ Ces événements utilisent la date de réception du mail comme `occurredAt`, la 
 
 L’envoi Gmail automatique reste volontairement un raccordement séparé : l’e-mail est un effet externe irréversible et son traitement doit éviter qu’un incident d’écriture de timeline transforme un message réellement envoyé en faux échec de soumission.
 
+## Lecture par offre
+
+`GET /api/jobs/{id}/timeline` expose les événements persistés de l’offre, du plus récent au plus ancien. La réponse est bornée aux 200 événements les plus récents et reprend uniquement le DTO non sensible de `JobTimelineEvent`.
+
+La page **Parcours des candidatures** consomme cette API pour l’offre de la candidature sélectionnée. Elle n’invente plus d’événement à partir de `createdAt`, `updatedAt`, `submittedAt` ou des messages Gmail. Le statut actuel reste affiché comme contexte, séparément de l’historique append-only.
+
 ## Étapes suivantes
 
 Les autres intégrations seront livrées séparément, transition par transition, avec des tests garantissant qu’un événement n’est enregistré qu’après une transition métier réelle et idempotente. Les métriques temporelles ne devront utiliser cette timeline qu’une fois les événements nécessaires effectivement raccordés.

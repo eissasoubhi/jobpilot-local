@@ -34,7 +34,13 @@ reset:
 	docker compose up --build
 
 test:
-	docker compose run --rm api php bin/phpunit
+	docker compose run --rm api sh -ec '\
+		test_url="$$(php -r '\''$$url=getenv("DATABASE_URL") ?: ""; if (!preg_match("~^(.*?/)([^/?#]+)(\\?.*)?$$~", $$url, $$m)) { fwrite(STDERR, "Invalid DATABASE_URL\\n"); exit(2); } $$name=rawurldecode($$m[2]); if (str_ends_with($$name, "_test")) { echo $$url; } else { echo $$m[1].rawurlencode($$name."_test").($$m[3] ?? ""); }'\'')"; \
+		export APP_ENV=test TEST_DATABASE_URL="$$test_url" DATABASE_URL="$$test_url"; \
+		php bin/console doctrine:database:create --if-not-exists; \
+		php bin/console doctrine:migrations:migrate --no-interaction; \
+		php bin/console app:bootstrap --no-interaction; \
+		php bin/phpunit'
 
 extension:
 	@echo "Open chrome://extensions, enable Developer mode, then Load unpacked: $$(pwd)/extension"

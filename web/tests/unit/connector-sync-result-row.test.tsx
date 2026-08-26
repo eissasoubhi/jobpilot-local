@@ -10,6 +10,7 @@ describe('ConnectorSyncResultRow', () => {
         name="Apec"
         state="success"
         result={{ received: 12, imported: 3, merged: 1, duplicates: 8, profileFiltered: 2, failed: 0, durationMs: 1340 }}
+        profileFilterReasonCounts={{ score_below_threshold: 2, missing_must_have: 1, explicit_conflict: 1 }}
       />,
     );
 
@@ -25,8 +26,25 @@ describe('ConnectorSyncResultRow', () => {
     expect(screen.getByText('1 source fusionnée')).toBeInTheDocument();
     expect(screen.getByText('2 offres hors profil')).toBeInTheDocument();
     expect(screen.getByText('Durée : 1,3 s')).toBeInTheDocument();
+    expect(screen.getByText(/2 scores sous le seuil/)).toBeInTheDocument();
+    expect(screen.getByText(/1 prérequis principal manquant/)).toBeInTheDocument();
+    expect(screen.getByText(/1 conflit explicite/)).toBeInTheDocument();
+    expect(screen.getByText(/Une offre peut cumuler plusieurs signaux/)).toBeInTheDocument();
+    expect(screen.getByText(/aucun détail de leur contenu n’est conservé/)).toBeInTheDocument();
+  });
+
+  it('keeps the generic privacy-safe explanation for older runs without a breakdown', () => {
+    render(
+      <ConnectorSyncResultRow
+        name="Apec"
+        state="success"
+        result={{ received: 2, imported: 0, duplicates: 0, profileFiltered: 2, failed: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Voir le détail de Apec'));
     expect(screen.getByText(/le filtre d’admission a confirmé une incompatibilité de profil/)).toBeInTheDocument();
-    expect(screen.getByText(/Les offres écartées ne sont pas enregistrées/)).toBeInTheDocument();
+    expect(screen.getByText(/aucun détail de leur contenu n’est conservé/)).toBeInTheDocument();
   });
 
   it('shows Gmail diagnostics and connector errors only in the expandable details', () => {

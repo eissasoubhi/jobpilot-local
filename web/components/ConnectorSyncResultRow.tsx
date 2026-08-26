@@ -25,10 +25,17 @@ export type ConnectorSyncDiagnostics = {
   messagesFailed?: number;
 };
 
+export type ProfileFilterReasonCounts = {
+  score_below_threshold?: number;
+  missing_must_have?: number;
+  explicit_conflict?: number;
+};
+
 type Props = {
   name: string;
   state: ConnectorSyncVisualState;
   result?: ConnectorSyncResultSummary | null;
+  profileFilterReasonCounts?: ProfileFilterReasonCounts | null;
   diagnostics?: ConnectorSyncDiagnostics | null;
   error?: string | null;
 };
@@ -117,8 +124,30 @@ function zeroResultExplanation(
   return 'La source n’a renvoyé aucune offre pour cette synchronisation. Ce résultat est distinct d’une erreur de connecteur.';
 }
 
-export function ConnectorSyncResultRow({ name, state, result, diagnostics, error }: Props) {
+function profileFilterReasonSummary(reasonCounts: ProfileFilterReasonCounts | null | undefined): string[] {
+  if (!reasonCounts) return [];
+
+  const reasons: string[] = [];
+  const scoreBelowThreshold = Math.max(0, reasonCounts.score_below_threshold ?? 0);
+  const missingMustHave = Math.max(0, reasonCounts.missing_must_have ?? 0);
+  const explicitConflict = Math.max(0, reasonCounts.explicit_conflict ?? 0);
+
+  if (scoreBelowThreshold > 0) {
+    reasons.push(formatCount(scoreBelowThreshold, 'score sous le seuil', 'scores sous le seuil'));
+  }
+  if (missingMustHave > 0) {
+    reasons.push(formatCount(missingMustHave, 'prérequis principal manquant', 'prérequis principaux manquants'));
+  }
+  if (explicitConflict > 0) {
+    reasons.push(formatCount(explicitConflict, 'conflit explicite', 'conflits explicites'));
+  }
+
+  return reasons;
+}
+
+export function ConnectorSyncResultRow({ name, state, result, profileFilterReasonCounts, diagnostics, error }: Props) {
   const emptyExplanation = zeroResultExplanation(state, result, diagnostics, error);
+  const rejectionReasons = profileFilterReasonSummary(profileFilterReasonCounts);
   const hasDetails = Boolean(
     error
     || diagnostics
@@ -180,7 +209,10 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
             {(result?.profileFiltered ?? 0) > 0 && (
               <div style={{ marginTop: 8 }}>
                 <strong>Hors profil :</strong>{' '}
-                le filtre d’admission a confirmé une incompatibilité de profil (score sous le seuil, prérequis manquant ou conflit explicite). Les offres écartées ne sont pas enregistrées.
+                {rejectionReasons.length > 0
+                  ? <>signaux de rejet observés : {rejectionReasons.join(' · ')}. Une offre peut cumuler plusieurs signaux.</>
+                  : <>le filtre d’admission a confirmé une incompatibilité de profil (score sous le seuil, prérequis manquant ou conflit explicite).</>}
+                {' '}Les offres écartées ne sont pas enregistrées et aucun détail de leur contenu n’est conservé pour ce diagnostic.
               </div>
             )}
 

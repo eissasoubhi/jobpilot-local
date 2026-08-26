@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -311,6 +312,12 @@ export default function MessagesPage() {
                             ? 'Remettre à traiter'
                             : 'Marquer comme traité'}
                     </button>
+                    <InboxSenderClassificationCorrection
+                      messageId={message.id}
+                      sender={message.sender}
+                      category={message.category}
+                      onSaved={load}
+                    />
                   </div>
 
                   {transactionAction && !message.processed && (

@@ -4,13 +4,29 @@ declare(strict_types=1);
 
 namespace App\Messaging\Application;
 
+use App\Entity\InboxSenderClassificationRule;
+use Doctrine\ORM\EntityManagerInterface;
+
 final class GmailMessageClassifier
 {
+    public function __construct(private ?EntityManagerInterface $em = null) {}
+
     /**
      * @return array{category: string, reason: string, actionRequired: bool}
      */
     public function classify(string $subject, string $sender, string $body): array
     {
+        $persistedRule = $this->persistedSenderRule($sender);
+        if ($persistedRule !== null) {
+            return $this->result(
+                $persistedRule->getCategory(),
+                $persistedRule->getCategory() === 'JOB_ALERT'
+                    ? 'Correction utilisateur persistante : cet expéditeur est toujours classé comme alerte emploi.'
+                    : 'Correction utilisateur persistante : cet expéditeur est toujours classé comme newsletter ou promotion.',
+                false,
+            );
+        }
+
         $text = $this->normalize($subject.' '.$sender.' '.$body);
 
         return match (true) {
@@ -70,6 +86,22 @@ final class GmailMessageClassifier
 
             default => $this->result('UNKNOWN', 'Aucune règle métier suffisamment fiable ne correspond au message.', false),
         };
+    }
+
+    private function persistedSenderRule(string $sender): ?InboxSenderClassificationRule
+    {
+        if ($this->em === null) {
+            return null;
+        }
+
+        $senderKey = InboxSenderClassificationRule::senderKey($sender);
+        if ($senderKey === '') {
+            return null;
+        }
+
+        $rule = $this->em->getRepository(InboxSenderClassificationRule::class)->findOneBy(['senderKey' => $senderKey]);
+
+        return $rule instanceof InboxSenderClassificationRule ? $rule : null;
     }
 
     private function isRecruiterInformationalAcknowledgement(string $text): bool

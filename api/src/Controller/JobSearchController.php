@@ -227,6 +227,15 @@ final class JobSearchController
             ));
         }
 
+        $connectors = array_map(static function (array $connector): array {
+            $profileFiltered = max(0, (int) ($connector['profileFiltered'] ?? 0));
+            $lastResult = is_array($connector['lastResult'] ?? null) ? $connector['lastResult'] : [];
+            $lastResult['profileFiltered'] = $profileFiltered;
+            $connector['lastResult'] = $lastResult;
+
+            return $connector;
+        }, $connectors);
+
         return [
             'job' => $job,
             'connectors' => $connectors,

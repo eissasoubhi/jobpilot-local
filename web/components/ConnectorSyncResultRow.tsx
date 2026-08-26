@@ -102,6 +102,13 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
               </div>
             )}
 
+            {(result?.profileFiltered ?? 0) > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <strong>Hors profil :</strong>{' '}
+                le filtre d’admission a confirmé une incompatibilité de profil (score sous le seuil, prérequis manquant ou conflit explicite). Les offres écartées ne sont pas enregistrées.
+              </div>
+            )}
+
             {diagnostics && (
               <div style={{ marginTop: 8 }}>
                 <strong>Diagnostic Gmail :</strong>{' '}

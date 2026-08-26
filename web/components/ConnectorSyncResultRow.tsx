@@ -70,7 +70,15 @@ function zeroResultExplanation(
   diagnostics: ConnectorSyncDiagnostics | null | undefined,
   error: string | null | undefined,
 ): string | null {
-  if (!result || error || state === 'waiting' || state === 'running' || (result.received ?? 0) > 0) {
+  if (
+    !result
+    || error
+    || state === 'waiting'
+    || state === 'running'
+    || state === 'error'
+    || (result.received ?? 0) > 0
+    || (result.failed ?? 0) > 0
+  ) {
     return null;
   }
 

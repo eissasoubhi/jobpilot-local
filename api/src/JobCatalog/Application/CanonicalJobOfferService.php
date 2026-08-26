@@ -116,7 +116,18 @@ final class CanonicalJobOfferService
         if ($filterNewOfferByProfile) {
             $rejection = $this->intakeFilter->rejection($job, $settings);
             if ($rejection !== null) {
-                throw new ProfileFilteredJobOffer($rejection->score, $rejection->confidence);
+                $reasonCodes = [];
+                if ($rejection->score < $settings->getMatchingThreshold()) {
+                    $reasonCodes[] = ProfileFilteredJobOffer::REASON_SCORE_BELOW_THRESHOLD;
+                }
+                if ($rejection->missingMustHaves !== []) {
+                    $reasonCodes[] = ProfileFilteredJobOffer::REASON_MISSING_MUST_HAVE;
+                }
+                if ($rejection->conflicts !== []) {
+                    $reasonCodes[] = ProfileFilteredJobOffer::REASON_EXPLICIT_CONFLICT;
+                }
+
+                throw new ProfileFilteredJobOffer($rejection->score, $rejection->confidence, $reasonCodes);
             }
         }
 

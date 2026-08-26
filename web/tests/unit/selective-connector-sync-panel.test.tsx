@@ -84,6 +84,10 @@ const connectors = [
 describe('SelectiveConnectorSyncPanel', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
   });
 
   it('keeps ineligible connectors visible but impossible to select', () => {
@@ -145,5 +149,20 @@ describe('SelectiveConnectorSyncPanel', () => {
     expect(screen.getByRole('checkbox', { name: 'Synchroniser Apec' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Synchroniser Adzuna' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Synchroniser Indeed' })).not.toBeChecked();
+  });
+
+  it('moves focus into the selector and closes it with Escape while restoring the trigger focus', () => {
+    render(<SelectiveConnectorSyncPanel connectors={connectors} syncing={false} onSynchronize={vi.fn()} />);
+
+    const trigger = screen.getByRole('button', { name: 'Choisir les connecteurs' });
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('checkbox', { name: 'Synchroniser Apec' })).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: 'Choisir les connecteurs à synchroniser' })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog', { name: 'Choisir les connecteurs à synchroniser' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });

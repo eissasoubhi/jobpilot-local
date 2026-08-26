@@ -3,6 +3,8 @@
 import { Badge } from '@/components/UI';
 import { formatCount } from '@/lib/formatCount';
 
+import styles from './ConnectorSyncResultRow.module.css';
+
 export type ConnectorSyncVisualState = 'waiting' | 'running' | 'success' | 'warning' | 'error';
 
 export type ConnectorSyncResultSummary = {
@@ -135,14 +137,14 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
       aria-label={`Synchronisation ${name}`}
       aria-describedby={statusId}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div className="actions" style={{ alignItems: 'center' }}>
+      <div className={styles.header}>
+        <div className={`actions ${styles.identity}`} style={{ alignItems: 'center' }}>
           <strong>{name}</strong>
           <span id={statusId} role="status" aria-live="polite" aria-atomic="true">
             <Badge tone={stateTone(state)}>{status}</Badge>
           </span>
         </div>
-        <div className="small muted">{summary}</div>
+        <div className={`small muted ${styles.summary}`}>{summary}</div>
       </div>
 
       {state === 'running' && (
@@ -153,7 +155,7 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
 
       {hasDetails && (
         <details style={{ marginTop: 8 }}>
-          <summary className="small" style={{ cursor: 'pointer' }}>
+          <summary className={`small ${styles.detailsSummary}`}>
             Voir le détail de {name}
           </summary>
           <div className="small muted" style={{ marginTop: 8 }}>

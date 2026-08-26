@@ -75,6 +75,8 @@ type SyncSnapshot = {
 
 type SyncJobResponse = { job: SyncJob };
 
+type ConnectorRunState = 'running' | 'done' | 'warning' | 'error' | 'waiting';
+
 function isTerminal(status: SyncStatus): boolean {
   return status === 'success' || status === 'partial' || status === 'failed';
 }
@@ -97,21 +99,21 @@ function elapsed(job: SyncJob, now: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function connectorState(connector: ConnectorSnapshot, job: SyncJob): 'running' | 'done' | 'error' | 'waiting' {
+function connectorState(connector: ConnectorSnapshot, job: SyncJob): ConnectorRunState {
   if (connector.status === 'RUNNING') return 'running';
   if (happenedDuringRun(connector.lastSyncedAt, job.startedAt)) {
-    return connector.status === 'ERROR' || connector.status === 'PARTIAL' ? 'error' : 'done';
+    if (connector.status === 'ERROR') return 'error';
+    if (connector.status === 'PARTIAL') return 'warning';
+    return 'done';
   }
   return 'waiting';
 }
 
-function connectorVisualState(
-  connector: ConnectorSnapshot,
-  state: ReturnType<typeof connectorState>,
-): ConnectorSyncVisualState {
+function connectorVisualState(state: ConnectorRunState): ConnectorSyncVisualState {
   if (state === 'running') return 'running';
   if (state === 'done') return 'success';
-  if (state === 'error') return connector.status === 'PARTIAL' ? 'warning' : 'error';
+  if (state === 'warning') return 'warning';
+  if (state === 'error') return 'error';
   return 'waiting';
 }
 
@@ -160,7 +162,7 @@ export function SyncRunPanel() {
   if (pathname !== '/offres' || job === null) return null;
 
   const states = connectors.map((connector) => ({ connector, state: connectorState(connector, job) }));
-  const completed = states.filter(({ state }) => state === 'done' || state === 'error').length;
+  const completed = states.filter(({ state }) => state === 'done' || state === 'warning' || state === 'error').length;
   const current = states.find(({ state }) => state === 'running')?.connector;
   const terminal = isTerminal(job.status);
   const failedConnectorCodes = terminal
@@ -285,7 +287,7 @@ export function SyncRunPanel() {
               <ConnectorSyncResultRow
                 key={connector.code}
                 name={connector.name}
-                state={connectorVisualState(connector, state)}
+                state={connectorVisualState(state)}
                 result={showResult ? connector.lastResult : null}
                 diagnostics={showResult ? gmailDiagnostics : null}
                 error={showResult && state === 'error' ? connector.lastError : null}

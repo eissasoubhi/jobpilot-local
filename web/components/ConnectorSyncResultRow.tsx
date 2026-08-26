@@ -70,15 +70,25 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
     || diagnostics
     || (result && ((result.received ?? 0) > 0 || (result.merged ?? 0) > 0 || (result.profileFiltered ?? 0) > 0 || (result.failed ?? 0) > 0)),
   );
+  const status = stateLabel(state);
+  const summary = compactSummary(result);
+  const statusId = `connector-sync-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-status`;
 
   return (
-    <div className="notice" data-testid="connector-sync-result-row">
+    <section
+      className="notice"
+      data-testid="connector-sync-result-row"
+      aria-label={`Synchronisation ${name}`}
+      aria-describedby={statusId}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div className="actions" style={{ alignItems: 'center' }}>
           <strong>{name}</strong>
-          <Badge tone={stateTone(state)}>{stateLabel(state)}</Badge>
+          <span id={statusId} role="status" aria-live="polite" aria-atomic="true">
+            <Badge tone={stateTone(state)}>{status}</Badge>
+          </span>
         </div>
-        <div className="small muted">{compactSummary(result)}</div>
+        <div className="small muted">{summary}</div>
       </div>
 
       {state === 'running' && (
@@ -89,7 +99,9 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
 
       {hasDetails && (
         <details style={{ marginTop: 8 }}>
-          <summary className="small" style={{ cursor: 'pointer' }}>Voir le détail</summary>
+          <summary className="small" style={{ cursor: 'pointer' }}>
+            Voir le détail de {name}
+          </summary>
           <div className="small muted" style={{ marginTop: 8 }}>
             {result && (
               <div className="actions small">
@@ -124,6 +136,6 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
           </div>
         </details>
       )}
-    </div>
+    </section>
   );
 }

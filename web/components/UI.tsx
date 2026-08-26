@@ -9,6 +9,45 @@ export function Empty({ children }: { children:React.ReactNode }) { return <div 
 export function Loading() { return <div className="loading">Chargement…</div>; }
 export function ErrorBox({ message }: { message:string }) { return <div className="error-box">{message}</div>; }
 
+export function ProgressBar({
+  value,
+  label,
+  valueText,
+}: {
+  value: number;
+  label: string;
+  valueText?: string;
+}) {
+  const normalizedValue = Math.min(100, Math.max(0, Math.round(value)));
+
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={normalizedValue}
+      aria-valuetext={valueText}
+      style={{
+        height: 8,
+        borderRadius: 999,
+        background: 'var(--surface-muted, #e5e7eb)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          height: '100%',
+          width: `${normalizedValue}%`,
+          background: 'currentColor',
+          transition: 'width 200ms ease',
+        }}
+      />
+    </div>
+  );
+}
+
 export function OfflineState({
   title,
   message,

@@ -13,10 +13,11 @@ describe('ConnectorSyncResultRow', () => {
       />,
     );
 
-    expect(screen.getByText('Terminée')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Synchronisation Apec' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Terminée');
     expect(screen.getByText('3 nouvelles offres · 8 déjà connues · 2 hors profil')).toBeInTheDocument();
 
-    const details = screen.getByText('Voir le détail');
+    const details = screen.getByText('Voir le détail de Apec');
     expect(details.closest('details')).not.toHaveAttribute('open');
     fireEvent.click(details);
     expect(details.closest('details')).toHaveAttribute('open');
@@ -44,12 +45,29 @@ describe('ConnectorSyncResultRow', () => {
       />,
     );
 
-    expect(screen.getByText('En erreur')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Synchronisation Gmail' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('En erreur');
     expect(screen.getByText('0 nouvelles offres · 0 déjà connues · 1 échec')).toBeInTheDocument();
     expect(screen.getByText(/23 emails trouvés/)).toBeInTheDocument();
     expect(screen.getByText(/19 déjà traités/)).toBeInTheDocument();
     expect(screen.getByText(/Erreur :/)).toBeInTheDocument();
     expect(screen.getByText(/Jeton expiré/)).toBeInTheDocument();
+  });
+
+  it('keeps disclosure labels connector-specific for keyboard and screen-reader navigation', () => {
+    render(
+      <ConnectorSyncResultRow
+        name="Adzuna"
+        state="warning"
+        result={{ received: 2, imported: 0, duplicates: 1, profileFiltered: 1, failed: 0 }}
+      />,
+    );
+
+    const disclosure = screen.getByText('Voir le détail de Adzuna');
+    expect(disclosure.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(disclosure);
+    expect(disclosure.closest('details')).toHaveAttribute('open');
+    expect(screen.getByRole('status')).toHaveTextContent('Avec avertissement');
   });
 
   it('does not add an empty disclosure when there is no diagnostic detail', () => {
@@ -61,7 +79,7 @@ describe('ConnectorSyncResultRow', () => {
       />,
     );
 
-    expect(screen.getByText('En attente')).toBeInTheDocument();
-    expect(screen.queryByText('Voir le détail')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('En attente');
+    expect(screen.queryByText(/Voir le détail de/)).not.toBeInTheDocument();
   });
 });

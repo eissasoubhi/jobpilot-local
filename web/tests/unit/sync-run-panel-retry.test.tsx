@@ -96,6 +96,26 @@ describe('SyncRunPanel failed connector retry', () => {
     window.removeEventListener('jobpilot:offers-sync-completed', completion);
   });
 
+  it('renders a partial connector as a warning and does not offer a failed-source retry for it', async () => {
+    apiMock.mockResolvedValue({
+      ...snapshot,
+      connectors: [
+        {
+          ...snapshot.connectors[0],
+          status: 'PARTIAL',
+          lastError: 'Une partie des résultats n’a pas pu être importée',
+        },
+        snapshot.connectors[1],
+      ],
+    });
+
+    render(<SyncRunPanel />);
+
+    expect(await screen.findByText('Avec avertissement')).toBeInTheDocument();
+    expect(screen.queryByText('En erreur')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Réessayer/ })).not.toBeInTheDocument();
+  });
+
   it('does not offer a retry when the run has no connector error', async () => {
     apiMock.mockResolvedValue({
       ...snapshot,

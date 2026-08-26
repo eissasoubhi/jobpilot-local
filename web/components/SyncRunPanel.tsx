@@ -168,6 +168,9 @@ export function SyncRunPanel() {
     : [];
   const workerUnavailable = job.status === 'queued' && worker.status !== 'active';
   const progress = terminal ? 100 : connectors.length > 0 ? Math.round((completed / connectors.length) * 100) : 0;
+  const progressText = terminal
+    ? 'Synchronisation terminée'
+    : `${completed} sur ${connectors.length || 0} sources terminées`;
   const statusLabel = job.status === 'queued'
     ? 'Mise en file'
     : job.status === 'running'
@@ -243,7 +246,12 @@ export function SyncRunPanel() {
       </div>
 
       <div
-        aria-label={`Progression de la synchronisation ${progress} %`}
+        role="progressbar"
+        aria-label="Progression de la synchronisation"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+        aria-valuetext={progressText}
         style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted, #e5e7eb)', overflow: 'hidden', marginTop: 14 }}
       >
         <div style={{ height: '100%', width: `${progress}%`, background: 'currentColor', transition: 'width 200ms ease' }} />

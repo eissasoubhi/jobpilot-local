@@ -1,0 +1,38 @@
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.identity {
+  min-width: 0;
+}
+
+.summary {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.detailsSummary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .summary {
+    text-align: left;
+  }
+
+  .detailsSummary {
+    width: 100%;
+  }
+}

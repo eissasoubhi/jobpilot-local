@@ -99,6 +99,11 @@ final class InboxMessage
         return $this->threadId;
     }
 
+    public function getSender(): string
+    {
+        return $this->sender;
+    }
+
     public function getCategory(): string
     {
         return $this->category;
@@ -167,6 +172,21 @@ final class InboxMessage
         $this->actionRequired = $actionRequired;
 
         return $this;
+    }
+
+    public function overrideClassification(string $category, string $reason, bool $actionRequired = false): void
+    {
+        $category = strtoupper(trim($category));
+        if (!in_array($category, ['JOB_ALERT', 'MARKETING'], true)) {
+            throw new \InvalidArgumentException('Catégorie de correction Inbox non autorisée.');
+        }
+
+        $this->category = $category;
+        $this->classificationReason = mb_substr(trim($reason), 0, 500);
+        $this->actionRequired = $actionRequired;
+        if (!$actionRequired) {
+            $this->processed = true;
+        }
     }
 
     public function associate(?Application $application, ?JobOffer $jobOffer = null): void

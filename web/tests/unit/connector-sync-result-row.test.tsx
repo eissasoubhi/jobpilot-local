@@ -9,7 +9,7 @@ describe('ConnectorSyncResultRow', () => {
       <ConnectorSyncResultRow
         name="Apec"
         state="success"
-        result={{ received: 12, imported: 3, merged: 1, duplicates: 8, profileFiltered: 2, failed: 0 }}
+        result={{ received: 12, imported: 3, merged: 1, duplicates: 8, profileFiltered: 2, failed: 0, durationMs: 1340 }}
       />,
     );
 
@@ -24,6 +24,7 @@ describe('ConnectorSyncResultRow', () => {
     expect(screen.getByText('12 offres récupérées')).toBeInTheDocument();
     expect(screen.getByText('1 source fusionnée')).toBeInTheDocument();
     expect(screen.getByText('2 offres hors profil')).toBeInTheDocument();
+    expect(screen.getByText('Durée : 1,3 s')).toBeInTheDocument();
     expect(screen.getByText(/le filtre d’admission a confirmé une incompatibilité de profil/)).toBeInTheDocument();
     expect(screen.getByText(/Les offres écartées ne sont pas enregistrées/)).toBeInTheDocument();
   });

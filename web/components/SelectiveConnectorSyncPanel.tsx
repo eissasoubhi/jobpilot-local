@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SourceConnector } from '@/lib/types';
 
@@ -34,6 +34,8 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
   );
   const [open, setOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstEligibleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const eligible = new Set(eligibleCodes);
@@ -52,7 +54,28 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
     setSelectedCodes(initial);
   }, [eligibleCodes]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    firstEligibleRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setOpen(false);
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
   const selected = new Set(selectedCodes);
+
+  const closePanel = (): void => {
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
 
   const toggle = (code: string): void => {
     setSelectedCodes((current) => (
@@ -83,6 +106,7 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
           {syncing ? 'Synchronisation…' : 'Tout synchroniser'}
         </button>
         <button
+          ref={triggerRef}
           className="btn secondary"
           type="button"
           aria-expanded={open}
@@ -140,6 +164,7 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
                   }}
                 >
                   <input
+                    ref={eligible && connector.code === eligibleCodes[0] ? firstEligibleRef : undefined}
                     type="checkbox"
                     aria-label={`Synchroniser ${connector.name}`}
                     checked={eligible && selected.has(connector.code)}
@@ -161,7 +186,7 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
           </div>
 
           <div className="actions" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
-            <button className="btn secondary" type="button" onClick={() => setOpen(false)}>Annuler</button>
+            <button className="btn secondary" type="button" onClick={closePanel}>Annuler</button>
             <button
               className="btn"
               type="button"

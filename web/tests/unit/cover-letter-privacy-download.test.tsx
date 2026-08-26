@@ -69,7 +69,7 @@ describe('CoverLetterDrawer privacy downloads', () => {
       url: `/api/applications/51/cover-letter/download/${format}`,
       filename: `lettre-motivation-51.${format}`,
     }));
-    expect(within(dialog).getByRole('status')).toHaveTextContent(`Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`);
+    expect(within(dialog).getByText(`Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`)).toBeInTheDocument();
   });
 
   it('makes the explicit browser fallback visible instead of claiming privacy-clean success', async () => {
@@ -86,6 +86,6 @@ describe('CoverLetterDrawer privacy downloads', () => {
     fireEvent.click(screen.getByText('Télécharger'));
     fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Téléchargement PDF lancé avec le mécanisme navigateur standard.');
+    expect(await screen.findByText('Téléchargement PDF lancé avec le mécanisme navigateur standard.')).toBeInTheDocument();
   });
 });

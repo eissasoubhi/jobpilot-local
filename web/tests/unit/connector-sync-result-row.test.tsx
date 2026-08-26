@@ -52,6 +52,47 @@ describe('ConnectorSyncResultRow', () => {
     expect(screen.getByText(/19 déjà traités/)).toBeInTheDocument();
     expect(screen.getByText(/Erreur :/)).toBeInTheDocument();
     expect(screen.getByText(/Jeton expiré/)).toBeInTheDocument();
+    expect(screen.queryByText(/Résultat vide/)).not.toBeInTheDocument();
+  });
+
+  it('explains a successful source run that returned zero offers', () => {
+    render(
+      <ConnectorSyncResultRow
+        name="Apec"
+        state="success"
+        result={{ received: 0, imported: 0, duplicates: 0, profileFiltered: 0, failed: 0 }}
+      />,
+    );
+
+    const disclosure = screen.getByText('Voir le détail de Apec');
+    fireEvent.click(disclosure);
+    expect(screen.getByText(/La source n’a renvoyé aucune offre/)).toBeInTheDocument();
+    expect(screen.getByText(/distinct d’une erreur de connecteur/)).toBeInTheDocument();
+  });
+
+  it('explains Gmail zero-result runs from the available search diagnostics', () => {
+    const { rerender } = render(
+      <ConnectorSyncResultRow
+        name="Gmail"
+        state="success"
+        result={{ received: 0, imported: 0, duplicates: 0, failed: 0 }}
+        diagnostics={{ messagesMatched: 0, messagesImported: 0, offersExtracted: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Voir le détail de Gmail'));
+    expect(screen.getByText(/Aucun email ne correspondait à la recherche Gmail/)).toBeInTheDocument();
+
+    rerender(
+      <ConnectorSyncResultRow
+        name="Gmail"
+        state="success"
+        result={{ received: 0, imported: 0, duplicates: 0, failed: 0 }}
+        diagnostics={{ messagesMatched: 4, messagesImported: 4, offersExtracted: 0 }}
+      />,
+    );
+
+    expect(screen.getByText(/4 emails trouvés, mais aucune offre exploitable n’a été extraite/)).toBeInTheDocument();
   });
 
   it('keeps disclosure labels connector-specific for keyboard and screen-reader navigation', () => {
@@ -70,7 +111,7 @@ describe('ConnectorSyncResultRow', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Avec avertissement');
   });
 
-  it('does not add an empty disclosure when there is no diagnostic detail', () => {
+  it('does not add an empty disclosure before a connector has run', () => {
     render(
       <ConnectorSyncResultRow
         name="Adzuna"

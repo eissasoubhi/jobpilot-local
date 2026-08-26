@@ -41,6 +41,12 @@ type SearchDiagnostics = {
   messagesActionRequired?: number;
 };
 
+type ProfileFilterReasonCounts = {
+  score_below_threshold?: number;
+  missing_must_have?: number;
+  explicit_conflict?: number;
+};
+
 type ConnectorSnapshot = {
   code: string;
   name: string;
@@ -52,6 +58,7 @@ type ConnectorSnapshot = {
   lastSyncedAt?: string | null;
   lastError?: string | null;
   searchDiagnostics?: SearchDiagnostics | null;
+  profileFilterReasonCounts?: ProfileFilterReasonCounts | null;
   lastResult?: {
     received?: number;
     imported?: number;
@@ -289,6 +296,7 @@ export function SyncRunPanel() {
                 name={connector.name}
                 state={connectorVisualState(state)}
                 result={showResult ? connector.lastResult : null}
+                profileFilterReasonCounts={showResult ? connector.profileFilterReasonCounts : null}
                 diagnostics={showResult ? gmailDiagnostics : null}
                 error={showResult && state === 'error' ? connector.lastError : null}
               />

@@ -227,10 +227,30 @@ final class JobSearchController
             ));
         }
 
-        $connectors = array_map(static function (array $connector): array {
+        $runStartedAt = is_string($job['startedAt'] ?? null) ? strtotime($job['startedAt']) : false;
+        $durationsByConnector = [];
+        if ($runStartedAt !== false) {
+            foreach ($this->syncService->history(100) as $run) {
+                $code = strtolower(trim((string) ($run['connector']['code'] ?? '')));
+                $startedAt = is_string($run['startedAt'] ?? null) ? strtotime($run['startedAt']) : false;
+                if ($code === '' || isset($durationsByConnector[$code]) || $startedAt === false || $startedAt < $runStartedAt) {
+                    continue;
+                }
+                if (!is_int($run['durationMs'] ?? null)) {
+                    continue;
+                }
+                $durationsByConnector[$code] = max(0, $run['durationMs']);
+            }
+        }
+
+        $connectors = array_map(static function (array $connector) use ($durationsByConnector): array {
             $profileFiltered = max(0, (int) ($connector['profileFiltered'] ?? 0));
             $lastResult = is_array($connector['lastResult'] ?? null) ? $connector['lastResult'] : [];
             $lastResult['profileFiltered'] = $profileFiltered;
+            $code = strtolower(trim((string) ($connector['code'] ?? '')));
+            if ($code !== '' && isset($durationsByConnector[$code])) {
+                $lastResult['durationMs'] = $durationsByConnector[$code];
+            }
             $connector['lastResult'] = $lastResult;
 
             return $connector;

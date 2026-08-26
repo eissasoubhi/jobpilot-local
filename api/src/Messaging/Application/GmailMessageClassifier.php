@@ -38,6 +38,12 @@ final class GmailMessageClassifier
                 'votre candidature a été transmise',
             ]) => $this->result('APPLICATION_CONFIRMATION', 'Le message confirme la réception ou la transmission d’une candidature.', false),
 
+            $this->isMarketingNewsletter($subject, $body) => $this->result(
+                'MARKETING',
+                'Le message ressemble à une newsletter ou à un contenu promotionnel général et ne demande aucune action de candidature.',
+                false,
+            ),
+
             $this->isPlatformAlert($subject, $sender, $body) => $this->result(
                 'JOB_ALERT',
                 'Le message provient d’une plateforme emploi et ressemble à une alerte ou un digest, pas à une proposition directe de recruteur.',
@@ -85,6 +91,32 @@ final class GmailMessageClassifier
         ]);
 
         return ($acknowledgement || $handoff) && $followUpLater;
+    }
+
+    private function isMarketingNewsletter(string $subject, string $body): bool
+    {
+        $subjectText = $this->normalize($subject);
+        $bodyText = $this->normalize($body);
+        $combined = trim($subjectText.' '.$bodyText);
+
+        if ($this->containsAny($subjectText, [
+            'newsletter', 'lettre d information', 'lettre d actualite', 'weekly newsletter',
+            'conseils carriere', 'conseils carrière', 'career tips', 'actualites emploi', 'actualités emploi',
+        ])) {
+            return true;
+        }
+
+        $promotionalContent = $this->containsAny($combined, [
+            'nos conseils carriere', 'nos conseils carrière', 'career advice', 'career tips',
+            'decouvrez nos conseils', 'découvrez nos conseils', 'actualites du marche', 'actualités du marché',
+            'contenu sponsorise', 'contenu sponsorisé', 'sponsored content',
+        ]);
+        $bulkFooter = $this->containsAny($combined, [
+            'se desabonner', 'se désabonner', 'desabonnement', 'désabonnement',
+            'unsubscribe', 'manage email preferences', 'preferences email', 'préférences email',
+        ]);
+
+        return $promotionalContent && $bulkFooter;
     }
 
     private function isPlatformAlert(string $subject, string $sender, string $body): bool

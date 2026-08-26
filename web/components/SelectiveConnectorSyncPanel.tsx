@@ -130,9 +130,9 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
             width: 'min(520px, calc(100vw - 32px))',
             marginTop: 8,
             padding: 16,
-            border: '1px solid var(--border)',
+            border: '1px solid var(--line)',
             borderRadius: 12,
-            background: 'var(--surface)',
+            background: 'var(--panel)',
             boxShadow: '0 16px 40px rgba(15, 23, 42, 0.16)',
           }}
         >
@@ -157,7 +157,7 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
                     gap: 10,
                     alignItems: 'flex-start',
                     padding: 10,
-                    border: '1px solid var(--border)',
+                    border: '1px solid var(--line)',
                     borderRadius: 10,
                     cursor: eligible ? 'pointer' : 'not-allowed',
                     opacity: eligible ? 1 : 0.72,

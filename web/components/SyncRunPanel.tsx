@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ConnectorSyncResultRow, type ConnectorSyncVisualState } from '@/components/ConnectorSyncResultRow';
-import { Badge, Card, ErrorBox } from '@/components/UI';
+import { Badge, Card, ErrorBox, ProgressBar } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCount } from '@/lib/formatCount';
@@ -254,16 +254,12 @@ export function SyncRunPanel() {
         </div>
       </div>
 
-      <div
-        role="progressbar"
-        aria-label="Progression de la synchronisation"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-        aria-valuetext={progressText}
-        style={{ height: 8, borderRadius: 999, background: 'var(--surface-muted, #e5e7eb)', overflow: 'hidden', marginTop: 14 }}
-      >
-        <div style={{ height: '100%', width: `${progress}%`, background: 'currentColor', transition: 'width 200ms ease' }} />
+      <div style={{ marginTop: 14 }}>
+        <ProgressBar
+          value={progress}
+          label="Progression de la synchronisation"
+          valueText={progressText}
+        />
       </div>
 
       {workerUnavailable && (

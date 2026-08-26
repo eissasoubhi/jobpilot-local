@@ -64,10 +64,37 @@ function compactSummary(result: ConnectorSyncResultSummary | null | undefined): 
   return parts.join(' · ');
 }
 
+function zeroResultExplanation(
+  state: ConnectorSyncVisualState,
+  result: ConnectorSyncResultSummary | null | undefined,
+  diagnostics: ConnectorSyncDiagnostics | null | undefined,
+  error: string | null | undefined,
+): string | null {
+  if (!result || error || state === 'waiting' || state === 'running' || (result.received ?? 0) > 0) {
+    return null;
+  }
+
+  if (diagnostics) {
+    const matched = diagnostics.messagesMatched ?? 0;
+    const extracted = diagnostics.offersExtracted ?? 0;
+
+    if (matched === 0) {
+      return 'Aucun email ne correspondait à la recherche Gmail pour cette synchronisation.';
+    }
+    if (extracted === 0) {
+      return `${formatCount(matched, 'email trouvé', 'emails trouvés')}, mais aucune offre exploitable n’a été extraite.`;
+    }
+  }
+
+  return 'La source n’a renvoyé aucune offre pour cette synchronisation. Ce résultat est distinct d’une erreur de connecteur.';
+}
+
 export function ConnectorSyncResultRow({ name, state, result, diagnostics, error }: Props) {
+  const emptyExplanation = zeroResultExplanation(state, result, diagnostics, error);
   const hasDetails = Boolean(
     error
     || diagnostics
+    || emptyExplanation
     || (result && ((result.received ?? 0) > 0 || (result.merged ?? 0) > 0 || (result.profileFiltered ?? 0) > 0 || (result.failed ?? 0) > 0)),
   );
   const status = stateLabel(state);
@@ -111,6 +138,12 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
                 <span>{formatCount(result.duplicates ?? 0, 'offre déjà connue', 'offres déjà connues')}</span>
                 {(result.profileFiltered ?? 0) > 0 && <span>{formatCount(result.profileFiltered ?? 0, 'offre hors profil', 'offres hors profil')}</span>}
                 {(result.failed ?? 0) > 0 && <span>{formatCount(result.failed ?? 0, 'échec', 'échecs')}</span>}
+              </div>
+            )}
+
+            {emptyExplanation && (
+              <div style={{ marginTop: 8 }}>
+                <strong>Résultat vide :</strong> {emptyExplanation}
               </div>
             )}
 

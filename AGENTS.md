@@ -111,6 +111,8 @@ When a rename is approved, handle it as a dedicated migration with an inventory 
 
 Mirror CI locally when practical.
 
+Backend database commands below are valid only after explicitly configuring a dedicated isolated test database. Never run test migrations, bootstrap, schema validation, fixture cleanup, or PHPUnit with the real/local development or production database.
+
 ### Backend
 
 ```bash
@@ -143,6 +145,16 @@ docker compose -f docker-compose.yml -f docker-compose.override.yml config --qui
 ### Chromium/E2E
 
 Use the repository CI/runtime contract and `npm run test:e2e` in the isolated Playwright browser environment. Do not replace browser E2E evidence with unit tests for merge approval.
+
+## Test database isolation
+
+- Automated tests, integration tests, fixture/bootstrap routines, and E2E tests must never read from, write to, migrate, truncate, reset, seed, or clean the user's real/local development database or any production database.
+- Use a dedicated isolated database for every test run (`jobpilot_test`, `jobpilot_e2e`, or an equivalent disposable test database).
+- Before any test command that can mutate data or schema, verify that the effective `DATABASE_URL` points to the dedicated test database. Never rely on an implicit fallback to the development database.
+- If test-database isolation cannot be proven, fail/stop the test run rather than continuing against another database.
+- Test setup and teardown may clean only data inside the isolated test database. Never implement broad cleanup that could reach real user data.
+- Running the HTTP application with `APP_ENV=dev` for E2E compatibility is acceptable only when its `DATABASE_URL` is explicitly pinned to the isolated E2E database.
+- CI is the reference isolation model: backend tests use `jobpilot_test`; Chromium/E2E uses `jobpilot_e2e`.
 
 ## Data and migrations
 

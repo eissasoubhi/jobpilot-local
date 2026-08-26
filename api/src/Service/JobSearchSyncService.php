@@ -197,6 +197,7 @@ final class JobSearchSyncService
                 $connectorMerged = 0;
                 $connectorDuplicates = 0;
                 $connectorProfileFiltered = 0;
+                $connectorProfileFilterReasonCounts = [];
                 $connectorFailed = 0;
                 $connectorReceived = 0;
                 $connectorError = null;
@@ -242,10 +243,13 @@ final class JobSearchSyncService
                                 ++$duplicates;
                                 ++$connectorDuplicates;
                             }
-                        } catch (ProfileFilteredJobOffer) {
+                        } catch (ProfileFilteredJobOffer $filtered) {
                             $this->deadLetters->resolvePayload($sourceCode, $payload);
                             ++$profileFiltered;
                             ++$connectorProfileFiltered;
+                            foreach ($filtered->reasonCodes as $reasonCode) {
+                                $connectorProfileFilterReasonCounts[$reasonCode] = ($connectorProfileFilterReasonCounts[$reasonCode] ?? 0) + 1;
+                            }
                         } catch (\Throwable $exception) {
                             ++$failed;
                             ++$connectorFailed;
@@ -300,6 +304,7 @@ final class JobSearchSyncService
                         'fieldQuality' => $fieldQuality,
                         'searchDiagnostics' => $searchDiagnostics,
                         'profileFiltered' => $connectorProfileFiltered,
+                        'profileFilterReasonCounts' => $connectorProfileFilterReasonCounts,
                     ],
                 );
                 $this->em->flush();
@@ -317,6 +322,7 @@ final class JobSearchSyncService
                     'merged' => $connectorMerged,
                     'duplicates' => $connectorDuplicates,
                     'profileFiltered' => $connectorProfileFiltered,
+                    'profileFilterReasonCounts' => $connectorProfileFilterReasonCounts,
                     'failed' => $connectorFailed,
                     'error' => $connectorError,
                 ];
@@ -400,6 +406,7 @@ final class JobSearchSyncService
         $searchDiagnostics = is_array($latestDetails['searchDiagnostics'] ?? null)
             ? $latestDetails['searchDiagnostics']
             : null;
+        $profileFilterReasonCounts = $this->safeProfileFilterReasonCounts($latestDetails['profileFilterReasonCounts'] ?? null);
 
         return [
             ...$state->toArray($this->intervalSeconds),
@@ -410,8 +417,27 @@ final class JobSearchSyncService
             'fieldQuality' => $fieldQuality,
             'searchDiagnostics' => $searchDiagnostics,
             'profileFiltered' => max(0, (int) ($latestDetails['profileFiltered'] ?? 0)),
+            'profileFilterReasonCounts' => $profileFilterReasonCounts,
             'deadLetterOpen' => $this->deadLetters->openCount($state->getCode()),
         ];
+    }
+
+    /** @return array<string, int> */
+    private function safeProfileFilterReasonCounts(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $counts = [];
+        foreach (ProfileFilteredJobOffer::REASON_CODES as $reasonCode) {
+            $count = max(0, (int) ($value[$reasonCode] ?? 0));
+            if ($count > 0) {
+                $counts[$reasonCode] = $count;
+            }
+        }
+
+        return $counts;
     }
 
     /**

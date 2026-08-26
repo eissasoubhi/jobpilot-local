@@ -23,6 +23,8 @@ describe('ConnectorSyncResultRow', () => {
     expect(screen.getByText('12 offres récupérées')).toBeInTheDocument();
     expect(screen.getByText('1 source fusionnée')).toBeInTheDocument();
     expect(screen.getByText('2 offres hors profil')).toBeInTheDocument();
+    expect(screen.getByText(/le filtre d’admission a confirmé une incompatibilité de profil/)).toBeInTheDocument();
+    expect(screen.getByText(/Les offres écartées ne sont pas enregistrées/)).toBeInTheDocument();
   });
 
   it('shows Gmail diagnostics and connector errors only in the expandable details', () => {

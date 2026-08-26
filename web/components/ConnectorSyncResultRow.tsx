@@ -12,6 +12,7 @@ export type ConnectorSyncResultSummary = {
   duplicates?: number;
   profileFiltered?: number;
   failed?: number;
+  durationMs?: number;
 };
 
 export type ConnectorSyncDiagnostics = {
@@ -64,6 +65,23 @@ function compactSummary(result: ConnectorSyncResultSummary | null | undefined): 
   return parts.join(' · ');
 }
 
+function formatDuration(durationMs: number): string {
+  const milliseconds = Math.max(0, Math.round(durationMs));
+  if (milliseconds < 1000) return `${milliseconds} ms`;
+
+  const totalSeconds = milliseconds / 1000;
+  if (totalSeconds < 60) {
+    const seconds = totalSeconds < 10
+      ? Math.round(totalSeconds * 10) / 10
+      : Math.round(totalSeconds);
+    return `${String(seconds).replace('.', ',')} s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.round(totalSeconds % 60);
+  return seconds === 0 ? `${minutes} min` : `${minutes} min ${seconds} s`;
+}
+
 function zeroResultExplanation(
   state: ConnectorSyncVisualState,
   result: ConnectorSyncResultSummary | null | undefined,
@@ -103,6 +121,7 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
     error
     || diagnostics
     || emptyExplanation
+    || result?.durationMs != null
     || (result && ((result.received ?? 0) > 0 || (result.merged ?? 0) > 0 || (result.profileFiltered ?? 0) > 0 || (result.failed ?? 0) > 0)),
   );
   const status = stateLabel(state);
@@ -146,6 +165,7 @@ export function ConnectorSyncResultRow({ name, state, result, diagnostics, error
                 <span>{formatCount(result.duplicates ?? 0, 'offre déjà connue', 'offres déjà connues')}</span>
                 {(result.profileFiltered ?? 0) > 0 && <span>{formatCount(result.profileFiltered ?? 0, 'offre hors profil', 'offres hors profil')}</span>}
                 {(result.failed ?? 0) > 0 && <span>{formatCount(result.failed ?? 0, 'échec', 'échecs')}</span>}
+                {result.durationMs != null && <span>Durée : {formatDuration(result.durationMs)}</span>}
               </div>
             )}
 

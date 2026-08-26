@@ -131,7 +131,7 @@ test('Gmail inbox prioritizes urgent messages and clears urgency after processin
   await expect(page.getByRole('heading', { name: interviewMessage.subject, level: 3 })).toBeVisible();
   await expect(page.getByRole('heading', { name: recruiterMessage.subject, level: 3 })).not.toBeVisible();
 
-  await page.getByRole('button', { name: 'Marquer comme traité' }).click();
+  await page.getByRole('button', { name: 'Marquer l’entretien comme confirmé' }).click();
   await expect(page.getByRole('heading', { name: interviewMessage.subject, level: 3 })).not.toBeVisible();
   await expect(page.getByText('Aucun message ne correspond à ce filtre. Lance une synchronisation ou change le filtre.')).toBeVisible();
   expect(processed).toBe(true);

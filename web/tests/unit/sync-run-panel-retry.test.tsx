@@ -75,6 +75,12 @@ describe('SyncRunPanel failed connector retry', () => {
     expect(await screen.findByText('0 nouvelles offres · 0 déjà connues · 1 échec')).toBeInTheDocument();
     expect(screen.getByText('2 nouvelles offres · 8 déjà connues')).toBeInTheDocument();
 
+    const progress = screen.getByRole('progressbar', { name: 'Progression de la synchronisation' });
+    expect(progress).toHaveAttribute('aria-valuemin', '0');
+    expect(progress).toHaveAttribute('aria-valuemax', '100');
+    expect(progress).toHaveAttribute('aria-valuenow', '100');
+    expect(progress).toHaveAttribute('aria-valuetext', 'Synchronisation terminée');
+
     fireEvent.click(screen.getByRole('button', { name: 'Réessayer la source en erreur' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith(

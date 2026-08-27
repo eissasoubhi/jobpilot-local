@@ -95,7 +95,7 @@ final class GroundedCoverLetterBuilder
         }
 
         $title = trim(preg_replace(
-            '/\s*\((?:H|F|M|W|D|X|NB)(?:\s*[/|,-]\s*(?:H|F|M|W|D|X|NB)){1,4}\)\s*$/iu',
+            '/\s*\((?:H|F|M|W|D|X|NB)(?:\s*(?:\/|\||,|-)\s*(?:H|F|M|W|D|X|NB)){1,4}\)\s*$/iu',
             '',
             $title,
         ) ?? $title);

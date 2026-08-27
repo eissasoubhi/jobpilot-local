@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoverLetterDrawer } from '@/components/CoverLetterDrawer';
 import type { Application } from '@/lib/types';
 
-const { downloadMock } = vi.hoisted(() => ({ downloadMock: vi.fn() }));
+const { apiMock, downloadMock } = vi.hoisted(() => ({ apiMock: vi.fn(), downloadMock: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({
   API_URL: '/api',
-  api: vi.fn(),
+  api: apiMock,
 }));
 vi.mock('@/lib/privacy-download', () => ({
   downloadWithCleanProvenance: downloadMock,
@@ -44,6 +44,7 @@ function application(): Application {
 
 describe('CoverLetterDrawer privacy downloads', () => {
   beforeEach(() => {
+    apiMock.mockReset();
     downloadMock.mockReset();
   });
 
@@ -70,6 +71,67 @@ describe('CoverLetterDrawer privacy downloads', () => {
       filename: `lettre-motivation-51.${format}`,
     }));
     expect(within(dialog).getByText(`Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`)).toBeInTheDocument();
+  });
+
+  it('persists the currently edited draft before exporting it', async () => {
+    const original = application();
+    const editedText = 'Lettre corrigée juste avant le téléchargement.';
+    const updated = {
+      ...original,
+      coverLetter: editedText,
+      coverLetterManuallyEdited: true,
+      coverLetterEditedAt: '2026-08-27T19:00:00+02:00',
+    } as Application;
+    const onApplicationUpdated = vi.fn();
+    apiMock.mockResolvedValueOnce(updated);
+    downloadMock.mockResolvedValueOnce({ privacyClean: true, fallbackUsed: false });
+
+    render(
+      <CoverLetterDrawer
+        application={original}
+        open
+        onClose={vi.fn()}
+        onApplicationUpdated={onApplicationUpdated}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    fireEvent.change(screen.getByLabelText('Texte de la lettre'), { target: { value: editedText } });
+    fireEvent.click(screen.getByText('Télécharger'));
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/applications/51/cover-letter', {
+      method: 'PATCH',
+      body: JSON.stringify({ coverLetter: editedText }),
+    }));
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith({
+      url: '/api/applications/51/cover-letter/download/pdf',
+      filename: 'lettre-motivation-51.pdf',
+    }));
+    expect(apiMock.mock.invocationCallOrder[0]).toBeLessThan(downloadMock.mock.invocationCallOrder[0]);
+    expect(onApplicationUpdated).toHaveBeenCalledWith(updated);
+  });
+
+  it('does not export stale content when persisting the edited draft fails', async () => {
+    apiMock.mockRejectedValueOnce(new Error('Enregistrement impossible'));
+
+    render(
+      <CoverLetterDrawer
+        application={application()}
+        open
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    fireEvent.change(screen.getByLabelText('Texte de la lettre'), {
+      target: { value: 'Une modification non enregistrée.' },
+    });
+    fireEvent.click(screen.getByText('Télécharger'));
+    fireEvent.click(screen.getByRole('button', { name: 'Word (.docx)' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enregistrement impossible');
+    expect(downloadMock).not.toHaveBeenCalled();
   });
 
   it('makes the explicit browser fallback visible instead of claiming privacy-clean success', async () => {

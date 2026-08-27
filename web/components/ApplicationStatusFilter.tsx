@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/UI';
 import {
   applicationStatusLabel,
   applicationStatusOptions,
@@ -42,16 +43,18 @@ export function ApplicationStatusFilter({
           const option = optionByValue.get(filter);
           if (!option) return null;
 
+          const selected = value === filter;
+
           return (
-            <button
-              className={`btn small${value === filter ? '' : ' secondary'}`}
-              type="button"
-              aria-pressed={value === filter}
+            <Button
+              variant={selected ? 'primary' : 'secondary'}
+              size="small"
+              aria-pressed={selected}
               key={filter}
               onClick={() => onChange(filter)}
             >
               {option.label} ({option.count})
-            </button>
+            </Button>
           );
         })}
       </div>

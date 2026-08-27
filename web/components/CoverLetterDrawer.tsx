@@ -7,6 +7,7 @@ import { API_URL, api } from '@/lib/api';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { getErrorMessage } from '@/lib/errors';
 import { jobTargetCompany, targetCompanyMissingHint } from '@/lib/job-target-company';
+import { downloadWithCleanProvenance } from '@/lib/privacy-download';
 import type { Application } from '@/lib/types';
 
 type EditableApplication = Application & {
@@ -15,6 +16,8 @@ type EditableApplication = Application & {
 };
 
 type MotivationTab = 'coverLetter' | 'message';
+
+type CoverLetterFormat = 'pdf' | 'docx';
 
 type CoverLetterDrawerProps = {
   application: Application;
@@ -246,6 +249,20 @@ export function CoverLetterDrawer({
     }
   };
 
+  const downloadCoverLetter = async (format: CoverLetterFormat): Promise<void> => {
+    setNotice('');
+    setError('');
+
+    const result = await downloadWithCleanProvenance({
+      url: `${downloadBase}/${format}`,
+      filename: `lettre-motivation-${application.id}.${format}`,
+    });
+
+    setNotice(result.privacyClean
+      ? `Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`
+      : `Téléchargement ${format.toUpperCase()} lancé avec le mécanisme navigateur standard.`);
+  };
+
   const startEditing = (): void => {
     setDraft(application.coverLetter);
     setEditing(true);
@@ -373,8 +390,8 @@ export function CoverLetterDrawer({
                 <details className={styles.downloadMenu}>
                   <summary className="btn secondary small">Télécharger</summary>
                   <div className={styles.downloadOptions}>
-                    <a href={`${downloadBase}/pdf`}>PDF</a>
-                    <a href={`${downloadBase}/docx`}>Word (.docx)</a>
+                    <button type="button" onClick={() => void downloadCoverLetter('pdf')}>PDF</button>
+                    <button type="button" onClick={() => void downloadCoverLetter('docx')}>Word (.docx)</button>
                   </div>
                 </details>
                 {editableApplication.coverLetterManuallyEdited && !editing ? (

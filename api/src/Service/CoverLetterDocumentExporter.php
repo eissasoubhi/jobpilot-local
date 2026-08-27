@@ -8,6 +8,8 @@ use ZipArchive;
 
 final class CoverLetterDocumentExporter
 {
+    private const DOCX_ENTRY_MTIME = 315532800;
+
     public function pdf(string $letter): string
     {
         $lines = $this->pdfLines($letter);
@@ -98,11 +100,11 @@ final class CoverLetterDocumentExporter
                 throw new \RuntimeException('Impossible de créer le document Word.');
             }
 
-            $zip->addFromString('[Content_Types].xml', $this->docxContentTypes());
-            $zip->addFromString('_rels/.rels', $this->docxRootRelationships());
-            $zip->addFromString('word/document.xml', $this->docxDocument($letter));
-            $zip->addFromString('word/styles.xml', $this->docxStyles());
-            $zip->addFromString('word/_rels/document.xml.rels', $this->docxDocumentRelationships());
+            $this->addDocxEntry($zip, '[Content_Types].xml', $this->docxContentTypes());
+            $this->addDocxEntry($zip, '_rels/.rels', $this->docxRootRelationships());
+            $this->addDocxEntry($zip, 'word/document.xml', $this->docxDocument($letter));
+            $this->addDocxEntry($zip, 'word/styles.xml', $this->docxStyles());
+            $this->addDocxEntry($zip, 'word/_rels/document.xml.rels', $this->docxDocumentRelationships());
             $zip->close();
 
             $content = file_get_contents($path);
@@ -115,6 +117,17 @@ final class CoverLetterDocumentExporter
             if (file_exists($path)) {
                 @unlink($path);
             }
+        }
+    }
+
+    private function addDocxEntry(ZipArchive $zip, string $name, string $content): void
+    {
+        if (!$zip->addFromString($name, $content)) {
+            throw new \RuntimeException('Impossible de préparer le contenu du document Word.');
+        }
+
+        if (!$zip->setMtimeName($name, self::DOCX_ENTRY_MTIME)) {
+            throw new \RuntimeException('Impossible de neutraliser la date interne du document Word.');
         }
     }
 

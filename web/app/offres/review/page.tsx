@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
-import { Card, Empty, ErrorBox, Loading } from '@/components/UI';
+import { Button, Card, Empty, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { crmOrganizationHref } from '@/lib/crm-navigation';
 import { getErrorMessage } from '@/lib/errors';
@@ -321,9 +321,10 @@ export default function ReviewQueuePage() {
             </button>
 
             <div className={styles.secondaryNavigation}>
-              <button
+              <Button
                 className={styles.navButton}
-                type="button"
+                variant="secondary"
+                size="small"
                 aria-label="Précédente"
                 aria-keyshortcuts="ArrowLeft"
                 title="Précédente — flèche gauche"
@@ -331,7 +332,7 @@ export default function ReviewQueuePage() {
                 onClick={goPrevious}
               >
                 ← <span>Préc.</span>
-              </button>
+              </Button>
 
               <div className={styles.progressBlock}>
                 <div className={styles.progressLabel}>
@@ -343,9 +344,10 @@ export default function ReviewQueuePage() {
                 </div>
               </div>
 
-              <button
+              <Button
                 className={styles.navButton}
-                type="button"
+                variant="secondary"
+                size="small"
                 aria-label="Suivante"
                 aria-keyshortcuts="ArrowRight"
                 title="Suivante — flèche droite"
@@ -353,7 +355,7 @@ export default function ReviewQueuePage() {
                 onClick={goNext}
               >
                 <span>Suiv.</span> →
-              </button>
+              </Button>
             </div>
 
             <button

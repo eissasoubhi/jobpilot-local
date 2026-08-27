@@ -8,19 +8,7 @@ afterEach(() => {
 });
 
 describe('downloadWithCleanProvenance', () => {
-  it('fetches without referrer and downloads through a data URL', async () => {
-    const clicks: HTMLAnchorElement[] = [];
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
-      const element = originalCreateElement(tagName);
-      if (tagName.toLowerCase() === 'a') {
-        vi.spyOn(element as HTMLAnchorElement, 'click').mockImplementation(() => {
-          clicks.push(element as HTMLAnchorElement);
-        });
-      }
-      return element;
-    }) as typeof document.createElement);
-
+  it('fetches without referrer and downloads from an isolated data document', async () => {
     const fetchImpl = vi.fn(async () => new Response('private export', {
       status: 200,
       headers: { 'Content-Type': 'application/pdf' },
@@ -28,7 +16,7 @@ describe('downloadWithCleanProvenance', () => {
 
     const result = await downloadWithCleanProvenance({
       url: '/api/applications/42/cover-letter/download/pdf',
-      filename: 'lettre.pdf',
+      filename: 'lettre-</script>.pdf',
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 
@@ -40,11 +28,21 @@ describe('downloadWithCleanProvenance', () => {
       }),
     );
     expect(result).toEqual({ privacyClean: true, fallbackUsed: false });
-    expect(clicks).toHaveLength(1);
-    expect(clicks[0].href).toMatch(/^data:application\/pdf/);
-    expect(clicks[0].download).toBe('lettre.pdf');
-    expect(clicks[0].rel).toBe('noreferrer');
-    expect(clicks[0].referrerPolicy).toBe('no-referrer');
+
+    const iframe = document.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.hidden).toBe(true);
+    expect(iframe?.referrerPolicy).toBe('no-referrer');
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts allow-downloads');
+    expect(iframe?.getAttribute('sandbox')).not.toContain('allow-same-origin');
+    expect(iframe?.src).toMatch(/^data:text\/html;charset=utf-8;base64,/);
+
+    const isolatedDocument = window.atob(iframe?.src.split(',')[1] ?? '');
+    expect(isolatedDocument).toContain('<meta name="referrer" content="no-referrer">');
+    expect(isolatedDocument).toContain('data:application/pdf;base64,');
+    expect(isolatedDocument).toContain('anchor.download = "lettre-\\u003c/script>.pdf"');
+    expect(isolatedDocument).not.toContain('lettre-</script>.pdf');
+    expect(isolatedDocument).not.toContain('/api/applications/42/cover-letter/download/pdf');
   });
 
   it('falls back to the classic URL without weakening browser security when preparation fails', async () => {

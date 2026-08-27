@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { ProgressBar } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   applicationGoalPaceTone,
@@ -14,11 +15,11 @@ import { getErrorMessage } from '@/lib/errors';
 
 import styles from './ApplicationGoals.module.css';
 
-function paceTrackClass(tone: ApplicationGoalPaceTone): string | undefined {
-  if (tone === 'completed') return styles.compactTrackCompleted;
-  if (tone === 'warning') return styles.compactTrackWarning;
-  if (tone === 'critical') return styles.compactTrackCritical;
-  return undefined;
+function progressTone(tone: ApplicationGoalPaceTone): 'neutral' | 'good' | 'warn' | 'bad' {
+  if (tone === 'completed') return 'good';
+  if (tone === 'warning') return 'warn';
+  if (tone === 'critical') return 'bad';
+  return 'neutral';
 }
 
 export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
@@ -72,12 +73,13 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
                   <strong>{period.label}</strong>
                   <span>{period.achieved}/{period.target} · {period.percent}%</span>
                 </div>
-                <div className={styles.compactTrack} aria-hidden="true">
-                  <span
-                    className={paceTrackClass(paceTone)}
-                    style={{ width: `${applicationGoalProgressWidth(period)}%` }}
-                  />
-                </div>
+                <ProgressBar
+                  value={applicationGoalProgressWidth(period)}
+                  label={`Progression de l’objectif ${period.label}`}
+                  valueText={`${period.achieved} sur ${period.target} · ${period.percent}%`}
+                  tone={progressTone(paceTone)}
+                  size="compact"
+                />
               </article>
             );
           })}

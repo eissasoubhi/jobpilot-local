@@ -102,6 +102,8 @@ jobs:
         run: docker compose -f docker-compose.yml config --quiet
       - name: Validate local development configuration
         run: docker compose -f docker-compose.yml -f docker-compose.override.yml config --quiet
+      - name: Validate scheduler shell syntax
+        run: sh -n api/scheduler-entrypoint.sh
 
   e2e:
     name: Chromium end-to-end tests

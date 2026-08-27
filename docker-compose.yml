@@ -105,27 +105,7 @@ services:
   scheduler:
     build:
       context: ./api
-    entrypoint:
-      - sh
-      - -c
-      - |
-        worker_loop() {
-          while true; do
-            php bin/console app:jobs:sync-worker || true
-            sleep 1
-          done
-        }
-
-        worker_loop &
-        worker_pid=$$!
-        trap 'kill "$$worker_pid" 2>/dev/null || true' TERM INT EXIT
-
-        while true; do
-          php bin/console app:jobs:repair-contaminated-gmail --limit=50 || true
-          php bin/console app:jobs:sync || true
-          php bin/console app:connectors:notify-freshness --interval="$${JOB_SYNC_INTERVAL_SECONDS:-21600}" || true
-          sleep "$${JOB_SYNC_INTERVAL_SECONDS:-21600}"
-        done
+    entrypoint: ["sh", "./scheduler-entrypoint.sh"]
     restart: unless-stopped
     environment:
       APP_ENV: dev
@@ -163,6 +143,8 @@ services:
       LE_STUDIO_TECH_PAGES: ${LE_STUDIO_TECH_PAGES:-8}
       LE_STUDIO_TECH_MAX_DETAILS: ${LE_STUDIO_TECH_MAX_DETAILS:-20}
       JOB_SYNC_INTERVAL_SECONDS: ${JOB_SYNC_INTERVAL_SECONDS:-21600}
+      SCHEDULER_HEARTBEAT_PATH: ${SCHEDULER_HEARTBEAT_PATH:-/tmp/jobpilot-scheduler-heartbeat}
+      SCHEDULER_HEARTBEAT_GRACE_SECONDS: ${SCHEDULER_HEARTBEAT_GRACE_SECONDS:-300}
       CONNECTOR_ALERT_WEBHOOK_URL: ${CONNECTOR_ALERT_WEBHOOK_URL:-}
       CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST: ${CONNECTOR_ALERT_WEBHOOK_ALLOWED_HOST:-}
       CONNECTOR_ALERT_WEBHOOK_SECRET: ${CONNECTOR_ALERT_WEBHOOK_SECRET:-}
@@ -171,6 +153,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "./scheduler-healthcheck.php"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     volumes:
       - ./initial-data:/app/initial-data:ro
       - jobpilot_private:/app/var/private

@@ -70,6 +70,39 @@ final class GroundedCoverLetterBuilderTest extends TestCase
         self::assertStringNotContainsString('AWS', $letter);
     }
 
+    public function testImportedAllCapsGenderSuffixIsNaturalizedOnlyInCoverLetterProse(): void
+    {
+        $profile = (new CandidateProfile())->fill(['fullName' => 'Test Candidate']);
+        $job = (new JobOffer())->fill([
+            'title' => 'FOUNDER ASSOCIATE (M/F/X)',
+            'company' => 'Example Ltd',
+            'language' => 'en',
+            'description' => 'Build the product with the founding team.',
+        ]);
+
+        $letter = (new GroundedCoverLetterBuilder())->build($job, $profile);
+
+        self::assertStringContainsString('Founder Associate position', $letter);
+        self::assertStringNotContainsString('(M/F/X)', $letter);
+        self::assertSame('FOUNDER ASSOCIATE (M/F/X)', $job->getTitle());
+    }
+
+    public function testImportedSeparatorIsNaturalizedWhileTechnicalAcronymIsPreserved(): void
+    {
+        $profile = (new CandidateProfile())->fill(['fullName' => 'Test Candidate']);
+        $job = (new JobOffer())->fill([
+            'title' => 'Senior SWE - Platform',
+            'company' => 'Example Ltd',
+            'language' => 'en',
+            'description' => 'Platform engineering.',
+        ]);
+
+        $letter = (new GroundedCoverLetterBuilder())->build($job, $profile);
+
+        self::assertStringContainsString('Senior SWE, Platform position', $letter);
+        self::assertSame('Senior SWE - Platform', $job->getTitle());
+    }
+
     public function testExplicitCoverLetterRequirementRemainsVisibleAsMetadata(): void
     {
         $profile = (new CandidateProfile())->fill([

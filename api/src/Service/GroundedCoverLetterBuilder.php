@@ -41,7 +41,7 @@ final class GroundedCoverLetterBuilder
         array $matchingSkills,
         string $company,
     ): string {
-        $role = $this->frenchRoleInSentence($job->getTitle());
+        $role = $this->frenchRoleInSentence($this->naturalRoleForProse($job->getTitle()));
         $companySuffix = $company !== '' ? ' chez '.$company : '';
         $experience = $years > 0
             ? "Avec {$years} ans d’expérience professionnelle, je souhaite mettre mon parcours au service d’une mission dont les responsabilités s’inscrivent dans la continuité de mon expérience du développement web."
@@ -69,7 +69,8 @@ final class GroundedCoverLetterBuilder
         array $matchingSkills,
         string $company,
     ): string {
-        $role = trim($job->getTitle()) !== '' ? trim($job->getTitle()) : 'this role';
+        $role = $this->naturalRoleForProse($job->getTitle());
+        $role = $role !== '' ? $role : 'this role';
         $companySuffix = $company !== '' ? ' at '.$company : '';
         $experience = $years > 0
             ? "With {$years} years of professional experience, I am interested in bringing my background to a role whose responsibilities are closely aligned with web application development and product delivery."
@@ -84,6 +85,41 @@ final class GroundedCoverLetterBuilder
             .'Beyond the technical fit, I am looking for a role where I can contribute my experience, take part in implementation decisions, and stay focused on code quality, readability, and product evolution. This combination of technical contribution, understanding the need, and teamwork reflects how I approach my work.'
             ."\n\n{$availabilitySentence} I would be glad to discuss my background in more detail and explore how I could contribute to your needs."
             ."\n\nBest regards,{$signature}";
+    }
+
+    private function naturalRoleForProse(string $title): string
+    {
+        $title = trim(preg_replace('/\s+/u', ' ', $title) ?? $title);
+        if ($title === '') {
+            return '';
+        }
+
+        $title = trim(preg_replace(
+            '/\s*\((?:H|F|M|W|D|X|NB)(?:\s*(?:\/|\||,|-)\s*(?:H|F|M|W|D|X|NB)){1,4}\)\s*$/iu',
+            '',
+            $title,
+        ) ?? $title);
+        $title = preg_replace('/\s+-\s+/u', ', ', $title) ?? $title;
+
+        if ($title !== '' && mb_strtoupper($title, 'UTF-8') === $title && mb_strtolower($title, 'UTF-8') !== $title) {
+            $acronyms = [
+                'AI', 'AWS', 'CEO', 'CIO', 'COO', 'CTO', 'GCP', 'IT', 'JS', 'ML', 'PHP', 'QA', 'SRE', 'SWE', 'TS', 'UI', 'UX',
+            ];
+            $title = preg_replace_callback('/[\pL\pN]+/u', static function (array $match) use ($acronyms): string {
+                $word = mb_strtoupper($match[0], 'UTF-8');
+                if (in_array($word, $acronyms, true)) {
+                    return $word;
+                }
+
+                if ($word === 'DEVOPS') {
+                    return 'DevOps';
+                }
+
+                return mb_convert_case(mb_strtolower($match[0], 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+            }, $title) ?? $title;
+        }
+
+        return trim($title);
     }
 
     private function frenchRoleInSentence(string $title): string

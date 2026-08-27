@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Application;
 use App\Entity\InboxMessage;
+use App\JobDiscovery\Application\ConnectorSyncResultInspector;
 use App\Messaging\Application\InboxMessageUrgencyEvaluator;
 use App\Service\ApplicationEmailFactory;
 use App\Service\GmailService;
@@ -109,13 +110,22 @@ final class GmailController
             return new JsonResponse(['error' => $error->getMessage()], 502);
         }
 
-        return new JsonResponse([
+        $summary = [
             ...$this->gmail->lastSyncSummary(),
             'offersImported' => (int) ($result['imported'] ?? 0),
             'offerDuplicates' => (int) ($result['duplicates'] ?? 0),
             'message' => (string) ($result['message'] ?? 'Synchronisation Gmail terminée.'),
             'skipped' => (bool) ($result['skipped'] ?? false),
-        ]);
+        ];
+        $connectorError = ConnectorSyncResultInspector::connectorError($result, 'gmail');
+        if ($connectorError !== null) {
+            return new JsonResponse([
+                ...$summary,
+                'error' => 'La synchronisation Gmail a échoué : '.$connectorError,
+            ], 502);
+        }
+
+        return new JsonResponse($summary);
     }
 
     #[Route('/disconnect', methods: ['POST'])]

@@ -313,9 +313,14 @@ export function OfferApplicationSummary({
                   </label>
 
                   <div className="actions">
-                    <button className="btn secondary small" type="button" disabled={saving} onClick={() => void savePreparation()}>
-                      {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
-                    </button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      loading={saving}
+                      onClick={() => void savePreparation()}
+                    >
+                      Enregistrer les modifications
+                    </Button>
                   </div>
                 </div>
               </section>
@@ -326,16 +331,17 @@ export function OfferApplicationSummary({
                   Si l’offre ne correspond pas à ton profil, marque-la ici. Elle quittera la boîte À traiter sans être supprimée ni envoyer quoi que ce soit à la plateforme.
                 </div>
                 <div className="actions" style={{ marginTop: 10 }}>
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={saving || currentApplication.status === 'IGNORED_NOT_MATCH'}
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    loading={saving}
+                    disabled={currentApplication.status === 'IGNORED_NOT_MATCH'}
                     onClick={() => void markIgnoredNotMatch()}
                   >
                     {currentApplication.status === 'IGNORED_NOT_MATCH'
                       ? 'Déjà marquée comme non correspondante'
-                      : saving ? 'Enregistrement…' : 'Ne correspond pas à mon profil'}
-                  </button>
+                      : 'Ne correspond pas à mon profil'}
+                  </Button>
                 </div>
               </section>
 
@@ -364,24 +370,26 @@ export function OfferApplicationSummary({
                     </select>
                   </label>
                   <div className="actions">
-                    <button
-                      className="btn secondary small"
-                      type="button"
-                      disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      loading={saving}
+                      disabled={currentApplication.status === 'SUBMISSION_PENDING'}
                       onClick={() => void saveTrackingStatus()}
                     >
-                      {saving ? 'Enregistrement…' : 'Enregistrer le statut'}
-                    </button>
-                    <button
-                      className="btn secondary small"
-                      type="button"
-                      disabled={saving || currentApplication.status === 'SUBMITTED'}
+                      Enregistrer le statut
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      loading={saving}
+                      disabled={currentApplication.status === 'SUBMITTED'}
                       onClick={() => void markSubmitted()}
                     >
                       {currentApplication.status === 'SUBMITTED'
                         ? 'Candidature déjà marquée comme envoyée'
-                        : saving ? 'Enregistrement…' : 'J’ai envoyé la candidature'}
-                    </button>
+                        : 'J’ai envoyé la candidature'}
+                    </Button>
                   </div>
                 </div>
                 {notice !== '' && <div className="small" role="status" style={{ marginTop: 8 }}>{notice}</div>}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge } from '@/components/UI';
+import { Badge, Button } from '@/components/UI';
 import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
@@ -119,9 +119,9 @@ export function OfferApplicationSummary({
       </div>
 
       <div className="actions" style={{ marginTop: 10 }}>
-        <button className="btn secondary small" type="button" onClick={() => setReviewOpen(true)}>
+        <Button variant="secondary" size="small" onClick={() => setReviewOpen(true)}>
           Examiner
-        </button>
+        </Button>
         {currentApplication.jobOffer.sourceUrl && (
           <a
             className="btn small"
@@ -226,9 +226,9 @@ export function OfferApplicationSummary({
                   {currentApplication.jobOffer.company || 'Entreprise non renseignée'} · {currentApplication.jobOffer.location || 'Lieu non renseigné'} · {currentApplication.jobOffer.workMode || 'Mode non renseigné'}
                 </div>
               </div>
-              <button className="btn secondary small" type="button" onClick={() => setReviewOpen(false)}>
+              <Button variant="secondary" size="small" onClick={() => setReviewOpen(false)}>
                 Fermer
-              </button>
+              </Button>
             </div>
 
             <div className="stack" style={{ gap: 18, marginTop: 22 }}>

@@ -1,3 +1,4 @@
+import buttonStyles from './Button.module.css';
 import offlineStyles from './offline-state.module.css';
 
 export function PageHeader({ title, description, actions }: { title:string; description?:string; actions?:React.ReactNode }) {
@@ -8,6 +9,46 @@ export function Badge({ children, tone='neutral' }: { children:React.ReactNode; 
 export function Empty({ children }: { children:React.ReactNode }) { return <div className="empty">{children}</div>; }
 export function Loading() { return <div className="loading">Chargement…</div>; }
 export function ErrorBox({ message }: { message:string }) { return <div className="error-box">{message}</div>; }
+
+type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
+type ButtonSize = 'default' | 'small';
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+};
+
+export function Button({
+  children,
+  className = '',
+  disabled,
+  loading = false,
+  size = 'default',
+  type = 'button',
+  variant = 'primary',
+  ...props
+}: ButtonProps) {
+  const classes = [
+    buttonStyles.button,
+    buttonStyles[variant],
+    size === 'small' ? buttonStyles.small : '',
+    className,
+  ].filter(Boolean).join(' ');
+
+  return (
+    <button
+      {...props}
+      type={type}
+      className={classes}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+    >
+      {loading && <span className={buttonStyles.loadingIndicator} aria-hidden="true" />}
+      {children}
+    </button>
+  );
+}
 
 export function FloatingPanel({
   children,
@@ -119,9 +160,9 @@ export function OfflineState({
         {technicalDetail && (
           <div className={offlineStyles.detail}>Détail technique : {technicalDetail}</div>
         )}
-        <button className="btn secondary small" type="button" onClick={onRetry}>
+        <Button variant="secondary" size="small" onClick={onRetry}>
           {retryLabel}
-        </button>
+        </Button>
       </div>
     </section>
   );

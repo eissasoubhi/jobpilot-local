@@ -1,0 +1,102 @@
+.button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  outline-offset: 2px;
+}
+
+.button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--primary) 88%, #000);
+}
+
+.secondary {
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.secondary:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+  background: var(--primary2);
+}
+
+.subtle {
+  background: transparent;
+  color: var(--text);
+}
+
+.subtle:not(:disabled):hover {
+  background: var(--primary2);
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--bad) 24%, transparent);
+  background: color-mix(in srgb, var(--bad) 8%, var(--panel));
+  color: var(--bad);
+}
+
+.danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--bad) 14%, var(--panel));
+}
+
+.small {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.loadingIndicator {
+  width: 0.9em;
+  height: 0.9em;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 700ms linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:not(:disabled):active {
+    transform: none;
+  }
+
+  .loadingIndicator {
+    animation-duration: 1400ms;
+  }
+}

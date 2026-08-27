@@ -250,17 +250,41 @@ export function CoverLetterDrawer({
   };
 
   const downloadCoverLetter = async (format: CoverLetterFormat): Promise<void> => {
+    if (saving || regenerating || regeneratingMessage) return;
+
     setNotice('');
     setError('');
 
-    const result = await downloadWithCleanProvenance({
-      url: `${downloadBase}/${format}`,
-      filename: `lettre-motivation-${application.id}.${format}`,
-    });
+    if (editing && draft.trim() === '') {
+      setError('La lettre doit contenir du texte avant le téléchargement.');
+      return;
+    }
 
-    setNotice(result.privacyClean
-      ? `Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`
-      : `Téléchargement ${format.toUpperCase()} lancé avec le mécanisme navigateur standard.`);
+    setSaving(true);
+
+    try {
+      if (editing && draft !== application.coverLetter) {
+        const updated = await api<EditableApplication>(`/applications/${application.id}/cover-letter`, {
+          method: 'PATCH',
+          body: JSON.stringify({ coverLetter: draft }),
+        });
+        setDraft(updated.coverLetter);
+        onApplicationUpdated?.(updated);
+      }
+
+      const result = await downloadWithCleanProvenance({
+        url: `${downloadBase}/${format}`,
+        filename: `lettre-motivation-${application.id}.${format}`,
+      });
+
+      setNotice(result.privacyClean
+        ? `Téléchargement ${format.toUpperCase()} préparé sans provenance JobPilot.`
+        : `Téléchargement ${format.toUpperCase()} lancé avec le mécanisme navigateur standard.`);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const startEditing = (): void => {
@@ -390,8 +414,8 @@ export function CoverLetterDrawer({
                 <details className={styles.downloadMenu}>
                   <summary className="btn secondary small">Télécharger</summary>
                   <div className={styles.downloadOptions}>
-                    <button type="button" onClick={() => void downloadCoverLetter('pdf')}>PDF</button>
-                    <button type="button" onClick={() => void downloadCoverLetter('docx')}>Word (.docx)</button>
+                    <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('pdf')}>PDF</button>
+                    <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('docx')}>Word (.docx)</button>
                   </div>
                 </details>
                 {editableApplication.coverLetterManuallyEdited && !editing ? (
@@ -500,7 +524,7 @@ export function CoverLetterDrawer({
                     onChange={(event) => setDraft(event.target.value)}
                   />
                   <div className={styles.editorFooter}>
-                    <span>Le PDF et le document Word utilisent la dernière version enregistrée.</span>
+                    <span>Le téléchargement enregistre d’abord le texte actuellement affiché, puis exporte exactement cette version.</span>
                     <div className={styles.editorActions}>
                       <button
                         className="btn secondary small"

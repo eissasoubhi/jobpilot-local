@@ -10,6 +10,8 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class ApplicationGoalProgressService
 {
+    private const ALREADY_APPLIED_CHANNEL = 'Candidature externe';
+
     public function __construct(
         private EntityManagerInterface $em,
         private LocalDataService $data,
@@ -121,11 +123,14 @@ final class ApplicationGoalProgressService
         $rows = $this->em->createQueryBuilder()
             ->select('IDENTITY(event.application) AS applicationId')
             ->from(JobTimelineEvent::class, 'event')
+            ->innerJoin('event.application', 'application')
             ->andWhere('event.type = :type')
-            ->andWhere('event.application IS NOT NULL')
+            ->andWhere('application.submittedAt IS NOT NULL')
+            ->andWhere('application.channel <> :alreadyAppliedChannel')
             ->andWhere('event.occurredAt >= :start')
             ->andWhere('event.occurredAt < :end')
             ->setParameter('type', JobTimelineEventType::APPLICATION_SUBMITTED)
+            ->setParameter('alreadyAppliedChannel', self::ALREADY_APPLIED_CHANNEL)
             ->setParameter('start', $start->setTimezone($utc))
             ->setParameter('end', $end->setTimezone($utc))
             ->getQuery()

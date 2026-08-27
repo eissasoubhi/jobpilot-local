@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCount } from '@/lib/formatCount';
@@ -154,9 +154,9 @@ export default function ConnectorsPage() {
         title="Connecteurs"
         description="État, autorisation, santé d’extraction, qualité des champs, limites et historique des sources d’offres."
         actions={
-          <button className="btn secondary" type="button" onClick={() => void load()}>
+          <Button variant="secondary" onClick={() => void load()}>
             Actualiser
-          </button>
+          </Button>
         }
       />
 
@@ -292,22 +292,22 @@ export default function ConnectorsPage() {
                     </div>
 
                     <div className="actions" style={{ marginTop: 14 }}>
-                      <button
-                        className="btn secondary small"
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="small"
                         disabled={busyCode !== ''}
                         onClick={() => void toggle(connector)}
                       >
                         {connector.enabled ? 'Désactiver' : 'Activer'}
-                      </button>
-                      <button
-                        className="btn small"
-                        type="button"
+                      </Button>
+                      <Button
+                        size="small"
+                        loading={busyCode === connector.code}
                         disabled={busyCode !== '' || !connector.enabled || !connector.configured || !connector.collectionAllowed}
                         onClick={() => void synchronize(connector)}
                       >
                         {busyCode === connector.code ? 'Synchronisation…' : 'Tester maintenant'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

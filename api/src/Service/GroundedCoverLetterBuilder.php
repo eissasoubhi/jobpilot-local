@@ -41,7 +41,7 @@ final class GroundedCoverLetterBuilder
         array $matchingSkills,
         string $company,
     ): string {
-        $role = trim($job->getTitle()) !== '' ? trim($job->getTitle()) : 'proposé';
+        $role = $this->frenchRoleInSentence($job->getTitle());
         $companySuffix = $company !== '' ? ' chez '.$company : '';
         $experience = $years > 0
             ? "Avec {$years} ans d’expérience professionnelle, je souhaite mettre mon parcours au service d’une mission dont les responsabilités s’inscrivent dans la continuité de mon expérience du développement web."
@@ -84,6 +84,45 @@ final class GroundedCoverLetterBuilder
             .'Beyond the technical fit, I am looking for a role where I can contribute my experience, take part in implementation decisions, and stay focused on code quality, readability, and product evolution. This combination of technical contribution, understanding the need, and teamwork reflects how I approach my work.'
             ."\n\n{$availabilitySentence} I would be glad to discuss my background in more detail and explore how I could contribute to your needs."
             ."\n\nBest regards,{$signature}";
+    }
+
+    private function frenchRoleInSentence(string $title): string
+    {
+        $title = trim($title);
+        if ($title === '') {
+            return 'proposé';
+        }
+
+        $parts = preg_split('/(\s+)/u', $title, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false || $parts === []) {
+            return $title;
+        }
+
+        $firstWord = $parts[0];
+        $safeLeadingWords = [
+            'architecte',
+            'chef',
+            'cheffe',
+            'consultant',
+            'consultante',
+            'développeur',
+            'développeuse',
+            'directeur',
+            'directrice',
+            'ingénieur',
+            'ingénieure',
+            'junior',
+            'responsable',
+            'senior',
+        ];
+
+        if (!in_array(mb_strtolower($firstWord), $safeLeadingWords, true)) {
+            return $title;
+        }
+
+        $parts[0] = mb_strtolower($firstWord);
+
+        return implode('', $parts);
     }
 
     /**

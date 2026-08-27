@@ -284,21 +284,35 @@ final class ApplicationController
 
     private function coverLetterFilename(Application $application, string $extension): string
     {
-        $job = $application->getJobOffer();
-        $parts = array_filter([
-            'Lettre-motivation',
-            trim($job->getCompany()),
-            trim($job->getTitle()),
-        ], static fn (string $part): bool => $part !== '');
-        $name = implode('_', $parts);
-        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
-        $name = $ascii === false ? $name : $ascii;
-        $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', $name) ?? 'Lettre-motivation';
-        $name = trim($name, '-_.');
-        if ($name === '') {
-            $name = 'Lettre-motivation';
+        $profile = $this->data->profile()->toArray();
+        $firstName = $this->filenameSlug((string) ($profile['firstName'] ?? ''));
+        $lastName = $this->filenameSlug((string) ($profile['lastName'] ?? ''));
+        $identity = trim($firstName.'-'.$lastName, '-');
+
+        if ($identity === '') {
+            $identity = $this->filenameSlug((string) ($profile['fullName'] ?? ''));
+        }
+        if ($identity === '') {
+            $identity = 'candidat';
         }
 
+        $jobTitle = $this->filenameSlug($application->getJobOffer()->getTitle());
+        if ($jobTitle === '') {
+            $jobTitle = 'poste';
+        }
+
+        $name = $identity.'_lettre-de-motivation_'.$jobTitle;
+
         return substr($name, 0, 160).'.'.$extension;
+    }
+
+    private function filenameSlug(string $value): string
+    {
+        $value = trim($value);
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $value = strtolower($ascii === false ? $value : $ascii);
+        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
+
+        return trim($value, '-');
     }
 }

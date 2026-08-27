@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\Application;
+use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -17,6 +18,13 @@ final class ApplicationCoverLetterApiTest extends WebTestCase
         $client = static::createClient();
         $em = static::getContainer()->get(EntityManagerInterface::class);
         $suffix = bin2hex(random_bytes(5));
+
+        $profile = $em->getRepository(CandidateProfile::class)->findOneBy([]) ?? new CandidateProfile();
+        $profile->fill([
+            'firstName' => 'Aïssa',
+            'lastName' => 'Soubhi',
+        ]);
+        $em->persist($profile);
 
         $job = (new JobOffer())->fill([
             'source' => 'Cover letter API test',
@@ -57,7 +65,7 @@ final class ApplicationCoverLetterApiTest extends WebTestCase
         self::assertSame($editedLetter, $client->getResponse()->getContent());
         self::assertStringContainsString('text/plain', (string) $client->getResponse()->headers->get('Content-Type'));
         self::assertStringContainsString(
-            'Lettre-motivation_Example-Corp_Developpeur-PHP-Symfony.txt',
+            'aissa-soubhi_lettre-de-motivation_developpeur-php-symfony.txt',
             (string) $client->getResponse()->headers->get('Content-Disposition'),
         );
 
@@ -69,7 +77,7 @@ final class ApplicationCoverLetterApiTest extends WebTestCase
         self::assertStringContainsString('Deuxi', $pdf);
         self::assertStringContainsString('application/pdf', (string) $client->getResponse()->headers->get('Content-Type'));
         self::assertStringContainsString(
-            'Lettre-motivation_Example-Corp_Developpeur-PHP-Symfony.pdf',
+            'aissa-soubhi_lettre-de-motivation_developpeur-php-symfony.pdf',
             (string) $client->getResponse()->headers->get('Content-Disposition'),
         );
 
@@ -82,7 +90,7 @@ final class ApplicationCoverLetterApiTest extends WebTestCase
             (string) $client->getResponse()->headers->get('Content-Type'),
         );
         self::assertStringContainsString(
-            'Lettre-motivation_Example-Corp_Developpeur-PHP-Symfony.docx',
+            'aissa-soubhi_lettre-de-motivation_developpeur-php-symfony.docx',
             (string) $client->getResponse()->headers->get('Content-Disposition'),
         );
         self::assertDocxContains($docx, 'Version personnalisée.');

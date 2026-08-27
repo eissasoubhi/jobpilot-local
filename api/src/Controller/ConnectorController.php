@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\ConnectorDeadLetter;
 use App\JobDiscovery\Application\ConnectorDeadLetterService;
+use App\JobDiscovery\Application\ConnectorSyncResultInspector;
 use App\Service\JobSearchSyncService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -76,6 +77,15 @@ final class ConnectorController
     #[Route('/{code}/sync', methods: ['POST'])]
     public function sync(string $code): JsonResponse
     {
-        return new JsonResponse($this->syncService->sync(true, $code, 'manual'));
+        $result = $this->syncService->sync(true, $code, 'manual');
+        $connectorError = ConnectorSyncResultInspector::connectorError($result, $code);
+        if ($connectorError !== null) {
+            return new JsonResponse([
+                ...$result,
+                'error' => sprintf('La synchronisation du connecteur %s a échoué : %s', $code, $connectorError),
+            ], 502);
+        }
+
+        return new JsonResponse($result);
     }
 }

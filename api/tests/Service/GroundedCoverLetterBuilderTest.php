@@ -32,7 +32,9 @@ final class GroundedCoverLetterBuilderTest extends TestCase
 
         self::assertFalse($content['coverLetterRequired']);
         self::assertNotSame('', trim($content['coverLetter']));
-        self::assertStringContainsString('Développeur Backend', $content['coverLetter']);
+        self::assertStringContainsString('poste de développeur Backend', $content['coverLetter']);
+        self::assertStringNotContainsString('poste de Développeur Backend', $content['coverLetter']);
+        self::assertSame('Développeur Backend', $job->getTitle());
         self::assertStringContainsString('Example Corp', $content['coverLetter']);
         self::assertStringContainsString('9 ans', $content['coverLetter']);
         self::assertStringContainsString('disponible immédiatement', $content['coverLetter']);

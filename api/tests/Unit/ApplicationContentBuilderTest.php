@@ -30,12 +30,30 @@ final class ApplicationContentBuilderTest extends TestCase
 
         self::assertFalse($content['coverLetterRequired']);
         self::assertStringStartsWith('Madame, Monsieur,', $content['coverLetter']);
-        self::assertStringContainsString('Développeur PHP Symfony', $content['coverLetter']);
+        self::assertStringContainsString('poste de développeur PHP Symfony chez Entreprise', $content['coverLetter']);
+        self::assertStringNotContainsString('poste de Développeur PHP Symfony', $content['coverLetter']);
+        self::assertSame('Développeur PHP Symfony', $job->getTitle());
         self::assertStringContainsString('PHP, Symfony, Doctrine et PostgreSQL', $content['coverLetter']);
         self::assertStringNotContainsString('Kubernetes', $content['coverLetter']);
         self::assertStringNotContainsString('React', $content['coverLetter']);
         self::assertWordCountBetween($content['coverLetter'], 150, 220);
         self::assertStringStartsWith('Bonjour,', $content['message']);
+    }
+
+    public function testDoesNotLowercaseATechnologyWhenItStartsTheFrenchOfferTitle(): void
+    {
+        $job = (new JobOffer())->fill([
+            'title' => 'React Developer',
+            'company' => 'Product Company',
+            'language' => 'fr',
+            'description' => 'React, TypeScript et accessibilité web.',
+        ]);
+
+        $content = $this->builder()->build($job, $this->profile(), ['React', 'TypeScript']);
+
+        self::assertStringContainsString('poste de React Developer chez Product Company', $content['coverLetter']);
+        self::assertStringNotContainsString('poste de react Developer', $content['coverLetter']);
+        self::assertSame('React Developer', $job->getTitle());
     }
 
     public function testKeepsTheLetterSeparateWhenTheOfferExplicitlyRequestsIt(): void

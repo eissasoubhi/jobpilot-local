@@ -41,16 +41,33 @@ export function FloatingPanel({
   );
 }
 
+type ProgressBarTone = 'neutral' | 'good' | 'warn' | 'bad';
+type ProgressBarSize = 'default' | 'compact';
+
 export function ProgressBar({
   value,
   label,
   valueText,
+  tone,
+  size = 'default',
 }: {
   value: number;
   label: string;
   valueText?: string;
+  tone?: ProgressBarTone;
+  size?: ProgressBarSize;
 }) {
   const normalizedValue = Math.min(100, Math.max(0, Math.round(value)));
+  const indicatorColor = tone === 'good'
+    ? 'var(--good)'
+    : tone === 'warn'
+      ? 'var(--warn)'
+      : tone === 'bad'
+        ? 'var(--bad)'
+        : tone === 'neutral'
+          ? 'var(--primary)'
+          : 'currentColor';
+  const trackColor = tone === undefined ? 'var(--surface-muted, #e5e7eb)' : 'var(--line)';
 
   return (
     <div
@@ -61,9 +78,9 @@ export function ProgressBar({
       aria-valuenow={normalizedValue}
       aria-valuetext={valueText}
       style={{
-        height: 8,
+        height: size === 'compact' ? 4 : 8,
         borderRadius: 999,
-        background: 'var(--surface-muted, #e5e7eb)',
+        background: trackColor,
         overflow: 'hidden',
       }}
     >
@@ -72,7 +89,7 @@ export function ProgressBar({
         style={{
           height: '100%',
           width: `${normalizedValue}%`,
-          background: 'currentColor',
+          background: indicatorColor,
           transition: 'width 200ms ease',
         }}
       />

@@ -9,6 +9,38 @@ export function Empty({ children }: { children:React.ReactNode }) { return <div 
 export function Loading() { return <div className="loading">Chargement…</div>; }
 export function ErrorBox({ message }: { message:string }) { return <div className="error-box">{message}</div>; }
 
+export function FloatingPanel({
+  children,
+  id,
+  role,
+  ariaLabel,
+  style,
+}: {
+  children: React.ReactNode;
+  id?: string;
+  role?: React.AriaRole;
+  ariaLabel?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      id={id}
+      role={role}
+      aria-label={ariaLabel}
+      style={{
+        padding: 16,
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        background: 'var(--panel)',
+        boxShadow: '0 16px 40px rgba(15, 23, 42, 0.16)',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function ProgressBar({
   value,
   label,

@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SourceConnector } from '@/lib/types';
 
+import { FloatingPanel } from './UI';
+
 type Props = {
   connectors: SourceConnector[];
   syncing: boolean;
@@ -119,21 +121,16 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
       </div>
 
       {open && (
-        <div
+        <FloatingPanel
           id="selective-connector-sync-panel"
           role="dialog"
-          aria-label="Choisir les connecteurs à synchroniser"
+          ariaLabel="Choisir les connecteurs à synchroniser"
           style={{
             position: 'absolute',
             right: 0,
             zIndex: 20,
             width: 'min(520px, calc(100vw - 32px))',
             marginTop: 8,
-            padding: 16,
-            border: '1px solid var(--line)',
-            borderRadius: 12,
-            background: 'var(--panel)',
-            boxShadow: '0 16px 40px rgba(15, 23, 42, 0.16)',
           }}
         >
           <div className="actions" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
@@ -196,7 +193,7 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
               Synchroniser {selectedCodes.length} connecteur{selectedCodes.length > 1 ? 's' : ''}
             </button>
           </div>
-        </div>
+        </FloatingPanel>
       )}
     </div>
   );

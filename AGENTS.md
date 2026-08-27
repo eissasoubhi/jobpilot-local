@@ -8,6 +8,15 @@ JobPilot is a local-first job-search workspace that discovers and normalizes job
 
 Optimize for correctness, user control, privacy, source compliance, explainability, and production readiness before feature volume.
 
+## Expert roles
+
+Use the repository expert roles as mandatory review lenses when their domain is involved:
+
+- **Product Design Expert** — `docs/agents/product-design-expert.md`: invoke for design-system, UX, UI, accessibility, responsive behavior, interaction, user-facing information architecture, and visual consistency work. For #246 and any substantial user-facing change, perform the product/UX review before implementation and review the resulting implementation again before merge.
+- **SEO & AI Search Expert** — `docs/agents/seo-ai-search-expert.md`: invoke for any intentionally public/indexable surface, public information architecture, metadata, structured data, performance affecting discoverability, content intended for organic acquisition, or search/answer-engine visibility. This includes classic SEO plus AEO/GEO/AI Search Optimization. Never make private workspace or candidate data public for SEO.
+
+These are expert perspectives, not permission to bypass product, privacy, accessibility, source-compliance, test, or manual gates. When both apply (for example a future public landing page), perform both reviews.
+
 ## Autonomous development workflow
 
 1. Before changing code, inspect current `main`, open pull requests, relevant issues, recent GitHub Actions runs, and the code touched by the proposed lane.
@@ -183,9 +192,10 @@ On each autonomous development cycle:
 1. Inspect `main`, active PRs/issues, and recent CI.
 2. Fix actionable failures in existing lanes first.
 3. Select up to three independent lanes by priority and risk.
-4. Avoid overlapping edits and duplicate PRs.
-5. Keep safety/manual gates intact.
-6. Merge only fully validated synchronized work.
-7. Re-evaluate priorities after every merge because `main` has changed.
+4. Apply the Product Design Expert and/or SEO & AI Search Expert review whenever the selected lane falls within those domains.
+5. Avoid overlapping edits and duplicate PRs.
+6. Keep safety/manual gates intact.
+7. Merge only fully validated synchronized work.
+8. Re-evaluate priorities after every merge because `main` has changed.
 
 If no safe actionable work exists, do not fabricate work or weaken a blocker. Record the real blocker and wait for the required external/user evidence.

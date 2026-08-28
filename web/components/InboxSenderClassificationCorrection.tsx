@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Button } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -38,15 +39,15 @@ export function InboxSenderClassificationCorrection({ messageId, sender, categor
 
   return (
     <div>
-      <button
-        className="btn secondary small"
-        type="button"
-        disabled={busy}
+      <Button
+        variant="secondary"
+        size="small"
+        loading={busy}
         onClick={() => void save()}
         title={`Toujours classer ${sender} comme alerte emploi`}
       >
         {busy ? 'Enregistrement…' : 'Ce n’est pas un recruteur'}
-      </button>
+      </Button>
       <div className="muted small" style={{ marginTop: 6 }}>
         Cette correction sera réutilisée pour les prochains messages de cet expéditeur.
       </div>

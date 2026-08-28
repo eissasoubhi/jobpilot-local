@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import { ErrorBox, PageHeader } from '@/components/UI';
+import { Button, ErrorBox, PageHeader } from '@/components/UI';
 
 export default function GlobalError({
   error,
@@ -19,9 +19,9 @@ export default function GlobalError({
     <>
       <PageHeader title="Une erreur est survenue" />
       <ErrorBox message={error.message || 'Erreur inattendue.'} />
-      <button className="btn" type="button" onClick={reset}>
+      <Button type="button" onClick={reset}>
         Réessayer
-      </button>
+      </Button>
     </>
   );
 }

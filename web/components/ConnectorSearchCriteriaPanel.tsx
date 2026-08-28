@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, ErrorBox } from '@/components/UI';
+import { Badge, Button, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -200,18 +200,17 @@ export function ConnectorSearchCriteriaPanel({
           </div>
           {criteria && !editing && (
             <div className="actions">
-              <button
-                className="btn small"
-                type="button"
-                disabled={testing}
+              <Button
+                loading={testing}
+                size="small"
                 onClick={() => void testCriteria()}
               >
                 {testing ? 'Test en cours…' : 'Tester ces critères maintenant'}
-              </button>
+              </Button>
               {allowGlobalEditing && (
-                <button
-                  className="btn secondary small"
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="small"
                   disabled={testing}
                   onClick={() => {
                     setEditing(true);
@@ -219,7 +218,7 @@ export function ConnectorSearchCriteriaPanel({
                   }}
                 >
                   Modifier les critères
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -342,12 +341,12 @@ export function ConnectorSearchCriteriaPanel({
             </span>
 
             <div className="actions">
-              <button className="btn small" type="button" disabled={saving} onClick={() => void save()}>
+              <Button loading={saving} size="small" onClick={() => void save()}>
                 {saving ? 'Enregistrement…' : 'Enregistrer les critères'}
-              </button>
-              <button
-                className="btn secondary small"
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
                 disabled={saving}
                 onClick={() => {
                   setEditing(false);
@@ -357,7 +356,7 @@ export function ConnectorSearchCriteriaPanel({
                 }}
               >
                 Annuler
-              </button>
+              </Button>
             </div>
           </div>
         )}

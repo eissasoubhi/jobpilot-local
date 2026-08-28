@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Button } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -110,14 +111,14 @@ export function CatalogResetPanel() {
       </label>
 
       <div className={styles.actions}>
-        <button
-          className={styles.resetButton}
-          type="button"
+        <Button
+          variant="danger"
           disabled={!canReset}
+          loading={resetting}
           onClick={() => void resetCatalog()}
         >
           {resetting ? 'Suppression et resynchronisation…' : 'Supprimer et resynchroniser'}
-        </button>
+        </Button>
         <span>Les critères de recherche actuellement enregistrés seront utilisés.</span>
       </div>
 

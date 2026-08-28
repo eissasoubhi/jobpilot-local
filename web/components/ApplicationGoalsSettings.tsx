@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { Card } from '@/components/UI';
+import { Button, Card } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
@@ -132,9 +132,9 @@ export function ApplicationGoalsSettings() {
 
             <div className={styles.settingsFooter}>
               <p className={styles.settingsHint}>0 désactive une cadence · semaine du lundi au dimanche · fuseau horaire du navigateur.</p>
-              <button className="btn small" disabled={saving} type="submit">
+              <Button loading={saving} size="small" type="submit">
                 {saving ? 'Enregistrement…' : 'Enregistrer les objectifs'}
-              </button>
+              </Button>
             </div>
 
             {error !== '' && <p className={styles.error} role="alert">{error}</p>}

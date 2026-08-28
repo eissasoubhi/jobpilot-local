@@ -347,7 +347,7 @@ final class GmailService
     {
         $query = $this->env(
             'GMAIL_SEARCH_QUERY',
-            '(job OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d',
+            '(job OR emploi OR offre OR mission OR candidature OR application OR recruiter OR entretien) newer_than:30d',
         );
         $maxResults = max(10, min(500, (int) $this->env('GMAIL_MAX_RESULTS', '100')));
         $maxPages = max(1, min(10, (int) $this->env('GMAIL_MAX_PAGES', '3')));

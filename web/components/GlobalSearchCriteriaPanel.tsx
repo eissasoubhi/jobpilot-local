@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, ErrorBox } from '@/components/UI';
+import { Badge, Button, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Settings } from '@/lib/types';
@@ -210,9 +210,9 @@ export function GlobalSearchCriteriaPanel() {
           </div>
 
           <div className="actions">
-            <button className="btn" type="button" disabled={saving} onClick={() => void save()}>
-              {saving ? 'Enregistrement…' : 'Enregistrer les critères globaux'}
-            </button>
+            <Button loading={saving} onClick={() => void save()}>
+              Enregistrer les critères globaux
+            </Button>
           </div>
         </div>
       )}

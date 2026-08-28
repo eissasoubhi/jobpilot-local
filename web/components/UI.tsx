@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import buttonStyles from './Button.module.css';
 import offlineStyles from './offline-state.module.css';
 import uiStyles from './UI.module.css';
@@ -13,6 +15,15 @@ export function ErrorBox({ message }: { message:string }) { return <div classNam
 
 type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
 type ButtonSize = 'default' | 'small';
+
+function buttonClasses(variant: ButtonVariant, size: ButtonSize, className: string): string {
+  return [
+    buttonStyles.button,
+    buttonStyles[variant],
+    size === 'small' ? buttonStyles.small : '',
+    className,
+  ].filter(Boolean).join(' ');
+}
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -30,24 +41,36 @@ export function Button({
   variant = 'primary',
   ...props
 }: ButtonProps) {
-  const classes = [
-    buttonStyles.button,
-    buttonStyles[variant],
-    size === 'small' ? buttonStyles.small : '',
-    className,
-  ].filter(Boolean).join(' ');
-
   return (
     <button
       {...props}
       type={type}
-      className={classes}
+      className={buttonClasses(variant, size, className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
     >
       {loading && <span className={buttonStyles.loadingIndicator} aria-hidden="true" />}
       {children}
     </button>
+  );
+}
+
+type ButtonLinkProps = React.ComponentProps<typeof Link> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+};
+
+export function ButtonLink({
+  children,
+  className = '',
+  size = 'default',
+  variant = 'primary',
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link {...props} className={buttonClasses(variant, size, className)}>
+      {children}
+    </Link>
   );
 }
 

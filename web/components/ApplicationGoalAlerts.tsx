@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { ButtonLink } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 
@@ -51,7 +51,9 @@ export function ApplicationGoalAlerts() {
               {missed.achieved} / {missed.target} candidature(s) envoyée(s) · déficit de {missed.remaining}.
             </span>
           </div>
-          <Link href="/offres/review">Rattraper dans la Review Queue →</Link>
+          <ButtonLink href="/offres/review" size="small" variant="secondary">
+            Rattraper dans la Review Queue →
+          </ButtonLink>
         </div>
       ))}
 
@@ -61,7 +63,9 @@ export function ApplicationGoalAlerts() {
             <strong>Objectif du jour : {daily.achieved} / {daily.target}</strong>
             <span>Il te reste {daily.remaining} candidature(s) à envoyer aujourd’hui.</span>
           </div>
-          <Link href="/offres/review">Continuer →</Link>
+          <ButtonLink href="/offres/review" size="small" variant="secondary">
+            Continuer →
+          </ButtonLink>
         </div>
       )}
     </section>

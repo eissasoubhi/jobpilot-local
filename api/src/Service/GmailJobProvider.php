@@ -84,16 +84,29 @@ final class GmailJobProvider implements GovernedJobSourceConnector, SearchDiagno
     public function searchDiagnostics(): array
     {
         $summary = $this->gmail->lastSyncSummary();
+        $messagesMatched = (int) ($summary['found'] ?? 0);
+        $messagesImported = (int) ($summary['imported'] ?? 0);
+        $messagesAlreadyKnown = (int) ($summary['duplicates'] ?? 0);
+        $messagesFailed = (int) ($summary['failed'] ?? 0);
+        $offersExtracted = (int) ($summary['offersFound'] ?? 0);
+
+        $outcome = match (true) {
+            $messagesMatched === 0 => 'no_messages_matched',
+            $messagesImported === 0 && $messagesFailed === 0 && $messagesAlreadyKnown > 0 => 'no_new_messages',
+            $offersExtracted === 0 => 'messages_without_offers',
+            default => 'offers_extracted',
+        };
 
         return [
             'source' => 'gmail',
-            'messagesMatched' => (int) ($summary['found'] ?? 0),
-            'messagesImported' => (int) ($summary['imported'] ?? 0),
-            'messagesAlreadyKnown' => (int) ($summary['duplicates'] ?? 0),
-            'messagesFailed' => (int) ($summary['failed'] ?? 0),
-            'offersExtracted' => (int) ($summary['offersFound'] ?? 0),
+            'messagesMatched' => $messagesMatched,
+            'messagesImported' => $messagesImported,
+            'messagesAlreadyKnown' => $messagesAlreadyKnown,
+            'messagesFailed' => $messagesFailed,
+            'offersExtracted' => $offersExtracted,
             'messagesAssociated' => (int) ($summary['associated'] ?? 0),
             'messagesActionRequired' => (int) ($summary['actionRequired'] ?? 0),
+            'outcome' => $outcome,
         ];
     }
 }

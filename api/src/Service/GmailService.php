@@ -497,6 +497,7 @@ final class GmailService
 
         return $bestScore >= 4 && $best instanceof Application ? $best : null;
     }
+
     /** @return list<string> */
     private function significantWords(string $value): array
     {

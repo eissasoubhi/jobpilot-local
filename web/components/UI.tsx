@@ -8,7 +8,7 @@ export function Card({ children, className='' }: { children:React.ReactNode; cla
 export function Badge({ children, tone='neutral' }: { children:React.ReactNode; tone?:'neutral'|'good'|'warn'|'bad'|'blue' }) { return <span className={`badge ${tone}`}>{children}</span>; }
 export function Empty({ children }: { children:React.ReactNode }) { return <div className="empty">{children}</div>; }
 export function Loading() { return <div className="loading">Chargement…</div>; }
-export function ErrorBox({ message }: { message:string }) { return <div className="error-box">{message}</div>; }
+export function ErrorBox({ message }: { message:string }) { return <div className="error-box" role="alert">{message}</div>; }
 
 type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
 type ButtonSize = 'default' | 'small';

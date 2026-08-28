@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Card, ErrorBox, Loading } from '@/components/UI';
+import { Badge, Button, Card, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -135,14 +135,15 @@ export function ConnectorDeadLettersSection() {
                   )}
                 </div>
 
-                <button
-                  className="btn secondary small"
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="small"
                   disabled={busyId !== null}
+                  loading={busyId === entry.id}
                   onClick={() => void resolve(entry)}
                 >
                   {busyId === entry.id ? 'Résolution…' : 'Marquer résolu'}
-                </button>
+                </Button>
               </div>
             ))}
           </div>

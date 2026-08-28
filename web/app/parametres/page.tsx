@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application, Settings } from '@/lib/types';
@@ -262,9 +262,9 @@ export default function SettingsPage() {
         title="Paramètres"
         description="Règles de recherche, score, rémunération, envoi et intégrations."
         actions={
-          <button className="btn" type="button" onClick={() => void save()}>
+          <Button onClick={() => void save()}>
             Enregistrer
-          </button>
+          </Button>
         }
       />
       {message !== '' && <div className="notice">{message}</div>}
@@ -343,9 +343,9 @@ export default function SettingsPage() {
                 <Badge tone={gmailStatus.sendPermission ? 'good' : 'warn'}>
                   {gmailStatus.sendPermission ? 'Lecture + envoi autorisés' : 'Lecture seule'}
                 </Badge>
-                <button className="btn secondary" type="button" onClick={() => void disconnectGmail()}>
+                <Button variant="secondary" onClick={() => void disconnectGmail()}>
                   Déconnecter
-                </button>
+                </Button>
               </div>
               {gmailStatus.sendPermission ? (
                 <div className="notice">
@@ -382,7 +382,7 @@ export default function SettingsPage() {
                 <div style={{ marginTop: 8 }}>URI de redirection à déclarer exactement dans Google Cloud : <code>{gmailStatus.redirectUri}</code></div>
                 <div style={{ marginTop: 8 }}>Après avoir renseigné les variables, recrée le conteneur API pour activer le bouton.</div>
               </div>
-              <button className="btn" type="button" disabled title="Configuration Google incomplète">Connecter Gmail</button>
+              <Button disabled title="Configuration Google incomplète">Connecter Gmail</Button>
             </div>
           )}
         </Card>
@@ -397,14 +397,15 @@ export default function SettingsPage() {
             {testError !== '' && <ErrorBox message={testError} />}
 
             <div className="actions">
-              <button
-                className="btn secondary small"
-                type="button"
-                disabled={testRefreshing || testSending}
+              <Button
+                variant="secondary"
+                size="small"
+                loading={testRefreshing}
+                disabled={testSending}
                 onClick={() => void refreshTestData()}
               >
                 {testRefreshing ? 'Actualisation…' : 'Actualiser le diagnostic'}
-              </button>
+              </Button>
             </div>
 
             <label>
@@ -467,14 +468,13 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <button
-              className="btn"
-              type="button"
-              disabled={testSending || testBlocker !== null}
+            <Button
+              loading={testSending}
+              disabled={testBlocker !== null}
               onClick={() => void sendTestEmail()}
             >
               {testSending ? 'Envoi du test…' : 'Envoyer le mail de test'}
-            </button>
+            </Button>
 
             <div className="notice warning">
               <strong>Ce test envoie un vrai e-mail.</strong> Il ne change pas le statut de la candidature, ne renseigne pas sa date d’envoi et ne consomme pas la limite quotidienne.

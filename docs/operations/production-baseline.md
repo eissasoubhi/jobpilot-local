@@ -34,6 +34,7 @@ Redis optionnel
 - Démarrer les nouveaux conteneurs et vérifier les healthchecks.
 - Conserver une image précédente pour rollback.
 - Ne jamais supprimer automatiquement les volumes lors d’un déploiement.
+- Exécuter les smoke tests avec des comptes et données de test, sans soumission externe réelle ni mutation de données de développement/production.
 
 ## Données
 
@@ -84,6 +85,7 @@ Les CV et documents utilisent le système de fichiers local en développement et
 
 ## Runbooks associés
 
+- [Déploiement](deployment.md) : prérequis, ordre des étapes, migrations, healthchecks, smoke tests et rollback.
 - [Sauvegarde et restauration](backup-restore.md) : RPO/RTO, restauration isolée et exercices réguliers.
 - [Monitoring et alertes](monitoring.md) : disponibilité, files, connecteurs, logs structurés et alertes.
 - [Réponse aux incidents](incident-response.md) : sévérités, kill switches, rollback et post-mortem.

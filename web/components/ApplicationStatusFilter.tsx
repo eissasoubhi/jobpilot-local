@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/UI';
+import { Button, FormField } from '@/components/UI';
 import {
   applicationStatusLabel,
   applicationStatusOptions,
@@ -59,20 +59,21 @@ export function ApplicationStatusFilter({
         })}
       </div>
 
-      <label htmlFor="application-status-filter" style={{ display: 'block', marginTop: 14 }}>
-        Filtrer les candidatures par statut
-      </label>
-      <select
-        id="application-status-filter"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option value={option.value} key={option.value}>
-            {option.label} ({option.count})
-          </option>
-        ))}
-      </select>
+      <div style={{ marginTop: 14 }}>
+        <FormField label="Filtrer les candidatures par statut">
+          <select
+            id="application-status-filter"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            {options.map((option) => (
+              <option value={option.value} key={option.value}>
+                {option.label} ({option.count})
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
 
       <div className="small muted" role="status" aria-live="polite" style={{ marginTop: 8 }}>
         {visibleCount} candidature(s) affichée(s) sur {applications.length}.

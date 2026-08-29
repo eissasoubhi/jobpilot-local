@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Button, ErrorBox } from '@/components/UI';
+import { Badge, Button, ErrorBox, FormField, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -179,7 +179,7 @@ export function ConnectorSearchCriteriaPanel({
   };
 
   if (criteria === null && error === '') {
-    return <p className="small muted" style={{ marginTop: 14 }}>Chargement des critères de recherche…</p>;
+    return <Loading />;
   }
 
   return (
@@ -310,35 +310,35 @@ export function ConnectorSearchCriteriaPanel({
 
         {criteria && editing && allowGlobalEditing && (
           <div className="stack" style={{ marginTop: 14 }}>
-            <label htmlFor={`connector-target-jobs-${connectorCode}`}>
-              Intitulés ciblés — un par ligne
-            </label>
-            <textarea
-              id={`connector-target-jobs-${connectorCode}`}
-              value={targetJobs}
-              rows={7}
-              placeholder="Senior PHP/Symfony\nBackend PHP/Symfony\nFull-Stack Symfony/React"
-              disabled={saving}
-              onChange={(event) => setTargetJobs(event.target.value)}
-            />
-            <span className="small muted">
-              France Travail retire certains termes génériques comme « senior » ou « developer » avant l’envoi.
-            </span>
+            <FormField
+              label="Intitulés ciblés — un par ligne"
+              hint="France Travail retire certains termes génériques comme « senior » ou « developer » avant l’envoi."
+            >
+              <textarea
+                id={`connector-target-jobs-${connectorCode}`}
+                aria-label="Intitulés ciblés — un par ligne"
+                value={targetJobs}
+                rows={7}
+                placeholder="Senior PHP/Symfony\nBackend PHP/Symfony\nFull-Stack Symfony/React"
+                disabled={saving}
+                onChange={(event) => setTargetJobs(event.target.value)}
+              />
+            </FormField>
 
-            <label htmlFor={`connector-skills-${connectorCode}`}>
-              Compétences de repli — une par ligne
-            </label>
-            <textarea
-              id={`connector-skills-${connectorCode}`}
-              value={skills}
-              rows={5}
-              placeholder="PHP\nSymfony\nReact"
-              disabled={saving}
-              onChange={(event) => setSkills(event.target.value)}
-            />
-            <span className="small muted">
-              Elles sont utilisées uniquement lorsqu’aucun intitulé ne produit de requête exploitable.
-            </span>
+            <FormField
+              label="Compétences de repli — une par ligne"
+              hint="Elles sont utilisées uniquement lorsqu’aucun intitulé ne produit de requête exploitable."
+            >
+              <textarea
+                id={`connector-skills-${connectorCode}`}
+                aria-label="Compétences de repli — une par ligne"
+                value={skills}
+                rows={5}
+                placeholder="PHP\nSymfony\nReact"
+                disabled={saving}
+                onChange={(event) => setSkills(event.target.value)}
+              />
+            </FormField>
 
             <div className="actions">
               <Button loading={saving} size="small" onClick={() => void save()}>

@@ -74,6 +74,24 @@ export function ButtonLink({
   );
 }
 
+export function FormField({
+  children,
+  label,
+  hint,
+}: {
+  children: React.ReactNode;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <label className={uiStyles.formField}>
+      <span className={uiStyles.formFieldLabel}>{label}</span>
+      {children}
+      {hint && <span className={uiStyles.formFieldHint}>{hint}</span>}
+    </label>
+  );
+}
+
 export function FloatingPanel({
   children,
   id,

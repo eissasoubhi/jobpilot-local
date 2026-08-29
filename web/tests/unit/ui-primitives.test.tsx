@@ -13,7 +13,12 @@ describe('shared UI primitives', () => {
       </FormField>,
     );
 
-    expect(screen.getByRole('combobox', { name: 'Source' })).toHaveValue('manual');
+    const label = screen.getByText('Source').closest('label');
+    const control = screen.getByRole('combobox');
+
+    expect(label).not.toBeNull();
+    expect(label).toContainElement(control);
+    expect(control).toHaveValue('manual');
     expect(screen.getByText('Choisissez une source configurée.')).toBeInTheDocument();
   });
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -212,18 +212,19 @@ export default function MessagesPage() {
       </div>
 
       <Card>
-        <label style={{ maxWidth: 360, marginBottom: 18 }}>
-          Afficher
-          <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-            <option value="ALL">Tous les messages</option>
-            <option value="URGENT">Urgents uniquement</option>
-            <option value="PRIORITY">Urgents et prioritaires</option>
-            <option value="ACTION_REQUIRED">Actions à traiter</option>
-            {Object.entries(categoryLabels).map(([value, label]) => (
-              <option value={value} key={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <div style={{ maxWidth: 360, marginBottom: 18 }}>
+          <FormField label="Afficher">
+            <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+              <option value="ALL">Tous les messages</option>
+              <option value="URGENT">Urgents uniquement</option>
+              <option value="PRIORITY">Urgents et prioritaires</option>
+              <option value="ACTION_REQUIRED">Actions à traiter</option>
+              {Object.entries(categoryLabels).map(([value, label]) => (
+                <option value={value} key={value}>{label}</option>
+              ))}
+            </select>
+          </FormField>
+        </div>
 
         {items === null ? (
           <Loading />

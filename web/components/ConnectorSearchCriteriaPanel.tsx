@@ -316,6 +316,7 @@ export function ConnectorSearchCriteriaPanel({
             >
               <textarea
                 id={`connector-target-jobs-${connectorCode}`}
+                aria-label="Intitulés ciblés — un par ligne"
                 value={targetJobs}
                 rows={7}
                 placeholder="Senior PHP/Symfony\nBackend PHP/Symfony\nFull-Stack Symfony/React"
@@ -330,6 +331,7 @@ export function ConnectorSearchCriteriaPanel({
             >
               <textarea
                 id={`connector-skills-${connectorCode}`}
+                aria-label="Compétences de repli — une par ligne"
                 value={skills}
                 rows={5}
                 placeholder="PHP\nSymfony\nReact"

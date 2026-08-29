@@ -92,14 +92,8 @@ export function FloatingPanel({
       id={id}
       role={role}
       aria-label={ariaLabel}
-      style={{
-        padding: 16,
-        border: '1px solid var(--line)',
-        borderRadius: 12,
-        background: 'var(--panel)',
-        boxShadow: '0 16px 40px rgba(15, 23, 42, 0.16)',
-        ...style,
-      }}
+      className={uiStyles.floatingPanel}
+      style={style}
     >
       {children}
     </div>

@@ -277,9 +277,7 @@ export default function ReviewQueuePage() {
         </div>
       )}
 
-      {decisionError !== '' && (
-        <div className={styles.globalDecisionError} role="alert">{decisionError}</div>
-      )}
+      {decisionError !== '' && <ErrorBox message={decisionError} />}
 
       {error !== '' && <ErrorBox message={error} />}
 

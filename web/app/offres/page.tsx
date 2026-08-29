@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
-import { Badge, Card, Empty, ErrorBox, Loading, OfflineState, PageHeader } from '@/components/UI';
+import { Badge, Card, Empty, ErrorBox, FormField, Loading, OfflineState, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { matchesOfferInboxView, type OfferInboxView } from '@/lib/offer-inbox';
@@ -436,17 +436,18 @@ export default function JobsPage() {
           </Card>
 
           <Card>
-            <label style={{ maxWidth: 360 }}>
-              Filtrer par source
-              <select
-                aria-label="Filtrer par source"
-                value={sourceFilter}
-                onChange={(event) => setSourceFilter(event.target.value)}
-              >
-                <option value="all">Toutes les sources</option>
-                {sources.map((source) => <option key={source} value={source}>{source}</option>)}
-              </select>
-            </label>
+            <div style={{ maxWidth: 360 }}>
+              <FormField label="Filtrer par source">
+                <select
+                  aria-label="Filtrer par source"
+                  value={sourceFilter}
+                  onChange={(event) => setSourceFilter(event.target.value)}
+                >
+                  <option value="all">Toutes les sources</option>
+                  {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+                </select>
+              </FormField>
+            </div>
           </Card>
 
           <div className="tabs" aria-label="Boîte des offres">

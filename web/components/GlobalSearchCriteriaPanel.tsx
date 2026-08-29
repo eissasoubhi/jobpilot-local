@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, Button, ErrorBox } from '@/components/UI';
+import { Badge, Button, ErrorBox, FormField } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Settings } from '@/lib/types';
@@ -154,54 +154,50 @@ export function GlobalSearchCriteriaPanel() {
 
       {settings && (
         <div className="stack" style={{ marginTop: 18 }}>
-          <label htmlFor="global-target-jobs">
-            Postes ciblés globaux — un par ligne
-          </label>
-          <textarea
-            id="global-target-jobs"
-            rows={7}
-            value={targetJobs}
-            disabled={saving}
-            placeholder="Senior PHP/Symfony\nBackend PHP/Symfony\nFull-Stack Symfony/React"
-            onChange={(event) => setTargetJobs(event.target.value)}
-          />
+          <FormField label="Postes ciblés globaux — un par ligne">
+            <textarea
+              id="global-target-jobs"
+              rows={7}
+              value={targetJobs}
+              disabled={saving}
+              placeholder="Senior PHP/Symfony\nBackend PHP/Symfony\nFull-Stack Symfony/React"
+              onChange={(event) => setTargetJobs(event.target.value)}
+            />
+          </FormField>
 
-          <label htmlFor="global-skills">
-            Compétences globales — une par ligne
-          </label>
-          <textarea
-            id="global-skills"
-            rows={6}
-            value={skills}
-            disabled={saving}
-            placeholder="PHP\nSymfony\nReact\nVue"
-            onChange={(event) => setSkills(event.target.value)}
-          />
+          <FormField label="Compétences globales — une par ligne">
+            <textarea
+              id="global-skills"
+              rows={6}
+              value={skills}
+              disabled={saving}
+              placeholder="PHP\nSymfony\nReact\nVue"
+              onChange={(event) => setSkills(event.target.value)}
+            />
+          </FormField>
 
-          <label htmlFor="global-exclusions">
-            Exclusions locales — une par ligne
-          </label>
-          <textarea
-            id="global-exclusions"
-            rows={5}
-            value={exclusions}
-            disabled={saving}
-            placeholder="Stage\nAlternance\nWordPress uniquement"
-            onChange={(event) => setExclusions(event.target.value)}
-          />
+          <FormField label="Exclusions locales — une par ligne">
+            <textarea
+              id="global-exclusions"
+              rows={5}
+              value={exclusions}
+              disabled={saving}
+              placeholder="Stage\nAlternance\nWordPress uniquement"
+              onChange={(event) => setExclusions(event.target.value)}
+            />
+          </FormField>
 
-          <label htmlFor="global-matching-threshold">
-            Seuil de préparation automatique
-          </label>
-          <input
-            id="global-matching-threshold"
-            type="number"
-            min="0"
-            max="100"
-            value={matchingThreshold}
-            disabled={saving}
-            onChange={(event) => setMatchingThreshold(Number(event.target.value))}
-          />
+          <FormField label="Seuil de préparation automatique">
+            <input
+              id="global-matching-threshold"
+              type="number"
+              min="0"
+              max="100"
+              value={matchingThreshold}
+              disabled={saving}
+              onChange={(event) => setMatchingThreshold(Number(event.target.value))}
+            />
+          </FormField>
 
           <div className="notice">
             <strong>Données de profil non encore utilisées comme filtres :</strong>{' '}

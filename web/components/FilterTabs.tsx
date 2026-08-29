@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 
 type FilterTabOption<T extends string> = {
   value: T;
@@ -13,9 +13,28 @@ type FilterTabsProps<T extends string> = {
 };
 
 export function FilterTabs<T extends string>({ ariaLabel, options, value, onChange }: FilterTabsProps<T>) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number): void => {
+    if (options.length === 0) return;
+
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % options.length;
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + options.length) % options.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = options.length - 1;
+
+    if (nextIndex === null || nextIndex === index) return;
+
+    event.preventDefault();
+    onChange(options[nextIndex].value);
+    event.currentTarget.parentElement
+      ?.querySelectorAll<HTMLButtonElement>('button')[nextIndex]
+      ?.focus();
+  };
+
   return (
     <div className="tabs" role="group" aria-label={ariaLabel}>
-      {options.map((option) => {
+      {options.map((option, index) => {
         const selected = option.value === value;
 
         return (
@@ -25,6 +44,7 @@ export function FilterTabs<T extends string>({ ariaLabel, options, value, onChan
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
+            onKeyDown={(event) => handleKeyDown(event, index)}
           >
             {option.label}
           </button>

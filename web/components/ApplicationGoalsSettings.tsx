@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { Button, Card, ErrorBox, Loading } from '@/components/UI';
+import { Button, Card, ErrorBox, FormField, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
@@ -92,8 +92,7 @@ export function ApplicationGoalsSettings() {
         ) : (
           <form className={styles.settingsForm} onSubmit={(event) => void save(event)}>
             <div className={styles.settingsGrid}>
-              <label>
-                Objectif / jour
+              <FormField label="Objectif / jour">
                 <input
                   aria-label="Objectif journalier de candidatures"
                   min="0"
@@ -103,9 +102,8 @@ export function ApplicationGoalsSettings() {
                   value={draft.daily}
                   onChange={(event) => setDraft((current) => ({ ...current, daily: event.target.value }))}
                 />
-              </label>
-              <label>
-                Objectif / semaine
+              </FormField>
+              <FormField label="Objectif / semaine">
                 <input
                   aria-label="Objectif hebdomadaire de candidatures"
                   min="0"
@@ -115,9 +113,8 @@ export function ApplicationGoalsSettings() {
                   value={draft.weekly}
                   onChange={(event) => setDraft((current) => ({ ...current, weekly: event.target.value }))}
                 />
-              </label>
-              <label>
-                Objectif / mois
+              </FormField>
+              <FormField label="Objectif / mois">
                 <input
                   aria-label="Objectif mensuel de candidatures"
                   min="0"
@@ -127,7 +124,7 @@ export function ApplicationGoalsSettings() {
                   value={draft.monthly}
                   onChange={(event) => setDraft((current) => ({ ...current, monthly: event.target.value }))}
                 />
-              </label>
+              </FormField>
             </div>
 
             <div className={styles.settingsFooter}>

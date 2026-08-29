@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { Button, Card } from '@/components/UI';
+import { Button, Card, ErrorBox, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
@@ -88,7 +88,7 @@ export function ApplicationGoalsSettings() {
         <p className="muted">Configure ici le rythme de candidatures. La Review Queue affiche uniquement la progression.</p>
 
         {snapshot === null && error === '' ? (
-          <p className={styles.settingsHint}>Chargement des objectifs…</p>
+          <Loading />
         ) : (
           <form className={styles.settingsForm} onSubmit={(event) => void save(event)}>
             <div className={styles.settingsGrid}>
@@ -137,7 +137,7 @@ export function ApplicationGoalsSettings() {
               </Button>
             </div>
 
-            {error !== '' && <p className={styles.error} role="alert">{error}</p>}
+            {error !== '' && <ErrorBox message={error} />}
             {saved && <p className={styles.saved} role="status">Objectifs enregistrés.</p>}
           </form>
         )}

@@ -1,5 +1,6 @@
 'use client';
 
+import { ButtonGroup } from '@/components/ButtonGroup';
 import { Button, FormField } from '@/components/UI';
 import {
   applicationStatusLabel,
@@ -38,7 +39,7 @@ export function ApplicationStatusFilter({
 
   return (
     <div className="notice" style={{ marginBottom: 14 }}>
-      <div className="actions" role="group" aria-label="Filtres rapides des candidatures">
+      <ButtonGroup ariaLabel="Filtres rapides des candidatures">
         {QUICK_FILTERS.map((filter) => {
           const option = optionByValue.get(filter);
           if (!option) return null;
@@ -57,7 +58,7 @@ export function ApplicationStatusFilter({
             </Button>
           );
         })}
-      </div>
+      </ButtonGroup>
 
       <div style={{ marginTop: 14 }}>
         <FormField label="Filtrer les candidatures par statut">

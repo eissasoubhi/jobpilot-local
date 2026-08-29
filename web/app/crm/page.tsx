@@ -7,7 +7,7 @@ import {
   type CrmOrganizationAnnotationPayload,
 } from '@/components/CrmOrganizationAnnotationEditor';
 import { CrmOrganizationCard } from '@/components/CrmOrganizationCard';
-import { Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   filterCrmOrganizations,
@@ -119,24 +119,22 @@ export default function CrmPage() {
 
           <Card>
             <div className="grid two">
-              <label>
-                Rechercher une organisation, un contact, une note ou une offre
+              <FormField label="Rechercher une organisation, un contact, une note ou une offre">
                 <input
                   type="search"
                   value={query}
                   placeholder="Entreprise, note, email, téléphone, mission…"
                   onChange={(event) => setQuery(event.target.value)}
                 />
-              </label>
-              <label>
-                Rôle de l’organisation
+              </FormField>
+              <FormField label="Rôle de l’organisation">
                 <select value={role} onChange={(event) => setRole(event.target.value as CrmRoleFilter)}>
                   <option value="ALL">Tous les rôles</option>
                   <option value="COMPANY">Entreprises</option>
                   <option value="AGENCY">Intermédiaires</option>
                   <option value="CLIENT">Clients finaux</option>
                 </select>
-              </label>
+              </FormField>
             </div>
           </Card>
 

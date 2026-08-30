@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Button } from '@/components/UI';
+import { Button, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -51,7 +51,11 @@ export function InboxSenderClassificationCorrection({ messageId, sender, categor
       <div className="muted small" style={{ marginTop: 6 }}>
         Cette correction sera réutilisée pour les prochains messages de cet expéditeur.
       </div>
-      {error !== '' && <div className="small" role="alert" style={{ marginTop: 6 }}>{error}</div>}
+      {error !== '' && (
+        <div style={{ marginTop: 6 }}>
+          <ErrorBox message={error} />
+        </div>
+      )}
     </div>
   );
 }

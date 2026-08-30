@@ -1,0 +1,32 @@
+name: Production preflight
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/production-preflight.sh'
+      - 'scripts/test-production-preflight.sh'
+      - '.github/workflows/production-preflight.yml'
+      - 'docs/operations/production-preflight.md'
+      - '.env.example'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/production-preflight.sh'
+      - 'scripts/test-production-preflight.sh'
+      - '.github/workflows/production-preflight.yml'
+      - 'docs/operations/production-preflight.md'
+      - '.env.example'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n scripts/production-preflight.sh scripts/test-production-preflight.sh
+      - name: Run production preflight regression tests
+        run: bash scripts/test-production-preflight.sh

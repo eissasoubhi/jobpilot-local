@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Button, Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -185,9 +185,9 @@ export default function MessagesPage() {
       />
 
       {status?.readPermissionMessage && connected && !readable && (
-        <div className="notice warning">{status.readPermissionMessage}</div>
+        <InlineFeedback tone="warning">{status.readPermissionMessage}</InlineFeedback>
       )}
-      {info !== '' && <div className="notice">{info}</div>}
+      {info !== '' && <InlineFeedback tone="success">{info}</InlineFeedback>}
       {error !== '' && <ErrorBox message={error} />}
 
       {items !== null && counts.urgent > 0 && (

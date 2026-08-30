@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { FilterTabs } from '@/components/FilterTabs';
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
 import { Badge, Card, Empty, ErrorBox, FormField, Loading, OfflineState, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -450,40 +451,28 @@ export default function JobsPage() {
             </div>
           </Card>
 
-          <div className="tabs" aria-label="Boîte des offres">
-            {[
-              ['actionable', 'À traiter'],
-              ['submitted', 'Envoyées'],
-              ['ignored', 'Ignorées'],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                className={inboxView === value ? 'active' : ''}
-                type="button"
-                onClick={() => setInboxView(value as OfferInboxView)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <FilterTabs
+            ariaLabel="Boîte des offres"
+            value={inboxView}
+            onChange={setInboxView}
+            options={[
+              { value: 'actionable', label: 'À traiter' },
+              { value: 'submitted', label: 'Envoyées' },
+              { value: 'ignored', label: 'Ignorées' },
+            ] as const}
+          />
 
-          <div className="tabs" aria-label="Filtres des offres">
-            {[
-              ['all', 'Toutes'],
-              ['PREPARED', 'Préparées'],
-              ['MATCHED', 'À examiner'],
-              ['REJECTED_BY_FILTER', 'Exclues'],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                className={filter === value ? 'active' : ''}
-                type="button"
-                onClick={() => setFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <FilterTabs
+            ariaLabel="Filtres des offres"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: 'all', label: 'Toutes' },
+              { value: 'PREPARED', label: 'Préparées' },
+              { value: 'MATCHED', label: 'À examiner' },
+              { value: 'REJECTED_BY_FILTER', label: 'Exclues' },
+            ] as const}
+          />
 
           <Card>
             {jobs === null ? (

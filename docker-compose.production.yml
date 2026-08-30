@@ -1,0 +1,8 @@
+services:
+  api:
+    healthcheck:
+      test:
+        - CMD
+        - php
+        - -r
+        - "exit(@file_get_contents('http://127.0.0.1:8080/api/health/ready') === false ? 1 : 0);"

@@ -6,12 +6,25 @@ namespace App\Tests\Unit;
 
 use App\Controller\HealthController;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Result;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 
 final class HealthControllerTest extends TestCase
 {
+    public function testLegacyHealthContractStillChecksDatabase(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1');
+
+        $response = (new HealthController($connection))();
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(
+            ['status' => 'ok', 'app' => 'JobPilot Local'],
+            json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        );
+    }
+
     public function testLivenessDoesNotTouchDatabase(): void
     {
         $connection = $this->createMock(Connection::class);
@@ -21,23 +34,21 @@ final class HealthControllerTest extends TestCase
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame(
-            ['status' => 'ok', 'check' => 'liveness'],
+            ['status' => 'ok', 'app' => 'JobPilot Local', 'check' => 'liveness'],
             json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
         );
     }
 
     public function testReadinessChecksDatabaseConnectivity(): void
     {
-        $result = $this->createMock(Result::class);
-        $result->expects(self::once())->method('fetchOne')->willReturn(1);
         $connection = $this->createMock(Connection::class);
-        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1')->willReturn($result);
+        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1');
 
         $response = (new HealthController($connection))->ready();
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame(
-            ['status' => 'ok', 'check' => 'readiness'],
+            ['status' => 'ok', 'app' => 'JobPilot Local', 'check' => 'readiness'],
             json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
         );
     }
@@ -51,7 +62,7 @@ final class HealthControllerTest extends TestCase
 
         self::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
         self::assertSame(
-            ['status' => 'unavailable', 'check' => 'readiness'],
+            ['status' => 'unavailable', 'app' => 'JobPilot Local', 'check' => 'readiness'],
             json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
         );
         self::assertStringNotContainsString('secret database detail', (string) $response->getContent());

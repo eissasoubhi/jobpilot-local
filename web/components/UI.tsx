@@ -86,11 +86,13 @@ export function FormField({
   error,
   label,
   hint,
+  success,
 }: {
   children: React.ReactNode;
   error?: React.ReactNode;
   label: React.ReactNode;
   hint?: React.ReactNode;
+  success?: React.ReactNode;
 }) {
   const fieldId = useId();
   const controlId = isValidElement<FormControlProps>(children) && children.props.id
@@ -98,10 +100,11 @@ export function FormField({
     : `${fieldId}-control`;
   const hintId = hint ? `${fieldId}-hint` : undefined;
   const errorId = error ? `${fieldId}-error` : undefined;
+  const successId = success && !error ? `${fieldId}-success` : undefined;
 
   let control = children;
   if (isValidElement<FormControlProps>(children)) {
-    const describedBy = [children.props['aria-describedby'], hintId, errorId]
+    const describedBy = [children.props['aria-describedby'], hintId, errorId, successId]
       .filter(Boolean)
       .join(' ') || undefined;
 
@@ -118,6 +121,11 @@ export function FormField({
       {control}
       {hint && <span id={hintId} className={uiStyles.formFieldHint}>{hint}</span>}
       {error && <span id={errorId} className={uiStyles.formFieldError} role="alert">{error}</span>}
+      {successId && (
+        <span id={successId} className={uiStyles.formFieldSuccess} role="status" aria-live="polite">
+          {success}
+        </span>
+      )}
     </div>
   );
 }

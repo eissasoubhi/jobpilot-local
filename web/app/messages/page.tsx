@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -174,9 +174,9 @@ export default function MessagesPage() {
         title="Messagerie"
         description="Inbox intelligente qui met en avant les entretiens, informations demandées, propositions directes et réponses qui nécessitent une action rapide."
         actions={readable ? (
-          <button className="btn" type="button" disabled={syncing} onClick={() => void sync()}>
+          <Button loading={syncing} onClick={() => void sync()}>
             {syncing ? 'Synchronisation…' : 'Synchroniser Gmail'}
-          </button>
+          </Button>
         ) : (
           <a className="btn" href="/api/integrations/gmail/start">
             {connected ? 'Reconnecter Gmail' : 'Connecter Gmail'}
@@ -197,9 +197,9 @@ export default function MessagesPage() {
               <strong>{counts.urgent} message(s) urgent(s) à traiter.</strong>{' '}
               Les raisons sont affichées sur chaque message ; JobPilot ne répond jamais automatiquement à ta place.
             </div>
-            <button className="btn small" type="button" onClick={() => setFilter('URGENT')}>
+            <Button size="small" onClick={() => setFilter('URGENT')}>
               Voir les urgences
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -297,9 +297,10 @@ export default function MessagesPage() {
                         Ouvrir dans Gmail
                       </a>
                     )}
-                    <button
-                      className="btn secondary small"
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      loading={busyId === message.id}
                       disabled={busyId !== null}
                       onClick={() => void markProcessed(message)}
                     >
@@ -312,7 +313,7 @@ export default function MessagesPage() {
                           : message.processed
                             ? 'Remettre à traiter'
                             : 'Marquer comme traité'}
-                    </button>
+                    </Button>
                     <InboxSenderClassificationCorrection
                       messageId={message.id}
                       sender={message.sender}

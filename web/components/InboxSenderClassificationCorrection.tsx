@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { Button, ErrorBox } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -16,6 +16,7 @@ type Props = {
 export function InboxSenderClassificationCorrection({ messageId, sender, category, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const hintId = useId();
 
   if (category !== 'RECRUITER_OPPORTUNITY' && category !== 'UNKNOWN') return null;
 
@@ -45,10 +46,11 @@ export function InboxSenderClassificationCorrection({ messageId, sender, categor
         loading={busy}
         onClick={() => void save()}
         title={`Toujours classer ${sender} comme alerte emploi`}
+        aria-describedby={hintId}
       >
         {busy ? 'Enregistrement…' : 'Ce n’est pas un recruteur'}
       </Button>
-      <div className="muted small" style={{ marginTop: 6 }}>
+      <div id={hintId} className="muted small" style={{ marginTop: 6 }}>
         Cette correction sera réutilisée pour les prochains messages de cet expéditeur.
       </div>
       {error !== '' && (

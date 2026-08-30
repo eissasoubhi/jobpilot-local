@@ -6,6 +6,31 @@
   box-shadow: var(--shadow-floating, 0 16px 40px rgba(15, 23, 42, 0.16));
 }
 
+.inlineFeedback {
+  margin-bottom: var(--space-4, 16px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  line-height: 1.5;
+}
+
+.inlineFeedbackInfo {
+  background: var(--surface-muted, #f8fafc);
+  color: var(--text);
+}
+
+.inlineFeedbackSuccess {
+  border-color: color-mix(in srgb, var(--good) 35%, var(--line));
+  background: color-mix(in srgb, var(--good) 8%, var(--panel));
+  color: var(--text);
+}
+
+.inlineFeedbackWarning {
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--line));
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+  color: var(--text);
+}
+
 .formField {
   display: grid;
   gap: var(--space-2, 8px);

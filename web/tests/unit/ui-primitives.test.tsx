@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { Button, FormField } from '@/components/UI';
+import { Button, Empty, FormField } from '@/components/UI';
 
 describe('shared UI primitives', () => {
   it('associates FormField labels with nested form controls', () => {
@@ -27,5 +27,13 @@ describe('shared UI primitives', () => {
     const button = screen.getByRole('button', { name: 'Enregistrer' });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('announces empty states without interrupting the user', () => {
+    render(<Empty>Aucun résultat ne correspond aux critères.</Empty>);
+
+    const emptyState = screen.getByRole('status');
+    expect(emptyState).toHaveTextContent('Aucun résultat ne correspond aux critères.');
+    expect(emptyState).toHaveAttribute('aria-live', 'polite');
   });
 });

@@ -11,13 +11,22 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class HealthController
 {
-    public function __construct(private Connection $connection) {}
+    public function __construct(private readonly Connection $connection)
+    {
+    }
+
+    #[Route('/api/health', methods: ['GET'])]
+    public function __invoke(): JsonResponse
+    {
+        return $this->readinessResponse(includeCheck: false);
+    }
 
     #[Route('/api/health/live', methods: ['GET'])]
     public function live(): JsonResponse
     {
         return new JsonResponse([
             'status' => 'ok',
+            'app' => 'JobPilot Local',
             'check' => 'liveness',
         ]);
     }
@@ -25,18 +34,27 @@ final class HealthController
     #[Route('/api/health/ready', methods: ['GET'])]
     public function ready(): JsonResponse
     {
+        return $this->readinessResponse(includeCheck: true);
+    }
+
+    private function readinessResponse(bool $includeCheck): JsonResponse
+    {
         try {
-            $this->connection->executeQuery('SELECT 1')->fetchOne();
+            $this->connection->executeQuery('SELECT 1');
         } catch (\Throwable) {
-            return new JsonResponse([
-                'status' => 'unavailable',
-                'check' => 'readiness',
-            ], Response::HTTP_SERVICE_UNAVAILABLE);
+            $payload = ['status' => 'unavailable', 'app' => 'JobPilot Local'];
+            if ($includeCheck) {
+                $payload['check'] = 'readiness';
+            }
+
+            return new JsonResponse($payload, Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
-        return new JsonResponse([
-            'status' => 'ok',
-            'check' => 'readiness',
-        ]);
+        $payload = ['status' => 'ok', 'app' => 'JobPilot Local'];
+        if ($includeCheck) {
+            $payload['check'] = 'readiness';
+        }
+
+        return new JsonResponse($payload);
     }
 }

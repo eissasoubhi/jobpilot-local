@@ -76,6 +76,7 @@ export function ButtonLink({
 }
 
 type FormControlProps = {
+  id?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: React.AriaAttributes['aria-invalid'];
 };
@@ -92,6 +93,9 @@ export function FormField({
   hint?: React.ReactNode;
 }) {
   const fieldId = useId();
+  const controlId = isValidElement<FormControlProps>(children) && children.props.id
+    ? children.props.id
+    : `${fieldId}-control`;
   const hintId = hint ? `${fieldId}-hint` : undefined;
   const errorId = error ? `${fieldId}-error` : undefined;
 
@@ -102,18 +106,19 @@ export function FormField({
       .join(' ') || undefined;
 
     control = cloneElement(children, {
+      id: controlId,
       'aria-describedby': describedBy,
       'aria-invalid': error ? true : children.props['aria-invalid'],
     });
   }
 
   return (
-    <label className={uiStyles.formField}>
-      <span className={uiStyles.formFieldLabel}>{label}</span>
+    <div className={uiStyles.formField}>
+      <label htmlFor={controlId} className={uiStyles.formFieldLabel}>{label}</label>
       {control}
       {hint && <span id={hintId} className={uiStyles.formFieldHint}>{hint}</span>}
       {error && <span id={errorId} className={uiStyles.formFieldError} role="alert">{error}</span>}
-    </label>
+    </div>
   );
 }
 

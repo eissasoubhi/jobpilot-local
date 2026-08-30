@@ -1,7 +1,7 @@
 'use client';
 
-import { ButtonGroup } from '@/components/ButtonGroup';
-import { Button, FormField } from '@/components/UI';
+import { FilterTabs } from '@/components/FilterTabs';
+import { FormField } from '@/components/UI';
 import {
   applicationStatusLabel,
   applicationStatusOptions,
@@ -36,29 +36,22 @@ export function ApplicationStatusFilter({
       ];
   const optionByValue = new Map(options.map((option) => [option.value, option]));
   const visibleCount = filterApplications(applications, value).length;
+  const quickOptions = QUICK_FILTERS.flatMap((filter) => {
+    const option = optionByValue.get(filter);
+
+    return option
+      ? [{ value: filter, label: `${option.label} (${option.count})` }]
+      : [];
+  });
 
   return (
     <div className="notice" style={{ marginBottom: 14 }}>
-      <ButtonGroup ariaLabel="Filtres rapides des candidatures">
-        {QUICK_FILTERS.map((filter) => {
-          const option = optionByValue.get(filter);
-          if (!option) return null;
-
-          const selected = value === filter;
-
-          return (
-            <Button
-              variant={selected ? 'primary' : 'secondary'}
-              size="small"
-              aria-pressed={selected}
-              key={filter}
-              onClick={() => onChange(filter)}
-            >
-              {option.label} ({option.count})
-            </Button>
-          );
-        })}
-      </ButtonGroup>
+      <FilterTabs
+        ariaLabel="Filtres rapides des candidatures"
+        options={quickOptions}
+        value={value}
+        onChange={onChange}
+      />
 
       <div style={{ marginTop: 14 }}>
         <FormField label="Filtrer les candidatures par statut">

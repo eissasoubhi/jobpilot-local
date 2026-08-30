@@ -11,22 +11,32 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class HealthController
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private Connection $connection) {}
+
+    #[Route('/api/health/live', methods: ['GET'])]
+    public function live(): JsonResponse
     {
+        return new JsonResponse([
+            'status' => 'ok',
+            'check' => 'liveness',
+        ]);
     }
 
-    #[Route('/api/health', methods: ['GET'])]
-    public function __invoke(): JsonResponse
+    #[Route('/api/health/ready', methods: ['GET'])]
+    public function ready(): JsonResponse
     {
         try {
-            $this->connection->executeQuery('SELECT 1');
+            $this->connection->executeQuery('SELECT 1')->fetchOne();
         } catch (\Throwable) {
-            return new JsonResponse(
-                ['status' => 'unavailable', 'app' => 'JobPilot Local'],
-                Response::HTTP_SERVICE_UNAVAILABLE,
-            );
+            return new JsonResponse([
+                'status' => 'unavailable',
+                'check' => 'readiness',
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
-        return new JsonResponse(['status' => 'ok', 'app' => 'JobPilot Local']);
+        return new JsonResponse([
+            'status' => 'ok',
+            'check' => 'readiness',
+        ]);
     }
 }

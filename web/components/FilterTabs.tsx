@@ -23,10 +23,14 @@ export function FilterTabs<T extends string>({ ariaLabel, options, value, onChan
     if (event.key === 'Home') nextIndex = 0;
     if (event.key === 'End') nextIndex = options.length - 1;
 
-    if (nextIndex === null || nextIndex === index) return;
+    if (nextIndex === null) return;
 
     event.preventDefault();
-    onChange(options[nextIndex].value);
+
+    if (nextIndex !== index) {
+      onChange(options[nextIndex].value);
+    }
+
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>('button')[nextIndex]
       ?.focus();

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApplicationGoalsPanel } from '@/components/ApplicationGoalsPanel';
 import { ReviewQueueApplicationCard } from '@/components/ReviewQueueApplicationCard';
-import { Button, Card, Empty, ErrorBox, Loading } from '@/components/UI';
+import { Button, Card, Empty, ErrorBox, Loading, ProgressBar } from '@/components/UI';
 import { api } from '@/lib/api';
 import { crmOrganizationHref } from '@/lib/crm-navigation';
 import { getErrorMessage } from '@/lib/errors';
@@ -337,9 +337,12 @@ export default function ReviewQueuePage() {
                   <strong>{currentIndex + 1} / {queue.length}</strong>
                   <span>← →</span>
                 </div>
-                <div className={styles.progressTrack} aria-hidden="true">
-                  <span style={{ width: `${progress}%` }} />
-                </div>
+                <ProgressBar
+                  value={progress}
+                  label="Progression dans la Review Queue"
+                  valueText={`${currentIndex + 1} offre sur ${queue.length}`}
+                  size="compact"
+                />
               </div>
 
               <Button

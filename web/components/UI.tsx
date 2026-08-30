@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, useId } from 'react';
 import Link from 'next/link';
 
 import buttonStyles from './Button.module.css';
@@ -74,21 +75,50 @@ export function ButtonLink({
   );
 }
 
+type FormControlProps = {
+  id?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: React.AriaAttributes['aria-invalid'];
+};
+
 export function FormField({
   children,
+  error,
   label,
   hint,
 }: {
   children: React.ReactNode;
+  error?: React.ReactNode;
   label: React.ReactNode;
   hint?: React.ReactNode;
 }) {
+  const fieldId = useId();
+  const controlId = isValidElement<FormControlProps>(children) && children.props.id
+    ? children.props.id
+    : `${fieldId}-control`;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+
+  let control = children;
+  if (isValidElement<FormControlProps>(children)) {
+    const describedBy = [children.props['aria-describedby'], hintId, errorId]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
+    control = cloneElement(children, {
+      id: controlId,
+      'aria-describedby': describedBy,
+      'aria-invalid': error ? true : children.props['aria-invalid'],
+    });
+  }
+
   return (
-    <label className={uiStyles.formField}>
-      <span className={uiStyles.formFieldLabel}>{label}</span>
-      {children}
-      {hint && <span className={uiStyles.formFieldHint}>{hint}</span>}
-    </label>
+    <div className={uiStyles.formField}>
+      <label htmlFor={controlId} className={uiStyles.formFieldLabel}>{label}</label>
+      {control}
+      {hint && <span id={hintId} className={uiStyles.formFieldHint}>{hint}</span>}
+      {error && <span id={errorId} className={uiStyles.formFieldError} role="alert">{error}</span>}
+    </div>
   );
 }
 

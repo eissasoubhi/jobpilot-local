@@ -18,7 +18,8 @@
 }
 
 .formFieldHint,
-.formFieldError {
+.formFieldError,
+.formFieldSuccess {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.4;
@@ -30,6 +31,11 @@
 
 .formFieldError {
   color: var(--bad);
+  font-weight: 600;
+}
+
+.formFieldSuccess {
+  color: var(--good);
   font-weight: 600;
 }
 

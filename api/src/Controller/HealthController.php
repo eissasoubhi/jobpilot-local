@@ -18,15 +18,43 @@ final class HealthController
     #[Route('/api/health', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
+        return $this->readinessResponse(includeCheck: false);
+    }
+
+    #[Route('/api/health/live', methods: ['GET'])]
+    public function live(): JsonResponse
+    {
+        return new JsonResponse([
+            'status' => 'ok',
+            'app' => 'JobPilot Local',
+            'check' => 'liveness',
+        ]);
+    }
+
+    #[Route('/api/health/ready', methods: ['GET'])]
+    public function ready(): JsonResponse
+    {
+        return $this->readinessResponse(includeCheck: true);
+    }
+
+    private function readinessResponse(bool $includeCheck): JsonResponse
+    {
         try {
             $this->connection->executeQuery('SELECT 1');
         } catch (\Throwable) {
-            return new JsonResponse(
-                ['status' => 'unavailable', 'app' => 'JobPilot Local'],
-                Response::HTTP_SERVICE_UNAVAILABLE,
-            );
+            $payload = ['status' => 'unavailable', 'app' => 'JobPilot Local'];
+            if ($includeCheck) {
+                $payload['check'] = 'readiness';
+            }
+
+            return new JsonResponse($payload, Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
-        return new JsonResponse(['status' => 'ok', 'app' => 'JobPilot Local']);
+        $payload = ['status' => 'ok', 'app' => 'JobPilot Local'];
+        if ($includeCheck) {
+            $payload['check'] = 'readiness';
+        }
+
+        return new JsonResponse($payload);
     }
 }

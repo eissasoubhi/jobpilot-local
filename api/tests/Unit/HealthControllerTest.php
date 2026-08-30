@@ -11,21 +11,60 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class HealthControllerTest extends TestCase
 {
-    public function testReturnsServiceUnavailableWhenDatabaseCannotBeReached(): void
+    public function testLegacyHealthContractStillChecksDatabase(): void
     {
         $connection = $this->createMock(Connection::class);
-        $connection
-            ->expects(self::once())
-            ->method('executeQuery')
-            ->with('SELECT 1')
-            ->willThrowException(new \RuntimeException('database unavailable'));
+        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1');
 
         $response = (new HealthController($connection))();
 
-        self::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame(
-            ['status' => 'unavailable', 'app' => 'JobPilot Local'],
+            ['status' => 'ok', 'app' => 'JobPilot Local'],
             json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
         );
+    }
+
+    public function testLivenessDoesNotTouchDatabase(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::never())->method('executeQuery');
+
+        $response = (new HealthController($connection))->live();
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(
+            ['status' => 'ok', 'app' => 'JobPilot Local', 'check' => 'liveness'],
+            json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function testReadinessChecksDatabaseConnectivity(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1');
+
+        $response = (new HealthController($connection))->ready();
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(
+            ['status' => 'ok', 'app' => 'JobPilot Local', 'check' => 'readiness'],
+            json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function testReadinessFailsClosedWithoutLeakingDatabaseDetails(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('executeQuery')->with('SELECT 1')->willThrowException(new \RuntimeException('secret database detail'));
+
+        $response = (new HealthController($connection))->ready();
+
+        self::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
+        self::assertSame(
+            ['status' => 'unavailable', 'app' => 'JobPilot Local', 'check' => 'readiness'],
+            json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        );
+        self::assertStringNotContainsString('secret database detail', (string) $response->getContent());
     }
 }

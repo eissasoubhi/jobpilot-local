@@ -45,4 +45,15 @@ describe('CrmContactCorrectionEditor', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledWith({ name: '', email: '', phone: '' }));
   });
+
+  it('uses the shared accessible modal keyboard contract', () => {
+    const onClose = vi.fn();
+    render(<CrmContactCorrectionEditor organization={organization} contact={contact} onClose={onClose} onSave={vi.fn()} />);
+
+    const dialog = screen.getByRole('dialog', { name: 'Corriger le contact CRM Corrected Name' });
+    expect(screen.getByLabelText('Nom')).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });

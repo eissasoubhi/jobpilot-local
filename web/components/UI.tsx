@@ -14,6 +14,20 @@ export function Empty({ children }: { children:React.ReactNode }) { return <div 
 export function Loading() { return <div className="loading" role="status" aria-live="polite" aria-busy="true">Chargement…</div>; }
 export function ErrorBox({ message }: { message:string }) { return <div className="error-box" role="alert">{message}</div>; }
 
+export function InlineFeedback({
+  children,
+  tone = 'info',
+}: {
+  children: React.ReactNode;
+  tone?: 'info' | 'success' | 'warning';
+}) {
+  return (
+    <div className={`${uiStyles.inlineFeedback} ${uiStyles[`inlineFeedback${tone[0].toUpperCase()}${tone.slice(1)}`]}`} role="status" aria-live="polite">
+      {children}
+    </div>
+  );
+}
+
 type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
 type ButtonSize = 'default' | 'small';
 

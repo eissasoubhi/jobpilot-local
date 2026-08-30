@@ -7,7 +7,7 @@ import {
   type CrmOrganizationAnnotationPayload,
 } from '@/components/CrmOrganizationAnnotationEditor';
 import { CrmOrganizationCard } from '@/components/CrmOrganizationCard';
-import { Card, Empty, ErrorBox, FormField, Loading, PageHeader } from '@/components/UI';
+import { Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   filterCrmOrganizations,
@@ -86,13 +86,13 @@ export default function CrmPage() {
         description="Retrouve les entreprises, intermédiaires, clients finaux et contacts déjà présents dans tes candidatures, positionnements et messages associés."
       />
 
-      {notice !== '' && <div className="notice" style={{ marginBottom: 16 }}>{notice}</div>}
+      {notice !== '' && <InlineFeedback tone="success">{notice}</InlineFeedback>}
       {error !== '' && <ErrorBox message={error} />}
 
-      <div className="notice" style={{ marginBottom: 16 }}>
+      <InlineFeedback>
         <strong>Données sources protégées.</strong>{' '}
         Tu peux ajouter une note ou corriger le nom affiché dans le CRM. JobPilot conserve toujours la clé et le nom détecté d’origine, sans modifier les offres, positionnements ou messages associés.
-      </div>
+      </InlineFeedback>
 
       {directory === null && error === '' ? (
         <Card><Loading /></Card>

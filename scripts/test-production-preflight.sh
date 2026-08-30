@@ -19,7 +19,7 @@ GOOGLE_REDIRECT_URI=https://jobpilot.example.test/api/integrations/gmail/callbac
 GMAIL_SEARCH_QUERY=(job OR emploi) newer_than:30d
 EOF_GOOD
 
-"$preflight" "$tmp_dir/good.env" >/dev/null
+bash "$preflight" "$tmp_dir/good.env" >/dev/null
 
 cat > "$tmp_dir/bad.env" <<'EOF_BAD'
 POSTGRES_PASSWORD=jobpilot
@@ -32,7 +32,7 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost/callback
 EOF_BAD
 
-if "$preflight" "$tmp_dir/bad.env" >"$tmp_dir/stdout" 2>"$tmp_dir/stderr"; then
+if bash "$preflight" "$tmp_dir/bad.env" >"$tmp_dir/stdout" 2>"$tmp_dir/stderr"; then
   echo "expected unsafe production configuration to fail" >&2
   exit 1
 fi

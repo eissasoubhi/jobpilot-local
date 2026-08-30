@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { FilterTabs } from '@/components/FilterTabs';
@@ -64,5 +64,40 @@ describe('FilterTabs', () => {
     fireEvent.keyDown(all, { key: 'ArrowLeft' });
     expect(onChange).toHaveBeenLastCalledWith('excluded');
     expect(excluded).toHaveFocus();
+  });
+
+  it('prevents Home and End from scrolling when focus is already at the boundary', () => {
+    const onChange = vi.fn();
+
+    render(
+      <FilterTabs
+        ariaLabel="Filtres des offres"
+        options={[
+          { value: 'all', label: 'Toutes' },
+          { value: 'matched', label: 'À examiner' },
+          { value: 'excluded', label: 'Exclues' },
+        ] as const}
+        value="all"
+        onChange={onChange}
+      />,
+    );
+
+    const all = screen.getByRole('button', { name: 'Toutes' });
+    all.focus();
+    const home = createEvent.keyDown(all, { key: 'Home' });
+    fireEvent(all, home);
+
+    expect(home.defaultPrevented).toBe(true);
+    expect(all).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
+
+    const excluded = screen.getByRole('button', { name: 'Exclues' });
+    excluded.focus();
+    const end = createEvent.keyDown(excluded, { key: 'End' });
+    fireEvent(excluded, end);
+
+    expect(end.defaultPrevented).toBe(true);
+    expect(excluded).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

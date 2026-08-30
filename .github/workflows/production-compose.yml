@@ -1,0 +1,27 @@
+name: Production Compose
+
+on:
+  pull_request:
+    paths:
+      - docker-compose.yml
+      - docker-compose.production.yml
+      - .github/workflows/production-compose.yml
+  push:
+    branches: [main]
+    paths:
+      - docker-compose.yml
+      - docker-compose.production.yml
+      - .github/workflows/production-compose.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-production-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render production compose configuration
+        run: docker compose -f docker-compose.yml -f docker-compose.production.yml config > /tmp/jobpilot-production-compose.yml
+      - name: Verify API readiness probe is used
+        run: grep -F "http://127.0.0.1:8080/api/health/ready" /tmp/jobpilot-production-compose.yml

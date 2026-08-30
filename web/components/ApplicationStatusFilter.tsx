@@ -1,7 +1,7 @@
 'use client';
 
 import { FilterTabs } from '@/components/FilterTabs';
-import { FormField } from '@/components/UI';
+import { FormField, InlineFeedback } from '@/components/UI';
 import {
   applicationStatusLabel,
   applicationStatusOptions,
@@ -69,8 +69,10 @@ export function ApplicationStatusFilter({
         </FormField>
       </div>
 
-      <div className="small muted" role="status" aria-live="polite" style={{ marginTop: 8 }}>
-        {visibleCount} candidature(s) affichée(s) sur {applications.length}.
+      <div style={{ marginTop: 8 }}>
+        <InlineFeedback>
+          {visibleCount} candidature(s) affichée(s) sur {applications.length}.
+        </InlineFeedback>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { Modal } from '@/components/Modal';
-import { Button, ErrorBox, FormField } from '@/components/UI';
+import { Button, ErrorBox, FormField, InlineFeedback } from '@/components/UI';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmContact, CrmOrganization } from '@/lib/types';
 
@@ -50,7 +50,9 @@ export function CrmContactCorrectionEditor({ organization, contact, onClose, onS
     <Modal ariaLabel={`Corriger le contact CRM ${contact.name}`} onClose={onClose}>
       <h2>Corriger un contact CRM</h2>
       <p className="small muted">Organisation : <strong>{organization.name}</strong><br />Clé stable : <code>{contact.key}</code></p>
-      <div className="notice">Les valeurs sources restent intactes. Laisser les trois champs vides efface uniquement la correction locale.</div>
+      <InlineFeedback>
+        Les valeurs sources restent intactes. Laisser les trois champs vides efface uniquement la correction locale.
+      </InlineFeedback>
       {error !== '' && <ErrorBox message={error} />}
       <div className="stack" style={{ marginTop: 14 }}>
         <FormField label="Nom">
@@ -65,7 +67,7 @@ export function CrmContactCorrectionEditor({ organization, contact, onClose, onS
         <div className="small muted">Sources : {contact.sourceName || '—'} · {contact.sourceEmail || '—'} · {contact.sourcePhone || '—'}</div>
         <div className="actions">
           <Button size="small" loading={saving} onClick={() => void submit()}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+            Enregistrer
           </Button>
           <Button variant="secondary" size="small" disabled={saving} onClick={onClose}>Annuler</Button>
         </div>

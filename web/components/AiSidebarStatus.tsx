@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { ProgressBar } from '@/components/UI';
 import { api } from '@/lib/api';
 
 type AiQuotaUsage = {
@@ -63,6 +64,7 @@ export function AiSidebarStatus() {
   const aiActive = Boolean(settings?.enabled && settings.apiKeyConfigured);
   const needsKey = Boolean(settings?.enabled && !settings.apiKeyConfigured);
   const quotaReached = aiActive && maxPercent >= 100;
+  const quotaTone = quotaReached ? 'bad' : maxPercent >= 80 ? 'warn' : 'good';
 
   const label = unavailable
     ? 'État IA indisponible'
@@ -104,9 +106,13 @@ export function AiSidebarStatus() {
             <span>Quota max</span>
             <strong>{maxPercent} %</strong>
           </div>
-          <div className="ai-quota-track" aria-label={`Utilisation maximale du quota IA ${maxPercent} %`}>
-            <span style={{ width: `${maxPercent}%` }} />
-          </div>
+          <ProgressBar
+            value={maxPercent}
+            label="Utilisation maximale du quota IA"
+            valueText={`${maxPercent} %`}
+            size="compact"
+            tone={quotaTone}
+          />
           <div className="ai-sidebar-quota-detail">
             RPM {rpmPercent}% · TPM {tpmPercent}% · Jour {rpdPercent}%
           </div>

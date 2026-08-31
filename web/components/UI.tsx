@@ -16,13 +16,25 @@ export function ErrorBox({ message }: { message:string }) { return <div classNam
 
 export function InlineFeedback({
   children,
+  className = '',
+  role = 'status',
   tone = 'info',
 }: {
   children: React.ReactNode;
+  className?: string;
+  role?: 'status' | 'alert';
   tone?: 'info' | 'success' | 'warning';
 }) {
   return (
-    <div className={`${uiStyles.inlineFeedback} ${uiStyles[`inlineFeedback${tone[0].toUpperCase()}${tone.slice(1)}`]}`} role="status" aria-live="polite">
+    <div
+      className={[
+        uiStyles.inlineFeedback,
+        uiStyles[`inlineFeedback${tone[0].toUpperCase()}${tone.slice(1)}`],
+        className,
+      ].filter(Boolean).join(' ')}
+      role={role}
+      aria-live={role === 'alert' ? 'assertive' : 'polite'}
+    >
       {children}
     </div>
   );

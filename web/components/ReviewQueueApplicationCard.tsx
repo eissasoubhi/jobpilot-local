@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { CoverLetterDrawer } from '@/components/CoverLetterDrawer';
 import styles from '@/components/ReviewQueueApplicationCard.module.css';
 import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
-import { Badge } from '@/components/UI';
+import { Badge, Button, ErrorBox, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
@@ -193,14 +193,15 @@ export function ReviewQueueApplicationCard({
             </a>
           )}
 
-          <button
-            className="btn secondary small"
-            type="button"
-            disabled={saving || markingUnavailable || decisionActionsDisabled}
+          <Button
+            variant="secondary"
+            size="small"
+            loading={markingUnavailable}
+            disabled={saving || decisionActionsDisabled}
             onClick={() => void markOfferUnavailable()}
           >
             {markingUnavailable ? 'Enregistrement…' : 'Offre indisponible'}
-          </button>
+          </Button>
 
           {currentApplication.cvDocument && (
             <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
@@ -224,23 +225,23 @@ export function ReviewQueueApplicationCard({
             </select>
           </label>
 
-          <button
-            className="btn secondary small"
-            type="button"
-            disabled={saving
-              || markingUnavailable
+          <Button
+            variant="secondary"
+            size="small"
+            loading={saving}
+            disabled={markingUnavailable
               || decisionActionsDisabled
               || currentApplication.status === 'SUBMISSION_PENDING'
               || selectedStatus === currentApplication.status}
             onClick={() => void saveTrackingStatus()}
           >
             {saving ? 'Enregistrement…' : 'Appliquer'}
-          </button>
+          </Button>
         </div>
       </section>
 
-      {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
-      {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
+      {notice !== '' && <InlineFeedback className={styles.feedback} tone="success">{notice}</InlineFeedback>}
+      {error !== '' && <div className={styles.feedback}><ErrorBox message={error} /></div>}
 
       <section className={styles.mission} aria-labelledby={`mission-title-${currentApplication.id}`}>
         <div className={styles.sectionHeader}>

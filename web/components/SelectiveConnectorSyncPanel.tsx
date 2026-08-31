@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SourceConnector } from '@/lib/types';
 
-import { FloatingPanel } from './UI';
+import { Button, FloatingPanel } from './UI';
 
 type Props = {
   connectors: SourceConnector[];
@@ -99,25 +99,23 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
   return (
     <div style={{ position: 'relative' }}>
       <div className="actions">
-        <button
-          className="btn secondary"
-          type="button"
+        <Button
+          variant="secondary"
           disabled={syncing || eligibleCodes.length === 0}
           onClick={() => void onSynchronize()}
         >
           {syncing ? 'Synchronisation…' : 'Tout synchroniser'}
-        </button>
-        <button
+        </Button>
+        <Button
           ref={triggerRef}
-          className="btn secondary"
-          type="button"
+          variant="secondary"
           aria-expanded={open}
           aria-controls="selective-connector-sync-panel"
           disabled={syncing || connectors.length === 0}
           onClick={() => setOpen((current) => !current)}
         >
           Choisir les connecteurs
-        </button>
+        </Button>
       </div>
 
       {open && (
@@ -136,8 +134,8 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
           <div className="actions" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
             <strong>Connecteurs du prochain run</strong>
             <div className="actions">
-              <button className="btn secondary small" type="button" onClick={selectAll}>Tout sélectionner</button>
-              <button className="btn secondary small" type="button" onClick={selectNone}>Tout désélectionner</button>
+              <Button variant="secondary" size="small" onClick={selectAll}>Tout sélectionner</Button>
+              <Button variant="secondary" size="small" onClick={selectNone}>Tout désélectionner</Button>
             </div>
           </div>
 
@@ -183,15 +181,13 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
           </div>
 
           <div className="actions" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
-            <button className="btn secondary" type="button" onClick={closePanel}>Annuler</button>
-            <button
-              className="btn"
-              type="button"
+            <Button variant="secondary" onClick={closePanel}>Annuler</Button>
+            <Button
               disabled={syncing || selectedCodes.length === 0}
               onClick={synchronizeSelected}
             >
               Synchroniser {selectedCodes.length} connecteur{selectedCodes.length > 1 ? 's' : ''}
-            </button>
+            </Button>
           </div>
         </FloatingPanel>
       )}

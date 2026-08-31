@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { formatFollowUpDate, followUpDueLabel, type CrmFollowUpStatus, type CrmFollowUpTask } from '@/lib/crm-follow-ups';
 import { getErrorMessage } from '@/lib/errors';
@@ -75,7 +75,7 @@ export default function CrmFollowUpsPage() {
   return (
     <>
       <PageHeader title="Relances CRM" description="Planifie et suis des rappels locaux sans envoyer automatiquement de message." />
-      {notice !== '' && <div className="notice" style={{ marginBottom: 16 }}>{notice}</div>}
+      {notice !== '' && <InlineFeedback tone="success" className="mb-16">{notice}</InlineFeedback>}
       {error !== '' && <ErrorBox message={error} />}
 
       <Card>
@@ -83,8 +83,7 @@ export default function CrmFollowUpsPage() {
         {directory === null ? <Loading /> : directory.organizations.length === 0 ? <Empty>Aucune organisation CRM disponible.</Empty> : (
           <div className="stack">
             <div className="form-grid">
-              <div>
-                <label htmlFor="follow-up-organization">Organisation</label>
+              <FormField label="Organisation">
                 <select
                   id="follow-up-organization"
                   value={organizationKey}
@@ -94,9 +93,8 @@ export default function CrmFollowUpsPage() {
                   <option value="">Sélectionner une organisation</option>
                   {directory.organizations.map((organization) => <option key={organization.key} value={organization.key}>{organization.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label htmlFor="follow-up-contact">Contact facultatif</label>
+              </FormField>
+              <FormField label="Contact facultatif">
                 <select
                   id="follow-up-contact"
                   value={contactKey}
@@ -108,21 +106,27 @@ export default function CrmFollowUpsPage() {
                     <option key={contact.key} value={contact.key}>{contact.name || contact.email || contact.phone || contact.key}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label htmlFor="follow-up-due-at">Date de relance</label>
+              </FormField>
+              <FormField label="Date de relance">
                 <input id="follow-up-due-at" type="date" value={dueAt} disabled={busy} onChange={(event) => setDueAt(event.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="follow-up-title">Titre</label>
+              </FormField>
+              <FormField label="Titre">
                 <input id="follow-up-title" value={title} maxLength={180} disabled={busy} onChange={(event) => setTitle(event.target.value)} />
-              </div>
+              </FormField>
             </div>
-            <div>
-              <label htmlFor="follow-up-note">Note facultative</label>
+            <FormField label="Note facultative">
               <textarea id="follow-up-note" value={note} maxLength={2000} disabled={busy} onChange={(event) => setNote(event.target.value)} />
+            </FormField>
+            <div>
+              <Button
+                type="button"
+                loading={busy}
+                disabled={organizationKey === '' || title.trim() === '' || dueAt === ''}
+                onClick={() => void createTask()}
+              >
+                {busy ? 'Enregistrement…' : 'Créer la relance'}
+              </Button>
             </div>
-            <div><button className="btn" type="button" disabled={busy || organizationKey === '' || title.trim() === '' || dueAt === ''} onClick={() => void createTask()}>{busy ? 'Enregistrement…' : 'Créer la relance'}</button></div>
           </div>
         )}
       </Card>
@@ -152,7 +156,7 @@ export default function CrmFollowUpsPage() {
                   <div className="small muted">{organization?.name ?? task.organizationKey}{contact ? ` · ${contact.name || contact.email || contact.key}` : ''}</div>
                   {task.note && <p className="small" style={{ marginBottom: 0 }}>{task.note}</p>}
                 </div>
-                <button className="btn secondary small" type="button" disabled={busy} onClick={() => void setCompleted(task, !task.completed)}>{task.completed ? 'Rouvrir' : 'Marquer terminée'}</button>
+                <Button variant="secondary" size="small" type="button" disabled={busy} onClick={() => void setCompleted(task, !task.completed)}>{task.completed ? 'Rouvrir' : 'Marquer terminée'}</Button>
               </div>;
             })}
           </div>

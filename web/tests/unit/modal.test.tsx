@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { createRef, useState } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Modal } from '@/components/Modal';
 
@@ -55,5 +55,46 @@ describe('Modal', () => {
 
     await user.tab({ shift: true });
     expect(last).toHaveFocus();
+  });
+
+  it('supports heading-based labelling and an explicit initial focus target', () => {
+    const focusRef = createRef<HTMLInputElement>();
+
+    render(
+      <Modal ariaLabelledBy="modal-title" initialFocusRef={focusRef} onClose={vi.fn()}>
+        <h2 id="modal-title">Modifier la candidature</h2>
+        <button type="button">Fermer</button>
+        <input ref={focusRef} aria-label="Référence" />
+      </Modal>,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Modifier la candidature' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Référence' })).toHaveFocus();
+  });
+
+  it('locks background scrolling while open and restores it after close', () => {
+    document.body.style.overflow = 'auto';
+    const { unmount } = render(
+      <Modal ariaLabel="Candidature" onClose={vi.fn()}>
+        <button type="button">Fermer</button>
+      </Modal>,
+    );
+
+    expect(document.body.style.overflow).toBe('hidden');
+    unmount();
+    expect(document.body.style.overflow).toBe('auto');
+    document.body.style.overflow = '';
+  });
+
+  it('can keep backdrop clicks non-destructive when requested', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <Modal ariaLabel="Candidature" closeOnBackdrop={false} onClose={onClose}>
+        <button type="button">Fermer</button>
+      </Modal>,
+    );
+
+    fireEvent.mouseDown(container.firstElementChild as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

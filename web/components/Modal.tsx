@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyboardEvent, useEffect, useRef } from 'react';
+import { KeyboardEvent, useEffect, useRef, type RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -11,28 +11,44 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-export function Modal({
-  ariaLabel,
-  children,
-  onClose,
-}: {
-  ariaLabel: string;
+type ModalProps = {
   children: React.ReactNode;
   onClose: () => void;
-}) {
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  closeOnBackdrop?: boolean;
+};
+
+export function Modal({
+  ariaLabel,
+  ariaLabelledBy,
+  children,
+  closeOnBackdrop = true,
+  initialFocusRef,
+  onClose,
+}: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+
+  if (!ariaLabel && !ariaLabelledBy) {
+    throw new Error('Modal requires ariaLabel or ariaLabelledBy.');
+  }
 
   useEffect(() => {
     restoreFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const panel = panelRef.current;
     const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    (firstFocusable ?? panel)?.focus();
+    (initialFocusRef?.current ?? firstFocusable ?? panel)?.focus();
 
     return () => {
+      document.body.style.overflow = previousOverflow;
       restoreFocusRef.current?.focus();
     };
   }, []);
@@ -70,16 +86,21 @@ export function Modal({
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
         ref={panelRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        onMouseDown={(event) => event.stopPropagation()}
       >
         {children}
       </div>

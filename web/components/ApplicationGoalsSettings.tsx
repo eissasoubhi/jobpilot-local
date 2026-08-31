@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { Button, Card, ErrorBox, FormField, Loading } from '@/components/UI';
+import { Button, Card, ErrorBox, FormField, InlineFeedback, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
@@ -135,7 +135,7 @@ export function ApplicationGoalsSettings() {
             </div>
 
             {error !== '' && <ErrorBox message={error} />}
-            {saved && <p className={styles.saved} role="status">Objectifs enregistrés.</p>}
+            {saved && <InlineFeedback tone="success">Objectifs enregistrés.</InlineFeedback>}
           </form>
         )}
       </Card>

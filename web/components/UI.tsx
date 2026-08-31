@@ -40,6 +40,57 @@ export function InlineFeedback({
   );
 }
 
+export function DataToolbar({
+  children,
+  actions,
+  className = '',
+}: {
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={[uiStyles.dataToolbar, className].filter(Boolean).join(' ')}>
+      <div className={uiStyles.dataToolbarContent}>{children}</div>
+      {actions && <div className={uiStyles.dataToolbarActions}>{actions}</div>}
+    </div>
+  );
+}
+
+export function DataList({
+  children,
+  className = '',
+  testId,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      className={[uiStyles.dataList, className].filter(Boolean).join(' ')}
+      role="list"
+      data-testid={testId}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function DataListItem({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={[uiStyles.dataListItem, className].filter(Boolean).join(' ')} role="listitem">
+      {children}
+    </div>
+  );
+}
+
 type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
 type ButtonSize = 'default' | 'small';
 

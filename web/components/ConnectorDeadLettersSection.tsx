@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Button, Card, ErrorBox, InlineFeedback, Loading } from '@/components/UI';
+import { Badge, Button, Card, DataList, DataListItem, DataToolbar, ErrorBox, InlineFeedback, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -92,26 +92,25 @@ export function ConnectorDeadLettersSection() {
 
   return (
     <section aria-labelledby="connector-dead-letter-title" style={{ marginTop: 30 }}>
-      <div className="actions" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h2 className="section-title" id="connector-dead-letter-title" style={{ marginBottom: 4 }}>
-            Incidents persistants
-          </h2>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Erreurs de collecte ou d’import répétées au moins trois fois. Résoudre un incident ne relance aucune collecte automatiquement.
-          </p>
-        </div>
-        {entries.length > 0 && <Badge tone="bad">{entries.length} ouverte(s)</Badge>}
-      </div>
+      <DataToolbar
+        actions={entries.length > 0 ? <Badge tone="bad">{entries.length} ouverte(s)</Badge> : undefined}
+      >
+        <h2 className="section-title" id="connector-dead-letter-title" style={{ marginBottom: 4 }}>
+          Incidents persistants
+        </h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Erreurs de collecte ou d’import répétées au moins trois fois. Résoudre un incident ne relance aucune collecte automatiquement.
+        </p>
+      </DataToolbar>
 
       {error !== '' && <ErrorBox message={error} />}
       {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
 
       {entries.length > 0 && (
         <Card>
-          <div className="stack" data-testid="connector-dead-letter-list">
+          <DataList testId="connector-dead-letter-list">
             {entries.map((entry) => (
-              <div className="list-row" key={entry.id} style={{ alignItems: 'flex-start' }}>
+              <DataListItem key={entry.id}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="actions" style={{ marginBottom: 7 }}>
                     <Badge tone="bad">OPEN</Badge>
@@ -144,9 +143,9 @@ export function ConnectorDeadLettersSection() {
                 >
                   {busyId === entry.id ? 'Résolution…' : 'Marquer résolu'}
                 </Button>
-              </div>
+              </DataListItem>
             ))}
-          </div>
+          </DataList>
         </Card>
       )}
     </section>

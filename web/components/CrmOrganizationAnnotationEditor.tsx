@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 
 import { Modal } from '@/components/Modal';
-import { ErrorBox, PageHeader } from '@/components/UI';
+import { Button, ErrorBox, FormField, PageHeader } from '@/components/UI';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmOrganization } from '@/lib/types';
 
@@ -68,9 +68,9 @@ export function CrmOrganizationAnnotationEditor({
         title="Modifier la fiche CRM"
         description="Ajoute un nom d’affichage et une note locale sans modifier les offres, positionnements ou messages d’origine."
         actions={(
-          <button className="btn secondary" type="button" disabled={saving} onClick={onClose}>
+          <Button variant="secondary" disabled={saving} onClick={onClose}>
             Fermer
-          </button>
+          </Button>
         )}
       />
 
@@ -86,49 +86,44 @@ export function CrmOrganizationAnnotationEditor({
       </div>
 
       <form className="stack" onSubmit={(event) => void save(event)}>
-        <div>
-          <label htmlFor="crm-organization-display-name">Nom affiché dans le CRM</label>
+        <FormField
+          label="Nom affiché dans le CRM"
+          hint={<>Laisse vide pour afficher le nom détecté automatiquement. {displayName.length}/255</>}
+        >
           <input
             id="crm-organization-display-name"
-            aria-label="Nom affiché dans le CRM"
             value={displayName}
             maxLength={255}
             placeholder={organization.sourceName}
             onChange={(event) => setDisplayName(event.target.value.replace(/[\r\n]/g, ' '))}
           />
-          <span className="small muted">
-            Laisse vide pour afficher le nom détecté automatiquement. {displayName.length}/255
-          </span>
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="crm-organization-note">Note interne</label>
+        <FormField
+          label="Note interne"
+          hint={<>Visible uniquement dans le CRM local. {note.length}/5000</>}
+        >
           <textarea
             id="crm-organization-note"
-            aria-label="Note interne"
             value={note}
             maxLength={5000}
             style={{ minHeight: 180 }}
             placeholder="Contexte utile, qualité de la relation, prochaine action…"
             onChange={(event) => setNote(event.target.value)}
           />
-          <span className="small muted">
-            Visible uniquement dans le CRM local. {note.length}/5000
-          </span>
-        </div>
+        </FormField>
 
         <div className="actions" style={{ justifyContent: 'space-between' }}>
-          <button
-            className="btn secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={saving || !hasAnnotation}
             onClick={() => void clear()}
           >
             Effacer les corrections
-          </button>
-          <button className="btn" type="submit" disabled={saving}>
+          </Button>
+          <Button type="submit" loading={saving}>
             {saving ? 'Enregistrement…' : 'Enregistrer la fiche CRM'}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

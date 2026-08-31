@@ -4,7 +4,18 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ApplicationStatusFilter } from '@/components/ApplicationStatusFilter';
 import { CoverLetterEditor } from '@/components/CoverLetterEditor';
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  DataToolbar,
+  Empty,
+  ErrorBox,
+  Loading,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   applicationBadgeLabel,
@@ -113,43 +124,53 @@ export default function ApplicationsPage() {
           <Empty>Aucune candidature préparée.</Empty>
         ) : (
           <>
-            <ApplicationStatusFilter
-              applications={items}
-              value={statusFilter}
-              onChange={setStatusFilter}
-            />
+            <DataToolbar>
+              <ApplicationStatusFilter
+                applications={items}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+            </DataToolbar>
 
             {filteredItems.length === 0 ? (
               <Empty>
                 Aucune candidature dans le statut « {applicationStatusLabel(statusFilter)} ».
               </Empty>
-            ) : filteredItems.map((application) => (
-              <div className="list-row" key={application.id}>
-                <div style={{ flex: 1 }}>
-                  <h3>{application.jobOffer.title}</h3>
-                  <div className="muted small">
-                    {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
-                    {application.jobOffer.contractType || 'Contrat non renseigné'}
-                  </div>
-                  <div className="actions" style={{ marginTop: 8 }}>
-                    <Badge tone={applicationStatusTone(application.status)}>{applicationBadgeLabel(application)}</Badge>
-                    <Badge tone="blue">Score {application.jobOffer.score}</Badge>
-                    <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
-                    {application.cvDocument && <Badge>{application.cvDocument.name}</Badge>}
-                    {application.jobOffer.applicationEmail && <Badge>{application.jobOffer.applicationEmail}</Badge>}
-                    {application.compensationAnswer && <Badge tone="good">{application.compensationAnswer}</Badge>}
-                  </div>
-                  {application.submissionError && (
-                    <div className="small" style={{ marginTop: 8 }}>
-                      <strong>Erreur :</strong> {application.submissionError}
+            ) : (
+              <DataList aria-label="Candidatures filtrées">
+                {filteredItems.map((application) => (
+                  <DataListItem key={application.id}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3>{application.jobOffer.title}</h3>
+                      <div className="muted small">
+                        {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
+                        {application.jobOffer.contractType || 'Contrat non renseigné'}
+                      </div>
+                      <div className="actions" style={{ marginTop: 8 }}>
+                        <Badge tone={applicationStatusTone(application.status)}>{applicationBadgeLabel(application)}</Badge>
+                        <Badge tone="blue">Score {application.jobOffer.score}</Badge>
+                        <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
+                        {application.cvDocument && <Badge>{application.cvDocument.name}</Badge>}
+                        {application.jobOffer.applicationEmail && <Badge>{application.jobOffer.applicationEmail}</Badge>}
+                        {application.compensationAnswer && <Badge tone="good">{application.compensationAnswer}</Badge>}
+                      </div>
+                      {application.submissionError && (
+                        <div className="small" style={{ marginTop: 8 }}>
+                          <strong>Erreur :</strong> {application.submissionError}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <button className="btn secondary small" type="button" onClick={() => openApplication(application)}>
-                  {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
-                </button>
-              </div>
-            ))}
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={() => openApplication(application)}
+                    >
+                      {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
+                    </Button>
+                  </DataListItem>
+                ))}
+              </DataList>
+            )}
           </>
         )}
       </Card>

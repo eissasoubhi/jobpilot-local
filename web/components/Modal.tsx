@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type MouseEvent, type ReactNode, type RefObject } from 'react';
-
-import styles from './Modal.module.css';
+import { KeyboardEvent, useEffect, useRef, type RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -14,7 +12,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 type ModalProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   onClose: () => void;
   ariaLabel?: string;
   ariaLabelledBy?: string;
@@ -23,88 +21,86 @@ type ModalProps = {
 };
 
 export function Modal({
-  children,
-  onClose,
   ariaLabel,
   ariaLabelledBy,
-  initialFocusRef,
+  children,
   closeOnBackdrop = true,
+  initialFocusRef,
+  onClose,
 }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+
+  if (!ariaLabel && !ariaLabelledBy) {
+    throw new Error('Modal requires ariaLabel or ariaLabelledBy.');
+  }
 
   useEffect(() => {
     restoreFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
 
-    const dialog = dialogRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    const focusTarget = initialFocusRef?.current
-      ?? dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
-      ?? dialog;
-    focusTarget?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key !== 'Tab' || !dialog) return;
-
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-        .filter((element) => !element.hasAttribute('disabled') && element.tabIndex >= 0);
-
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && (active === first || active === dialog)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
+    const panel = panelRef.current;
+    const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    (initialFocusRef?.current ?? firstFocusable ?? panel)?.focus();
 
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
       restoreFocusRef.current?.focus();
     };
-  }, [initialFocusRef, onClose]);
+  }, []);
 
-  const onBackdropMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusable.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+
+    if (event.shiftKey && (active === first || active === panel)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
-  if (!ariaLabel && !ariaLabelledBy) {
-    throw new Error('Modal requires ariaLabel or ariaLabelledBy.');
-  }
-
   return (
-    <div className={styles.backdrop} onMouseDown={onBackdropMouseDown}>
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
-        ref={dialogRef}
-        className={styles.dialog}
+        ref={panelRef}
+        className="modal"
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         tabIndex={-1}
+        onKeyDown={handleKeyDown}
       >
         {children}
       </div>

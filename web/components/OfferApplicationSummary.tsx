@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, Button } from '@/components/UI';
+import { Badge, Button, ErrorBox, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
@@ -392,8 +392,8 @@ export function OfferApplicationSummary({
                     </Button>
                   </div>
                 </div>
-                {notice !== '' && <div className="small" role="status" style={{ marginTop: 8 }}>{notice}</div>}
-                {error !== '' && <div className="small" role="alert" style={{ marginTop: 8 }}>{error}</div>}
+                {notice !== '' && <InlineFeedback tone="success">{notice}</InlineFeedback>}
+                {error !== '' && <ErrorBox message={error} />}
               </section>
 
               {currentApplication.jobOffer.sourceUrl && (

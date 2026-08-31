@@ -7,7 +7,7 @@ import {
   type CrmContactCorrectionPayload,
   type EditableCrmContact,
 } from '@/components/CrmContactCorrectionEditor';
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { downloadCrmContactsCsv } from '@/lib/crm-contact-export';
 import { filterCrmContacts, type CrmContactFilter } from '@/lib/crm-contact-filters';
@@ -70,7 +70,11 @@ export default function CrmContactsPage() {
   return (
     <>
       <PageHeader title="Corrections des contacts CRM" description="Corrige le nom, l’e-mail ou le téléphone affiché sans modifier les données sources." />
-      {notice !== '' && <div className="notice" style={{ marginBottom: 16 }}>{notice}</div>}
+      {notice !== '' && (
+        <div style={{ marginBottom: 16 }}>
+          <InlineFeedback tone="success">{notice}</InlineFeedback>
+        </div>
+      )}
       {error !== '' && <ErrorBox message={error} />}
       {directory === null && error === '' ? <Loading /> : contacts.length === 0 ? (
         <Card><Empty>Aucun contact CRM validé n’est disponible.</Empty></Card>
@@ -78,36 +82,34 @@ export default function CrmContactsPage() {
         <>
           <Card>
             <div className="form-grid">
-              <label>
-                Rechercher un contact ou une organisation
+              <FormField label="Rechercher un contact ou une organisation">
                 <input
                   type="search"
                   value={search}
                   placeholder="Nom, e-mail, téléphone ou société"
                   onChange={(event) => setSearch(event.target.value)}
                 />
-              </label>
-              <label>
-                État de correction
+              </FormField>
+              <FormField label="État de correction">
                 <select value={filter} onChange={(event) => setFilter(event.target.value as CrmContactFilter)}>
                   <option value="ALL">Tous les contacts</option>
                   <option value="CORRECTED">Corrigés localement</option>
                   <option value="UNCORRECTED">Sans correction locale</option>
                 </select>
-              </label>
+              </FormField>
             </div>
             <div className="actions" style={{ marginTop: 12 }}>
               <Badge>{contacts.length} contact(s)</Badge>
               <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
               <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
-              <button
-                className="btn secondary small"
-                type="button"
+              <Button
+                variant="secondary"
+                size="small"
                 disabled={visibleContacts.length === 0}
                 onClick={exportVisibleContacts}
               >
                 Exporter les contacts affichés
-              </button>
+              </Button>
             </div>
             <p className="small muted" style={{ marginBottom: 0, marginTop: 10 }}>
               L’export contient uniquement les résultats actuellement filtrés. Les valeurs affichées et les valeurs sources restent séparées.
@@ -137,9 +139,9 @@ export default function CrmContactsPage() {
                           </div>
                         )}
                       </div>
-                      <button className="btn secondary small" type="button" onClick={() => { setSelection({ organization, contact }); setNotice(''); }}>
+                      <Button variant="secondary" size="small" onClick={() => { setSelection({ organization, contact }); setNotice(''); }}>
                         {corrected ? 'Modifier la correction' : 'Corriger le contact'}
-                      </button>
+                      </Button>
                     </div>
                   </Card>
                 );

@@ -170,7 +170,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
 
   const positioningHeading = page.getByRole('heading', { name: positioningTitle, level: 3, exact: true });
   await expect(positioningHeading).toBeVisible();
-  const positioningRow = positioningHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  const positioningRow = page.getByRole('listitem').filter({ has: positioningHeading });
   await expect(positioningRow.getByText('450 €')).toBeVisible();
 
   expect(failures).toEqual([]);

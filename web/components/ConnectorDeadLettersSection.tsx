@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Button, Card, ErrorBox, Loading } from '@/components/UI';
+import { Badge, Button, Card, ErrorBox, InlineFeedback, Loading } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -105,7 +105,7 @@ export function ConnectorDeadLettersSection() {
       </div>
 
       {error !== '' && <ErrorBox message={error} />}
-      {message !== '' && <div className="success-box" role="status">{message}</div>}
+      {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
 
       {entries.length > 0 && (
         <Card>

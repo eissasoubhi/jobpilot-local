@@ -106,16 +106,17 @@ export function SelectiveConnectorSyncPanel({ connectors, syncing, onSynchronize
         >
           {syncing ? 'Synchronisation…' : 'Tout synchroniser'}
         </Button>
-        <Button
+        <button
           ref={triggerRef}
-          variant="secondary"
+          className="btn secondary"
+          type="button"
           aria-expanded={open}
           aria-controls="selective-connector-sync-panel"
           disabled={syncing || connectors.length === 0}
           onClick={() => setOpen((current) => !current)}
         >
           Choisir les connecteurs
-        </Button>
+        </button>
       </div>
 
       {open && (

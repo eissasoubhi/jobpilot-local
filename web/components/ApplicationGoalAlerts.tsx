@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { ButtonLink } from '@/components/UI';
+import { ButtonLink, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 
@@ -44,7 +44,12 @@ export function ApplicationGoalAlerts() {
   return (
     <section className={styles.alerts} aria-label="Alertes d’objectifs de candidatures">
       {snapshot.missed.map((missed) => (
-        <div className={styles.alert} role="alert" key={`${missed.period}-${missed.start}`}>
+        <InlineFeedback
+          className={styles.alert}
+          role="alert"
+          tone="warning"
+          key={`${missed.period}-${missed.start}`}
+        >
           <div className={styles.alertCopy}>
             <strong>{missed.label}</strong>
             <span>
@@ -54,11 +59,11 @@ export function ApplicationGoalAlerts() {
           <ButtonLink href="/offres/review" size="small" variant="secondary">
             Rattraper dans la Review Queue →
           </ButtonLink>
-        </div>
+        </InlineFeedback>
       ))}
 
       {showDailyReminder && (
-        <div className={`${styles.alert} ${styles.reminder}`} role="status">
+        <InlineFeedback className={styles.alert} tone="info">
           <div className={styles.alertCopy}>
             <strong>Objectif du jour : {daily.achieved} / {daily.target}</strong>
             <span>Il te reste {daily.remaining} candidature(s) à envoyer aujourd’hui.</span>
@@ -66,7 +71,7 @@ export function ApplicationGoalAlerts() {
           <ButtonLink href="/offres/review" size="small" variant="secondary">
             Continuer →
           </ButtonLink>
-        </div>
+        </InlineFeedback>
       )}
     </section>
   );

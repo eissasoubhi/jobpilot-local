@@ -108,7 +108,7 @@ export function ConnectorDeadLettersSection() {
 
       {entries.length > 0 && (
         <Card>
-          <DataList testId="connector-dead-letter-list">
+          <DataList data-testid="connector-dead-letter-list">
             {entries.map((entry) => (
               <DataListItem key={entry.id}>
                 <div style={{ flex: 1, minWidth: 0 }}>

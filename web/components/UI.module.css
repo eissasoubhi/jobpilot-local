@@ -58,7 +58,7 @@
 
 .dataListItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4, 16px);
   padding: var(--space-4, 16px) 0;
   border-bottom: 1px solid var(--line);

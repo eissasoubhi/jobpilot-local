@@ -40,17 +40,18 @@ export function InlineFeedback({
   );
 }
 
+type DataToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
+  actions?: React.ReactNode;
+};
+
 export function DataToolbar({
   children,
   actions,
   className = '',
-}: {
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-  className?: string;
-}) {
+  ...props
+}: DataToolbarProps) {
   return (
-    <div className={[uiStyles.dataToolbar, className].filter(Boolean).join(' ')}>
+    <div {...props} className={[uiStyles.dataToolbar, className].filter(Boolean).join(' ')}>
       <div className={uiStyles.dataToolbarContent}>{children}</div>
       {actions && <div className={uiStyles.dataToolbarActions}>{actions}</div>}
     </div>
@@ -60,17 +61,13 @@ export function DataToolbar({
 export function DataList({
   children,
   className = '',
-  testId,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  testId?: string;
-}) {
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
+      {...props}
       className={[uiStyles.dataList, className].filter(Boolean).join(' ')}
       role="list"
-      data-testid={testId}
     >
       {children}
     </div>
@@ -80,12 +77,14 @@ export function DataList({
 export function DataListItem({
   children,
   className = '',
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={[uiStyles.dataListItem, className].filter(Boolean).join(' ')} role="listitem">
+    <div
+      {...props}
+      className={[uiStyles.dataListItem, className].filter(Boolean).join(' ')}
+      role="listitem"
+    >
       {children}
     </div>
   );

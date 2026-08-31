@@ -6,7 +6,7 @@ import { DataList, DataListItem, DataToolbar } from '@/components/UI';
 describe('shared data list contracts', () => {
   it('exposes list semantics for dense repeated content', () => {
     render(
-      <DataList testId="results-list">
+      <DataList data-testid="results-list">
         <DataListItem>Premier résultat</DataListItem>
         <DataListItem>Deuxième résultat</DataListItem>
       </DataList>,

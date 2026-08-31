@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Card, DataList, DataListItem, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { buildApplicationReporting } from '@/lib/application-reporting';
 import { getErrorMessage } from '@/lib/errors';
@@ -55,19 +55,21 @@ export default function ReportingPage() {
 
           <Card>
             <h2 className="section-title">Conversion par source</h2>
-            {summary.bySource.map((row) => (
-              <div className="list-row" key={row.source}>
-                <div style={{ flex: 1 }}>
-                  <strong>{row.source}</strong>
-                  <div className="actions" style={{ marginTop: 8 }}>
-                    <Badge>{row.total} candidature(s)</Badge>
-                    <Badge tone="good">{row.submitted} envoyée(s)</Badge>
-                    <Badge tone="blue">{row.interviews} entretien(s)</Badge>
-                    <Badge tone="bad">{row.rejected} refus</Badge>
+            <DataList>
+              {summary.bySource.map((row) => (
+                <DataListItem key={row.source}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong>{row.source}</strong>
+                    <div className="actions" style={{ marginTop: 8 }}>
+                      <Badge>{row.total} candidature(s)</Badge>
+                      <Badge tone="good">{row.submitted} envoyée(s)</Badge>
+                      <Badge tone="blue">{row.interviews} entretien(s)</Badge>
+                      <Badge tone="bad">{row.rejected} refus</Badge>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </DataListItem>
+              ))}
+            </DataList>
           </Card>
 
           <div className="notice warning">

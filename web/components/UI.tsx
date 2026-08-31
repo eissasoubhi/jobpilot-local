@@ -40,6 +40,56 @@ export function InlineFeedback({
   );
 }
 
+type DataToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
+  actions?: React.ReactNode;
+};
+
+export function DataToolbar({
+  children,
+  actions,
+  className = '',
+  ...props
+}: DataToolbarProps) {
+  return (
+    <div {...props} className={[uiStyles.dataToolbar, className].filter(Boolean).join(' ')}>
+      <div className={uiStyles.dataToolbarContent}>{children}</div>
+      {actions && <div className={uiStyles.dataToolbarActions}>{actions}</div>}
+    </div>
+  );
+}
+
+export function DataList({
+  children,
+  className = '',
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      {...props}
+      className={[uiStyles.dataList, className].filter(Boolean).join(' ')}
+      role="list"
+    >
+      {children}
+    </div>
+  );
+}
+
+export function DataListItem({
+  children,
+  className = '',
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      {...props}
+      className={[uiStyles.dataListItem, className].filter(Boolean).join(' ')}
+      role="listitem"
+    >
+      {children}
+    </div>
+  );
+}
+
 type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger';
 type ButtonSize = 'default' | 'small';
 

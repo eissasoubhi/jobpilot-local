@@ -1,4 +1,4 @@
-import { Badge, Card } from '@/components/UI';
+import { Badge, Button, ButtonLink, Card } from '@/components/UI';
 import {
   crmContactRoleLabel,
   crmOrganizationRoleLabel,
@@ -91,13 +91,13 @@ export function CrmOrganizationCard({
 
         {onEditAnnotation && (
           <div className="actions" style={{ marginTop: 12 }}>
-            <button
-              className="btn secondary small"
-              type="button"
+            <Button
+              variant="secondary"
+              size="small"
               onClick={() => onEditAnnotation(organization)}
             >
               {organization.annotation ? 'Modifier la fiche CRM' : 'Ajouter une note CRM'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -197,9 +197,15 @@ export function CrmOrganizationCard({
                     </div>
                   </div>
                   {offer.sourceUrl && (
-                    <a className="btn secondary small" href={offer.sourceUrl} target="_blank" rel="noreferrer">
+                    <ButtonLink
+                      href={offer.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="secondary"
+                      size="small"
+                    >
                       Ouvrir l’offre
-                    </a>
+                    </ButtonLink>
                   )}
                 </div>
               ))}

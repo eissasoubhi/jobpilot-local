@@ -1,59 +1,70 @@
-import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Modal } from '@/components/Modal';
 
-function ModalHarness() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)}>Modifier la fiche</button>
-      {open && (
-        <Modal ariaLabel="Modifier la fiche CRM" onClose={() => setOpen(false)}>
-          <button type="button">Fermer</button>
-          <input aria-label="Nom affiché" />
-          <button type="button">Enregistrer</button>
-        </Modal>
-      )}
-    </>
-  );
-}
-
 describe('Modal', () => {
-  it('moves focus inside, closes with Escape, then restores trigger focus', async () => {
-    const user = userEvent.setup();
-    render(<ModalHarness />);
+  it('exposes dialog semantics and focuses the first interactive control', () => {
+    render(
+      <Modal ariaLabel="Modifier le suivi" onClose={vi.fn()}>
+        <button type="button">Fermer</button>
+        <input aria-label="Référence" />
+      </Modal>,
+    );
 
-    const trigger = screen.getByRole('button', { name: 'Modifier la fiche' });
-    await user.click(trigger);
-
-    const dialog = screen.getByRole('dialog', { name: 'Modifier la fiche CRM' });
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('dialog', { name: 'Modifier le suivi' })).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByRole('button', { name: 'Fermer' })).toHaveFocus();
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
   });
 
-  it('keeps Tab navigation inside the dialog boundaries', async () => {
-    const user = userEvent.setup();
-    render(<ModalHarness />);
+  it('closes with Escape and a direct backdrop click', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <Modal ariaLabel="Candidature" onClose={onClose}>
+        <button type="button">Action</button>
+      </Modal>,
+    );
 
-    await user.click(screen.getByRole('button', { name: 'Modifier la fiche' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
 
-    const first = screen.getByRole('button', { name: 'Fermer' });
-    const last = screen.getByRole('button', { name: 'Enregistrer' });
+    const backdrop = container.firstElementChild as HTMLElement;
+    fireEvent.mouseDown(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps Tab navigation inside the dialog', () => {
+    render(
+      <Modal ariaLabel="Candidature" onClose={vi.fn()}>
+        <button type="button">Premier</button>
+        <button type="button">Dernier</button>
+      </Modal>,
+    );
+
+    const first = screen.getByRole('button', { name: 'Premier' });
+    const last = screen.getByRole('button', { name: 'Dernier' });
 
     last.focus();
-    await user.tab();
+    fireEvent.keyDown(document, { key: 'Tab' });
     expect(first).toHaveFocus();
 
-    await user.tab({ shift: true });
+    first.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(last).toHaveFocus();
+  });
+
+  it('restores focus to the opener after unmount', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+
+    const { unmount } = render(
+      <Modal ariaLabel="Candidature" onClose={vi.fn()}>
+        <button type="button">Fermer</button>
+      </Modal>,
+    );
+
+    unmount();
+    expect(opener).toHaveFocus();
+    opener.remove();
   });
 });

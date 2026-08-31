@@ -124,7 +124,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
   await page.goto('/candidatures');
   const applicationHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(applicationHeading).toBeVisible();
-  const applicationRow = applicationHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  const applicationRow = page.getByRole('listitem').filter({ has: applicationHeading });
   await applicationRow.getByRole('button', { name: 'Examiner et postuler' }).click();
 
   const applicationDialog = page.getByRole('dialog', { name: `Candidature ${jobTitle}` });

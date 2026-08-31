@@ -70,7 +70,11 @@ export default function CrmContactsPage() {
   return (
     <>
       <PageHeader title="Corrections des contacts CRM" description="Corrige le nom, l’e-mail ou le téléphone affiché sans modifier les données sources." />
-      {notice !== '' && <InlineFeedback tone="success" className="mb-16">{notice}</InlineFeedback>}
+      {notice !== '' && (
+        <div style={{ marginBottom: 16 }}>
+          <InlineFeedback tone="success">{notice}</InlineFeedback>
+        </div>
+      )}
       {error !== '' && <ErrorBox message={error} />}
       {directory === null && error === '' ? <Loading /> : contacts.length === 0 ? (
         <Card><Empty>Aucun contact CRM validé n’est disponible.</Empty></Card>

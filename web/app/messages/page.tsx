@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, ButtonLink, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -178,9 +178,9 @@ export default function MessagesPage() {
             {syncing ? 'Synchronisation…' : 'Synchroniser Gmail'}
           </Button>
         ) : (
-          <a className="btn" href="/api/integrations/gmail/start">
+          <ButtonLink href="/api/integrations/gmail/start">
             {connected ? 'Reconnecter Gmail' : 'Connecter Gmail'}
-          </a>
+          </ButtonLink>
         )}
       />
 
@@ -288,14 +288,15 @@ export default function MessagesPage() {
 
                   <div className="actions" style={{ marginTop: 14 }}>
                     {message.gmailUrl && (
-                      <a
-                        className={message.urgency.actionRequired ? 'btn small' : 'btn secondary small'}
+                      <ButtonLink
                         href={message.gmailUrl}
                         target="_blank"
                         rel="noreferrer"
+                        variant={message.urgency.actionRequired ? 'primary' : 'secondary'}
+                        size="small"
                       >
                         Ouvrir dans Gmail
-                      </a>
+                      </ButtonLink>
                     )}
                     <Button
                       variant="secondary"

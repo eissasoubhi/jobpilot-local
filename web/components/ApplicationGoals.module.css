@@ -139,17 +139,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 14px;
-  border-radius: 11px;
-  border: 1px solid #f0c36d;
-  background: #fff8e8;
-  color: #68410a;
-}
-
-.reminder {
-  border-color: #b9cdfc;
-  background: #eff5ff;
-  color: #173f8a;
+  margin-bottom: 0;
 }
 
 .alertCopy {
@@ -164,7 +154,6 @@
   flex: 0 0 auto;
   font-weight: 700;
   font-size: .8rem;
-  color: inherit;
 }
 
 .empty {

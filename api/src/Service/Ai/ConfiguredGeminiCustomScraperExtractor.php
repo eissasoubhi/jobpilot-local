@@ -20,6 +20,7 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
         private CustomScraperAiPageContextBuilder $contextBuilder,
+        private ?AiUsageLedger $usageLedger = null,
     ) {
     }
 
@@ -46,6 +47,8 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
         try {
             $cached = $this->cache->get(self::PROVIDER, $model, $fingerprint);
             if ($cached !== null) {
+                $this->recordSafely($model, 'cache_hit', [], null, $sourceName);
+
                 return $cached;
             }
         } catch (\Throwable $exception) {
@@ -68,6 +71,7 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
+            $this->recordSafely($model, 'quota_error', [], null, $sourceName, null, $exception::class);
 
             return [];
         }
@@ -77,11 +81,14 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
                 'model' => $model,
                 'quota' => $config['quota'],
             ]);
+            $this->recordSafely($model, 'quota_blocked', [], null, $sourceName);
 
             return [];
         }
 
+        $startedAt = hrtime(true);
         $offers = $extractor->extract($html, $pageUrl, $sourceName);
+        $latencyMs = (int) round((hrtime(true) - $startedAt) / 1_000_000);
         $actualInputTokens = $extractor->lastInputTokens();
         if ($actualInputTokens !== null) {
             try {
@@ -95,6 +102,16 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
             }
         }
 
+        $this->recordSafely(
+            $model,
+            $extractor->lastFailure() === null ? 'provider_success' : 'provider_failure',
+            $extractor->lastUsage(),
+            $latencyMs,
+            $sourceName,
+            $extractor->lastStatusCode(),
+            $extractor->lastFailure(),
+        );
+
         if ($offers !== []) {
             try {
                 $this->cache->put(self::PROVIDER, $model, $fingerprint, $offers);
@@ -107,5 +124,41 @@ final class ConfiguredGeminiCustomScraperExtractor implements CustomScraperAiExt
         }
 
         return $offers;
+    }
+
+    /** @param array<string, mixed> $usage */
+    private function recordSafely(
+        string $model,
+        string $outcome,
+        array $usage,
+        ?int $latencyMs,
+        string $sourceName,
+        ?int $httpStatus = null,
+        ?string $errorClass = null,
+    ): void {
+        if ($this->usageLedger === null) {
+            return;
+        }
+
+        try {
+            $this->usageLedger->record(
+                self::PROVIDER,
+                $model,
+                'custom_scraper_extraction',
+                $outcome,
+                $usage,
+                $latencyMs,
+                'connector_source',
+                $sourceName,
+                $httpStatus,
+                $errorClass,
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('AI usage telemetry could not be recorded.', [
+                'purpose' => 'custom_scraper_extraction',
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

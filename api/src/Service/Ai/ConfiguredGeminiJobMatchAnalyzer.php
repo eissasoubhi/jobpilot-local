@@ -17,6 +17,7 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
         private AiMatchingConfigurationStore $configuration,
         private AiQuotaManager $quotaManager,
         private AiMatchingCache $cache,
+        private ?AiUsageLedger $usageLedger = null,
     ) {
     }
 
@@ -43,6 +44,13 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
                 $this->logger->debug('Gemini matching cache hit; provider call and quota reservation skipped.', [
                     'model' => $configuration['model'],
                 ]);
+                $this->recordSafely(
+                    $configuration['model'],
+                    'cache_hit',
+                    [],
+                    null,
+                    $job->getId(),
+                );
 
                 return $cached;
             }
@@ -67,6 +75,15 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
+            $this->recordSafely(
+                $configuration['model'],
+                'quota_error',
+                [],
+                null,
+                $job->getId(),
+                null,
+                $exception::class,
+            );
 
             return null;
         }
@@ -76,11 +93,20 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
                 'model' => $configuration['model'],
                 'quota' => $configuration['quota'],
             ]);
+            $this->recordSafely(
+                $configuration['model'],
+                'quota_blocked',
+                [],
+                null,
+                $job->getId(),
+            );
 
             return null;
         }
 
+        $startedAt = hrtime(true);
         $analysis = $analyzer->analyze($job, $settings);
+        $latencyMs = (int) round((hrtime(true) - $startedAt) / 1_000_000);
         $actualInputTokens = $analyzer->lastInputTokens();
         if ($actualInputTokens !== null) {
             try {
@@ -93,6 +119,16 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
                 ]);
             }
         }
+
+        $this->recordSafely(
+            $configuration['model'],
+            $analysis !== null ? 'provider_success' : 'provider_failure',
+            $analyzer->lastUsage(),
+            $latencyMs,
+            $job->getId(),
+            $analyzer->lastStatusCode(),
+            $analyzer->lastFailure(),
+        );
 
         if ($analysis !== null && $fingerprint !== null) {
             try {
@@ -107,5 +143,41 @@ final readonly class ConfiguredGeminiJobMatchAnalyzer implements AiJobMatchAnaly
         }
 
         return $analysis;
+    }
+
+    /** @param array<string, mixed> $usage */
+    private function recordSafely(
+        string $model,
+        string $outcome,
+        array $usage,
+        ?int $latencyMs,
+        ?int $jobId,
+        ?int $httpStatus = null,
+        ?string $errorClass = null,
+    ): void {
+        if ($this->usageLedger === null) {
+            return;
+        }
+
+        try {
+            $this->usageLedger->record(
+                'gemini',
+                $model,
+                'job_match',
+                $outcome,
+                $usage,
+                $latencyMs,
+                'job_offer',
+                $jobId,
+                $httpStatus,
+                $errorClass,
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('AI usage telemetry could not be recorded.', [
+                'purpose' => 'job_match',
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

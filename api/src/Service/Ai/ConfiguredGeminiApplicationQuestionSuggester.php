@@ -46,6 +46,7 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
         private readonly LoggerInterface $logger,
         private readonly AiMatchingConfigurationStore $configuration,
         private readonly AiQuotaManager $quotaManager,
+        private readonly ?AiUsageLedger $usageLedger = null,
     ) {
     }
 
@@ -78,6 +79,12 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
+            $this->recordSafely(
+                $configuration['model'],
+                'quota_error',
+                $job,
+                errorClass: $exception::class,
+            );
 
             return null;
         }
@@ -86,9 +93,14 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
             $this->logger->notice('Gemini application question suggestion skipped because the local quota guard reached its safe limit.', [
                 'model' => $configuration['model'],
             ]);
+            $this->recordSafely($configuration['model'], 'quota_blocked', $job);
 
             return null;
         }
+
+        $startedAt = hrtime(true);
+        $usage = [];
+        $status = null;
 
         try {
             $response = $this->httpClient->request('POST', self::ENDPOINT, [
@@ -108,11 +120,20 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
                 'timeout' => 20,
             ]);
 
-            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+            $status = $response->getStatusCode();
+            if ($status < 200 || $status >= 300) {
                 $this->logger->warning('Gemini application question request failed.', [
-                    'status' => $response->getStatusCode(),
+                    'status' => $status,
                     'model' => $configuration['model'],
                 ]);
+                $this->recordSafely(
+                    $configuration['model'],
+                    'provider_failure',
+                    $job,
+                    latencyMs: $this->elapsedMs($startedAt),
+                    httpStatus: $status,
+                    errorClass: 'http_error',
+                );
 
                 return null;
             }
@@ -132,11 +153,31 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
 
             $text = $this->extractOutputText($payload);
             if ($text === null || trim($text) === '') {
+                $this->recordSafely(
+                    $configuration['model'],
+                    'provider_failure',
+                    $job,
+                    $usage,
+                    $this->elapsedMs($startedAt),
+                    $status,
+                    'empty_output',
+                );
+
                 return null;
             }
 
             $data = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($data)) {
+                $this->recordSafely(
+                    $configuration['model'],
+                    'provider_failure',
+                    $job,
+                    $usage,
+                    $this->elapsedMs($startedAt),
+                    $status,
+                    'invalid_output',
+                );
+
                 return null;
             }
 
@@ -157,6 +198,15 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
                 $answer = rtrim(mb_substr($answer, 0, $maxLength));
             }
 
+            $this->recordSafely(
+                $configuration['model'],
+                'provider_success',
+                $job,
+                $usage,
+                $this->elapsedMs($startedAt),
+                $status,
+            );
+
             return [
                 'canAnswer' => $canAnswer && $answer !== '',
                 'answer' => $answer,
@@ -170,6 +220,15 @@ final class ConfiguredGeminiApplicationQuestionSuggester implements ApplicationQ
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
+            $this->recordSafely(
+                $configuration['model'],
+                'provider_failure',
+                $job,
+                $usage,
+                $this->elapsedMs($startedAt),
+                $status,
+                $exception::class,
+            );
 
             return null;
         }
@@ -270,5 +329,45 @@ PROMPT;
         }
 
         return null;
+    }
+
+    /** @param array<string, mixed> $usage */
+    private function recordSafely(
+        string $model,
+        string $outcome,
+        JobOffer $job,
+        array $usage = [],
+        ?int $latencyMs = null,
+        ?int $httpStatus = null,
+        ?string $errorClass = null,
+    ): void {
+        if ($this->usageLedger === null) {
+            return;
+        }
+
+        try {
+            $this->usageLedger->record(
+                'gemini',
+                $model,
+                'application_question',
+                $outcome,
+                $usage,
+                $latencyMs,
+                'job_offer',
+                $job->getId(),
+                $httpStatus,
+                $errorClass,
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('AI usage telemetry could not be recorded for application question suggestion.', [
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function elapsedMs(int $startedAt): int
+    {
+        return max(0, (int) round((hrtime(true) - $startedAt) / 1_000_000));
     }
 }

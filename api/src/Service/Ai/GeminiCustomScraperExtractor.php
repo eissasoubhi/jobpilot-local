@@ -42,6 +42,10 @@ final class GeminiCustomScraperExtractor implements CustomScraperAiExtractorInte
     ];
 
     private ?int $lastInputTokens = null;
+    /** @var array<string, mixed> */
+    private array $lastUsage = [];
+    private ?int $lastStatusCode = null;
+    private ?string $lastFailure = null;
 
     public function __construct(
         private HttpClientInterface $httpClient,
@@ -56,12 +60,19 @@ final class GeminiCustomScraperExtractor implements CustomScraperAiExtractorInte
     public function extract(string $html, string $pageUrl, string $sourceName): array
     {
         $this->lastInputTokens = null;
+        $this->lastUsage = [];
+        $this->lastStatusCode = null;
+        $this->lastFailure = null;
         if (!$this->enabled || trim($this->apiKey) === '') {
+            $this->lastFailure = 'disabled';
+
             return [];
         }
 
         $context = $this->contextBuilder->build($html, $pageUrl);
         if ($context['anchors'] === []) {
+            $this->lastFailure = 'no_candidates';
+
             return [];
         }
 
@@ -86,7 +97,9 @@ final class GeminiCustomScraperExtractor implements CustomScraperAiExtractorInte
             ]);
 
             $status = $response->getStatusCode();
+            $this->lastStatusCode = $status;
             if ($status < 200 || $status >= 300) {
+                $this->lastFailure = 'http_error';
                 $this->logger->warning('Gemini custom scraper extraction failed; deterministic extraction remains authoritative.', [
                     'status' => $status,
                     'model' => $this->model,
@@ -97,22 +110,28 @@ final class GeminiCustomScraperExtractor implements CustomScraperAiExtractorInte
 
             $payload = $response->toArray(false);
             $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : [];
+            $this->lastUsage = $usage;
             if (is_numeric($usage['total_input_tokens'] ?? null)) {
                 $this->lastInputTokens = max(1, (int) $usage['total_input_tokens']);
             }
 
             $text = $this->extractOutputText($payload);
             if ($text === null || trim($text) === '') {
+                $this->lastFailure = 'empty_output';
+
                 return [];
             }
 
             $decoded = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($decoded) || !is_array($decoded['offers'] ?? null)) {
+                $this->lastFailure = 'invalid_output';
+
                 return [];
             }
 
             return $this->groundedOffers($decoded['offers'], $context['anchors'], $sourceName);
         } catch (ExceptionInterface|\JsonException $exception) {
+            $this->lastFailure = $exception::class;
             $this->logger->warning('Gemini custom scraper extraction failed safely.', [
                 'model' => $this->model,
                 'exception' => $exception::class,
@@ -149,6 +168,22 @@ final class GeminiCustomScraperExtractor implements CustomScraperAiExtractorInte
     public function lastInputTokens(): ?int
     {
         return $this->lastInputTokens;
+    }
+
+    /** @return array<string, mixed> */
+    public function lastUsage(): array
+    {
+        return $this->lastUsage;
+    }
+
+    public function lastStatusCode(): ?int
+    {
+        return $this->lastStatusCode;
+    }
+
+    public function lastFailure(): ?string
+    {
+        return $this->lastFailure;
     }
 
     /**

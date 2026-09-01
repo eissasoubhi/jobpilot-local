@@ -4,8 +4,22 @@ import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { FilterTabs } from '@/components/FilterTabs';
+import { Modal } from '@/components/Modal';
 import { OfferApplicationSummary } from '@/components/OfferApplicationSummary';
-import { Badge, Card, Empty, ErrorBox, FormField, Loading, OfflineState, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  DataToolbar,
+  Empty,
+  ErrorBox,
+  FormField,
+  Loading,
+  OfflineState,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { matchesOfferInboxView, type OfferInboxView } from '@/lib/offer-inbox';
@@ -365,17 +379,16 @@ export default function JobsPage() {
         actions={
           <div className="actions">
             <Link className="btn secondary" href="/connecteurs">Gérer les connecteurs</Link>
-            <button
-              className="btn secondary"
-              type="button"
+            <Button
+              variant="secondary"
               disabled={syncing || isCatalogOffline}
               onClick={() => void syncJobs(true)}
             >
               {syncing ? 'Recherche en cours…' : 'Rechercher maintenant'}
-            </button>
-            <button className="btn" type="button" disabled={isCatalogOffline} onClick={() => setShow(true)}>
+            </Button>
+            <Button disabled={isCatalogOffline} onClick={() => setShow(true)}>
               Ajouter une offre
-            </button>
+            </Button>
           </div>
         }
       />
@@ -437,18 +450,20 @@ export default function JobsPage() {
           </Card>
 
           <Card>
-            <div style={{ maxWidth: 360 }}>
-              <FormField label="Filtrer par source">
-                <select
-                  aria-label="Filtrer par source"
-                  value={sourceFilter}
-                  onChange={(event) => setSourceFilter(event.target.value)}
-                >
-                  <option value="all">Toutes les sources</option>
-                  {sources.map((source) => <option key={source} value={source}>{source}</option>)}
-                </select>
-              </FormField>
-            </div>
+            <DataToolbar>
+              <div style={{ maxWidth: 360 }}>
+                <FormField label="Filtrer par source">
+                  <select
+                    aria-label="Filtrer par source"
+                    value={sourceFilter}
+                    onChange={(event) => setSourceFilter(event.target.value)}
+                  >
+                    <option value="all">Toutes les sources</option>
+                    {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+                  </select>
+                </FormField>
+              </div>
+            </DataToolbar>
           </Card>
 
           <FilterTabs
@@ -480,103 +495,105 @@ export default function JobsPage() {
             ) : displayed.length === 0 ? (
               <Empty>Aucune offre ne correspond aux filtres sélectionnés.</Empty>
             ) : (
-              displayed.map((job) => {
-                const jobOccurrences = occurrences(job);
-                const application = applicationsByJobId.get(job.id);
+              <DataList aria-label="Offres filtrées">
+                {displayed.map((job) => {
+                  const jobOccurrences = occurrences(job);
+                  const application = applicationsByJobId.get(job.id);
 
-                return (
-                  <div className="list-row" key={job.id}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="actions" style={{ marginBottom: 6 }}>
-                        <Badge tone={tone(job.status)}>{job.status}</Badge>
-                        <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
-                        <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
-                        <Badge tone={jobOccurrences.length > 1 ? 'blue' : 'neutral'}>
-                          {jobOccurrences.length} source{jobOccurrences.length > 1 ? 's' : ''}
-                        </Badge>
-                        {jobOccurrences.slice(0, 4).map((source) => (
-                          <Badge key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
-                            {source.sourceName}
+                  return (
+                    <DataListItem key={job.id}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="actions" style={{ marginBottom: 6 }}>
+                          <Badge tone={tone(job.status)}>{job.status}</Badge>
+                          <Badge tone="blue">{job.language === 'fr' ? 'FR' : 'EN'}</Badge>
+                          <Badge>{job.contractType || 'Contrat inconnu'}</Badge>
+                          <Badge tone={jobOccurrences.length > 1 ? 'blue' : 'neutral'}>
+                            {jobOccurrences.length} source{jobOccurrences.length > 1 ? 's' : ''}
                           </Badge>
-                        ))}
-                        {jobOccurrences.length > 4 && <Badge>+{jobOccurrences.length - 4}</Badge>}
-                        {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
-                        {job.proposedSalary != null && (
-                          <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
-                        )}
-                      </div>
-                      <h3>{job.title}</h3>
-                      <div className="muted small">
-                        {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
-                      </div>
-                      {job.recommendedCv && (
-                        <div className="small" style={{ marginTop: 7 }}>
-                          CV conseillé : <strong>{job.recommendedCv.name}</strong>
+                          {jobOccurrences.slice(0, 4).map((source) => (
+                            <Badge key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                              {source.sourceName}
+                            </Badge>
+                          ))}
+                          {jobOccurrences.length > 4 && <Badge>+{jobOccurrences.length - 4}</Badge>}
+                          {job.proposedTjm != null && <Badge tone="good">TJM proposé : {job.proposedTjm} €</Badge>}
+                          {job.proposedSalary != null && (
+                            <Badge tone="good">Salaire proposé : {job.proposedSalary.toLocaleString('fr-FR')} €</Badge>
+                          )}
                         </div>
-                      )}
-                      {application && (
-                        <OfferApplicationSummary
-                          application={application}
-                          onApplicationUpdated={updateApplication}
-                        />
-                      )}
-                      <details style={{ marginTop: 8 }}>
-                        <summary className="small muted">Pourquoi ce score ?</summary>
-                        <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
-                      </details>
-                      <details style={{ marginTop: 8 }}>
-                        <summary className="small muted">
-                          Sources de cette offre ({jobOccurrences.length})
-                        </summary>
-                        <div className="stack" style={{ gap: 8, marginTop: 10 }}>
-                          {jobOccurrences.map((source) => (
-                            <div className="notice" key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
-                              <div className="actions">
-                                <strong>{source.sourceName}</strong>
-                                <Badge tone={source.matchType === 'PRIMARY' || source.matchType === 'LEGACY' ? 'neutral' : 'blue'}>
-                                  {matchLabel(source.matchType)}
-                                </Badge>
-                                {source.matchType !== 'PRIMARY' && source.matchType !== 'LEGACY' && (
-                                  <Badge>{source.matchScore} %</Badge>
+                        <h3>{job.title}</h3>
+                        <div className="muted small">
+                          {job.company || 'Entreprise non renseignée'} · {job.location || 'Lieu non renseigné'} · {age(job)}
+                        </div>
+                        {job.recommendedCv && (
+                          <div className="small" style={{ marginTop: 7 }}>
+                            CV conseillé : <strong>{job.recommendedCv.name}</strong>
+                          </div>
+                        )}
+                        {application && (
+                          <OfferApplicationSummary
+                            application={application}
+                            onApplicationUpdated={updateApplication}
+                          />
+                        )}
+                        <details style={{ marginTop: 8 }}>
+                          <summary className="small muted">Pourquoi ce score ?</summary>
+                          <ul>{(job.scoreReasons ?? []).map((reason) => <li key={reason} className="small">{reason}</li>)}</ul>
+                        </details>
+                        <details style={{ marginTop: 8 }}>
+                          <summary className="small muted">
+                            Sources de cette offre ({jobOccurrences.length})
+                          </summary>
+                          <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+                            {jobOccurrences.map((source) => (
+                              <div className="notice" key={`${source.sourceCode}-${source.externalId || source.sourceUrl || source.sourceName}`}>
+                                <div className="actions">
+                                  <strong>{source.sourceName}</strong>
+                                  <Badge tone={source.matchType === 'PRIMARY' || source.matchType === 'LEGACY' ? 'neutral' : 'blue'}>
+                                    {matchLabel(source.matchType)}
+                                  </Badge>
+                                  {source.matchType !== 'PRIMARY' && source.matchType !== 'LEGACY' && (
+                                    <Badge>{source.matchScore} %</Badge>
+                                  )}
+                                </div>
+                                {source.matchReasons.length > 0 && (
+                                  <div className="small muted" style={{ marginTop: 6 }}>
+                                    {source.matchReasons.join(' ')}
+                                  </div>
+                                )}
+                                {source.sourceUrl && (
+                                  <a
+                                    className="btn secondary small"
+                                    href={source.sourceUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ marginTop: 8 }}
+                                  >
+                                    Ouvrir sur {source.sourceName}
+                                  </a>
                                 )}
                               </div>
-                              {source.matchReasons.length > 0 && (
-                                <div className="small muted" style={{ marginTop: 6 }}>
-                                  {source.matchReasons.join(' ')}
-                                </div>
-                              )}
-                              {source.sourceUrl && (
-                                <a
-                                  className="btn secondary small"
-                                  href={source.sourceUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  style={{ marginTop: 8 }}
-                                >
-                                  Ouvrir sur {source.sourceName}
-                                </a>
-                              )}
-                            </div>
-                          ))}
+                            ))}
+                          </div>
+                        </details>
+                        <div className="actions" style={{ marginTop: 10 }}>
+                          {job.sourceUrl && (
+                            <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
+                              Ouvrir la source principale
+                            </a>
+                          )}
+                          {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
+                            <Button size="small" onClick={() => void prepare(job.id)}>
+                              Préparer
+                            </Button>
+                          )}
                         </div>
-                      </details>
-                      <div className="actions" style={{ marginTop: 10 }}>
-                        {job.sourceUrl && (
-                          <a className="btn secondary small" href={job.sourceUrl} target="_blank" rel="noreferrer">
-                            Ouvrir la source principale
-                          </a>
-                        )}
-                        {job.status !== 'PREPARED' && job.status !== 'REJECTED_BY_FILTER' && (
-                          <button className="btn small" type="button" onClick={() => void prepare(job.id)}>
-                            Préparer
-                          </button>
-                        )}
                       </div>
-                    </div>
-                    <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
-                  </div>
-                );
-              })
+                      <div className="score" aria-label={`Score ${job.score}`}>{job.score}</div>
+                    </DataListItem>
+                  );
+                })}
+              </DataList>
             )}
 
             {jobs?.some((job) => occurrences(job).some((source) => source.sourceName === 'Adzuna')) && (
@@ -589,43 +606,39 @@ export default function JobsPage() {
       )}
 
       {show && (
-        <div className="modal-backdrop" onMouseDown={() => setShow(false)}>
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Ajouter une offre"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <PageHeader
-              title="Ajouter une offre"
-              actions={<button className="btn secondary" type="button" onClick={() => setShow(false)}>Fermer</button>}
-            />
-            <form className="form-grid" onSubmit={(event) => void submit(event)}>
-              <label>Source<input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></label>
-              <label>URL<input value={form.sourceUrl} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} /></label>
-              <label>Intitulé<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
-              <label>Entreprise<input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} /></label>
-              <label>Client final éventuel<input value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} /></label>
-              <label>Lieu<input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></label>
-              <label>
-                Contrat
-                <select value={form.contractType} onChange={(e) => setForm({ ...form, contractType: e.target.value })}>
-                  <option>CDI</option><option>CDD</option><option>Freelance</option><option>Portage salarial</option><option>Sous-traitance</option>
-                </select>
-              </label>
-              <label>Mode de travail<input value={form.workMode} onChange={(e) => setForm({ ...form, workMode: e.target.value })} /></label>
-              <label>Date de publication<input type="datetime-local" value={form.publishedAt} onChange={(e) => setForm({ ...form, publishedAt: e.target.value })} /></label>
-              <label>Salaire min. annuel<input type="number" value={form.salaryMin} onChange={(e) => setForm({ ...form, salaryMin: e.target.value })} /></label>
-              <label>Salaire max. annuel<input type="number" value={form.salaryMax} onChange={(e) => setForm({ ...form, salaryMax: e.target.value })} /></label>
-              <label>TJM fixe<input type="number" value={form.tjmFixed} onChange={(e) => setForm({ ...form, tjmFixed: e.target.value })} /></label>
-              <label>TJM minimum<input type="number" value={form.tjmMin} onChange={(e) => setForm({ ...form, tjmMin: e.target.value })} /></label>
-              <label>TJM maximum<input type="number" value={form.tjmMax} onChange={(e) => setForm({ ...form, tjmMax: e.target.value })} /></label>
-              <label className="full">Description<textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-              <button className="btn full" type="submit">Analyser et enregistrer</button>
-            </form>
-          </div>
-        </div>
+        <Modal ariaLabel="Ajouter une offre" onClose={() => setShow(false)}>
+          <PageHeader
+            title="Ajouter une offre"
+            actions={(
+              <Button variant="secondary" onClick={() => setShow(false)}>
+                Fermer
+              </Button>
+            )}
+          />
+          <form className="form-grid" onSubmit={(event) => void submit(event)}>
+            <label>Source<input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></label>
+            <label>URL<input value={form.sourceUrl} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} /></label>
+            <label>Intitulé<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
+            <label>Entreprise<input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} /></label>
+            <label>Client final éventuel<input value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} /></label>
+            <label>Lieu<input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></label>
+            <label>
+              Contrat
+              <select value={form.contractType} onChange={(e) => setForm({ ...form, contractType: e.target.value })}>
+                <option>CDI</option><option>CDD</option><option>Freelance</option><option>Portage salarial</option><option>Sous-traitance</option>
+              </select>
+            </label>
+            <label>Mode de travail<input value={form.workMode} onChange={(e) => setForm({ ...form, workMode: e.target.value })} /></label>
+            <label>Date de publication<input type="datetime-local" value={form.publishedAt} onChange={(e) => setForm({ ...form, publishedAt: e.target.value })} /></label>
+            <label>Salaire min. annuel<input type="number" value={form.salaryMin} onChange={(e) => setForm({ ...form, salaryMin: e.target.value })} /></label>
+            <label>Salaire max. annuel<input type="number" value={form.salaryMax} onChange={(e) => setForm({ ...form, salaryMax: e.target.value })} /></label>
+            <label>TJM fixe<input type="number" value={form.tjmFixed} onChange={(e) => setForm({ ...form, tjmFixed: e.target.value })} /></label>
+            <label>TJM minimum<input type="number" value={form.tjmMin} onChange={(e) => setForm({ ...form, tjmMin: e.target.value })} /></label>
+            <label>TJM maximum<input type="number" value={form.tjmMax} onChange={(e) => setForm({ ...form, tjmMax: e.target.value })} /></label>
+            <label className="full">Description<textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+            <Button className="full" type="submit">Analyser et enregistrer</Button>
+          </form>
+        </Modal>
       )}
     </>
   );

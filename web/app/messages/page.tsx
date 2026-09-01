@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Button, ButtonLink, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Badge, Button, ButtonLink, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -88,6 +89,34 @@ const categoryTone = (category: MessageCategory): 'good' | 'warn' | 'bad' | 'blu
   if (category === 'MARKETING' || category === 'RECRUITER_INFORMATIONAL' || category === 'UNKNOWN') return 'neutral';
   return 'blue';
 };
+
+function MessagesSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement de la messagerie Gmail">
+      <DataList aria-hidden="true">
+        {[0, 1, 2].map((index) => (
+          <DataListItem key={index}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="actions" style={{ marginBottom: 10 }}>
+                <Skeleton width={84} height={24} />
+                <Skeleton width={116} height={24} />
+                <Skeleton width={132} height={16} />
+              </div>
+              <Skeleton width="72%" height={22} />
+              <div style={{ marginTop: 8 }}><Skeleton width="38%" height={16} /></div>
+              <div style={{ marginTop: 10 }}><Skeleton width="92%" height={16} /></div>
+              <div style={{ marginTop: 7 }}><Skeleton width="76%" height={16} /></div>
+              <div className="actions" style={{ marginTop: 14 }}>
+                <Skeleton width={128} height={32} />
+                <Skeleton width={156} height={32} />
+              </div>
+            </div>
+          </DataListItem>
+        ))}
+      </DataList>
+    </SkeletonGroup>
+  );
+}
 
 export default function MessagesPage() {
   const [items, setItems] = useState<Message[] | null>(null);
@@ -191,7 +220,7 @@ export default function MessagesPage() {
       {error !== '' && <ErrorBox message={error} />}
 
       {items !== null && counts.urgent > 0 && (
-        <div className="notice warning" style={{ marginTop: 16 }} role="status">
+        <InlineFeedback className="mt-16" tone="warning">
           <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <strong>{counts.urgent} message(s) urgent(s) à traiter.</strong>{' '}
@@ -201,7 +230,7 @@ export default function MessagesPage() {
               Voir les urgences
             </Button>
           </div>
-        </div>
+        </InlineFeedback>
       )}
 
       <div className="grid cols-4" style={{ marginTop: 16, marginBottom: 18 }}>
@@ -229,7 +258,7 @@ export default function MessagesPage() {
         </DataToolbar>
 
         {items === null ? (
-          <Loading />
+          <MessagesSkeleton />
         ) : visibleItems.length === 0 ? (
           <Empty>
             {connected

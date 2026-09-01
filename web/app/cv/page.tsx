@@ -2,7 +2,18 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  Empty,
+  ErrorBox,
+  FormField,
+  Loading,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Cv } from '@/lib/types';
@@ -60,34 +71,29 @@ export default function CvPage() {
         <Card>
           <h2 className="section-title">Ajouter un CV</h2>
           <form className="stack" onSubmit={(event) => void upload(event)}>
-            <label>
-              Nom du CV
+            <FormField label="Nom du CV">
               <input name="name" required placeholder="CV Full-Stack Symfony React" />
-            </label>
-            <label>
-              Langue
+            </FormField>
+            <FormField label="Langue">
               <select name="language">
                 <option value="fr">Français</option>
                 <option value="en">Anglais</option>
               </select>
-            </label>
-            <label>
-              Catégorie
+            </FormField>
+            <FormField label="Catégorie">
               <input name="category" placeholder="Full-Stack, Backend, Frontend…" />
-            </label>
-            <label>
-              Tags
+            </FormField>
+            <FormField label="Tags">
               <input name="tags" placeholder="Symfony, React, PHP" />
-            </label>
-            <label>
-              Fichier PDF ou Word
+            </FormField>
+            <FormField label="Fichier PDF ou Word">
               <input name="file" type="file" accept=".pdf,.doc,.docx" required />
-            </label>
+            </FormField>
             <label className="checkbox-label">
               <input name="defaultForLanguage" type="checkbox" value="true" />
               CV par défaut pour cette langue
             </label>
-            <button className="btn" type="submit">Téléverser</button>
+            <Button type="submit">Téléverser</Button>
           </form>
         </Card>
 
@@ -98,27 +104,29 @@ export default function CvPage() {
           ) : items.length === 0 ? (
             <Empty>Aucun CV téléversé.</Empty>
           ) : (
-            items.map((cv) => (
-              <div className="list-row" key={cv.id}>
-                <div>
-                  <h3>{cv.name}</h3>
-                  <div className="muted small">
-                    {cv.originalName} · {(cv.size / 1024).toFixed(0)} Ko
+            <DataList aria-label="CV disponibles">
+              {items.map((cv) => (
+                <DataListItem key={cv.id}>
+                  <div>
+                    <h3>{cv.name}</h3>
+                    <div className="muted small">
+                      {cv.originalName} · {(cv.size / 1024).toFixed(0)} Ko
+                    </div>
+                    <div className="actions" style={{ marginTop: 8 }}>
+                      <Badge tone="blue">{cv.language === 'fr' ? 'Français' : 'Anglais'}</Badge>
+                      {cv.defaultForLanguage && <Badge tone="good">Par défaut</Badge>}
+                      {cv.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+                    </div>
                   </div>
-                  <div className="actions" style={{ marginTop: 8 }}>
-                    <Badge tone="blue">{cv.language === 'fr' ? 'Français' : 'Anglais'}</Badge>
-                    {cv.defaultForLanguage && <Badge tone="good">Par défaut</Badge>}
-                    {cv.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+                  <div className="actions">
+                    <a className="btn secondary small" href={cv.downloadUrl}>Télécharger</a>
+                    <Button variant="danger" size="small" onClick={() => void remove(cv.id)}>
+                      Supprimer
+                    </Button>
                   </div>
-                </div>
-                <div className="actions">
-                  <a className="btn secondary small" href={cv.downloadUrl}>Télécharger</a>
-                  <button className="btn danger small" type="button" onClick={() => void remove(cv.id)}>
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))
+                </DataListItem>
+              ))}
+            </DataList>
           )}
         </Card>
       </div>

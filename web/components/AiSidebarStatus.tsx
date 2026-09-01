@@ -3,17 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { ProgressBar } from '@/components/UI';
+import type { AiQuotaUsage } from '@/lib/aiUsage';
 import { api } from '@/lib/api';
 
-type AiQuotaUsage = {
-  rpmUsed: number;
-  tpmUsed: number;
-  rpdUsed: number;
-  rpmLimit: number;
-  tpmLimit: number;
-  rpdLimit: number;
-};
+import styles from './AiSidebarStatus.module.css';
 
 type AiSettings = {
   provider: string;
@@ -48,7 +41,7 @@ export function AiSidebarStatus() {
     };
 
     refresh();
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(refresh, 30_000);
 
     return () => {
       active = false;
@@ -57,68 +50,48 @@ export function AiSidebarStatus() {
   }, []);
 
   const usage = settings?.quotaUsage;
-  const rpmPercent = usage ? percentage(usage.rpmUsed, usage.rpmLimit) : 0;
-  const tpmPercent = usage ? percentage(usage.tpmUsed, usage.tpmLimit) : 0;
-  const rpdPercent = usage ? percentage(usage.rpdUsed, usage.rpdLimit) : 0;
-  const maxPercent = Math.max(rpmPercent, tpmPercent, rpdPercent);
-  const aiActive = Boolean(settings?.enabled && settings.apiKeyConfigured);
+  const maxPercent = usage
+    ? Math.max(
+        percentage(usage.rpmUsed, usage.rpmLimit),
+        percentage(usage.tpmUsed, usage.tpmLimit),
+        percentage(usage.rpdUsed, usage.rpdLimit),
+      )
+    : 0;
+  const active = Boolean(settings?.enabled && settings.apiKeyConfigured);
   const needsKey = Boolean(settings?.enabled && !settings.apiKeyConfigured);
-  const quotaReached = aiActive && maxPercent >= 100;
-  const quotaTone = quotaReached ? 'bad' : maxPercent >= 80 ? 'warn' : 'good';
+  const quotaReached = active && maxPercent >= 100;
+  const warning = quotaReached || needsKey || unavailable;
 
-  const label = unavailable
-    ? 'État IA indisponible'
+  const state = unavailable
+    ? 'indisponible'
     : quotaReached
-      ? 'IA active · quota atteint'
-      : aiActive
-        ? 'IA active'
+      ? 'quota atteint'
+      : active
+        ? 'active'
         : needsKey
-          ? 'IA activée · clé manquante'
-          : 'IA désactivée';
-
-  const stateClass = quotaReached || needsKey
-    ? 'is-warning'
-    : aiActive
-      ? 'is-active'
-      : 'is-inactive';
+          ? 'clé manquante'
+          : 'désactivée';
+  const provider = settings?.provider === 'gemini' ? 'Gemini' : settings?.provider;
+  const detail = settings ? `${provider ?? 'IA'} · ${state}` : 'Vérification…';
+  const ariaLabel = settings?.model
+    ? `IA ${state}. ${provider ?? settings.provider}, modèle ${settings.model}. Ouvrir les statistiques d’utilisation IA.`
+    : `IA ${state}. Ouvrir les statistiques d’utilisation IA.`;
 
   return (
     <Link
-      href="/parametres/integrations"
-      className={`ai-sidebar-status ${stateClass}`}
-      aria-label={`${label}. Ouvrir la configuration IA`}
+      href="/ia"
+      className={`${styles.status} ${active ? styles.active : ''} ${warning ? styles.warning : ''}`}
+      aria-label={ariaLabel}
       title={usage
-        ? `RPM ${usage.rpmUsed}/${usage.rpmLimit} · TPM ${usage.tpmUsed}/${usage.tpmLimit} · RPD ${usage.rpdUsed}/${usage.rpdLimit}`
-        : label}
+        ? `${settings?.model ?? ''} · RPM ${usage.rpmUsed}/${usage.rpmLimit} · TPM ${usage.tpmUsed}/${usage.tpmLimit} · RPD ${usage.rpdUsed}/${usage.rpdLimit}`
+        : ariaLabel}
     >
-      <div className="ai-sidebar-status-header">
-        <span className="ai-status-dot" aria-hidden="true" />
-        <strong>{label}</strong>
-      </div>
-      {settings && (
-        <div className="ai-sidebar-model">
-          {settings.provider === 'gemini' ? 'Gemini' : settings.provider} · {settings.model}
-        </div>
-      )}
-      {usage && (
-        <>
-          <div className="ai-sidebar-quota-line">
-            <span>Quota max</span>
-            <strong>{maxPercent} %</strong>
-          </div>
-          <ProgressBar
-            value={maxPercent}
-            label="Utilisation maximale du quota IA"
-            valueText={`${maxPercent} %`}
-            size="compact"
-            tone={quotaTone}
-          />
-          <div className="ai-sidebar-quota-detail">
-            RPM {rpmPercent}% · TPM {tpmPercent}% · Jour {rpdPercent}%
-          </div>
-        </>
-      )}
-      {!settings && !unavailable && <div className="ai-sidebar-model">Vérification…</div>}
+      <span className={styles.dot} aria-hidden="true" />
+      <span className={styles.copy}>
+        <strong>IA</strong>
+        <span>{detail}</span>
+      </span>
+      {maxPercent >= 80 && <span className={styles.quota}>{maxPercent}%</span>}
     </Link>
   );
 }

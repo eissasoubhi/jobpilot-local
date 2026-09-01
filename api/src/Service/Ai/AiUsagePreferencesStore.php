@@ -68,8 +68,14 @@ final class AiUsagePreferencesStore
             if ($credit < 0 || $credit > 1_000_000) {
                 throw new \InvalidArgumentException('Le crédit prépayé de référence doit être compris entre 0 et 1 000 000 USD.');
             }
+
+            $currentCredit = is_numeric($stored['prepaidCreditUsd'] ?? null)
+                ? (float) $stored['prepaidCreditUsd']
+                : null;
             $stored['prepaidCreditUsd'] = $credit;
-            $stored['prepaidCreditSetAt'] = time();
+            if ($currentCredit === null || abs($currentCredit - $credit) > 0.0000001 || !is_numeric($stored['prepaidCreditSetAt'] ?? null)) {
+                $stored['prepaidCreditSetAt'] = time();
+            }
         }
 
         $this->write($stored);

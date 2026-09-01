@@ -61,7 +61,7 @@ test('application timeline shows only persisted business events for the selected
   await page.goto('/parcours-candidatures');
 
   await expect(page.getByRole('heading', { name: 'Parcours des candidatures', level: 1 })).toBeVisible();
-  await expect(page.getByLabel('Candidature')).toHaveValue('12');
+  await expect(page.getByRole('combobox', { name: 'Candidature' })).toHaveValue('12');
   await expect(page.getByText('2 événement(s) persisté(s)')).toBeVisible();
   await expect(page.getByText('Entretien proposé')).toBeVisible();
   await expect(page.getByText('Candidature envoyée')).toBeVisible();

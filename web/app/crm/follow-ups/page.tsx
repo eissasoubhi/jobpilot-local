@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { formatFollowUpDate, followUpDueLabel, type CrmFollowUpStatus, type CrmFollowUpTask } from '@/lib/crm-follow-ups';
 import { getErrorMessage } from '@/lib/errors';
@@ -132,24 +132,26 @@ export default function CrmFollowUpsPage() {
       </Card>
 
       <Card>
-        <div className="actions" style={{ justifyContent: 'space-between' }}>
+        <DataToolbar
+          actions={(
+            <FormField label="État">
+              <select id="follow-up-status" value={status} onChange={(event) => setStatus(event.target.value as CrmFollowUpStatus)}>
+                <option value="open">Ouvertes</option>
+                <option value="completed">Terminées</option>
+                <option value="all">Toutes</option>
+              </select>
+            </FormField>
+          )}
+        >
           <h2 className="section-title" style={{ margin: 0 }}>Tâches</h2>
-          <div>
-            <label className="small" htmlFor="follow-up-status">État</label>{' '}
-            <select id="follow-up-status" value={status} onChange={(event) => setStatus(event.target.value as CrmFollowUpStatus)}>
-              <option value="open">Ouvertes</option>
-              <option value="completed">Terminées</option>
-              <option value="all">Toutes</option>
-            </select>
-          </div>
-        </div>
+        </DataToolbar>
         {tasks === null ? <Loading /> : tasks.length === 0 ? <Empty>Aucune relance dans cette vue.</Empty> : (
-          <div className="stack" style={{ marginTop: 14 }}>
+          <DataList aria-label="Relances CRM">
             {tasks.map((task) => {
               const organization = directory?.organizations.find((item) => item.key === task.organizationKey);
               const contact = organization?.contacts.find((item) => item.key === task.contactKey);
               const due = followUpDueLabel(task);
-              return <div className="list-row" key={task.id}>
+              return <DataListItem key={task.id}>
                 <div style={{ flex: 1 }}>
                   <div className="actions"><Badge tone={due === 'OVERDUE' ? 'bad' : due === 'TODAY' ? 'warn' : due === 'COMPLETED' ? 'good' : 'blue'}>{due === 'OVERDUE' ? 'En retard' : due === 'TODAY' ? 'Aujourd’hui' : due === 'COMPLETED' ? 'Terminée' : 'À venir'}</Badge><Badge>{formatFollowUpDate(task.dueAt)}</Badge></div>
                   <strong>{task.title}</strong>
@@ -157,9 +159,9 @@ export default function CrmFollowUpsPage() {
                   {task.note && <p className="small" style={{ marginBottom: 0 }}>{task.note}</p>}
                 </div>
                 <Button variant="secondary" size="small" type="button" disabled={busy} onClick={() => void setCompleted(task, !task.completed)}>{task.completed ? 'Rouvrir' : 'Marquer terminée'}</Button>
-              </div>;
+              </DataListItem>;
             })}
-          </div>
+          </DataList>
         )}
       </Card>
     </>

@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Card,
+  DataList,
+  DataListItem,
+  Empty,
+  ErrorBox,
+  FormField,
+  InlineFeedback,
+  Loading,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   presentJobTimeline,
@@ -101,8 +112,7 @@ export default function ApplicationTimelinePage() {
           <Empty>Aucune candidature n’est disponible pour afficher une chronologie.</Empty>
         ) : (
           <div className="stack">
-            <label htmlFor="timeline-application">
-              Candidature
+            <FormField label="Candidature">
               <select
                 id="timeline-application"
                 value={selectedId}
@@ -114,10 +124,10 @@ export default function ApplicationTimelinePage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </FormField>
 
             {selected && (
-              <div className="notice">
+              <InlineFeedback>
                 <strong>{selected.jobOffer.title}</strong> — {companyName(selected)}
                 <div className="actions">
                   <Badge tone="blue">Candidature #{selected.id}</Badge>
@@ -125,7 +135,7 @@ export default function ApplicationTimelinePage() {
                   <Badge>{selected.status}</Badge>
                   {persistedEvents !== null && <Badge>{timeline.length} événement(s) persisté(s)</Badge>}
                 </div>
-              </div>
+              </InlineFeedback>
             )}
 
             {persistedEvents === null ? (
@@ -133,9 +143,9 @@ export default function ApplicationTimelinePage() {
             ) : timeline.length === 0 ? (
               <Empty>Aucun événement métier n’a encore été enregistré pour cette offre.</Empty>
             ) : (
-              <div>
+              <DataList aria-label="Historique métier de la candidature">
                 {timeline.map((event) => (
-                  <div className="list-row" key={event.key}>
+                  <DataListItem key={event.key}>
                     <div>
                       <div className="actions">
                         <Badge tone={event.tone}>{event.title}</Badge>
@@ -143,14 +153,14 @@ export default function ApplicationTimelinePage() {
                       </div>
                       <p className="small">{event.description}</p>
                     </div>
-                  </div>
+                  </DataListItem>
                 ))}
-              </div>
+              </DataList>
             )}
 
-            <div className="notice warning">
+            <InlineFeedback tone="warning">
               Cette vue affiche uniquement les événements métier persistés. Le statut courant reste visible comme contexte, mais ne crée pas artificiellement un événement historique.
-            </div>
+            </InlineFeedback>
           </div>
         )}
       </Card>

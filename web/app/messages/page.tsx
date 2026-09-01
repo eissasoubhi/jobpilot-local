@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InboxSenderClassificationCorrection } from '@/components/InboxSenderClassificationCorrection';
-import { Badge, Button, ButtonLink, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, ButtonLink, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { transactionActionCopy } from '@/lib/message-action-completion';
@@ -212,19 +212,21 @@ export default function MessagesPage() {
       </div>
 
       <Card>
-        <div style={{ maxWidth: 360, marginBottom: 18 }}>
-          <FormField label="Afficher">
-            <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-              <option value="ALL">Tous les messages</option>
-              <option value="URGENT">Urgents uniquement</option>
-              <option value="PRIORITY">Urgents et prioritaires</option>
-              <option value="ACTION_REQUIRED">Actions à traiter</option>
-              {Object.entries(categoryLabels).map(([value, label]) => (
-                <option value={value} key={value}>{label}</option>
-              ))}
-            </select>
-          </FormField>
-        </div>
+        <DataToolbar>
+          <div style={{ maxWidth: 360 }}>
+            <FormField label="Afficher">
+              <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+                <option value="ALL">Tous les messages</option>
+                <option value="URGENT">Urgents uniquement</option>
+                <option value="PRIORITY">Urgents et prioritaires</option>
+                <option value="ACTION_REQUIRED">Actions à traiter</option>
+                {Object.entries(categoryLabels).map(([value, label]) => (
+                  <option value={value} key={value}>{label}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        </DataToolbar>
 
         {items === null ? (
           <Loading />
@@ -235,103 +237,105 @@ export default function MessagesPage() {
               : 'Connecte Gmail depuis les paramètres.'}
           </Empty>
         ) : (
-          visibleItems.map((message) => {
-            const transactionAction = transactionActionCopy(message.category);
+          <DataList aria-label="Messages Gmail">
+            {visibleItems.map((message) => {
+              const transactionAction = transactionActionCopy(message.category);
 
-            return (
-              <div className="list-row" key={message.id}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="actions">
-                    {message.urgency.level === 'URGENT' && <Badge tone="bad">Urgent</Badge>}
-                    {message.urgency.level === 'PRIORITY' && <Badge tone="warn">Prioritaire</Badge>}
-                    <Badge tone={categoryTone(message.category)}>{categoryLabels[message.category]}</Badge>
-                    {message.sourcePlatform && <Badge tone="blue">{message.sourcePlatform}</Badge>}
-                    {message.urgency.level === 'NORMAL' && message.actionRequired && !message.processed && (
-                      <Badge tone="warn">Action requise</Badge>
-                    )}
-                    {message.processed && (
-                      <Badge tone="good">{transactionAction?.completedBadge ?? 'Traité'}</Badge>
-                    )}
-                    <span className="muted small">
-                      {new Date(message.receivedAt).toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-
-                  <h3>{message.subject || '(sans objet)'}</h3>
-                  <div className="muted small">{message.sender}</div>
-                  <p className="small">{message.snippet}</p>
-
-                  {message.urgency.level !== 'NORMAL' && (
-                    <div className="notice warning" style={{ marginTop: 10 }}>
-                      {message.urgency.recommendedAction && <strong>{message.urgency.recommendedAction}.</strong>}{' '}
-                      {message.urgency.reasons.join(' ')}
+              return (
+                <DataListItem key={message.id}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="actions">
+                      {message.urgency.level === 'URGENT' && <Badge tone="bad">Urgent</Badge>}
+                      {message.urgency.level === 'PRIORITY' && <Badge tone="warn">Prioritaire</Badge>}
+                      <Badge tone={categoryTone(message.category)}>{categoryLabels[message.category]}</Badge>
+                      {message.sourcePlatform && <Badge tone="blue">{message.sourcePlatform}</Badge>}
+                      {message.urgency.level === 'NORMAL' && message.actionRequired && !message.processed && (
+                        <Badge tone="warn">Action requise</Badge>
+                      )}
+                      {message.processed && (
+                        <Badge tone="good">{transactionAction?.completedBadge ?? 'Traité'}</Badge>
+                      )}
+                      <span className="muted small">
+                        {new Date(message.receivedAt).toLocaleString('fr-FR')}
+                      </span>
                     </div>
-                  )}
 
-                  {message.classificationReason && (
-                    <div className="muted small" style={{ marginTop: 8 }}>Analyse : {message.classificationReason}</div>
-                  )}
+                    <h3>{message.subject || '(sans objet)'}</h3>
+                    <div className="muted small">{message.sender}</div>
+                    <p className="small">{message.snippet}</p>
 
-                  {message.jobOffer && (
-                    <div className="notice" style={{ marginTop: 12 }}>
-                      Offre associée : <strong>{message.jobOffer.title}</strong> — {message.jobOffer.company}
-                      {message.application && <> · Candidature #{message.application.id} : {message.application.status}</>}
-                    </div>
-                  )}
+                    {message.urgency.level !== 'NORMAL' && (
+                      <div className="notice warning" style={{ marginTop: 10 }}>
+                        {message.urgency.recommendedAction && <strong>{message.urgency.recommendedAction}.</strong>}{' '}
+                        {message.urgency.reasons.join(' ')}
+                      </div>
+                    )}
 
-                  {message.bodyText && message.bodyText !== message.snippet && (
-                    <details style={{ marginTop: 12 }}>
-                      <summary className="small">Afficher le contenu analysé</summary>
-                      <pre className="message-body">{message.bodyText}</pre>
-                    </details>
-                  )}
+                    {message.classificationReason && (
+                      <div className="muted small" style={{ marginTop: 8 }}>Analyse : {message.classificationReason}</div>
+                    )}
 
-                  <div className="actions" style={{ marginTop: 14 }}>
-                    {message.gmailUrl && (
-                      <ButtonLink
-                        href={message.gmailUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant={message.urgency.actionRequired ? 'primary' : 'secondary'}
+                    {message.jobOffer && (
+                      <div className="notice" style={{ marginTop: 12 }}>
+                        Offre associée : <strong>{message.jobOffer.title}</strong> — {message.jobOffer.company}
+                        {message.application && <> · Candidature #{message.application.id} : {message.application.status}</>}
+                      </div>
+                    )}
+
+                    {message.bodyText && message.bodyText !== message.snippet && (
+                      <details style={{ marginTop: 12 }}>
+                        <summary className="small">Afficher le contenu analysé</summary>
+                        <pre className="message-body">{message.bodyText}</pre>
+                      </details>
+                    )}
+
+                    <div className="actions" style={{ marginTop: 14 }}>
+                      {message.gmailUrl && (
+                        <ButtonLink
+                          href={message.gmailUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          variant={message.urgency.actionRequired ? 'primary' : 'secondary'}
+                          size="small"
+                        >
+                          Ouvrir dans Gmail
+                        </ButtonLink>
+                      )}
+                      <Button
+                        variant="secondary"
                         size="small"
+                        loading={busyId === message.id}
+                        disabled={busyId !== null}
+                        onClick={() => void markProcessed(message)}
                       >
-                        Ouvrir dans Gmail
-                      </ButtonLink>
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      loading={busyId === message.id}
-                      disabled={busyId !== null}
-                      onClick={() => void markProcessed(message)}
-                    >
-                      {busyId === message.id
-                        ? 'Enregistrement…'
-                        : transactionAction
-                          ? message.processed
-                            ? transactionAction.reopenLabel
-                            : transactionAction.completeLabel
-                          : message.processed
-                            ? 'Remettre à traiter'
-                            : 'Marquer comme traité'}
-                    </Button>
-                    <InboxSenderClassificationCorrection
-                      messageId={message.id}
-                      sender={message.sender}
-                      category={message.category}
-                      onSaved={load}
-                    />
-                  </div>
-
-                  {transactionAction && !message.processed && (
-                    <div className="muted small" style={{ marginTop: 7 }}>
-                      {transactionAction.help}
+                        {busyId === message.id
+                          ? 'Enregistrement…'
+                          : transactionAction
+                            ? message.processed
+                              ? transactionAction.reopenLabel
+                              : transactionAction.completeLabel
+                            : message.processed
+                              ? 'Remettre à traiter'
+                              : 'Marquer comme traité'}
+                      </Button>
+                      <InboxSenderClassificationCorrection
+                        messageId={message.id}
+                        sender={message.sender}
+                        category={message.category}
+                        onSaved={load}
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
+
+                    {transactionAction && !message.processed && (
+                      <div className="muted small" style={{ marginTop: 7 }}>
+                        {transactionAction.help}
+                      </div>
+                    )}
+                  </div>
+                </DataListItem>
+              );
+            })}
+          </DataList>
         )}
       </Card>
     </>

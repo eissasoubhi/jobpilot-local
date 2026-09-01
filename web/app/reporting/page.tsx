@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Badge, Card, DataList, DataListItem, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Badge, Card, DataList, DataListItem, Empty, ErrorBox, InlineFeedback, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { buildApplicationReporting } from '@/lib/application-reporting';
 import { getErrorMessage } from '@/lib/errors';
@@ -10,6 +11,49 @@ import type { Application } from '@/lib/types';
 
 function rate(value: number): string {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
+}
+
+function ReportingSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement des indicateurs de candidature">
+      <div className="grid cols-2">
+        <Card>
+          <Skeleton width="42%" height={22} />
+          <div className="actions" style={{ marginTop: 12 }}>
+            <Skeleton width={92} height={24} />
+            <Skeleton width={104} height={24} />
+            <Skeleton width={82} height={24} />
+          </div>
+        </Card>
+        <Card>
+          <Skeleton width="48%" height={22} />
+          <div className="actions" style={{ marginTop: 12 }}>
+            <Skeleton width={96} height={24} />
+            <Skeleton width={76} height={24} />
+            <Skeleton width={110} height={24} />
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <Skeleton width="34%" height={24} />
+        <DataList aria-hidden="true" style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((index) => (
+            <DataListItem key={index}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Skeleton width="28%" height={18} />
+                <div className="actions" style={{ marginTop: 10 }}>
+                  <Skeleton width={96} height={24} />
+                  <Skeleton width={92} height={24} />
+                  <Skeleton width={88} height={24} />
+                </div>
+              </div>
+            </DataListItem>
+          ))}
+        </DataList>
+      </Card>
+    </SkeletonGroup>
+  );
 }
 
 export default function ReportingPage() {
@@ -43,7 +87,7 @@ export default function ReportingPage() {
       />
       {error !== '' && <ErrorBox message={error} />}
       {summary === null ? (
-        <Loading />
+        <ReportingSkeleton />
       ) : summary.total === 0 ? (
         <Card><Empty>Aucune candidature n’est disponible pour calculer les indicateurs.</Empty></Card>
       ) : (
@@ -55,7 +99,7 @@ export default function ReportingPage() {
 
           <Card>
             <h2 className="section-title">Conversion par source</h2>
-            <DataList>
+            <DataList aria-label="Conversion des candidatures par source">
               {summary.bySource.map((row) => (
                 <DataListItem key={row.source}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -72,9 +116,9 @@ export default function ReportingPage() {
             </DataList>
           </Card>
 
-          <div className="notice warning">
+          <InlineFeedback tone="warning">
             Les taux reposent uniquement sur les statuts actuellement stockés. JobPilot ne déduit pas une réponse, un entretien ou un refus qui n’a pas été enregistré.
-          </div>
+          </InlineFeedback>
         </div>
       )}
     </>

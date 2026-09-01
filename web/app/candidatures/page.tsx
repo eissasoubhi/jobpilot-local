@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApplicationStatusFilter } from '@/components/ApplicationStatusFilter';
 import { CoverLetterEditor } from '@/components/CoverLetterEditor';
 import { Modal } from '@/components/Modal';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
@@ -15,7 +16,6 @@ import {
   Empty,
   ErrorBox,
   InlineFeedback,
-  Loading,
   PageHeader,
 } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -31,6 +31,32 @@ import type { Application } from '@/lib/types';
 
 function companyName(application: Application): string {
   return application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
+}
+
+function ApplicationsSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement des candidatures">
+      <DataToolbar aria-hidden="true">
+        <Skeleton width={280} height={38} />
+      </DataToolbar>
+      <DataList aria-hidden="true">
+        {[0, 1, 2].map((index) => (
+          <DataListItem key={index}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Skeleton width="46%" height={22} />
+              <Skeleton width="62%" height={16} className="mt-2" />
+              <div className="actions" style={{ marginTop: 10 }}>
+                <Skeleton width={92} height={24} />
+                <Skeleton width={72} height={24} />
+                <Skeleton width={84} height={24} />
+              </div>
+            </div>
+            <Skeleton width={128} height={34} />
+          </DataListItem>
+        ))}
+      </DataList>
+    </SkeletonGroup>
+  );
 }
 
 export default function ApplicationsPage() {
@@ -121,7 +147,7 @@ export default function ApplicationsPage() {
 
       <Card>
         {items === null || filteredItems === null ? (
-          <Loading />
+          <ApplicationsSkeleton />
         ) : items.length === 0 ? (
           <Empty>Aucune candidature préparée.</Empty>
         ) : (

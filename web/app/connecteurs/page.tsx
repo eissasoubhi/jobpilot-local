@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  Empty,
+  ErrorBox,
+  InlineFeedback,
+  Loading,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCount } from '@/lib/formatCount';
@@ -161,7 +172,7 @@ export default function ConnectorsPage() {
       />
 
       {error !== '' && <ErrorBox message={error} />}
-      {message !== '' && <div className="success-box" role="status">{message}</div>}
+      {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
       {activeAlerts.length > 0 && (
         <Card>
           <div className="actions" style={{ marginBottom: 8 }}>
@@ -180,15 +191,15 @@ export default function ConnectorsPage() {
       ) : connectors.length === 0 ? (
         <Card><Empty>Aucun connecteur n’est enregistré.</Empty></Card>
       ) : (
-        <div className="stack">
-          {connectors.map((connector) => {
-            const missingFields = Object.entries(connector.fieldQuality.fields)
-              .filter(([, metrics]) => metrics.missing > 0);
+        <Card>
+          <DataList aria-label="Connecteurs disponibles">
+            {connectors.map((connector) => {
+              const missingFields = Object.entries(connector.fieldQuality.fields)
+                .filter(([, metrics]) => metrics.missing > 0);
 
-            return (
-              <Card key={connector.code}>
-                <div className="list-row" style={{ alignItems: 'flex-start', paddingTop: 0, paddingBottom: 0 }}>
-                  <div style={{ flex: 1 }}>
+              return (
+                <DataListItem key={connector.code}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="actions" style={{ marginBottom: 8 }}>
                       <Badge tone={statusTone(connector.status)}>{connector.status}</Badge>
                       <Badge tone={healthTone(connector.health.status)}>{connector.health.label}</Badge>
@@ -310,11 +321,11 @@ export default function ConnectorsPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </DataListItem>
+              );
+            })}
+          </DataList>
+        </Card>
       )}
 
       <h2 className="section-title" style={{ marginTop: 30 }}>Historique récent</h2>
@@ -325,38 +336,40 @@ export default function ConnectorsPage() {
         ) : history.length === 0 ? (
           <Empty>Aucune synchronisation enregistrée pour le moment.</Empty>
         ) : (
-          history.map((run) => (
-            <div className="list-row" key={run.id}>
-              <div style={{ flex: 1 }}>
-                <div className="actions" style={{ marginBottom: 6 }}>
-                  <Badge tone={statusTone(run.status)}>{run.status}</Badge>
-                  <Badge>{run.trigger}</Badge>
-                  <Badge>{duration(run.durationMs)}</Badge>
-                  {run.details.parserVersion && <Badge>Parseur {run.details.parserVersion}</Badge>}
-                  {run.details.normalizationRate != null && (
-                    <Badge>Taux {percentage(run.details.normalizationRate)}</Badge>
-                  )}
-                  {run.details.fieldQuality?.overallCompleteness != null && (
-                    <Badge>Qualité {percentage(run.details.fieldQuality.overallCompleteness)}</Badge>
-                  )}
-                  {run.details.fieldQuality && run.details.fieldQuality.missingRequiredRecords > 0 && (
-                    <Badge tone="bad">{formatCount(run.details.fieldQuality.missingRequiredRecords, 'incomplète', 'incomplètes')}</Badge>
-                  )}
-                  {run.details.zeroResults && <Badge tone="warn">Aucun résultat</Badge>}
+          <DataList aria-label="Historique des synchronisations">
+            {history.map((run) => (
+              <DataListItem key={run.id}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="actions" style={{ marginBottom: 6 }}>
+                    <Badge tone={statusTone(run.status)}>{run.status}</Badge>
+                    <Badge>{run.trigger}</Badge>
+                    <Badge>{duration(run.durationMs)}</Badge>
+                    {run.details.parserVersion && <Badge>Parseur {run.details.parserVersion}</Badge>}
+                    {run.details.normalizationRate != null && (
+                      <Badge>Taux {percentage(run.details.normalizationRate)}</Badge>
+                    )}
+                    {run.details.fieldQuality?.overallCompleteness != null && (
+                      <Badge>Qualité {percentage(run.details.fieldQuality.overallCompleteness)}</Badge>
+                    )}
+                    {run.details.fieldQuality && run.details.fieldQuality.missingRequiredRecords > 0 && (
+                      <Badge tone="bad">{formatCount(run.details.fieldQuality.missingRequiredRecords, 'incomplète', 'incomplètes')}</Badge>
+                    )}
+                    {run.details.zeroResults && <Badge tone="warn">Aucun résultat</Badge>}
+                  </div>
+                  <h3>{run.connector.name}</h3>
+                  <div className="muted small">{formatDate(run.startedAt)}</div>
+                  <div className="actions" style={{ marginTop: 9 }}>
+                    <Badge>{formatCount(run.received, 'offre reçue', 'offres reçues')}</Badge>
+                    <Badge tone="good">{formatCount(run.imported, 'nouvelle', 'nouvelles')}</Badge>
+                    <Badge tone="blue">{formatCount(run.merged, 'source fusionnée', 'sources fusionnées')}</Badge>
+                    <Badge>{formatCount(run.duplicates, 'occurrence connue', 'occurrences connues')}</Badge>
+                    {run.failed > 0 && <Badge tone="warn">{formatCount(run.failed, 'échec', 'échecs')}</Badge>}
+                  </div>
+                  {run.error && <p className="small" style={{ marginBottom: 0 }}>{run.error}</p>}
                 </div>
-                <h3>{run.connector.name}</h3>
-                <div className="muted small">{formatDate(run.startedAt)}</div>
-                <div className="actions" style={{ marginTop: 9 }}>
-                  <Badge>{formatCount(run.received, 'offre reçue', 'offres reçues')}</Badge>
-                  <Badge tone="good">{formatCount(run.imported, 'nouvelle', 'nouvelles')}</Badge>
-                  <Badge tone="blue">{formatCount(run.merged, 'source fusionnée', 'sources fusionnées')}</Badge>
-                  <Badge>{formatCount(run.duplicates, 'occurrence connue', 'occurrences connues')}</Badge>
-                  {run.failed > 0 && <Badge tone="warn">{formatCount(run.failed, 'échec', 'échecs')}</Badge>}
-                </div>
-                {run.error && <p className="small" style={{ marginBottom: 0 }}>{run.error}</p>}
-              </div>
-            </div>
-          ))
+              </DataListItem>
+            ))}
+          </DataList>
         )}
       </Card>
     </>

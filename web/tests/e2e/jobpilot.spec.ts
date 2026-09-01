@@ -94,7 +94,7 @@ test('profile, CV, job preparation, source filtering, guided submission and posi
 
   const jobHeading = page.getByRole('heading', { name: jobTitle, level: 3, exact: true });
   await expect(jobHeading).toBeVisible();
-  const jobRow = jobHeading.locator('xpath=ancestor::div[contains(@class,"list-row")]');
+  const jobRow = page.getByRole('listitem').filter({ has: jobHeading });
   await expect(jobRow.getByText('TJM proposé : 500 €')).toBeVisible();
   await expect(jobRow.getByText('PREPARED')).toBeVisible();
 

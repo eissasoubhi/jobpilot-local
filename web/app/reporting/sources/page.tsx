@@ -116,8 +116,8 @@ function ConversionRowsSkeleton() {
               <Skeleton width={94} height={24} />
               <Skeleton width={92} height={24} />
             </div>
-            <Skeleton width="76%" height={16} style={{ marginTop: 11 }} />
-            <Skeleton width="62%" height={16} style={{ marginTop: 8 }} />
+            <div style={{ marginTop: 11 }}><Skeleton width="76%" height={16} /></div>
+            <div style={{ marginTop: 8 }}><Skeleton width="62%" height={16} /></div>
           </div>
         </DataListItem>
       ))}
@@ -132,7 +132,7 @@ function SourceReportingSkeleton() {
         {[0, 1, 2, 3].map((index) => (
           <Card className="stat-card" key={index}>
             <Skeleton width="64%" height={16} />
-            <Skeleton width={72} height={32} style={{ marginTop: 10 }} />
+            <div style={{ marginTop: 10 }}><Skeleton width={72} height={32} /></div>
           </Card>
         ))}
       </div>
@@ -141,7 +141,7 @@ function SourceReportingSkeleton() {
         {['Par source', 'Par type de contrat', 'Par mode de travail'].map((title) => (
           <Card key={title}>
             <Skeleton width={180} height={24} />
-            <Skeleton width="82%" height={18} style={{ marginTop: 14, marginBottom: 14 }} />
+            <div style={{ marginTop: 14, marginBottom: 14 }}><Skeleton width="82%" height={18} /></div>
             <ConversionRowsSkeleton />
           </Card>
         ))}

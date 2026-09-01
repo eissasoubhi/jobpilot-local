@@ -7,7 +7,20 @@ import {
   type CrmContactCorrectionPayload,
   type EditableCrmContact,
 } from '@/components/CrmContactCorrectionEditor';
-import { Badge, Button, Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import {
+  Badge,
+  Button,
+  Card,
+  DataList,
+  DataListItem,
+  DataToolbar,
+  Empty,
+  ErrorBox,
+  FormField,
+  InlineFeedback,
+  Loading,
+  PageHeader,
+} from '@/components/UI';
 import { api } from '@/lib/api';
 import { downloadCrmContactsCsv } from '@/lib/crm-contact-export';
 import { filterCrmContacts, type CrmContactFilter } from '@/lib/crm-contact-filters';
@@ -81,51 +94,56 @@ export default function CrmContactsPage() {
       ) : (
         <>
           <Card>
-            <div className="form-grid">
-              <FormField label="Rechercher un contact ou une organisation">
-                <input
-                  type="search"
-                  value={search}
-                  placeholder="Nom, e-mail, téléphone ou société"
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </FormField>
-              <FormField label="État de correction">
-                <select value={filter} onChange={(event) => setFilter(event.target.value as CrmContactFilter)}>
-                  <option value="ALL">Tous les contacts</option>
-                  <option value="CORRECTED">Corrigés localement</option>
-                  <option value="UNCORRECTED">Sans correction locale</option>
-                </select>
-              </FormField>
-            </div>
-            <div className="actions" style={{ marginTop: 12 }}>
-              <Badge>{contacts.length} contact(s)</Badge>
-              <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
-              <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
-              <Button
-                variant="secondary"
-                size="small"
-                disabled={visibleContacts.length === 0}
-                onClick={exportVisibleContacts}
-              >
-                Exporter les contacts affichés
-              </Button>
-            </div>
-            <p className="small muted" style={{ marginBottom: 0, marginTop: 10 }}>
-              L’export contient uniquement les résultats actuellement filtrés. Les valeurs affichées et les valeurs sources restent séparées.
-            </p>
+            <DataToolbar
+              actions={(
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={visibleContacts.length === 0}
+                  onClick={exportVisibleContacts}
+                >
+                  Exporter les contacts affichés
+                </Button>
+              )}
+            >
+              <div className="form-grid">
+                <FormField label="Rechercher un contact ou une organisation">
+                  <input
+                    type="search"
+                    value={search}
+                    placeholder="Nom, e-mail, téléphone ou société"
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </FormField>
+                <FormField label="État de correction">
+                  <select value={filter} onChange={(event) => setFilter(event.target.value as CrmContactFilter)}>
+                    <option value="ALL">Tous les contacts</option>
+                    <option value="CORRECTED">Corrigés localement</option>
+                    <option value="UNCORRECTED">Sans correction locale</option>
+                  </select>
+                </FormField>
+              </div>
+              <div className="actions" style={{ marginTop: 12 }}>
+                <Badge>{contacts.length} contact(s)</Badge>
+                <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
+                <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
+              </div>
+              <p className="small muted" style={{ marginBottom: 0, marginTop: 10 }}>
+                L’export contient uniquement les résultats actuellement filtrés. Les valeurs affichées et les valeurs sources restent séparées.
+              </p>
+            </DataToolbar>
           </Card>
 
           {visibleContacts.length === 0 ? (
             <Card><Empty>Aucun contact ne correspond aux filtres actuels.</Empty></Card>
           ) : (
-            <div className="stack">
-              {visibleContacts.map(({ organization, contact }) => {
-                const corrected = contact.correction != null;
-                return (
-                  <Card key={`${organization.key}-${contact.key}`}>
-                    <div className="list-row" style={{ padding: 0 }}>
-                      <div style={{ flex: 1 }}>
+            <Card>
+              <DataList aria-label="Contacts CRM filtrés">
+                {visibleContacts.map(({ organization, contact }) => {
+                  const corrected = contact.correction != null;
+                  return (
+                    <DataListItem key={`${organization.key}-${contact.key}`}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <strong>{contact.name || contact.email || contact.phone || 'Contact sans libellé'}</strong>
                         <div className="small muted" style={{ marginTop: 4 }}>{organization.name} · <code>{contact.key}</code></div>
                         <div className="actions" style={{ marginTop: 7 }}>
@@ -142,11 +160,11 @@ export default function CrmContactsPage() {
                       <Button variant="secondary" size="small" onClick={() => { setSelection({ organization, contact }); setNotice(''); }}>
                         {corrected ? 'Modifier la correction' : 'Corriger le contact'}
                       </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+                    </DataListItem>
+                  );
+                })}
+              </DataList>
+            </Card>
           )}
         </>
       )}

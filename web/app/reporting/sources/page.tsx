@@ -58,11 +58,11 @@ function amount(value: number): string {
   return new Intl.NumberFormat('fr-FR').format(value);
 }
 
-function ConversionRows({ rows, emptyMessage }: { rows: ConversionRow[]; emptyMessage: string }) {
+function ConversionRows({ rows, emptyMessage, label }: { rows: ConversionRow[]; emptyMessage: string; label: string }) {
   if (rows.length === 0) return <Empty>{emptyMessage}</Empty>;
 
   return (
-    <DataList>
+    <DataList aria-label={label}>
       {rows.map((row) => (
         <DataListItem key={row.code}>
           <div className={styles.rowContent}>
@@ -199,7 +199,11 @@ export default function SourceReportingPage() {
               <InlineFeedback className="mb-14">
                 Une offre multi-sources est attribuée à chacune de ses sources. Les lignes ne doivent donc pas être additionnées pour retrouver le total canonique.
               </InlineFeedback>
-              <ConversionRows rows={report.sources} emptyMessage="Aucune donnée de source disponible." />
+              <ConversionRows
+                rows={report.sources}
+                emptyMessage="Aucune donnée de source disponible."
+                label="Conversion par source"
+              />
             </Card>
 
             <Card>
@@ -207,7 +211,11 @@ export default function SourceReportingPage() {
               <InlineFeedback className="mb-14">
                 Chaque offre canonique apparaît une seule fois dans son type de contrat actuel. Les valeurs absentes sont regroupées sous « Non renseigné ».
               </InlineFeedback>
-              <ConversionRows rows={report.contractTypes} emptyMessage="Aucune donnée de contrat disponible." />
+              <ConversionRows
+                rows={report.contractTypes}
+                emptyMessage="Aucune donnée de contrat disponible."
+                label="Conversion par type de contrat"
+              />
             </Card>
 
             <Card>
@@ -215,7 +223,11 @@ export default function SourceReportingPage() {
               <InlineFeedback className="mb-14">
                 Chaque offre canonique apparaît une seule fois dans son mode de travail actuel. Les libellés stockés restent distincts et les valeurs absentes sont regroupées sous « Non renseigné ».
               </InlineFeedback>
-              <ConversionRows rows={report.workModes} emptyMessage="Aucune donnée de mode de travail disponible." />
+              <ConversionRows
+                rows={report.workModes}
+                emptyMessage="Aucune donnée de mode de travail disponible."
+                label="Conversion par mode de travail"
+              />
             </Card>
           </div>
         </>

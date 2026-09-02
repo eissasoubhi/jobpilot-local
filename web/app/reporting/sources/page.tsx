@@ -16,6 +16,8 @@ import {
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
+import styles from './page.module.css';
+
 type ConversionRow = {
   code: string;
   name: string;
@@ -63,12 +65,12 @@ function ConversionRows({ rows, emptyMessage }: { rows: ConversionRow[]; emptyMe
     <DataList>
       {rows.map((row) => (
         <DataListItem key={row.code}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="actions" style={{ marginBottom: 6 }}>
+          <div className={styles.rowContent}>
+            <div className={`${styles.badgeRow} ${styles.rowHeading}`}>
               <Badge tone="blue">{row.name}</Badge>
               <Badge>{row.code}</Badge>
             </div>
-            <div className="actions">
+            <div className={styles.badgeRow}>
               <Badge>{row.offers} offre(s)</Badge>
               <Badge>{row.applications} candidature(s)</Badge>
               <Badge tone="good">{row.submitted} envoyée(s)</Badge>
@@ -76,14 +78,14 @@ function ConversionRows({ rows, emptyMessage }: { rows: ConversionRow[]; emptyMe
               <Badge tone="blue">{row.interviews} entretien(s)</Badge>
               {row.rejections > 0 && <Badge tone="warn">{row.rejections} refus</Badge>}
             </div>
-            <div className="small muted" style={{ marginTop: 9 }}>
+            <div className={`small muted ${styles.metricLine}`}>
               Taux de candidature : {rate(row.applicationRate)} · Réponse après envoi : {rate(row.responseRate)} · Entretien après envoi : {rate(row.interviewRate)}
             </div>
-            <div className="small" style={{ marginTop: 7 }}>
+            <div className={`small ${styles.metricLine}`}>
               Score moyen : <strong>{score(row.averageMatchingScore)} / 100</strong> · Matching ≥ 60 : <strong>{row.strongMatches} offre(s)</strong> ({rate(row.strongMatchRate)})
             </div>
             {(row.averageProposedTjm !== null || row.averageProposedSalary !== null) && (
-              <div className="small" style={{ marginTop: 7 }}>
+              <div className={`small ${styles.metricLine}`}>
                 {row.averageProposedTjm !== null && (
                   <>TJM proposé moyen : <strong>{amount(row.averageProposedTjm)} €</strong> ({row.tjmProposalCount} offre(s))</>
                 )}
@@ -105,19 +107,19 @@ function ConversionRowsSkeleton() {
     <DataList aria-hidden="true">
       {[0, 1, 2].map((index) => (
         <DataListItem key={index}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="actions" style={{ marginBottom: 10 }}>
+          <div className={styles.rowContent}>
+            <div className={`${styles.badgeRow} ${styles.rowHeading}`}>
               <Skeleton width={112} height={24} />
               <Skeleton width={64} height={24} />
             </div>
-            <div className="actions">
+            <div className={styles.badgeRow}>
               <Skeleton width={88} height={24} />
               <Skeleton width={118} height={24} />
               <Skeleton width={94} height={24} />
               <Skeleton width={92} height={24} />
             </div>
-            <div style={{ marginTop: 11 }}><Skeleton width="76%" height={16} /></div>
-            <div style={{ marginTop: 8 }}><Skeleton width="62%" height={16} /></div>
+            <div className={styles.skeletonMetric}><Skeleton width="76%" height={16} /></div>
+            <div className={styles.skeletonMetric}><Skeleton width="62%" height={16} /></div>
           </div>
         </DataListItem>
       ))}
@@ -128,20 +130,20 @@ function ConversionRowsSkeleton() {
 function SourceReportingSkeleton() {
   return (
     <SkeletonGroup label="Chargement du reporting de conversion">
-      <div className="grid cols-3">
+      <div className={styles.statsGrid}>
         {[0, 1, 2, 3].map((index) => (
           <Card className="stat-card" key={index}>
             <Skeleton width="64%" height={16} />
-            <div style={{ marginTop: 10 }}><Skeleton width={72} height={32} /></div>
+            <div className={styles.skeletonMetric}><Skeleton width={72} height={32} /></div>
           </Card>
         ))}
       </div>
 
-      <div className="stack" style={{ marginTop: 18 }}>
+      <div className={`stack ${styles.sections}`}>
         {['Par source', 'Par type de contrat', 'Par mode de travail'].map((title) => (
           <Card key={title}>
             <Skeleton width={180} height={24} />
-            <div style={{ marginTop: 14, marginBottom: 14 }}><Skeleton width="82%" height={18} /></div>
+            <div className={styles.skeletonSectionIntro}><Skeleton width="82%" height={18} /></div>
             <ConversionRowsSkeleton />
           </Card>
         ))}
@@ -184,14 +186,14 @@ export default function SourceReportingPage() {
         <SourceReportingSkeleton />
       ) : (
         <>
-          <div className="grid cols-3">
+          <div className={styles.statsGrid}>
             <Card className="stat-card"><span>Sources observées</span><strong>{report.totals.sources}</strong></Card>
             <Card className="stat-card"><span>Types de contrat</span><strong>{report.totals.contractTypes}</strong></Card>
             <Card className="stat-card"><span>Modes de travail</span><strong>{report.totals.workModes}</strong></Card>
             <Card className="stat-card"><span>Offres / candidatures</span><strong>{report.totals.offers} / {report.totals.applications}</strong></Card>
           </div>
 
-          <div className="stack" style={{ marginTop: 18 }}>
+          <div className={`stack ${styles.sections}`}>
             <Card>
               <h2 className="section-title">Par source</h2>
               <InlineFeedback className="mb-14">

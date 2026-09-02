@@ -7,7 +7,8 @@ import {
   type CrmOrganizationAnnotationPayload,
 } from '@/components/CrmOrganizationAnnotationEditor';
 import { CrmOrganizationCard } from '@/components/CrmOrganizationCard';
-import { Card, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Card, Empty, ErrorBox, FormField, InlineFeedback, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
   filterCrmOrganizations,
@@ -16,6 +17,48 @@ import {
 import { crmQueryFromSearch } from '@/lib/crm-navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory, CrmOrganization } from '@/lib/types';
+
+function CrmDirectorySkeleton() {
+  return (
+    <SkeletonGroup label="Chargement du CRM">
+      <div className="grid three" aria-hidden="true">
+        {[0, 1, 2, 3].map((index) => (
+          <Card key={index}>
+            <Skeleton width="58%" height={16} />
+            <div style={{ marginTop: 10 }}><Skeleton width={54} height={32} /></div>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <div className="grid two" aria-hidden="true">
+          <div>
+            <Skeleton width="70%" height={16} />
+            <div style={{ marginTop: 8 }}><Skeleton height={42} /></div>
+          </div>
+          <div>
+            <Skeleton width="48%" height={16} />
+            <div style={{ marginTop: 8 }}><Skeleton height={42} /></div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="stack" aria-hidden="true">
+        {[0, 1, 2].map((index) => (
+          <Card key={index}>
+            <div className="actions" style={{ marginBottom: 10 }}>
+              <Skeleton width={126} height={24} />
+              <Skeleton width={84} height={24} />
+            </div>
+            <Skeleton width="48%" height={24} />
+            <div style={{ marginTop: 10 }}><Skeleton width="78%" height={16} /></div>
+            <div style={{ marginTop: 8 }}><Skeleton width="62%" height={16} /></div>
+          </Card>
+        ))}
+      </div>
+    </SkeletonGroup>
+  );
+}
 
 export default function CrmPage() {
   const [directory, setDirectory] = useState<CrmDirectory | null>(null);
@@ -95,7 +138,7 @@ export default function CrmPage() {
       </InlineFeedback>
 
       {directory === null && error === '' ? (
-        <Card><Loading /></Card>
+        <CrmDirectorySkeleton />
       ) : directory !== null ? (
         <>
           <div className="grid three" aria-label="Résumé CRM">

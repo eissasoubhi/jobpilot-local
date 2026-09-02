@@ -7,6 +7,7 @@ import {
   type CrmContactCorrectionPayload,
   type EditableCrmContact,
 } from '@/components/CrmContactCorrectionEditor';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
@@ -18,7 +19,6 @@ import {
   ErrorBox,
   FormField,
   InlineFeedback,
-  Loading,
   PageHeader,
 } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -27,8 +27,48 @@ import { filterCrmContacts, type CrmContactFilter } from '@/lib/crm-contact-filt
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory, CrmOrganization } from '@/lib/types';
 
+import styles from './page.module.css';
+
 type Selection = { organization: CrmOrganization; contact: EditableCrmContact };
 type ContactEntry = { organization: CrmOrganization; organizationName: string; contact: EditableCrmContact };
+
+function CrmContactsSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement des contacts CRM">
+      <Card>
+        <div className="form-grid" aria-hidden="true">
+          <div>
+            <Skeleton width="62%" height={16} />
+            <div className="mt-8"><Skeleton height={42} /></div>
+          </div>
+          <div>
+            <Skeleton width="42%" height={16} />
+            <div className="mt-8"><Skeleton height={42} /></div>
+          </div>
+        </div>
+        <div className={`actions ${styles.summary}`} aria-hidden="true">
+          <Skeleton width={92} height={28} />
+          <Skeleton width={104} height={28} />
+          <Skeleton width={96} height={28} />
+        </div>
+      </Card>
+      <Card>
+        <div className={styles.skeletonList} aria-hidden="true">
+          {[0, 1, 2].map((index) => (
+            <div key={index} className={styles.skeletonItem}>
+              <div className={styles.skeletonMain}>
+                <Skeleton width="48%" height={18} />
+                <Skeleton width="68%" height={14} />
+                <Skeleton width="54%" height={24} />
+              </div>
+              <Skeleton width={138} height={34} />
+            </div>
+          ))}
+        </div>
+      </Card>
+    </SkeletonGroup>
+  );
+}
 
 export default function CrmContactsPage() {
   const [directory, setDirectory] = useState<CrmDirectory | null>(null);
@@ -84,12 +124,12 @@ export default function CrmContactsPage() {
     <>
       <PageHeader title="Corrections des contacts CRM" description="Corrige le nom, l’e-mail ou le téléphone affiché sans modifier les données sources." />
       {notice !== '' && (
-        <div style={{ marginBottom: 16 }}>
+        <div className={styles.feedback}>
           <InlineFeedback tone="success">{notice}</InlineFeedback>
         </div>
       )}
       {error !== '' && <ErrorBox message={error} />}
-      {directory === null && error === '' ? <Loading /> : contacts.length === 0 ? (
+      {directory === null && error === '' ? <CrmContactsSkeleton /> : contacts.length === 0 ? (
         <Card><Empty>Aucun contact CRM validé n’est disponible.</Empty></Card>
       ) : (
         <>
@@ -123,12 +163,12 @@ export default function CrmContactsPage() {
                   </select>
                 </FormField>
               </div>
-              <div className="actions" style={{ marginTop: 12 }}>
+              <div className={`actions ${styles.summary}`}>
                 <Badge>{contacts.length} contact(s)</Badge>
                 <Badge tone={correctedCount > 0 ? 'warn' : 'neutral'}>{correctedCount} corrigé(s)</Badge>
                 <Badge tone="blue">{visibleContacts.length} affiché(s)</Badge>
               </div>
-              <p className="small muted" style={{ marginBottom: 0, marginTop: 10 }}>
+              <p className={`small muted ${styles.helperText}`}>
                 L’export contient uniquement les résultats actuellement filtrés. Les valeurs affichées et les valeurs sources restent séparées.
               </p>
             </DataToolbar>
@@ -143,16 +183,16 @@ export default function CrmContactsPage() {
                   const corrected = contact.correction != null;
                   return (
                     <DataListItem key={`${organization.key}-${contact.key}`}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className={styles.contactMain}>
                         <strong>{contact.name || contact.email || contact.phone || 'Contact sans libellé'}</strong>
-                        <div className="small muted" style={{ marginTop: 4 }}>{organization.name} · <code>{contact.key}</code></div>
-                        <div className="actions" style={{ marginTop: 7 }}>
+                        <div className={`small muted ${styles.organizationLine}`}>{organization.name} · <code>{contact.key}</code></div>
+                        <div className={`actions ${styles.badges}`}>
                           {corrected && <Badge tone="warn">Corrigé localement</Badge>}
                           {contact.email && <Badge>{contact.email}</Badge>}
                           {contact.phone && <Badge>{contact.phone}</Badge>}
                         </div>
                         {corrected && (
-                          <div className="small muted" style={{ marginTop: 7 }}>
+                          <div className={`small muted ${styles.sourceLine}`}>
                             Sources : {contact.sourceName || '—'} · {contact.sourceEmail || '—'} · {contact.sourcePhone || '—'}
                           </div>
                         )}

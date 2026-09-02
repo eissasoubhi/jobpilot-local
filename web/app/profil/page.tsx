@@ -7,6 +7,7 @@ import { Button, Card, ErrorBox, FormField, InlineFeedback, PageHeader } from '@
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Profile } from '@/lib/types';
+import styles from './profile.module.css';
 
 const splitLines = (value: string): string[] => value.split('\n').map((item) => item.trim()).filter(Boolean);
 
@@ -20,17 +21,15 @@ function ProfileSkeleton() {
         description="Source unique utilisée par JobPilot pour préparer et, bientôt, préremplir les formulaires de candidature."
       />
       <SkeletonGroup label="Chargement du profil candidat">
-        <div className="stack" aria-hidden="true">
+        <div className={styles.profileStack} aria-hidden="true">
           {sections.map((fieldCount, sectionIndex) => (
-            <Card key={sectionIndex}>
+            <Card key={sectionIndex} className={styles.skeletonSection}>
               <Skeleton width={sectionIndex === 0 ? 190 : 220} height={24} />
-              <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className={styles.formGrid}>
                 {Array.from({ length: fieldCount }, (_, fieldIndex) => (
-                  <div key={fieldIndex}>
+                  <div key={fieldIndex} className={styles.skeletonField}>
                     <Skeleton width="42%" height={14} />
-                    <div style={{ marginTop: 8 }}>
-                      <Skeleton height={40} />
-                    </div>
+                    <Skeleton height={40} />
                   </div>
                 ))}
               </div>
@@ -100,19 +99,19 @@ export default function ProfilePage() {
         title="Profil candidat"
         description="Source unique utilisée par JobPilot pour préparer et, bientôt, préremplir les formulaires de candidature."
         actions={(
-          <Button type="button" loading={saving} onClick={() => void save()}>
+          <Button className={styles.saveAction} type="button" loading={saving} onClick={() => void save()}>
             Enregistrer
           </Button>
         )}
       />
 
-      <div className="stack">
+      <div className={styles.profileStack}>
         {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
         {error !== '' && <ErrorBox message={error} />}
 
         <Card>
-          <h2>Identité et coordonnées</h2>
-          <div className="form-grid">
+          <h2 className={styles.sectionTitle}>Identité et coordonnées</h2>
+          <div className={styles.formGrid}>
             <FormField label="Prénom">
               <input value={profile.firstName} onChange={(e) => set('firstName', e.target.value)} autoComplete="given-name" />
             </FormField>
@@ -153,8 +152,8 @@ export default function ProfilePage() {
         </Card>
 
         <Card>
-          <h2>Profil professionnel</h2>
-          <div className="form-grid">
+          <h2 className={styles.sectionTitle}>Profil professionnel</h2>
+          <div className={styles.formGrid}>
             <FormField label="Poste actuel">
               <input value={profile.currentJobTitle} onChange={(e) => set('currentJobTitle', e.target.value)} />
             </FormField>
@@ -170,12 +169,12 @@ export default function ProfilePage() {
             <FormField label="Portfolio">
               <input value={profile.portfolioUrl ?? ''} onChange={(e) => set('portfolioUrl', e.target.value)} />
             </FormField>
-            <div className="full">
+            <div className={styles.fullWidth}>
               <FormField label="Autres URLs professionnelles (une par ligne)">
                 <textarea value={profile.professionalUrls.join('\n')} onChange={(e) => set('professionalUrls', splitLines(e.target.value))} />
               </FormField>
             </div>
-            <div className="full">
+            <div className={styles.fullWidth}>
               <FormField label="Expérience par technologie (Technologie: années)">
                 <textarea
                   value={technologyExperience}
@@ -189,7 +188,7 @@ export default function ProfilePage() {
                 />
               </FormField>
             </div>
-            <div className="full">
+            <div className={styles.fullWidth}>
               <FormField label="Langues (une ligne par langue : niveau)">
                 <textarea
                   value={profile.languages.map((language) => `${language.language}: ${language.level}`).join('\n')}
@@ -204,8 +203,8 @@ export default function ProfilePage() {
         </Card>
 
         <Card>
-          <h2>Préférences de candidature</h2>
-          <div className="form-grid">
+          <h2 className={styles.sectionTitle}>Préférences de candidature</h2>
+          <div className={styles.formGrid}>
             <FormField label="Mobilité">
               <input value={profile.mobility} onChange={(e) => set('mobility', e.target.value)} />
             </FormField>

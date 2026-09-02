@@ -9,6 +9,8 @@ import { buildApplicationReporting } from '@/lib/application-reporting';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
+import styles from './page.module.css';
+
 function rate(value: number): string {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value)} %`;
 }
@@ -16,18 +18,18 @@ function rate(value: number): string {
 function ReportingSkeleton() {
   return (
     <SkeletonGroup label="Chargement des indicateurs de candidature">
-      <div className="grid cols-2">
-        <Card>
-          <Skeleton width="42%" height={22} />
-          <div className="actions" style={{ marginTop: 12 }}>
+      <div className={styles.summaryGrid}>
+        <Card className={styles.summaryCard}>
+          <div className={styles.skeletonTitle}><Skeleton width="42%" height={22} /></div>
+          <div className={styles.badgeCluster}>
             <Skeleton width={92} height={24} />
             <Skeleton width={104} height={24} />
             <Skeleton width={82} height={24} />
           </div>
         </Card>
-        <Card>
-          <Skeleton width="48%" height={22} />
-          <div className="actions" style={{ marginTop: 12 }}>
+        <Card className={styles.summaryCard}>
+          <div className={styles.skeletonTitle}><Skeleton width="48%" height={22} /></div>
+          <div className={styles.badgeCluster}>
             <Skeleton width={96} height={24} />
             <Skeleton width={76} height={24} />
             <Skeleton width={110} height={24} />
@@ -37,12 +39,12 @@ function ReportingSkeleton() {
 
       <Card>
         <Skeleton width="34%" height={24} />
-        <DataList aria-hidden="true" style={{ marginTop: 16 }}>
+        <DataList aria-hidden="true" className={styles.sourceList}>
           {[0, 1, 2].map((index) => (
             <DataListItem key={index}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className={styles.sourceRow}>
                 <Skeleton width="28%" height={18} />
-                <div className="actions" style={{ marginTop: 10 }}>
+                <div className={styles.badgeCluster}>
                   <Skeleton width={96} height={24} />
                   <Skeleton width={92} height={24} />
                   <Skeleton width={88} height={24} />
@@ -92,9 +94,23 @@ export default function ReportingPage() {
         <Card><Empty>Aucune candidature n’est disponible pour calculer les indicateurs.</Empty></Card>
       ) : (
         <div className="stack">
-          <div className="grid cols-2">
-            <Card><h3>Candidatures</h3><div className="actions"><Badge tone="blue">{summary.total} préparée(s)</Badge><Badge tone="good">{summary.submitted} envoyée(s)</Badge><Badge>{rate(summary.submissionRate)} envoyées</Badge></div></Card>
-            <Card><h3>Résultats connus</h3><div className="actions"><Badge tone="good">{summary.interviews} entretien(s)</Badge><Badge tone="bad">{summary.rejected} refus</Badge><Badge>{summary.active} non refusée(s)</Badge></div></Card>
+          <div className={styles.summaryGrid}>
+            <Card className={styles.summaryCard}>
+              <h2 className={styles.summaryTitle}>Candidatures</h2>
+              <div className={styles.badgeCluster}>
+                <Badge tone="blue">{summary.total} préparée(s)</Badge>
+                <Badge tone="good">{summary.submitted} envoyée(s)</Badge>
+                <Badge>{rate(summary.submissionRate)} envoyées</Badge>
+              </div>
+            </Card>
+            <Card className={styles.summaryCard}>
+              <h2 className={styles.summaryTitle}>Résultats connus</h2>
+              <div className={styles.badgeCluster}>
+                <Badge tone="good">{summary.interviews} entretien(s)</Badge>
+                <Badge tone="bad">{summary.rejected} refus</Badge>
+                <Badge>{summary.active} non refusée(s)</Badge>
+              </div>
+            </Card>
           </div>
 
           <Card>
@@ -102,9 +118,9 @@ export default function ReportingPage() {
             <DataList aria-label="Conversion des candidatures par source">
               {summary.bySource.map((row) => (
                 <DataListItem key={row.source}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong>{row.source}</strong>
-                    <div className="actions" style={{ marginTop: 8 }}>
+                  <div className={styles.sourceRow}>
+                    <strong className={styles.sourceName}>{row.source}</strong>
+                    <div className={styles.badgeCluster}>
                       <Badge>{row.total} candidature(s)</Badge>
                       <Badge tone="good">{row.submitted} envoyée(s)</Badge>
                       <Badge tone="blue">{row.interviews} entretien(s)</Badge>

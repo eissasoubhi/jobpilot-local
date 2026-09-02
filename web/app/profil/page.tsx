@@ -2,12 +2,45 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Card, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Button, Card, ErrorBox, FormField, InlineFeedback, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Profile } from '@/lib/types';
 
 const splitLines = (value: string): string[] => value.split('\n').map((item) => item.trim()).filter(Boolean);
+
+function ProfileSkeleton() {
+  const sections = [12, 7, 9];
+
+  return (
+    <>
+      <PageHeader
+        title="Profil candidat"
+        description="Source unique utilisée par JobPilot pour préparer et, bientôt, préremplir les formulaires de candidature."
+      />
+      <SkeletonGroup label="Chargement du profil candidat">
+        <div className="stack" aria-hidden="true">
+          {sections.map((fieldCount, sectionIndex) => (
+            <Card key={sectionIndex}>
+              <Skeleton width={sectionIndex === 0 ? 190 : 220} height={24} />
+              <div className="form-grid" style={{ marginTop: 16 }}>
+                {Array.from({ length: fieldCount }, (_, fieldIndex) => (
+                  <div key={fieldIndex}>
+                    <Skeleton width="42%" height={14} />
+                    <div style={{ marginTop: 8 }}>
+                      <Skeleton height={40} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </SkeletonGroup>
+    </>
+  );
+}
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -32,7 +65,7 @@ export default function ProfilePage() {
   }, []);
 
   if (profile === null) {
-    return error !== '' ? <ErrorBox message={error} /> : <Loading />;
+    return error !== '' ? <ErrorBox message={error} /> : <ProfileSkeleton />;
   }
 
   const set = <K extends keyof Profile>(key: K, value: Profile[K]): void => {

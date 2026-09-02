@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Badge, Button, Card, DataList, DataListItem, DataToolbar, ErrorBox, InlineFeedback, Loading } from '@/components/UI';
+import styles from './ConnectorDeadLettersSection.module.css';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Badge, Button, Card, DataList, DataListItem, DataToolbar, ErrorBox, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -38,6 +40,27 @@ function incidentLabel(entry: ConnectorDeadLetter): string {
   return entry.title?.trim()
     || entry.externalId?.trim()
     || (entry.stage === 'SEARCH' ? 'Échec de collecte du connecteur' : 'Offre non identifiable');
+}
+
+function ConnectorDeadLettersSkeleton() {
+  return (
+    <Card>
+      <SkeletonGroup label="Chargement des incidents persistants" className={styles.skeletonList}>
+        {[0, 1].map((item) => (
+          <div className={styles.skeletonItem} key={item} aria-hidden="true">
+            <div className="actions">
+              <Skeleton width={62} height={24} />
+              <Skeleton width={78} height={24} />
+              <Skeleton width={86} height={24} />
+            </div>
+            <Skeleton width="48%" height={20} />
+            <Skeleton width="70%" />
+            <Skeleton width="92%" height={30} />
+          </div>
+        ))}
+      </SkeletonGroup>
+    </Card>
+  );
 }
 
 export function ConnectorDeadLettersSection() {
@@ -79,9 +102,9 @@ export function ConnectorDeadLettersSection() {
 
   if (entries === null) {
     return (
-      <section aria-labelledby="connector-dead-letter-title" style={{ marginTop: 30 }}>
+      <section aria-labelledby="connector-dead-letter-title" className={styles.section}>
         <h2 className="section-title" id="connector-dead-letter-title">Incidents persistants</h2>
-        <Card><Loading /></Card>
+        <ConnectorDeadLettersSkeleton />
       </section>
     );
   }
@@ -91,14 +114,14 @@ export function ConnectorDeadLettersSection() {
   }
 
   return (
-    <section aria-labelledby="connector-dead-letter-title" style={{ marginTop: 30 }}>
+    <section aria-labelledby="connector-dead-letter-title" className={styles.section}>
       <DataToolbar
         actions={entries.length > 0 ? <Badge tone="bad">{entries.length} ouverte(s)</Badge> : undefined}
       >
-        <h2 className="section-title" id="connector-dead-letter-title" style={{ marginBottom: 4 }}>
+        <h2 className={`section-title ${styles.toolbarTitle}`} id="connector-dead-letter-title">
           Incidents persistants
         </h2>
-        <p className="muted" style={{ marginTop: 0 }}>
+        <p className={`muted ${styles.toolbarDescription}`}>
           Erreurs de collecte ou d’import répétées au moins trois fois. Résoudre un incident ne relance aucune collecte automatiquement.
         </p>
       </DataToolbar>
@@ -108,33 +131,34 @@ export function ConnectorDeadLettersSection() {
 
       {entries.length > 0 && (
         <Card>
-          <DataList data-testid="connector-dead-letter-list">
+          <DataList aria-label="Incidents persistants des connecteurs" data-testid="connector-dead-letter-list">
             {entries.map((entry) => (
               <DataListItem key={entry.id}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="actions" style={{ marginBottom: 7 }}>
+                <div className={styles.itemContent}>
+                  <div className={`actions ${styles.badges}`}>
                     <Badge tone="bad">OPEN</Badge>
                     <Badge tone="warn">{stageLabel(entry.stage)}</Badge>
                     <Badge>{entry.failureCount} échec(s)</Badge>
                     <Badge><code>{entry.connectorCode}</code></Badge>
                   </div>
 
-                  <strong style={{ display: 'block', marginBottom: 5 }}>{incidentLabel(entry)}</strong>
-                  <div className="muted small" style={{ marginBottom: 6 }}>
+                  <strong className={styles.incidentTitle}>{incidentLabel(entry)}</strong>
+                  <div className={`muted small ${styles.metadata}`}>
                     Dernier échec : {formatDate(entry.lastFailedAt)}
                     {entry.externalId && <> · ID : <code>{entry.externalId}</code></>}
                   </div>
-                  <p className="small" style={{ marginBottom: entry.sourceUrl ? 7 : 0 }}>
+                  <p className={`small ${styles.errorMessage}`}>
                     {entry.errorMessage}
                   </p>
                   {entry.sourceUrl && (
-                    <a href={entry.sourceUrl} target="_blank" rel="noreferrer" className="small">
+                    <a href={entry.sourceUrl} target="_blank" rel="noreferrer" className={`small ${styles.sourceLink}`}>
                       Ouvrir la fiche source
                     </a>
                   )}
                 </div>
 
                 <Button
+                  className={styles.resolveAction}
                   variant="secondary"
                   size="small"
                   disabled={busyId !== null}

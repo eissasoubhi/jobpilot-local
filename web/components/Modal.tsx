@@ -18,15 +18,19 @@ type ModalProps = {
   ariaLabelledBy?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
   closeOnBackdrop?: boolean;
+  backdropClassName?: string;
+  panelClassName?: string;
 };
 
 export function Modal({
   ariaLabel,
   ariaLabelledBy,
+  backdropClassName = '',
   children,
   closeOnBackdrop = true,
   initialFocusRef,
   onClose,
+  panelClassName = '',
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -87,14 +91,14 @@ export function Modal({
 
   return (
     <div
-      className="modal-backdrop"
+      className={['modal-backdrop', backdropClassName].filter(Boolean).join(' ')}
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
     >
       <div
         ref={panelRef}
-        className="modal"
+        className={['modal', panelClassName].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}

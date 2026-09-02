@@ -6,6 +6,7 @@ import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
+  ButtonLink,
   Card,
   DataList,
   DataListItem,
@@ -19,23 +20,25 @@ import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Cv } from '@/lib/types';
 
+import styles from './cv.module.css';
+
 function CvDocumentsSkeleton() {
   return (
     <SkeletonGroup label="Chargement des CV">
       <DataList aria-hidden="true">
         {[0, 1, 2].map((index) => (
-          <DataListItem key={index}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <DataListItem key={index} className={styles.documentItem}>
+            <div className={styles.skeletonContent}>
               <Skeleton width="58%" height={22} />
-              <div style={{ marginTop: 8 }}>
+              <div className={styles.skeletonBadges}>
                 <Skeleton width="74%" height={16} />
               </div>
-              <div className="actions" style={{ marginTop: 10 }}>
+              <div className={styles.skeletonBadges}>
                 <Skeleton width={82} height={24} />
                 <Skeleton width={92} height={24} />
               </div>
             </div>
-            <div className="actions">
+            <div className={styles.skeletonActions}>
               <Skeleton width={96} height={34} />
               <Skeleton width={84} height={34} />
             </div>
@@ -113,9 +116,9 @@ export default function CvPage() {
         description="L’application choisit le document adapté, sans modifier son contenu."
       />
       {error !== '' && <ErrorBox message={error} />}
-      <div className="grid cols-2">
+      <div className={styles.layout}>
         <Card>
-          <h2 className="section-title">Ajouter un CV</h2>
+          <h2 className={styles.sectionTitle}>Ajouter un CV</h2>
           <form className="stack" onSubmit={(event) => void upload(event)}>
             <FormField label="Nom du CV">
               <input name="name" required placeholder="CV Full-Stack Symfony React" />
@@ -142,14 +145,14 @@ export default function CvPage() {
             {uploadMessage !== '' && (
               <InlineFeedback tone="success">{uploadMessage}</InlineFeedback>
             )}
-            <Button type="submit" loading={uploading}>
+            <Button type="submit" loading={uploading} className={styles.uploadButton}>
               Téléverser
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="section-title">Documents disponibles</h2>
+          <h2 className={styles.sectionTitle}>Documents disponibles</h2>
           {documentsMessage !== '' && (
             <InlineFeedback tone="success">{documentsMessage}</InlineFeedback>
           )}
@@ -160,20 +163,22 @@ export default function CvPage() {
           ) : (
             <DataList aria-label="CV disponibles">
               {items.map((cv) => (
-                <DataListItem key={cv.id}>
-                  <div>
-                    <h3>{cv.name}</h3>
-                    <div className="muted small">
+                <DataListItem key={cv.id} className={styles.documentItem}>
+                  <div className={styles.documentContent}>
+                    <h3 className={styles.documentName}>{cv.name}</h3>
+                    <div className={`muted small ${styles.documentMeta}`}>
                       {cv.originalName} · {(cv.size / 1024).toFixed(0)} Ko
                     </div>
-                    <div className="actions" style={{ marginTop: 8 }}>
+                    <div className={styles.badges}>
                       <Badge tone="blue">{cv.language === 'fr' ? 'Français' : 'Anglais'}</Badge>
                       {cv.defaultForLanguage && <Badge tone="good">Par défaut</Badge>}
                       {cv.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
                     </div>
                   </div>
-                  <div className="actions">
-                    <a className="btn secondary small" href={cv.downloadUrl}>Télécharger</a>
+                  <div className={styles.rowActions}>
+                    <ButtonLink variant="secondary" size="small" href={cv.downloadUrl}>
+                      Télécharger
+                    </ButtonLink>
                     <Button
                       variant="danger"
                       size="small"

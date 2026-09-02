@@ -16,6 +16,8 @@ import {
   type MessageUrgency,
 } from '@/lib/message-urgency';
 
+import styles from './page.module.css';
+
 type MessageCategory =
   | 'JOB_ALERT'
   | 'MARKETING'
@@ -96,17 +98,17 @@ function MessagesSkeleton() {
       <DataList aria-hidden="true">
         {[0, 1, 2].map((index) => (
           <DataListItem key={index}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="actions" style={{ marginBottom: 10 }}>
+            <div className={styles.skeletonBody}>
+              <div className={`actions ${styles.skeletonMeta}`}>
                 <Skeleton width={84} height={24} />
                 <Skeleton width={116} height={24} />
                 <Skeleton width={132} height={16} />
               </div>
               <Skeleton width="72%" height={22} />
-              <div style={{ marginTop: 8 }}><Skeleton width="38%" height={16} /></div>
-              <div style={{ marginTop: 10 }}><Skeleton width="92%" height={16} /></div>
-              <div style={{ marginTop: 7 }}><Skeleton width="76%" height={16} /></div>
-              <div className="actions" style={{ marginTop: 14 }}>
+              <div className={styles.skeletonLine}><Skeleton width="38%" height={16} /></div>
+              <div className={styles.skeletonSnippet}><Skeleton width="92%" height={16} /></div>
+              <div className={styles.skeletonSnippetSecondary}><Skeleton width="76%" height={16} /></div>
+              <div className={`actions ${styles.skeletonActions}`}>
                 <Skeleton width={128} height={32} />
                 <Skeleton width={156} height={32} />
               </div>
@@ -221,7 +223,7 @@ export default function MessagesPage() {
 
       {items !== null && counts.urgent > 0 && (
         <InlineFeedback className="mt-16" tone="warning">
-          <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className={styles.urgentFeedbackRow}>
             <div>
               <strong>{counts.urgent} message(s) urgent(s) à traiter.</strong>{' '}
               Les raisons sont affichées sur chaque message ; JobPilot ne répond jamais automatiquement à ta place.
@@ -233,7 +235,7 @@ export default function MessagesPage() {
         </InlineFeedback>
       )}
 
-      <div className="grid cols-4" style={{ marginTop: 16, marginBottom: 18 }}>
+      <div className={styles.statsGrid}>
         <Card className="stat-card"><span>Urgents</span><strong>{counts.urgent}</strong></Card>
         <Card className="stat-card"><span>À traiter</span><strong>{counts.actionRequired}</strong></Card>
         <Card className="stat-card"><span>Entretiens</span><strong>{counts.interviews}</strong></Card>
@@ -242,7 +244,7 @@ export default function MessagesPage() {
 
       <Card>
         <DataToolbar>
-          <div style={{ maxWidth: 360 }}>
+          <div className={styles.filterField}>
             <FormField label="Afficher">
               <select value={filter} onChange={(event) => setFilter(event.target.value)}>
                 <option value="ALL">Tous les messages</option>
@@ -272,7 +274,7 @@ export default function MessagesPage() {
 
               return (
                 <DataListItem key={message.id}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className={styles.messageContent}>
                     <div className="actions">
                       {message.urgency.level === 'URGENT' && <Badge tone="bad">Urgent</Badge>}
                       {message.urgency.level === 'PRIORITY' && <Badge tone="warn">Prioritaire</Badge>}
@@ -294,31 +296,31 @@ export default function MessagesPage() {
                     <p className="small">{message.snippet}</p>
 
                     {message.urgency.level !== 'NORMAL' && (
-                      <div className="notice warning" style={{ marginTop: 10 }}>
+                      <div className={`notice warning ${styles.urgencyNotice}`}>
                         {message.urgency.recommendedAction && <strong>{message.urgency.recommendedAction}.</strong>}{' '}
                         {message.urgency.reasons.join(' ')}
                       </div>
                     )}
 
                     {message.classificationReason && (
-                      <div className="muted small" style={{ marginTop: 8 }}>Analyse : {message.classificationReason}</div>
+                      <div className={`muted small ${styles.classificationReason}`}>Analyse : {message.classificationReason}</div>
                     )}
 
                     {message.jobOffer && (
-                      <div className="notice" style={{ marginTop: 12 }}>
+                      <div className={`notice ${styles.associatedOffer}`}>
                         Offre associée : <strong>{message.jobOffer.title}</strong> — {message.jobOffer.company}
                         {message.application && <> · Candidature #{message.application.id} : {message.application.status}</>}
                       </div>
                     )}
 
                     {message.bodyText && message.bodyText !== message.snippet && (
-                      <details style={{ marginTop: 12 }}>
+                      <details className={styles.details}>
                         <summary className="small">Afficher le contenu analysé</summary>
                         <pre className="message-body">{message.bodyText}</pre>
                       </details>
                     )}
 
-                    <div className="actions" style={{ marginTop: 14 }}>
+                    <div className={`actions ${styles.messageActions}`}>
                       {message.gmailUrl && (
                         <ButtonLink
                           href={message.gmailUrl}
@@ -356,7 +358,7 @@ export default function MessagesPage() {
                     </div>
 
                     {transactionAction && !message.processed && (
-                      <div className="muted small" style={{ marginTop: 7 }}>
+                      <div className={`muted small ${styles.transactionHelp}`}>
                         {transactionAction.help}
                       </div>
                     )}

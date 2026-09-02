@@ -75,23 +75,28 @@ describe('OfferApplicationSummary', () => {
     );
   });
 
-  it('opens a review drawer with offer and preparation context without navigating away', () => {
+  it('opens a review drawer with the shared dialog focus and restore contract', () => {
     render(<OfferApplicationSummary application={application()} />);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Examiner' }));
+    const examineButton = screen.getByRole('button', { name: 'Examiner' });
+    examineButton.focus();
+    fireEvent.click(examineButton);
 
     const dialog = screen.getByRole('dialog', { name: 'Senior Symfony Developer' });
     expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('button', { name: 'Fermer' })).toHaveFocus();
     expect(dialog).toHaveTextContent('Mission Symfony avec API Platform et Docker.');
     expect(dialog).toHaveTextContent('Score : 82 %');
     expect(dialog).toHaveTextContent('Symfony correspond au profil.');
     expect(dialog).toHaveTextContent('CV Symfony FR');
     expect(screen.getByRole('textbox', { name: 'Réponse rémunération' })).toHaveValue('TJM proposé : 500 €');
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(examineButton).toHaveFocus();
   });
 
   it('edits and saves prepared application material from the review drawer', async () => {

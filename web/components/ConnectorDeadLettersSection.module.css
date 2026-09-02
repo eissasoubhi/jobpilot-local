@@ -1,0 +1,73 @@
+.section {
+  margin-top: var(--space-7, 30px);
+}
+
+.toolbarTitle {
+  margin-bottom: var(--space-1, 4px);
+}
+
+.toolbarDescription {
+  margin-top: 0;
+}
+
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.badges {
+  margin-bottom: var(--space-2, 8px);
+}
+
+.incidentTitle {
+  display: block;
+  margin-bottom: var(--space-1, 4px);
+  overflow-wrap: anywhere;
+}
+
+.metadata {
+  margin-bottom: var(--space-2, 8px);
+  overflow-wrap: anywhere;
+}
+
+.errorMessage {
+  margin-bottom: var(--space-2, 8px);
+  overflow-wrap: anywhere;
+}
+
+.errorMessage:last-child {
+  margin-bottom: 0;
+}
+
+.sourceLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.resolveAction {
+  flex: 0 0 auto;
+}
+
+.skeletonList {
+  display: grid;
+  gap: var(--space-3, 12px);
+}
+
+.skeletonItem {
+  display: grid;
+  gap: var(--space-2, 8px);
+}
+
+@media (max-width: 700px) {
+  .resolveAction {
+    width: 100%;
+  }
+
+  .sourceLink {
+    width: 100%;
+  }
+}

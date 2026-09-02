@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
+import { Modal } from '@/components/Modal';
 import { Badge, Button, ErrorBox, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
+
+import styles from './OfferApplicationSummary.module.css';
 
 type OfferApplicationSummaryProps = {
   application: Application;
@@ -29,17 +32,6 @@ export function OfferApplicationSummary({
   useEffect(() => {
     setCurrentApplication(application);
   }, [application]);
-
-  useEffect(() => {
-    if (!reviewOpen) return undefined;
-
-    const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setReviewOpen(false);
-    };
-
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [reviewOpen]);
 
   const saveApplication = async (
     status: string,
@@ -100,25 +92,24 @@ export function OfferApplicationSummary({
 
   return (
     <section
-      className="notice"
+      className={`notice ${styles.summary}`}
       aria-label={`Candidature préparée pour ${currentApplication.jobOffer.title}`}
-      style={{ marginTop: 12 }}
     >
-      <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className={`actions ${styles.summaryHeader}`}>
         <strong>Candidature</strong>
         <Badge tone={applicationStatusTone(currentApplication.status)}>
           {applicationBadgeLabel(currentApplication)}
         </Badge>
       </div>
 
-      <div className="actions" style={{ marginTop: 8 }}>
+      <div className={`actions ${styles.readyBadges}`}>
         {currentApplication.cvDocument && <Badge tone="good">CV prêt</Badge>}
         {hasMessage && <Badge tone="good">Message prêt</Badge>}
         {hasCoverLetter && <Badge tone="good">Lettre prête</Badge>}
         {hasCompensation && <Badge tone="good">Rémunération prête</Badge>}
       </div>
 
-      <div className="actions" style={{ marginTop: 10 }}>
+      <div className={`actions ${styles.summaryActions}`}>
         <Button variant="secondary" size="small" onClick={() => setReviewOpen(true)}>
           Examiner
         </Button>
@@ -134,16 +125,16 @@ export function OfferApplicationSummary({
         )}
       </div>
 
-      <details style={{ marginTop: 10 }}>
-        <summary className="small" style={{ cursor: 'pointer', fontWeight: 700 }}>
+      <details className={styles.details}>
+        <summary className={`small ${styles.detailsSummary}`}>
           Aperçu rapide des éléments préparés
         </summary>
 
-        <div className="stack" style={{ gap: 12, marginTop: 12 }}>
+        <div className={`stack ${styles.previewStack}`}>
           {currentApplication.cvDocument && (
             <div>
               <div className="small muted">CV sélectionné</div>
-              <div className="actions" style={{ marginTop: 5 }}>
+              <div className={`actions ${styles.previewMeta}`}>
                 <strong className="small">{currentApplication.cvDocument.name}</strong>
                 <a
                   className="btn secondary small"
@@ -160,7 +151,7 @@ export function OfferApplicationSummary({
           {hasMessage && (
             <div>
               <div className="small muted">Message préparé</div>
-              <div className="small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55, marginTop: 5 }}>
+              <div className={`small ${styles.previewText}`}>
                 {currentApplication.message}
               </div>
             </div>
@@ -169,7 +160,7 @@ export function OfferApplicationSummary({
           {hasCoverLetter && (
             <div>
               <div className="small muted">Lettre de motivation demandée</div>
-              <div className="small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55, marginTop: 5 }}>
+              <div className={`small ${styles.previewText}`}>
                 {currentApplication.coverLetter}
               </div>
             </div>
@@ -185,227 +176,201 @@ export function OfferApplicationSummary({
       </details>
 
       {reviewOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Fermer l’examen de l’offre"
-            onClick={() => setReviewOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 40,
-              border: 0,
-              background: 'rgba(15, 23, 42, 0.38)',
-              cursor: 'default',
-            }}
-          />
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`offer-review-title-${currentApplication.id}`}
-            style={{
-              position: 'fixed',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              width: 'min(680px, 94vw)',
-              overflowY: 'auto',
-              background: 'var(--surface, #fff)',
-              boxShadow: '-16px 0 40px rgba(15, 23, 42, 0.18)',
-              padding: 24,
-            }}
-          >
-            <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div className="small muted">Examen de l’offre</div>
-                <h2 id={`offer-review-title-${currentApplication.id}`} style={{ marginTop: 4 }}>
-                  {currentApplication.jobOffer.title}
-                </h2>
-                <div className="small muted">
-                  {currentApplication.jobOffer.company || 'Entreprise non renseignée'} · {currentApplication.jobOffer.location || 'Lieu non renseigné'} · {currentApplication.jobOffer.workMode || 'Mode non renseigné'}
-                </div>
+        <Modal
+          ariaLabelledBy={`offer-review-title-${currentApplication.id}`}
+          backdropClassName={styles.reviewBackdrop}
+          panelClassName={styles.reviewDrawer}
+          onClose={() => setReviewOpen(false)}
+        >
+          <div className={`actions ${styles.reviewHeader}`}>
+            <div>
+              <div className="small muted">Examen de l’offre</div>
+              <h2 id={`offer-review-title-${currentApplication.id}`} className={styles.reviewTitle}>
+                {currentApplication.jobOffer.title}
+              </h2>
+              <div className="small muted">
+                {currentApplication.jobOffer.company || 'Entreprise non renseignée'} · {currentApplication.jobOffer.location || 'Lieu non renseigné'} · {currentApplication.jobOffer.workMode || 'Mode non renseigné'}
               </div>
-              <Button variant="secondary" size="small" onClick={() => setReviewOpen(false)}>
-                Fermer
-              </Button>
             </div>
+            <Button variant="secondary" size="small" onClick={() => setReviewOpen(false)}>
+              Fermer
+            </Button>
+          </div>
 
-            <div className="stack" style={{ gap: 18, marginTop: 22 }}>
-              <section>
-                <div className="actions">
-                  <Badge tone="blue">Score : {currentApplication.jobOffer.score} %</Badge>
-                  <Badge>{currentApplication.jobOffer.contractType || 'Contrat inconnu'}</Badge>
-                  <Badge tone={applicationStatusTone(currentApplication.status)}>{applicationBadgeLabel(currentApplication)}</Badge>
-                </div>
-              </section>
+          <div className={`stack ${styles.reviewStack}`}>
+            <section>
+              <div className="actions">
+                <Badge tone="blue">Score : {currentApplication.jobOffer.score} %</Badge>
+                <Badge>{currentApplication.jobOffer.contractType || 'Contrat inconnu'}</Badge>
+                <Badge tone={applicationStatusTone(currentApplication.status)}>{applicationBadgeLabel(currentApplication)}</Badge>
+              </div>
+            </section>
 
-              <section>
-                <strong>Description</strong>
-                <div className="small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 7 }}>
-                  {currentApplication.jobOffer.description || 'Description non disponible.'}
-                </div>
-              </section>
+            <section>
+              <strong>Description</strong>
+              <div className={`small ${styles.reviewDescription}`}>
+                {currentApplication.jobOffer.description || 'Description non disponible.'}
+              </div>
+            </section>
 
-              <section>
-                <strong>Pourquoi ce score ?</strong>
-                {currentApplication.jobOffer.scoreReasons.length > 0 ? (
-                  <ul style={{ marginBottom: 0 }}>
-                    {currentApplication.jobOffer.scoreReasons.map((reason) => <li className="small" key={reason}>{reason}</li>)}
-                  </ul>
-                ) : (
-                  <div className="small muted" style={{ marginTop: 7 }}>Aucune explication détaillée disponible.</div>
-                )}
-              </section>
-
-              {currentApplication.cvDocument && (
-                <section>
-                  <strong>CV sélectionné</strong>
-                  <div className="actions" style={{ marginTop: 7 }}>
-                    <span className="small">{currentApplication.cvDocument.name}</span>
-                    <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
-                      Ouvrir le CV
-                    </a>
-                  </div>
-                </section>
+            <section>
+              <strong>Pourquoi ce score ?</strong>
+              {currentApplication.jobOffer.scoreReasons.length > 0 ? (
+                <ul className={styles.scoreReasons}>
+                  {currentApplication.jobOffer.scoreReasons.map((reason) => <li className="small" key={reason}>{reason}</li>)}
+                </ul>
+              ) : (
+                <div className={`small muted ${styles.emptyReason}`}>Aucune explication détaillée disponible.</div>
               )}
+            </section>
 
+            {currentApplication.cvDocument && (
               <section>
-                <strong>Éléments de candidature</strong>
-                <div className="small muted" style={{ marginTop: 7 }}>
-                  Tu peux ajuster les éléments préparés ici avant d’ouvrir la plateforme d’origine. L’enregistrement reste local à JobPilot et ne déclenche aucun envoi externe.
-                </div>
-                <div className="stack" style={{ gap: 12, marginTop: 12 }}>
-                  <label>
-                    Message préparé
-                    <textarea
-                      aria-label="Message préparé"
-                      value={currentApplication.message}
-                      onChange={(event) => setCurrentApplication({ ...currentApplication, message: event.target.value })}
-                    />
-                  </label>
-
-                  <label>
-                    Lettre de motivation demandée
-                    <textarea
-                      aria-label="Lettre de motivation demandée"
-                      value={currentApplication.coverLetter}
-                      onChange={(event) => setCurrentApplication({ ...currentApplication, coverLetter: event.target.value })}
-                    />
-                  </label>
-
-                  <label>
-                    Réponse rémunération
-                    <input
-                      aria-label="Réponse rémunération"
-                      value={currentApplication.compensationAnswer ?? ''}
-                      onChange={(event) => setCurrentApplication({ ...currentApplication, compensationAnswer: event.target.value })}
-                    />
-                  </label>
-
-                  <label>
-                    Confirmation / référence après envoi
-                    <input
-                      aria-label="Confirmation / référence après envoi"
-                      value={currentApplication.confirmationRef ?? ''}
-                      onChange={(event) => setCurrentApplication({ ...currentApplication, confirmationRef: event.target.value })}
-                    />
-                  </label>
-
-                  <div className="actions">
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      loading={saving}
-                      onClick={() => void savePreparation()}
-                    >
-                      Enregistrer les modifications
-                    </Button>
-                  </div>
+                <strong>CV sélectionné</strong>
+                <div className={`actions ${styles.cvActions}`}>
+                  <span className="small">{currentApplication.cvDocument.name}</span>
+                  <a className="btn secondary small" href={currentApplication.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
+                    Ouvrir le CV
+                  </a>
                 </div>
               </section>
+            )}
 
-              <section>
-                <strong>Décision</strong>
-                <div className="small muted" style={{ marginTop: 7 }}>
-                  Si l’offre ne correspond pas à ton profil, marque-la ici. Elle quittera la boîte À traiter sans être supprimée ni envoyer quoi que ce soit à la plateforme.
-                </div>
-                <div className="actions" style={{ marginTop: 10 }}>
+            <section>
+              <strong>Éléments de candidature</strong>
+              <div className={`small muted ${styles.reviewSectionHint}`}>
+                Tu peux ajuster les éléments préparés ici avant d’ouvrir la plateforme d’origine. L’enregistrement reste local à JobPilot et ne déclenche aucun envoi externe.
+              </div>
+              <div className={`stack ${styles.editorStack}`}>
+                <label>
+                  Message préparé
+                  <textarea
+                    aria-label="Message préparé"
+                    value={currentApplication.message}
+                    onChange={(event) => setCurrentApplication({ ...currentApplication, message: event.target.value })}
+                  />
+                </label>
+
+                <label>
+                  Lettre de motivation demandée
+                  <textarea
+                    aria-label="Lettre de motivation demandée"
+                    value={currentApplication.coverLetter}
+                    onChange={(event) => setCurrentApplication({ ...currentApplication, coverLetter: event.target.value })}
+                  />
+                </label>
+
+                <label>
+                  Réponse rémunération
+                  <input
+                    aria-label="Réponse rémunération"
+                    value={currentApplication.compensationAnswer ?? ''}
+                    onChange={(event) => setCurrentApplication({ ...currentApplication, compensationAnswer: event.target.value })}
+                  />
+                </label>
+
+                <label>
+                  Confirmation / référence après envoi
+                  <input
+                    aria-label="Confirmation / référence après envoi"
+                    value={currentApplication.confirmationRef ?? ''}
+                    onChange={(event) => setCurrentApplication({ ...currentApplication, confirmationRef: event.target.value })}
+                  />
+                </label>
+
+                <div className="actions">
                   <Button
                     variant="secondary"
                     size="small"
                     loading={saving}
-                    disabled={currentApplication.status === 'IGNORED_NOT_MATCH'}
-                    onClick={() => void markIgnoredNotMatch()}
+                    onClick={() => void savePreparation()}
                   >
-                    {currentApplication.status === 'IGNORED_NOT_MATCH'
-                      ? 'Déjà marquée comme non correspondante'
-                      : 'Ne correspond pas à mon profil'}
+                    Enregistrer les modifications
                   </Button>
                 </div>
-              </section>
+              </div>
+            </section>
 
-              <section>
-                <strong>Suivi</strong>
-                <div className="small muted" style={{ marginTop: 7 }}>
-                  Mets à jour ici l’état réel de la candidature. Ces changements servent uniquement au suivi dans JobPilot et ne déclenchent aucun envoi externe.
-                </div>
-                <div className="stack" style={{ gap: 10, marginTop: 10 }}>
-                  <label>
-                    Statut de suivi dans JobPilot
-                    <select
-                      aria-label="Statut de suivi dans JobPilot"
-                      value={currentApplication.status}
-                      disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
-                      onChange={(event) => setCurrentApplication({ ...currentApplication, status: event.target.value })}
-                    >
-                      <option value="READY_TO_SUBMIT">Prête à envoyer</option>
-                      <option value="SUBMISSION_FAILED">Échec de l’envoi automatique</option>
-                      <option value="SUBMITTED">Envoyée</option>
-                      <option value="RECRUITER_REPLIED">Réponse recruteur</option>
-                      <option value="INTERVIEW">Entretien</option>
-                      <option value="REJECTED">Refusée</option>
-                      <option value="OFFER_RECEIVED">Offre reçue</option>
-                      <option value="IGNORED_NOT_MATCH">Ne correspond pas au profil</option>
-                    </select>
-                  </label>
-                  <div className="actions">
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      loading={saving}
-                      disabled={currentApplication.status === 'SUBMISSION_PENDING'}
-                      onClick={() => void saveTrackingStatus()}
-                    >
-                      Enregistrer le statut
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      loading={saving}
-                      disabled={currentApplication.status === 'SUBMITTED'}
-                      onClick={() => void markSubmitted()}
-                    >
-                      {currentApplication.status === 'SUBMITTED'
-                        ? 'Candidature déjà marquée comme envoyée'
-                        : 'J’ai envoyé la candidature'}
-                    </Button>
-                  </div>
-                </div>
-                {notice !== '' && <InlineFeedback tone="success">{notice}</InlineFeedback>}
-                {error !== '' && <ErrorBox message={error} />}
-              </section>
+            <section>
+              <strong>Décision</strong>
+              <div className={`small muted ${styles.reviewSectionHint}`}>
+                Si l’offre ne correspond pas à ton profil, marque-la ici. Elle quittera la boîte À traiter sans être supprimée ni envoyer quoi que ce soit à la plateforme.
+              </div>
+              <div className={`actions ${styles.decisionActions}`}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  loading={saving}
+                  disabled={currentApplication.status === 'IGNORED_NOT_MATCH'}
+                  onClick={() => void markIgnoredNotMatch()}
+                >
+                  {currentApplication.status === 'IGNORED_NOT_MATCH'
+                    ? 'Déjà marquée comme non correspondante'
+                    : 'Ne correspond pas à mon profil'}
+                </Button>
+              </div>
+            </section>
 
-              {currentApplication.jobOffer.sourceUrl && (
-                <section className="actions">
-                  <a className="btn" href={currentApplication.jobOffer.sourceUrl} target="_blank" rel="noreferrer">
-                    Ouvrir la plateforme pour postuler
-                  </a>
-                </section>
-              )}
-            </div>
-          </aside>
-        </>
+            <section>
+              <strong>Suivi</strong>
+              <div className={`small muted ${styles.reviewSectionHint}`}>
+                Mets à jour ici l’état réel de la candidature. Ces changements servent uniquement au suivi dans JobPilot et ne déclenchent aucun envoi externe.
+              </div>
+              <div className={`stack ${styles.trackingStack}`}>
+                <label>
+                  Statut de suivi dans JobPilot
+                  <select
+                    aria-label="Statut de suivi dans JobPilot"
+                    value={currentApplication.status}
+                    disabled={saving || currentApplication.status === 'SUBMISSION_PENDING'}
+                    onChange={(event) => setCurrentApplication({ ...currentApplication, status: event.target.value })}
+                  >
+                    <option value="READY_TO_SUBMIT">Prête à envoyer</option>
+                    <option value="SUBMISSION_FAILED">Échec de l’envoi automatique</option>
+                    <option value="SUBMITTED">Envoyée</option>
+                    <option value="RECRUITER_REPLIED">Réponse recruteur</option>
+                    <option value="INTERVIEW">Entretien</option>
+                    <option value="REJECTED">Refusée</option>
+                    <option value="OFFER_RECEIVED">Offre reçue</option>
+                    <option value="IGNORED_NOT_MATCH">Ne correspond pas au profil</option>
+                  </select>
+                </label>
+                <div className="actions">
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    loading={saving}
+                    disabled={currentApplication.status === 'SUBMISSION_PENDING'}
+                    onClick={() => void saveTrackingStatus()}
+                  >
+                    Enregistrer le statut
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    loading={saving}
+                    disabled={currentApplication.status === 'SUBMITTED'}
+                    onClick={() => void markSubmitted()}
+                  >
+                    {currentApplication.status === 'SUBMITTED'
+                      ? 'Candidature déjà marquée comme envoyée'
+                      : 'J’ai envoyé la candidature'}
+                  </Button>
+                </div>
+              </div>
+              {notice !== '' && <InlineFeedback tone="success">{notice}</InlineFeedback>}
+              {error !== '' && <ErrorBox message={error} />}
+            </section>
+
+            {currentApplication.jobOffer.sourceUrl && (
+              <section className={`actions ${styles.externalAction}`}>
+                <a className="btn" href={currentApplication.jobOffer.sourceUrl} target="_blank" rel="noreferrer">
+                  Ouvrir la plateforme pour postuler
+                </a>
+              </section>
+            )}
+          </div>
+        </Modal>
       )}
     </section>
   );

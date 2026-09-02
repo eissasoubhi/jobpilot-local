@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, Button, ErrorBox, FormField } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Badge, Button, ErrorBox, FormField, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Settings } from '@/lib/types';
@@ -58,6 +59,41 @@ export function parseGlobalCriteriaLines(value: string): string[] {
   }
 
   return [...unique.values()];
+}
+
+function GlobalSearchCriteriaSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement des critères globaux">
+      <div className="stack" aria-hidden="true">
+        <Skeleton width={220} height={22} />
+        <Skeleton width="82%" height={16} />
+        <Skeleton width="68%" height={16} />
+
+        {criterionDefinitions.map((criterion) => (
+          <div className="list-row" key={criterion.key}>
+            <div style={{ flex: 1 }}>
+              <div className="actions">
+                <Skeleton width={110} height={24} />
+                <Skeleton width={82} height={24} />
+                <Skeleton width={150} height={24} />
+              </div>
+              <div style={{ marginTop: 9 }}><Skeleton width="34%" height={16} /></div>
+              <div style={{ marginTop: 7 }}><Skeleton width="88%" height={14} /></div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ marginTop: 8 }}><Skeleton width={210} height={14} /></div>
+        <Skeleton height={118} />
+        <Skeleton width={200} height={14} />
+        <Skeleton height={102} />
+        <Skeleton width={190} height={14} />
+        <Skeleton height={86} />
+        <Skeleton width={210} height={14} />
+        <Skeleton width={180} height={40} />
+      </div>
+    </SkeletonGroup>
+  );
 }
 
 export function GlobalSearchCriteriaPanel() {
@@ -120,7 +156,7 @@ export function GlobalSearchCriteriaPanel() {
   };
 
   if (settings === null && error === '') {
-    return <p className="small muted">Chargement des critères globaux…</p>;
+    return <GlobalSearchCriteriaSkeleton />;
   }
 
   return (
@@ -150,7 +186,7 @@ export function GlobalSearchCriteriaPanel() {
       </div>
 
       {error !== '' && <ErrorBox message={error} />}
-      {message !== '' && <div className="success-box" role="status">{message}</div>}
+      {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
 
       {settings && (
         <div className="stack" style={{ marginTop: 18 }}>

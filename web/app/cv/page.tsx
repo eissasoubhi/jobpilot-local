@@ -12,6 +12,7 @@ import {
   Empty,
   ErrorBox,
   FormField,
+  InlineFeedback,
   PageHeader,
 } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -48,6 +49,10 @@ function CvDocumentsSkeleton() {
 export default function CvPage() {
   const [items, setItems] = useState<Cv[] | null>(null);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [documentsMessage, setDocumentsMessage] = useState('');
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -65,25 +70,39 @@ export default function CvPage() {
   const upload = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setError('');
+    setUploadMessage('');
+    setDocumentsMessage('');
+    setUploading(true);
     const form = event.currentTarget;
 
     try {
       await api<Cv>('/cvs', { method: 'POST', body: new FormData(form) });
       form.reset();
       await load();
+      setUploadMessage('CV téléversé.');
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    } finally {
+      setUploading(false);
     }
   };
 
   const remove = async (id: number): Promise<void> => {
     if (!window.confirm('Supprimer ce CV ?')) return;
 
+    setError('');
+    setUploadMessage('');
+    setDocumentsMessage('');
+    setRemovingId(id);
+
     try {
       await api(`/cvs/${id}`, { method: 'DELETE' });
       await load();
+      setDocumentsMessage('CV supprimé.');
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -120,12 +139,20 @@ export default function CvPage() {
               <input name="defaultForLanguage" type="checkbox" value="true" />
               CV par défaut pour cette langue
             </label>
-            <Button type="submit">Téléverser</Button>
+            {uploadMessage !== '' && (
+              <InlineFeedback tone="success">{uploadMessage}</InlineFeedback>
+            )}
+            <Button type="submit" loading={uploading}>
+              Téléverser
+            </Button>
           </form>
         </Card>
 
         <Card>
           <h2 className="section-title">Documents disponibles</h2>
+          {documentsMessage !== '' && (
+            <InlineFeedback tone="success">{documentsMessage}</InlineFeedback>
+          )}
           {items === null ? (
             <CvDocumentsSkeleton />
           ) : items.length === 0 ? (
@@ -147,7 +174,13 @@ export default function CvPage() {
                   </div>
                   <div className="actions">
                     <a className="btn secondary small" href={cv.downloadUrl}>Télécharger</a>
-                    <Button variant="danger" size="small" onClick={() => void remove(cv.id)}>
+                    <Button
+                      variant="danger"
+                      size="small"
+                      loading={removingId === cv.id}
+                      disabled={removingId !== null && removingId !== cv.id}
+                      onClick={() => void remove(cv.id)}
+                    >
                       Supprimer
                     </Button>
                   </div>

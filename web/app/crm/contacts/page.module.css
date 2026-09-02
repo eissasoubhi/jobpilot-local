@@ -10,6 +10,11 @@
   margin: 10px 0 0;
 }
 
+.skeletonField {
+  display: grid;
+  gap: 8px;
+}
+
 .contactMain {
   flex: 1;
   min-width: 0;

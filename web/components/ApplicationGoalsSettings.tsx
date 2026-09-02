@@ -2,7 +2,8 @@
 
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { Button, Card, ErrorBox, FormField, InlineFeedback, Loading } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Button, Card, ErrorBox, FormField, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 import { getErrorMessage } from '@/lib/errors';
@@ -88,7 +89,20 @@ export function ApplicationGoalsSettings() {
         <p className="muted">Configure ici le rythme de candidatures. La Review Queue affiche uniquement la progression.</p>
 
         {snapshot === null && error === '' ? (
-          <Loading />
+          <SkeletonGroup label="Chargement des objectifs de candidatures" className={styles.settingsForm}>
+            <div className={styles.settingsGrid}>
+              {[0, 1, 2].map((index) => (
+                <div key={index} className={styles.goalSkeletonField}>
+                  <Skeleton width="48%" height={12} />
+                  <Skeleton height={40} />
+                </div>
+              ))}
+            </div>
+            <div className={styles.settingsFooter}>
+              <Skeleton width="58%" height={12} />
+              <Skeleton width={180} height={34} />
+            </div>
+          </SkeletonGroup>
         ) : (
           <form className={styles.settingsForm} onSubmit={(event) => void save(event)}>
             <div className={styles.settingsGrid}>

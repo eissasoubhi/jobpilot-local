@@ -1,4 +1,5 @@
-import { Badge, Card } from '@/components/UI';
+import styles from './ConnectorRoadmapSection.module.css';
+import { Badge, Card, DataList, DataListItem, DataToolbar } from '@/components/UI';
 import {
   connectorRoadmap,
   type ConnectorRoadmapEntry,
@@ -54,13 +55,17 @@ export function ConnectorRoadmapSection() {
   const reviewCount = connectorRoadmap.filter((entry) => entry.status === 'UNDER_REVIEW').length;
 
   return (
-    <section aria-labelledby="connector-roadmap-title" style={{ marginTop: 30 }}>
-      <h2 className="section-title" id="connector-roadmap-title">Matrice des plateformes suivies</h2>
-      <p className="muted" style={{ marginTop: -6 }}>
-        Cette matrice couvre les plateformes demandées et indique le canal réellement disponible. Une ligne informative ne crée jamais un connecteur, une synchronisation ou un droit de scraper.
-      </p>
+    <section aria-labelledby="connector-roadmap-title" className={styles.section}>
+      <DataToolbar>
+        <h2 className={`section-title ${styles.toolbarTitle}`} id="connector-roadmap-title">
+          Matrice des plateformes suivies
+        </h2>
+        <p className={`muted ${styles.toolbarDescription}`}>
+          Cette matrice couvre les plateformes demandées et indique le canal réellement disponible. Une ligne informative ne crée jamais un connecteur, une synchronisation ou un droit de scraper.
+        </p>
+      </DataToolbar>
 
-      <div className="actions" style={{ marginBottom: 14 }}>
+      <div className={styles.summaryBadges} aria-label="Résumé de la couverture des plateformes">
         <Badge tone="good">{operationalCount} opérationnelle(s)</Badge>
         <Badge tone="blue">{plannedCount} canal/canaux officiel(s) planifié(s)</Badge>
         <Badge tone="warn">{restrictedCount} restreinte(s)</Badge>
@@ -68,34 +73,32 @@ export function ConnectorRoadmapSection() {
       </div>
 
       <Card>
-        <div className="stack" data-testid="connector-roadmap-list">
+        <DataList aria-label="Matrice des plateformes suivies" data-testid="connector-roadmap-list">
           {connectorRoadmap.map((entry) => (
-            <div
-              className="list-row"
+            <DataListItem
               data-roadmap-connector={entry.code}
               data-testid={`roadmap-connector-${entry.code}`}
               key={entry.code}
-              style={{ alignItems: 'flex-start' }}
             >
-              <div style={{ flex: 1 }}>
-                <div className="actions" style={{ marginBottom: 7 }}>
+              <div className={styles.itemContent}>
+                <div className={styles.badges}>
                   <Badge tone={statusTone(entry.status)}>{statusLabel(entry.status)}</Badge>
                   {entry.modes.map((mode) => (
                     <Badge key={mode} tone="neutral">{modeLabel(mode)}</Badge>
                   ))}
                 </div>
 
-                <strong style={{ display: 'block', marginBottom: 5 }}>{entry.name}</strong>
-                <div className="muted small">Code : <code>{entry.code}</code></div>
-                <p className="small" style={{ marginBottom: 5 }}>{roadmapExplanation(entry)}</p>
-                <p className="small muted" style={{ marginBottom: 5 }}>{entry.note}</p>
-                <p className="small" style={{ marginBottom: 0 }}>
+                <strong className={styles.title}>{entry.name}</strong>
+                <div className={`muted small ${styles.code}`}>Code : <code>{entry.code}</code></div>
+                <p className={`small ${styles.explanation}`}>{roadmapExplanation(entry)}</p>
+                <p className={`small muted ${styles.note}`}>{entry.note}</p>
+                <p className={`small ${styles.nextStep}`}>
                   <strong>Étape suivante :</strong> {entry.nextStep}
                 </p>
               </div>
-            </div>
+            </DataListItem>
           ))}
-        </div>
+        </DataList>
       </Card>
     </section>
   );

@@ -1,0 +1,62 @@
+.section {
+  margin-top: var(--space-7, 30px);
+}
+
+.toolbarTitle {
+  margin-bottom: var(--space-1, 4px);
+}
+
+.toolbarDescription {
+  margin-top: 0;
+}
+
+.summaryBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-4, 16px);
+}
+
+.itemContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.title {
+  display: block;
+  margin-bottom: var(--space-1, 4px);
+  overflow-wrap: anywhere;
+}
+
+.code,
+.explanation,
+.note {
+  overflow-wrap: anywhere;
+}
+
+.explanation,
+.note {
+  margin-bottom: var(--space-1, 4px);
+}
+
+.nextStep {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .summaryBadges {
+    align-items: stretch;
+  }
+
+  .summaryBadges > * {
+    max-width: 100%;
+  }
+}

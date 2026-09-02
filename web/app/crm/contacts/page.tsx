@@ -37,13 +37,13 @@ function CrmContactsSkeleton() {
     <SkeletonGroup label="Chargement des contacts CRM">
       <Card>
         <div className="form-grid" aria-hidden="true">
-          <div>
+          <div className={styles.skeletonField}>
             <Skeleton width="62%" height={16} />
-            <div className="mt-8"><Skeleton height={42} /></div>
+            <Skeleton height={42} />
           </div>
-          <div>
+          <div className={styles.skeletonField}>
             <Skeleton width="42%" height={16} />
-            <div className="mt-8"><Skeleton height={42} /></div>
+            <Skeleton height={42} />
           </div>
         </div>
         <div className={`actions ${styles.summary}`} aria-hidden="true">

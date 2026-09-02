@@ -2,6 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
@@ -11,12 +12,38 @@ import {
   Empty,
   ErrorBox,
   FormField,
-  Loading,
   PageHeader,
 } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Cv } from '@/lib/types';
+
+function CvDocumentsSkeleton() {
+  return (
+    <SkeletonGroup label="Chargement des CV">
+      <DataList aria-hidden="true">
+        {[0, 1, 2].map((index) => (
+          <DataListItem key={index}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Skeleton width="58%" height={22} />
+              <div style={{ marginTop: 8 }}>
+                <Skeleton width="74%" height={16} />
+              </div>
+              <div className="actions" style={{ marginTop: 10 }}>
+                <Skeleton width={82} height={24} />
+                <Skeleton width={92} height={24} />
+              </div>
+            </div>
+            <div className="actions">
+              <Skeleton width={96} height={34} />
+              <Skeleton width={84} height={34} />
+            </div>
+          </DataListItem>
+        ))}
+      </DataList>
+    </SkeletonGroup>
+  );
+}
 
 export default function CvPage() {
   const [items, setItems] = useState<Cv[] | null>(null);
@@ -100,7 +127,7 @@ export default function CvPage() {
         <Card>
           <h2 className="section-title">Documents disponibles</h2>
           {items === null ? (
-            <Loading />
+            <CvDocumentsSkeleton />
           ) : items.length === 0 ? (
             <Empty>Aucun CV téléversé.</Empty>
           ) : (

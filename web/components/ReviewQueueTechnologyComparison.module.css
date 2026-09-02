@@ -2,9 +2,9 @@
   display: grid;
   gap: 12px;
   padding: 14px 15px;
-  border: 1px solid #dfe4ef;
+  border: 1px solid var(--line);
   border-radius: 13px;
-  background: #fbfcff;
+  background: var(--panel);
 }
 
 .header {
@@ -38,13 +38,14 @@
   align-content: start;
   gap: 7px;
   padding: 10px;
-  border: 1px solid #e6e9f0;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--panel);
+  overflow-wrap: anywhere;
 }
 
 .group strong {
-  color: #334155;
+  color: var(--text);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -58,6 +59,7 @@
 .chip {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-height: 25px;
   padding: 4px 7px;
   border: 1px solid transparent;
@@ -65,34 +67,35 @@
   font-size: 11px;
   font-weight: 750;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .primary {
-  color: #314ac7;
-  background: #eef1ff;
-  border-color: #dce2ff;
+  color: var(--primary);
+  background: var(--primary2);
+  border-color: var(--line);
 }
 
 .match {
-  color: #12643f;
-  background: #e9f8f0;
-  border-color: #cdebdc;
+  color: var(--good);
+  background: #e8f7ef;
+  border-color: var(--line);
 }
 
 .missing {
-  color: #a61b13;
-  background: #fff0ef;
-  border-color: #f4c7c3;
+  color: var(--bad);
+  background: #ffefed;
+  border-color: var(--line);
 }
 
 .secondary {
-  color: #6f4d12;
-  background: #fff7e8;
-  border-color: #f1dfb7;
+  color: var(--warn);
+  background: #fff4dd;
+  border-color: var(--line);
 }
 
 .empty {
-  color: #8a94a6;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -102,7 +105,7 @@
   align-items: flex-start;
   gap: 9px;
   padding-top: 2px;
-  color: #6b7587;
+  color: var(--muted);
   font-size: 11px;
 }
 

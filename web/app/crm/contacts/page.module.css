@@ -1,0 +1,96 @@
+.feedback {
+  margin-bottom: 16px;
+}
+
+.summary {
+  margin-top: 12px;
+}
+
+.helperText {
+  margin: 10px 0 0;
+}
+
+.skeletonField {
+  display: grid;
+  gap: 8px;
+}
+
+.contactMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.organizationLine {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  margin-top: 7px;
+}
+
+.badges :global(.badge) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.sourceLine {
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+
+.skeletonList {
+  display: grid;
+  gap: 10px;
+}
+
+.skeletonItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.skeletonItem:last-child {
+  border-bottom: 0;
+}
+
+.skeletonMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .skeletonItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contactMain + :global(.btn) {
+    width: 100%;
+  }
+
+  .summary {
+    align-items: stretch;
+  }
+
+  .summary :global(.badge) {
+    justify-content: center;
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 520px) {
+  .summary {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .summary :global(.badge) {
+    width: 100%;
+  }
+}

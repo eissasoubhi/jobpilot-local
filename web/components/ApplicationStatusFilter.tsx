@@ -10,6 +10,8 @@ import {
 } from '@/lib/application-status';
 import type { Application } from '@/lib/types';
 
+import styles from './ApplicationStatusFilter.module.css';
+
 type ApplicationStatusFilterProps = {
   applications: readonly Application[];
   value: ApplicationStatusFilterValue;
@@ -45,15 +47,17 @@ export function ApplicationStatusFilter({
   });
 
   return (
-    <div className="notice" style={{ marginBottom: 14 }}>
-      <FilterTabs
-        ariaLabel="Filtres rapides des candidatures"
-        options={quickOptions}
-        value={value}
-        onChange={onChange}
-      />
+    <div className={styles.panel}>
+      <div className={styles.quickFilters}>
+        <FilterTabs
+          ariaLabel="Filtres rapides des candidatures"
+          options={quickOptions}
+          value={value}
+          onChange={onChange}
+        />
+      </div>
 
-      <div style={{ marginTop: 14 }}>
+      <div className={styles.statusField}>
         <FormField label="Filtrer les candidatures par statut">
           <select
             id="application-status-filter"
@@ -69,11 +73,9 @@ export function ApplicationStatusFilter({
         </FormField>
       </div>
 
-      <div style={{ marginTop: 8 }}>
-        <InlineFeedback>
-          {visibleCount} candidature(s) affichée(s) sur {applications.length}.
-        </InlineFeedback>
-      </div>
+      <InlineFeedback className={styles.summary}>
+        {visibleCount} candidature(s) affichée(s) sur {applications.length}.
+      </InlineFeedback>
     </div>
   );
 }

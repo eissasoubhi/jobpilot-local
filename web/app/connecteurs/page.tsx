@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
@@ -11,7 +12,6 @@ import {
   Empty,
   ErrorBox,
   InlineFeedback,
-  Loading,
   PageHeader,
 } from '@/components/UI';
 import { api } from '@/lib/api';
@@ -95,6 +95,55 @@ function complianceTone(status: SourceConnector['policy']['complianceStatus']): 
   if (status === 'AUTHORIZED_ONLY') return 'blue';
   if (status === 'EMAIL_OR_EXTENSION_ONLY' || status === 'UNDER_REVIEW') return 'warn';
   return 'bad';
+}
+
+function ConnectorListSkeleton() {
+  return (
+    <Card>
+      <SkeletonGroup label="Chargement des connecteurs">
+        <DataList aria-hidden="true">
+          {[0, 1, 2].map((item) => (
+            <DataListItem key={item}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="actions" style={{ marginBottom: 8 }}>
+                  <Skeleton width={76} height={24} />
+                  <Skeleton width={92} height={24} />
+                  <Skeleton width={112} height={24} />
+                </div>
+                <Skeleton width="42%" height={22} />
+                <div style={{ marginTop: 10 }}><Skeleton width="68%" /></div>
+                <div style={{ marginTop: 12 }}><Skeleton width="88%" height={32} /></div>
+                <div style={{ marginTop: 14 }}><Skeleton width={220} height={34} /></div>
+              </div>
+            </DataListItem>
+          ))}
+        </DataList>
+      </SkeletonGroup>
+    </Card>
+  );
+}
+
+function ConnectorHistorySkeleton() {
+  return (
+    <SkeletonGroup label="Chargement de l’historique des synchronisations">
+      <DataList aria-hidden="true">
+        {[0, 1, 2].map((item) => (
+          <DataListItem key={item}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="actions" style={{ marginBottom: 6 }}>
+                <Skeleton width={74} height={24} />
+                <Skeleton width={88} height={24} />
+                <Skeleton width={66} height={24} />
+              </div>
+              <Skeleton width="36%" height={22} />
+              <div style={{ marginTop: 8 }}><Skeleton width="28%" /></div>
+              <div style={{ marginTop: 10 }}><Skeleton width="76%" height={28} /></div>
+            </div>
+          </DataListItem>
+        ))}
+      </DataList>
+    </SkeletonGroup>
+  );
 }
 
 export default function ConnectorsPage() {
@@ -187,7 +236,7 @@ export default function ConnectorsPage() {
       )}
 
       {connectors === null ? (
-        <Loading />
+        <ConnectorListSkeleton />
       ) : connectors.length === 0 ? (
         <Card><Empty>Aucun connecteur n’est enregistré.</Empty></Card>
       ) : (
@@ -332,7 +381,7 @@ export default function ConnectorsPage() {
       <p className="muted" style={{ marginTop: -6 }}>Les vingt dernières exécutions, manuelles ou planifiées.</p>
       <Card>
         {history === null ? (
-          <Loading />
+          <ConnectorHistorySkeleton />
         ) : history.length === 0 ? (
           <Empty>Aucune synchronisation enregistrée pour le moment.</Empty>
         ) : (

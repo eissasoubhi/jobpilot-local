@@ -87,8 +87,11 @@ export default function ReportingPage() {
         title="Reporting candidatures"
         description="Indicateurs locaux calculés uniquement depuis les candidatures déjà enregistrées dans JobPilot."
       />
-      {error !== '' && <ErrorBox message={error} />}
-      {summary === null ? (
+      {error !== '' ? (
+        <Card>
+          <ErrorBox message={error} />
+        </Card>
+      ) : summary === null ? (
         <ReportingSkeleton />
       ) : summary.total === 0 ? (
         <Card><Empty>Aucune candidature n’est disponible pour calculer les indicateurs.</Empty></Card>

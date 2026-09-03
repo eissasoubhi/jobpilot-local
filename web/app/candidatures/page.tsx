@@ -66,16 +66,17 @@ export default function ApplicationsPage() {
   const [items, setItems] = useState<Application[] | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatusFilterValue>('ALL');
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
     try {
       setItems(await api<Application[]>('/applications'));
-      setError('');
+      setLoadError('');
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setLoadError(getErrorMessage(caughtError));
     }
   }, []);
 
@@ -104,10 +105,10 @@ export default function ApplicationsPage() {
       });
       setSelected(updated);
       setNotice(successMessage);
-      setError('');
+      setActionError('');
       await load();
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setActionError(getErrorMessage(caughtError));
     } finally {
       setSaving(false);
     }
@@ -126,16 +127,16 @@ export default function ApplicationsPage() {
     try {
       await navigator.clipboard.writeText(value);
       setNotice(`${label} copié dans le presse-papiers.`);
-      setError('');
+      setActionError('');
     } catch {
-      setError(`Impossible de copier ${label.toLowerCase()}.`);
+      setActionError(`Impossible de copier ${label.toLowerCase()}.`);
     }
   };
 
   const openApplication = (application: Application): void => {
     setSelected(application);
     setNotice('');
-    setError('');
+    setActionError('');
   };
 
   const filteredItems = items === null ? null : filterApplications(items, statusFilter);
@@ -146,11 +147,11 @@ export default function ApplicationsPage() {
         title="Candidatures"
         description="Suis et filtre les candidatures préparées, envoyées manuellement ou transmises automatiquement par un canal officiel autorisé."
       />
-      {error !== '' && <ErrorBox message={error} />}
+      {loadError !== '' && <ErrorBox message={loadError} />}
 
       <Card>
         {items === null || filteredItems === null ? (
-          <ApplicationsSkeleton />
+          loadError === '' ? <ApplicationsSkeleton /> : null
         ) : items.length === 0 ? (
           <Empty>Aucune candidature préparée.</Empty>
         ) : (
@@ -224,7 +225,7 @@ export default function ApplicationsPage() {
           />
 
           {notice !== '' && <InlineFeedback tone="success">{notice}</InlineFeedback>}
-          {error !== '' && <ErrorBox message={error} />}
+          {actionError !== '' && <ErrorBox message={actionError} />}
 
           {selected.status === 'SUBMITTED' && selected.channel === 'Gmail automatique' ? (
             <InlineFeedback>

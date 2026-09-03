@@ -81,7 +81,7 @@
 .details summary {
   width: fit-content;
   max-width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   border-radius: 10px;
@@ -115,6 +115,7 @@
 
   .urgentFeedbackRow > :last-child {
     width: 100%;
+    min-height: 44px;
   }
 
   .statsGrid {
@@ -125,6 +126,10 @@
     width: 100%;
   }
 
+  .filterField select {
+    min-height: 44px;
+  }
+
   .messageActions {
     display: grid;
     grid-template-columns: 1fr;
@@ -132,9 +137,6 @@
 
   .messageActions > * {
     width: 100%;
-  }
-
-  .details summary {
     min-height: 44px;
   }
 }

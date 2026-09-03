@@ -84,13 +84,13 @@
   min-height: 40px;
   display: flex;
   align-items: center;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   cursor: pointer;
   overflow-wrap: anywhere;
 }
 
 .details summary:focus-visible {
-  outline: 3px solid var(--focus-ring);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 

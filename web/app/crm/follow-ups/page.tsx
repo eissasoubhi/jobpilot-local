@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Badge, Button, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, FormField, InlineFeedback, PageHeader } from '@/components/UI';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import { api } from '@/lib/api';
 import { formatFollowUpDate, followUpDueLabel, type CrmFollowUpStatus, type CrmFollowUpTask } from '@/lib/crm-follow-ups';
 import { getErrorMessage } from '@/lib/errors';
 import type { CrmDirectory } from '@/lib/types';
+
+import styles from './page.module.css';
 
 export default function CrmFollowUpsPage() {
   const [tasks, setTasks] = useState<CrmFollowUpTask[] | null>(null);
@@ -75,14 +78,30 @@ export default function CrmFollowUpsPage() {
   return (
     <>
       <PageHeader title="Relances CRM" description="Planifie et suis des rappels locaux sans envoyer automatiquement de message." />
-      {notice !== '' && <InlineFeedback tone="success" className="mb-16">{notice}</InlineFeedback>}
+      {notice !== '' && <InlineFeedback tone="success" className={styles.feedback}>{notice}</InlineFeedback>}
       {error !== '' && <ErrorBox message={error} />}
 
       <Card>
         <h2 className="section-title">Nouvelle relance</h2>
-        {directory === null ? <Loading /> : directory.organizations.length === 0 ? <Empty>Aucune organisation CRM disponible.</Empty> : (
-          <div className="stack">
-            <div className="form-grid">
+        {directory === null ? (
+          <SkeletonGroup label="Chargement du formulaire de relance" className={styles.formSkeleton}>
+            <div className={styles.formSkeletonGrid}>
+              {Array.from({ length: 4 }, (_, index) => (
+                <div className={styles.skeletonField} key={index}>
+                  <Skeleton height={14} width="38%" />
+                  <Skeleton height={42} />
+                </div>
+              ))}
+            </div>
+            <div className={styles.skeletonField}>
+              <Skeleton height={14} width="24%" />
+              <Skeleton height={84} />
+            </div>
+            <Skeleton height={40} width={150} />
+          </SkeletonGroup>
+        ) : directory.organizations.length === 0 ? <Empty>Aucune organisation CRM disponible.</Empty> : (
+          <div className={styles.formStack}>
+            <div className={styles.formGrid}>
               <FormField label="Organisation">
                 <select
                   id="follow-up-organization"
@@ -117,7 +136,7 @@ export default function CrmFollowUpsPage() {
             <FormField label="Note facultative">
               <textarea id="follow-up-note" value={note} maxLength={2000} disabled={busy} onChange={(event) => setNote(event.target.value)} />
             </FormField>
-            <div>
+            <div className={styles.primaryAction}>
               <Button
                 type="button"
                 loading={busy}
@@ -143,22 +162,37 @@ export default function CrmFollowUpsPage() {
             </FormField>
           )}
         >
-          <h2 className="section-title" style={{ margin: 0 }}>Tâches</h2>
+          <h2 className={`section-title ${styles.toolbarTitle}`}>Tâches</h2>
         </DataToolbar>
-        {tasks === null ? <Loading /> : tasks.length === 0 ? <Empty>Aucune relance dans cette vue.</Empty> : (
+        {tasks === null ? (
+          <SkeletonGroup label="Chargement des relances CRM" className={styles.listSkeleton}>
+            {Array.from({ length: 3 }, (_, index) => (
+              <div className={styles.skeletonItem} key={index}>
+                <div className={styles.skeletonMain}>
+                  <Skeleton height={20} width="34%" />
+                  <Skeleton height={18} width="62%" />
+                  <Skeleton height={14} width="48%" />
+                </div>
+                <Skeleton height={36} width={128} />
+              </div>
+            ))}
+          </SkeletonGroup>
+        ) : tasks.length === 0 ? <Empty>Aucune relance dans cette vue.</Empty> : (
           <DataList aria-label="Relances CRM">
             {tasks.map((task) => {
               const organization = directory?.organizations.find((item) => item.key === task.organizationKey);
               const contact = organization?.contacts.find((item) => item.key === task.contactKey);
               const due = followUpDueLabel(task);
               return <DataListItem key={task.id}>
-                <div style={{ flex: 1 }}>
-                  <div className="actions"><Badge tone={due === 'OVERDUE' ? 'bad' : due === 'TODAY' ? 'warn' : due === 'COMPLETED' ? 'good' : 'blue'}>{due === 'OVERDUE' ? 'En retard' : due === 'TODAY' ? 'Aujourd’hui' : due === 'COMPLETED' ? 'Terminée' : 'À venir'}</Badge><Badge>{formatFollowUpDate(task.dueAt)}</Badge></div>
-                  <strong>{task.title}</strong>
-                  <div className="small muted">{organization?.name ?? task.organizationKey}{contact ? ` · ${contact.name || contact.email || contact.key}` : ''}</div>
-                  {task.note && <p className="small" style={{ marginBottom: 0 }}>{task.note}</p>}
+                <div className={styles.taskMain}>
+                  <div className={styles.taskBadges}><Badge tone={due === 'OVERDUE' ? 'bad' : due === 'TODAY' ? 'warn' : due === 'COMPLETED' ? 'good' : 'blue'}>{due === 'OVERDUE' ? 'En retard' : due === 'TODAY' ? 'Aujourd’hui' : due === 'COMPLETED' ? 'Terminée' : 'À venir'}</Badge><Badge>{formatFollowUpDate(task.dueAt)}</Badge></div>
+                  <strong className={styles.taskTitle}>{task.title}</strong>
+                  <div className={`small muted ${styles.taskMeta}`}>{organization?.name ?? task.organizationKey}{contact ? ` · ${contact.name || contact.email || contact.key}` : ''}</div>
+                  {task.note && <p className={`small ${styles.taskNote}`}>{task.note}</p>}
                 </div>
-                <Button variant="secondary" size="small" type="button" disabled={busy} onClick={() => void setCompleted(task, !task.completed)}>{task.completed ? 'Rouvrir' : 'Marquer terminée'}</Button>
+                <div className={styles.taskAction}>
+                  <Button variant="secondary" size="small" type="button" disabled={busy} onClick={() => void setCompleted(task, !task.completed)}>{task.completed ? 'Rouvrir' : 'Marquer terminée'}</Button>
+                </div>
               </DataListItem>;
             })}
           </DataList>

@@ -1,0 +1,126 @@
+.feedback {
+  margin-bottom: var(--space-4, 16px);
+}
+
+.formStack {
+  display: grid;
+  gap: var(--space-4, 16px);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4, 16px);
+}
+
+.primaryAction {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.toolbarTitle {
+  margin: 0;
+}
+
+.taskMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.taskBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.taskBadges :global(.badge) {
+  max-width: 100%;
+}
+
+.taskTitle,
+.taskMeta,
+.taskNote {
+  overflow-wrap: anywhere;
+}
+
+.taskMeta {
+  margin-top: var(--space-1, 4px);
+}
+
+.taskNote {
+  margin: var(--space-2, 8px) 0 0;
+}
+
+.taskAction {
+  flex: 0 0 auto;
+}
+
+.formSkeleton,
+.listSkeleton {
+  display: grid;
+  gap: var(--space-4, 16px);
+}
+
+.formSkeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4, 16px);
+}
+
+.skeletonField {
+  display: grid;
+  gap: var(--space-2, 8px);
+}
+
+.skeletonItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: var(--space-3, 12px) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.skeletonItem:last-child {
+  border-bottom: 0;
+}
+
+.skeletonMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2, 8px);
+}
+
+@media (max-width: 760px) {
+  .formGrid,
+  .formSkeletonGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .skeletonItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .taskAction {
+    width: 100%;
+  }
+
+  .taskAction :global(button) {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .primaryAction :global(button) {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 520px) {
+  .primaryAction,
+  .primaryAction :global(button) {
+    width: 100%;
+  }
+}

@@ -107,6 +107,16 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .sectionGap + :global(.grid.cols-2) input:not([type='checkbox']),
+  .sectionGap + :global(.grid.cols-2) select {
+    min-height: 2.75rem;
+  }
+
+  .sectionGap + :global(.grid.cols-2) :global(.checkbox-label) {
+    min-height: 2.75rem;
+    align-content: center;
+  }
+
   .sectionGap + :global(.grid.cols-2) :global(.actions) > * {
     min-height: 2.75rem;
   }

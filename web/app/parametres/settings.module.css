@@ -2,6 +2,22 @@
   height: var(--space-4, 1rem);
 }
 
+.sectionGap + :global(.grid.cols-2) {
+  align-items: start;
+}
+
+.sectionGap + :global(.grid.cols-2) > :global(.card) {
+  min-width: 0;
+}
+
+.sectionGap + :global(.grid.cols-2) :global(.actions) {
+  align-items: center;
+}
+
+.sectionGap + :global(.grid.cols-2) code {
+  overflow-wrap: anywhere;
+}
+
 .platformsCard {
   margin-top: var(--space-5, 1.25rem);
 }
@@ -53,6 +69,16 @@
   margin-top: var(--space-3, 0.75rem);
 }
 
+@media (max-width: 1100px) {
+  .sectionGap + :global(.grid.cols-2) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sectionGap + :global(.grid.cols-2) :global(.form-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .platformItem {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -77,6 +103,19 @@
 }
 
 @media (max-width: 600px) {
+  .sectionGap + :global(.grid.cols-2) :global(.form-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sectionGap + :global(.grid.cols-2) :global(.actions) > * {
+    min-height: 2.75rem;
+  }
+
+  .sectionGap + :global(.grid.cols-2) :global(.actions) > a,
+  .sectionGap + :global(.grid.cols-2) :global(.actions) > button {
+    flex: 1 1 100%;
+  }
+
   .platformItem {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -89,6 +128,7 @@
 
   .platformAction a {
     width: 100%;
+    min-height: 2.75rem;
     justify-content: center;
   }
 }

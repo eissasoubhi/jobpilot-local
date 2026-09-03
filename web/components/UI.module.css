@@ -114,8 +114,44 @@
   font-weight: 600;
 }
 
+.progressTrack {
+  --progress-color: var(--primary);
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--line);
+}
+
+.progressTrack[data-size='compact'] {
+  height: 4px;
+}
+
+.progressTrack[data-tone='good'] {
+  --progress-color: var(--good);
+}
+
+.progressTrack[data-tone='warn'] {
+  --progress-color: var(--warn);
+}
+
+.progressTrack[data-tone='bad'] {
+  --progress-color: var(--bad);
+}
+
+.progressTrack[data-tone='neutral'] {
+  --progress-color: var(--primary);
+}
+
+.progressTrack[data-tone='default'] {
+  background: var(--surface-muted, #e5e7eb);
+  --progress-color: currentColor;
+}
+
 .progressIndicator {
-  transition: width 200ms ease;
+  width: var(--progress-value, 0%);
+  height: 100%;
+  background: var(--progress-color);
+  transition: width var(--motion-fast, 200ms) ease;
 }
 
 .skeletonGroup {

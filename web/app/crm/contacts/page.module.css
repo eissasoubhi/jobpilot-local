@@ -70,6 +70,13 @@
     flex-direction: column;
   }
 
+  .filters :global(input),
+  .filters :global(select),
+  .exportAction,
+  .contactMain + :global(.btn) {
+    min-height: 44px;
+  }
+
   .contactMain + :global(.btn) {
     width: 100%;
   }
@@ -85,6 +92,10 @@
 }
 
 @media (max-width: 520px) {
+  .exportAction {
+    width: 100%;
+  }
+
   .summary {
     display: grid;
     grid-template-columns: 1fr;

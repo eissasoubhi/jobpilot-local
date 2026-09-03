@@ -45,6 +45,10 @@
     grid-template-columns: 1fr;
   }
 
+  .formGrid input {
+    min-height: 44px;
+  }
+
   .fullWidth {
     grid-column: auto;
   }

@@ -56,6 +56,14 @@
 }
 
 @media (max-width: 650px) {
+  .layout input:not([type='checkbox']),
+  .layout select,
+  .layout :global(.checkbox-label),
+  .rowActions > *,
+  .uploadButton {
+    min-height: 44px;
+  }
+
   .documentItem {
     align-items: stretch;
   }

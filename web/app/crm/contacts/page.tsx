@@ -137,6 +137,7 @@ export default function CrmContactsPage() {
             <DataToolbar
               actions={(
                 <Button
+                  className={styles.exportAction}
                   variant="secondary"
                   size="small"
                   disabled={visibleContacts.length === 0}
@@ -146,7 +147,7 @@ export default function CrmContactsPage() {
                 </Button>
               )}
             >
-              <div className="form-grid">
+              <div className={`form-grid ${styles.filters}`}>
                 <FormField label="Rechercher un contact ou une organisation">
                   <input
                     type="search"

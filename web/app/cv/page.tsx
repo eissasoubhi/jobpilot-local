@@ -51,7 +51,9 @@ function CvDocumentsSkeleton() {
 
 export default function CvPage() {
   const [items, setItems] = useState<Cv[] | null>(null);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const [documentsError, setDocumentsError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [uploadMessage, setUploadMessage] = useState('');
@@ -60,9 +62,9 @@ export default function CvPage() {
   const load = useCallback(async (): Promise<void> => {
     try {
       setItems(await api<Cv[]>('/cvs'));
-      setError('');
+      setLoadError('');
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setLoadError(getErrorMessage(caughtError));
     }
   }, []);
 
@@ -72,9 +74,8 @@ export default function CvPage() {
 
   const upload = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    setError('');
+    setUploadError('');
     setUploadMessage('');
-    setDocumentsMessage('');
     setUploading(true);
     const form = event.currentTarget;
 
@@ -84,7 +85,7 @@ export default function CvPage() {
       await load();
       setUploadMessage('CV téléversé.');
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setUploadError(getErrorMessage(caughtError));
     } finally {
       setUploading(false);
     }
@@ -93,8 +94,7 @@ export default function CvPage() {
   const remove = async (id: number): Promise<void> => {
     if (!window.confirm('Supprimer ce CV ?')) return;
 
-    setError('');
-    setUploadMessage('');
+    setDocumentsError('');
     setDocumentsMessage('');
     setRemovingId(id);
 
@@ -103,7 +103,7 @@ export default function CvPage() {
       await load();
       setDocumentsMessage('CV supprimé.');
     } catch (caughtError: unknown) {
-      setError(getErrorMessage(caughtError));
+      setDocumentsError(getErrorMessage(caughtError));
     } finally {
       setRemovingId(null);
     }
@@ -115,7 +115,6 @@ export default function CvPage() {
         title="Mes CV"
         description="L’application choisit le document adapté, sans modifier son contenu."
       />
-      {error !== '' && <ErrorBox message={error} />}
       <div className={styles.layout}>
         <Card>
           <h2 className={styles.sectionTitle}>Ajouter un CV</h2>
@@ -142,6 +141,7 @@ export default function CvPage() {
               <input name="defaultForLanguage" type="checkbox" value="true" />
               CV par défaut pour cette langue
             </label>
+            {uploadError !== '' && <ErrorBox message={uploadError} />}
             {uploadMessage !== '' && (
               <InlineFeedback tone="success">{uploadMessage}</InlineFeedback>
             )}
@@ -153,11 +153,13 @@ export default function CvPage() {
 
         <Card>
           <h2 className={styles.sectionTitle}>Documents disponibles</h2>
+          {loadError !== '' && <ErrorBox message={loadError} />}
+          {documentsError !== '' && <ErrorBox message={documentsError} />}
           {documentsMessage !== '' && (
             <InlineFeedback tone="success">{documentsMessage}</InlineFeedback>
           )}
           {items === null ? (
-            error === '' ? <CvDocumentsSkeleton /> : null
+            loadError === '' ? <CvDocumentsSkeleton /> : null
           ) : items.length === 0 ? (
             <Empty>Aucun CV téléversé.</Empty>
           ) : (

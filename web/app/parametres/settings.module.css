@@ -1,0 +1,94 @@
+.sectionGap {
+  height: var(--space-4, 1rem);
+}
+
+.platformsCard {
+  margin-top: var(--space-5, 1.25rem);
+}
+
+.platformsToolbar {
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.platformsSummary {
+  color: var(--text-muted, #64748b);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.platformItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(8rem, 0.7fr) minmax(8rem, 0.8fr) auto;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+}
+
+.platformName,
+.platformMode {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.platformMetaLabel {
+  display: none;
+  color: var(--text-muted, #64748b);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+}
+
+.platformAction {
+  justify-self: end;
+}
+
+.emailPreviewBody {
+  min-height: 15rem;
+}
+
+.noticeStack {
+  display: grid;
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.gmailReconnect {
+  margin-top: var(--space-3, 0.75rem);
+}
+
+@media (max-width: 900px) {
+  .platformItem {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .platformCategory,
+  .platformMode {
+    grid-column: 1;
+  }
+
+  .platformAction {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+  }
+
+  .platformMetaLabel {
+    display: inline;
+    margin-right: var(--space-2, 0.5rem);
+  }
+}
+
+@media (max-width: 600px) {
+  .platformItem {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .platformAction {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: stretch;
+  }
+
+  .platformAction a {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -11,11 +11,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-2, 8px);
 }
 
 .skeletonBadges {
-  margin-top: var(--space-2);
+  margin-top: var(--space-2, 8px);
 }
 
 .applicationMain {
@@ -34,11 +34,11 @@
 }
 
 .metaBadges {
-  margin-top: var(--space-2);
+  margin-top: var(--space-2, 8px);
 }
 
 .submissionError {
-  margin-top: var(--space-2);
+  margin-top: var(--space-2, 8px);
   overflow-wrap: anywhere;
 }
 
@@ -50,7 +50,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-4, 16px);
 }
 
 .offerEyebrow {
@@ -60,17 +60,17 @@
 }
 
 .offerTitle {
-  margin: var(--space-2) 0 var(--space-1);
+  margin: var(--space-2, 8px) 0 var(--space-1, 4px);
   font-size: 1.3125rem;
 }
 
 .offerBadges,
 .offerActions {
-  margin-top: var(--space-3);
+  margin-top: var(--space-3, 12px);
 }
 
 .offerDetails {
-  margin-top: var(--space-4);
+  margin-top: var(--space-4, 16px);
 }
 
 .offerDetails summary {
@@ -79,24 +79,24 @@
 }
 
 .offerDescription {
-  margin-top: var(--space-3);
+  margin-top: var(--space-3, 12px);
   white-space: pre-wrap;
   line-height: 1.6;
 }
 
 .editorStack,
 .submissionSection {
-  margin-top: var(--space-4);
+  margin-top: var(--space-4, 16px);
 }
 
 .sectionActions {
   justify-content: space-between;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-2, 8px);
 }
 
 .submissionSection {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-3, 12px);
 }
 
 @media (max-width: 760px) {

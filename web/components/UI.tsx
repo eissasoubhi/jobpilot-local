@@ -235,6 +235,10 @@ export function FloatingPanel({
 type ProgressBarTone = 'neutral' | 'good' | 'warn' | 'bad';
 type ProgressBarSize = 'default' | 'compact';
 
+type ProgressBarStyle = React.CSSProperties & {
+  '--progress-value': string;
+};
+
 export function ProgressBar({
   value,
   label,
@@ -249,16 +253,9 @@ export function ProgressBar({
   size?: ProgressBarSize;
 }) {
   const normalizedValue = Math.min(100, Math.max(0, Math.round(value)));
-  const indicatorColor = tone === 'good'
-    ? 'var(--good)'
-    : tone === 'warn'
-      ? 'var(--warn)'
-      : tone === 'bad'
-        ? 'var(--bad)'
-        : tone === 'neutral'
-          ? 'var(--primary)'
-          : 'currentColor';
-  const trackColor = tone === undefined ? 'var(--surface-muted, #e5e7eb)' : 'var(--line)';
+  const progressStyle: ProgressBarStyle = {
+    '--progress-value': `${normalizedValue}%`,
+  };
 
   return (
     <div
@@ -268,21 +265,14 @@ export function ProgressBar({
       aria-valuemax={100}
       aria-valuenow={normalizedValue}
       aria-valuetext={valueText}
-      style={{
-        height: size === 'compact' ? 4 : 8,
-        borderRadius: 999,
-        background: trackColor,
-        overflow: 'hidden',
-      }}
+      className={uiStyles.progressTrack}
+      data-size={size}
+      data-tone={tone ?? 'default'}
     >
       <div
         className={uiStyles.progressIndicator}
         aria-hidden="true"
-        style={{
-          height: '100%',
-          width: `${normalizedValue}%`,
-          background: indicatorColor,
-        }}
+        style={progressStyle}
       />
     </div>
   );

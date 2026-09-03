@@ -31,6 +31,11 @@
   flex-wrap: wrap;
 }
 
+.urgentFeedbackRow > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -47,8 +52,17 @@
   min-width: 0;
 }
 
+.messageContent h3,
+.messageContent p,
+.classificationReason,
+.associatedOffer,
+.transactionHelp {
+  overflow-wrap: anywhere;
+}
+
 .urgencyNotice {
   margin-top: 10px;
+  overflow-wrap: anywhere;
 }
 
 .classificationReason {
@@ -61,6 +75,23 @@
 
 .details {
   margin-top: 12px;
+  min-width: 0;
+}
+
+.details summary {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.details summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .messageActions {
@@ -87,7 +118,6 @@
   }
 
   .statsGrid {
-    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -102,5 +132,15 @@
 
   .messageActions > * {
     width: 100%;
+  }
+
+  .details summary {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
   }
 }

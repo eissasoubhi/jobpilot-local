@@ -157,7 +157,7 @@ export default function CvPage() {
             <InlineFeedback tone="success">{documentsMessage}</InlineFeedback>
           )}
           {items === null ? (
-            <CvDocumentsSkeleton />
+            error === '' ? <CvDocumentsSkeleton /> : null
           ) : items.length === 0 ? (
             <Empty>Aucun CV téléversé.</Empty>
           ) : (

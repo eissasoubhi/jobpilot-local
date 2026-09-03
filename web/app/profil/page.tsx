@@ -64,7 +64,21 @@ export default function ProfilePage() {
   }, []);
 
   if (profile === null) {
-    return error !== '' ? <ErrorBox message={error} /> : <ProfileSkeleton />;
+    if (error !== '') {
+      return (
+        <>
+          <PageHeader
+            title="Profil candidat"
+            description="Source unique utilisée par JobPilot pour préparer et, bientôt, préremplir les formulaires de candidature."
+          />
+          <div className={styles.profileStack}>
+            <ErrorBox message={error} />
+          </div>
+        </>
+      );
+    }
+
+    return <ProfileSkeleton />;
   }
 
   const set = <K extends keyof Profile>(key: K, value: Profile[K]): void => {

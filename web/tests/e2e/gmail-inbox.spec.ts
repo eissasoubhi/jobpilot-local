@@ -136,3 +136,47 @@ test('Gmail inbox prioritizes urgent messages and clears urgency after processin
   await expect(page.getByText('Aucun message ne correspond à ce filtre. Lance une synchronisation ou change le filtre.')).toBeVisible();
   expect(processed).toBe(true);
 });
+
+test('Gmail inbox remains usable on mobile with long content and keyboard-focusable details', async ({ page }) => {
+  const longSubject = 'Invitation entretien technique Symfony avec un intitulé volontairement très long sans rupture facile pour vérifier le responsive mobile';
+  const longMessage = {
+    ...interviewMessage,
+    subject: longSubject,
+    sender: 'recrutement-international-technique-tres-long@example-consulting-company.test',
+    sourcePlatform: 'Plateforme-de-recrutement-avec-un-nom-volontairement-tres-long',
+  };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/integrations/gmail/status', async (route) => {
+    await fulfillJson(route, {
+      connected: true,
+      readPermission: true,
+      readPermissionMessage: null,
+    });
+  });
+  await page.route('**/api/integrations/gmail/messages?limit=250', async (route) => {
+    await fulfillJson(route, [longMessage]);
+  });
+
+  await page.goto('/messages');
+
+  await expect(page.getByRole('list', { name: 'Messages Gmail' })).toBeVisible();
+  await expect(page.getByLabel('Afficher')).toBeVisible();
+  await expect(page.getByRole('heading', { name: longSubject, level: 3 })).toBeVisible();
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  );
+  expect(noHorizontalOverflow).toBe(true);
+
+  const detailsSummary = page.getByText('Afficher le contenu analysé', { exact: true });
+  await detailsSummary.focus();
+  await expect(detailsSummary).toBeFocused();
+
+  const summaryBox = await detailsSummary.boundingBox();
+  expect(summaryBox).not.toBeNull();
+  expect(summaryBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+  await expect(page.getByRole('link', { name: 'Ouvrir dans Gmail' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Marquer l’entretien comme confirmé' })).toBeVisible();
+});

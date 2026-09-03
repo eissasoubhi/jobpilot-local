@@ -171,15 +171,22 @@ export default function SourceReportingPage() {
     };
   }, []);
 
+  const description = 'Mesure en lecture seule de la conversion, de la qualité du matching et des propositions de rémunération par source, type de contrat et mode de travail.';
+
   if (error !== '') {
-    return <><PageHeader title="Conversion" /><ErrorBox message={error} /></>;
+    return (
+      <>
+        <PageHeader title="Conversion" description={description} />
+        <ErrorBox message={error} />
+      </>
+    );
   }
 
   return (
     <>
       <PageHeader
         title="Conversion"
-        description="Mesure en lecture seule de la conversion, de la qualité du matching et des propositions de rémunération par source, type de contrat et mode de travail."
+        description={description}
       />
 
       {report === null ? (

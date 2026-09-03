@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 
-import { Badge, Button, Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { Badge, Button, ButtonLink, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Application, Settings } from '@/lib/types';
+
+import styles from './settings.module.css';
 
 type Source = { name: string; url: string; category: string; mode: string };
 type GmailStatus = {
@@ -269,7 +271,7 @@ export default function SettingsPage() {
       />
       {message !== '' && <div className="notice">{message}</div>}
       {error !== '' && <ErrorBox message={error} />}
-      <div style={{ height: 14 }} />
+      <div className={styles.sectionGap} aria-hidden="true" />
 
       <div className="grid cols-2">
         <Card>
@@ -543,24 +545,44 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <div style={{ height: 18 }} />
-      <Card>
+      <Card className={styles.platformsCard}>
         <h2 className="section-title">Plateformes suivies</h2>
-        <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th>Plateforme</th><th>Catégorie</th><th>Mode</th><th /></tr></thead>
-            <tbody>
-              {sources.map((source) => (
-                <tr key={source.name}>
-                  <td><strong>{source.name}</strong></td>
-                  <td><Badge>{source.category}</Badge></td>
-                  <td>{source.mode}</td>
-                  <td><a className="btn secondary small" href={source.url} target="_blank" rel="noreferrer">Ouvrir</a></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataToolbar className={styles.platformsToolbar}>
+          <span className={styles.platformsSummary}>
+            {sources.length} plateforme{sources.length === 1 ? '' : 's'} configurée{sources.length === 1 ? '' : 's'}
+          </span>
+        </DataToolbar>
+        {sources.length === 0 ? (
+          <Empty>Aucune plateforme suivie n’est configurée.</Empty>
+        ) : (
+          <DataList aria-label="Plateformes suivies">
+            {sources.map((source) => (
+              <DataListItem key={source.name} className={styles.platformItem}>
+                <strong className={styles.platformName}>{source.name}</strong>
+                <div className={styles.platformCategory}>
+                  <span className={styles.platformMetaLabel}>Catégorie :</span>
+                  <Badge>{source.category}</Badge>
+                </div>
+                <div className={styles.platformMode}>
+                  <span className={styles.platformMetaLabel}>Mode :</span>
+                  {source.mode}
+                </div>
+                <div className={styles.platformAction}>
+                  <ButtonLink
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    variant="secondary"
+                    size="small"
+                    aria-label={`Ouvrir ${source.name} dans un nouvel onglet`}
+                  >
+                    Ouvrir
+                  </ButtonLink>
+                </div>
+              </DataListItem>
+            ))}
+          </DataList>
+        )}
       </Card>
     </>
   );

@@ -9,6 +9,7 @@ import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
   Button,
+  ButtonLink,
   Card,
   DataList,
   DataListItem,
@@ -29,6 +30,8 @@ import {
 import { getErrorMessage } from '@/lib/errors';
 import type { Application } from '@/lib/types';
 
+import styles from './page.module.css';
+
 function companyName(application: Application): string {
   return application.jobOffer.company || application.jobOffer.clientName || 'Entreprise non renseignée';
 }
@@ -42,10 +45,10 @@ function ApplicationsSkeleton() {
       <DataList aria-hidden="true">
         {[0, 1, 2].map((index) => (
           <DataListItem key={index}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className={styles.skeletonBody}>
               <Skeleton width="46%" height={22} />
               <Skeleton width="62%" height={16} className="mt-2" />
-              <div className="actions" style={{ marginTop: 10 }}>
+              <div className={styles.skeletonBadges}>
                 <Skeleton width={92} height={24} />
                 <Skeleton width={72} height={24} />
                 <Skeleton width={84} height={24} />
@@ -168,13 +171,13 @@ export default function ApplicationsPage() {
               <DataList aria-label="Candidatures filtrées">
                 {filteredItems.map((application) => (
                   <DataListItem key={application.id}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3>{application.jobOffer.title}</h3>
-                      <div className="muted small">
+                    <div className={styles.applicationMain}>
+                      <h3 className={styles.applicationTitle}>{application.jobOffer.title}</h3>
+                      <div className={`muted small ${styles.applicationMeta}`}>
                         {companyName(application)} · {application.jobOffer.location || 'Lieu non renseigné'} ·{' '}
                         {application.jobOffer.contractType || 'Contrat non renseigné'}
                       </div>
-                      <div className="actions" style={{ marginTop: 8 }}>
+                      <div className={styles.metaBadges}>
                         <Badge tone={applicationStatusTone(application.status)}>{applicationBadgeLabel(application)}</Badge>
                         <Badge tone="blue">Score {application.jobOffer.score}</Badge>
                         <Badge>{application.jobOffer.language.toUpperCase()}</Badge>
@@ -183,18 +186,20 @@ export default function ApplicationsPage() {
                         {application.compensationAnswer && <Badge tone="good">{application.compensationAnswer}</Badge>}
                       </div>
                       {application.submissionError && (
-                        <div className="small" style={{ marginTop: 8 }}>
+                        <div className={`small ${styles.submissionError}`}>
                           <strong>Erreur :</strong> {application.submissionError}
                         </div>
                       )}
                     </div>
-                    <Button
-                      size="small"
-                      variant="secondary"
-                      onClick={() => openApplication(application)}
-                    >
-                      {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
-                    </Button>
+                    <div className={styles.listAction}>
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        onClick={() => openApplication(application)}
+                      >
+                        {application.status === 'SUBMITTED' ? 'Voir le suivi' : 'Examiner et postuler'}
+                      </Button>
+                    </div>
                   </DataListItem>
                 ))}
               </DataList>
@@ -243,10 +248,10 @@ export default function ApplicationsPage() {
           )}
 
           <section className="card" aria-labelledby="application-job-title">
-            <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className={styles.offerHeader}>
               <div>
-                <div className="small muted" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>Offre concernée</div>
-                <h2 id="application-job-title" style={{ margin: '7px 0 5px', fontSize: 21 }}>{selected.jobOffer.title}</h2>
+                <div className={`small muted ${styles.offerEyebrow}`}>Offre concernée</div>
+                <h2 id="application-job-title" className={styles.offerTitle}>{selected.jobOffer.title}</h2>
                 <div>
                   <strong>{companyName(selected)}</strong>
                   {selected.jobOffer.clientName && selected.jobOffer.clientName !== selected.jobOffer.company && (
@@ -257,7 +262,7 @@ export default function ApplicationsPage() {
               <div className="score" aria-label={`Score ${selected.jobOffer.score}`}>{selected.jobOffer.score}</div>
             </div>
 
-            <div className="actions" style={{ marginTop: 13 }}>
+            <div className={styles.offerBadges}>
               <Badge>{selected.jobOffer.location || 'Lieu non renseigné'}</Badge>
               <Badge>{selected.jobOffer.contractType || 'Contrat non renseigné'}</Badge>
               <Badge>{selected.jobOffer.workMode || 'Mode de travail non renseigné'}</Badge>
@@ -266,25 +271,31 @@ export default function ApplicationsPage() {
               {selected.jobOffer.applicationEmail && <Badge tone="good">Destinataire : {selected.jobOffer.applicationEmail}</Badge>}
             </div>
 
-            <div className="actions" style={{ marginTop: 14 }}>
+            <div className={styles.offerActions}>
               {selected.cvDocument && (
-                <a className="btn secondary small" href={selected.cvDocument.downloadUrl} target="_blank" rel="noreferrer">
+                <ButtonLink
+                  href={selected.cvDocument.downloadUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="secondary"
+                  size="small"
+                >
                   Ouvrir le CV sélectionné
-                </a>
+                </ButtonLink>
               )}
             </div>
 
-            <details style={{ marginTop: 15 }}>
-              <summary className="small" style={{ cursor: 'pointer', fontWeight: 700 }}>Afficher la description complète de l’offre</summary>
-              <div className="small" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 12 }}>
+            <details className={styles.offerDetails}>
+              <summary className="small">Afficher la description complète de l’offre</summary>
+              <div className={`small ${styles.offerDescription}`}>
                 {selected.jobOffer.description || 'Description non disponible.'}
               </div>
             </details>
           </section>
 
-          <div className="stack" style={{ marginTop: 16 }}>
+          <div className={`stack ${styles.editorStack}`}>
             <div>
-              <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+              <div className={styles.sectionActions}>
                 <strong className="small">Message</strong>
                 <Button
                   variant="secondary"
@@ -330,7 +341,7 @@ export default function ApplicationsPage() {
           </div>
 
           {selected.status !== 'SUBMISSION_PENDING' && !(selected.status === 'SUBMITTED' && selected.channel === 'Gmail automatique') && (
-            <section className="card" aria-labelledby="submission-steps-title" style={{ marginTop: 16 }}>
+            <section className={`card ${styles.submissionSection}`} aria-labelledby="submission-steps-title">
               <h2 id="submission-steps-title" className="section-title">Finaliser la candidature</h2>
               <div className="stack">
                 <div>
@@ -350,9 +361,14 @@ export default function ApplicationsPage() {
                   <div className="small muted">Une nouvelle fenêtre s’ouvre. JobPilot ne remplit ni ne valide automatiquement le formulaire externe.</div>
                 </div>
                 {selected.jobOffer.sourceUrl ? (
-                  <a className="btn" href={selected.jobOffer.sourceUrl} target="_blank" rel="noreferrer" onClick={() => setNotice('Plateforme ouverte dans un nouvel onglet. Reviens ici après avoir réellement validé l’envoi.')}>
+                  <ButtonLink
+                    href={selected.jobOffer.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setNotice('Plateforme ouverte dans un nouvel onglet. Reviens ici après avoir réellement validé l’envoi.')}
+                  >
                     Étape 2 — Ouvrir la plateforme pour postuler
-                  </a>
+                  </ButtonLink>
                 ) : (
                   <InlineFeedback tone="warning">
                     Aucun lien vers l’annonce originale n’est disponible. Recherche l’offre manuellement avec son titre et son entreprise, puis utilise les éléments préparés ci-dessus.

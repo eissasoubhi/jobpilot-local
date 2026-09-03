@@ -33,7 +33,7 @@
 .undoButton {
   border: 1px solid #9ccdb8;
   border-radius: 7px;
-  background: #fff;
+  background: var(--panel);
   color: #176b4a;
   padding: 4px 7px;
   font: inherit;
@@ -46,6 +46,13 @@
   background: #f8fffb;
 }
 
+.undoButton:focus-visible,
+.decisionButton:focus-visible,
+.navButton:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .undoButton:disabled {
   cursor: not-allowed;
   opacity: .55;
@@ -56,7 +63,7 @@
   padding: 8px 10px;
   border-radius: 8px;
   background: #fff0ef;
-  color: #b42318;
+  color: var(--bad);
   font-size: 12px;
   text-align: center;
 }
@@ -74,7 +81,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 1px solid #dbe1ec;
+  border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(255, 255, 255, .97);
   box-shadow: 0 14px 38px rgba(25, 39, 77, .18);
@@ -141,9 +148,9 @@
 
 .sentButton {
   justify-self: stretch;
-  background: #147d50;
-  border-color: #147d50;
-  color: #fff;
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--panel);
 }
 
 .sentButton:not(:disabled):hover {
@@ -159,10 +166,10 @@
 
 .navButton {
   min-height: 32px;
-  border: 1px solid #d7dde8;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
-  color: #667085;
+  background: var(--panel);
+  color: var(--muted);
   padding: 5px 8px;
   font-size: 11px;
   font-weight: 700;
@@ -170,7 +177,7 @@
 }
 
 .navButton:not(:disabled):hover {
-  color: #334155;
+  color: var(--text);
   border-color: #b9c3d4;
 }
 
@@ -185,12 +192,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #667085;
+  color: var(--muted);
   font-size: 10px;
 }
 
 .progressLabel strong {
-  color: #344054;
+  color: var(--text);
   font-size: 11px;
 }
 
@@ -215,7 +222,7 @@
   padding: 6px 9px;
   border-radius: 8px;
   background: #fff0ef;
-  color: #b42318;
+  color: var(--bad);
   font-size: 11px;
   text-align: center;
 }
@@ -280,6 +287,11 @@
     margin-left: 0;
   }
 
+  .undoButton {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
   .decisionBar {
     left: 12px;
     right: 12px;
@@ -329,5 +341,16 @@
 
   .decisionError {
     grid-row: 4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decisionButton,
+  .progressTrack span {
+    transition: none;
+  }
+
+  .decisionButton:not(:disabled):hover {
+    transform: none;
   }
 }

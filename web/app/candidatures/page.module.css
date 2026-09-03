@@ -1,0 +1,131 @@
+.skeletonBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.skeletonBadges,
+.metaBadges,
+.offerBadges,
+.offerActions,
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.skeletonBadges {
+  margin-top: var(--space-2);
+}
+
+.applicationMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.applicationTitle,
+.offerTitle {
+  overflow-wrap: anywhere;
+}
+
+.applicationMeta,
+.offerDescription {
+  overflow-wrap: anywhere;
+}
+
+.metaBadges {
+  margin-top: var(--space-2);
+}
+
+.submissionError {
+  margin-top: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.listAction {
+  flex: 0 0 auto;
+}
+
+.offerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.offerEyebrow {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.offerTitle {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 1.3125rem;
+}
+
+.offerBadges,
+.offerActions {
+  margin-top: var(--space-3);
+}
+
+.offerDetails {
+  margin-top: var(--space-4);
+}
+
+.offerDetails summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.offerDescription {
+  margin-top: var(--space-3);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.editorStack,
+.submissionSection {
+  margin-top: var(--space-4);
+}
+
+.sectionActions {
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.submissionSection {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (max-width: 760px) {
+  .listAction {
+    width: 100%;
+  }
+
+  .listAction :global(button) {
+    width: 100%;
+  }
+
+  .offerHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .offerHeader :global(.score) {
+    align-self: flex-start;
+  }
+
+  .sectionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sectionActions :global(button),
+  .offerActions :global(a),
+  .submissionSection :global(button),
+  .submissionSection :global(a) {
+    width: 100%;
+  }
+}

@@ -62,15 +62,14 @@ export function DataList({
   children,
   className = '',
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLUListElement>) {
   return (
-    <div
+    <ul
       {...props}
       className={[uiStyles.dataList, className].filter(Boolean).join(' ')}
-      role="list"
     >
       {children}
-    </div>
+    </ul>
   );
 }
 
@@ -78,15 +77,14 @@ export function DataListItem({
   children,
   className = '',
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLLIElement>) {
   return (
-    <div
+    <li
       {...props}
       className={[uiStyles.dataListItem, className].filter(Boolean).join(' ')}
-      role="listitem"
     >
       {children}
-    </div>
+    </li>
   );
 }
 

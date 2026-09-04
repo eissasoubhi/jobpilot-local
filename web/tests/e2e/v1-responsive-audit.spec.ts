@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const routes = [
+  ['/offres/review', 'Review Queue'],
+  ['/offres', 'Offres'],
+  ['/candidatures', 'Candidatures'],
+  ['/crm', 'CRM'],
+  ['/messages', 'Messagerie'],
   ['/reporting', 'Reporting candidatures'],
   ['/reporting/sources', 'Conversion'],
   ['/connecteurs', 'Connecteurs'],
@@ -16,7 +21,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   })));
 }
 
-test.describe('Reporting and connectors responsive contract', () => {
+test.describe('V1 responsive contract', () => {
   test.use({ hasTouch: true });
 
   for (const viewport of [

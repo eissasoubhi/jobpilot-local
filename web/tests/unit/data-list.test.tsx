@@ -4,17 +4,21 @@ import { describe, expect, it } from 'vitest';
 import { DataList, DataListItem, DataToolbar } from '@/components/UI';
 
 describe('shared data list contracts', () => {
-  it('exposes list semantics for dense repeated content', () => {
+  it('exposes native list semantics for dense repeated content', () => {
     render(
-      <DataList data-testid="results-list">
+      <DataList aria-label="Résultats">
         <DataListItem>Premier résultat</DataListItem>
         <DataListItem>Deuxième résultat</DataListItem>
       </DataList>,
     );
 
-    const list = screen.getByTestId('results-list');
-    expect(list).toHaveAttribute('role', 'list');
-    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    const list = screen.getByRole('list', { name: 'Résultats' });
+    const items = within(list).getAllByRole('listitem');
+
+    expect(list.tagName).toBe('UL');
+    expect(items).toHaveLength(2);
+    expect(items[0].tagName).toBe('LI');
+    expect(items[1].tagName).toBe('LI');
   });
 
   it('keeps contextual actions adjacent to toolbar content', () => {

@@ -57,6 +57,27 @@ describe('Modal', () => {
     expect(last).toHaveFocus();
   });
 
+  it('keeps hidden inputs out of the modal focus order', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Modal ariaLabel="Configurer le connecteur" onClose={vi.fn()}>
+        <input type="hidden" name="connector-id" value="gmail" readOnly />
+        <button type="button">Annuler</button>
+        <button type="button">Enregistrer</button>
+      </Modal>,
+    );
+
+    const first = screen.getByRole('button', { name: 'Annuler' });
+    const last = screen.getByRole('button', { name: 'Enregistrer' });
+
+    expect(first).toHaveFocus();
+
+    last.focus();
+    await user.tab();
+    expect(first).toHaveFocus();
+  });
+
   it('supports heading-based labelling and an explicit initial focus target', () => {
     const focusRef = createRef<HTMLInputElement>();
 

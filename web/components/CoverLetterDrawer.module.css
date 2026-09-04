@@ -14,7 +14,7 @@
   width: min(610px, 100vw);
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--panel);
   box-shadow: -18px 0 48px rgba(15, 23, 42, .18);
   animation: slideIn .18s ease-out;
 }
@@ -25,7 +25,7 @@
   justify-content: space-between;
   gap: 18px;
   padding: 22px 22px 16px;
-  border-bottom: 1px solid #e7eaf0;
+  border-bottom: 1px solid var(--line);
 }
 
 .titleBlock {
@@ -33,7 +33,7 @@
 }
 
 .eyebrow {
-  color: #4665d8;
+  color: var(--primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .06em;
@@ -42,7 +42,7 @@
 
 .titleBlock h2 {
   margin: 4px 0 7px;
-  color: #172033;
+  color: var(--text);
   font-size: 22px;
   line-height: 1.2;
 }
@@ -52,7 +52,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
-  color: #768195;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -62,7 +62,7 @@
   min-height: 22px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f0f3ff;
+  background: var(--primary2);
   color: #4059bd;
   font-size: 11px;
   font-weight: 800;
@@ -70,7 +70,7 @@
 
 .warningBadge {
   background: #fff4e5;
-  color: #9a5d00;
+  color: var(--warn);
 }
 
 .closeButton {
@@ -79,25 +79,25 @@
   width: 44px;
   height: 44px;
   flex: 0 0 auto;
-  border: 1px solid #dce1e9;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
-  color: #3a4658;
+  background: var(--panel);
+  color: var(--text);
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
 }
 
 .closeButton:hover {
-  background: #f7f8fb;
+  background: var(--bg);
 }
 
 .tabs {
   display: flex;
   gap: 4px;
   padding: 10px 22px 0;
-  border-bottom: 1px solid #e7eaf0;
-  background: #fff;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
 }
 
 .tab {
@@ -106,7 +106,7 @@
   padding: 10px 12px 12px;
   border: 0;
   background: transparent;
-  color: #6c778a;
+  color: var(--muted);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -125,15 +125,15 @@
 }
 
 .tab:hover {
-  color: #3149a5;
+  color: var(--primary);
 }
 
 .tabActive {
-  color: #3149a5;
+  color: var(--primary);
 }
 
 .tabActive::after {
-  background: #4665d8;
+  background: var(--primary);
 }
 
 .closeButton:focus-visible,
@@ -145,8 +145,8 @@
 }
 
 .toolbarArea {
-  border-bottom: 1px solid #edf0f4;
-  background: #fbfcfe;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .toolbar {
@@ -164,8 +164,8 @@
   width: 100%;
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid #edf0f4;
-  color: #657087;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 700;
 }
@@ -206,9 +206,9 @@
   display: grid;
   min-width: 150px;
   padding: 6px;
-  border: 1px solid #dce1e9;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--panel);
   box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
 }
 
@@ -218,7 +218,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #27344a;
+  color: var(--text);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -227,7 +227,7 @@
 }
 
 .downloadOptions button:hover {
-  background: #f4f6fb;
+  background: var(--bg);
 }
 
 .feedback {
@@ -241,7 +241,7 @@
 }
 
 .preview {
-  color: #303b4e;
+  color: var(--text);
   font-size: 14px;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -256,10 +256,10 @@
 .messageHint {
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid #e5e9f2;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #f8f9fc;
-  color: #657087;
+  background: var(--bg);
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -269,7 +269,7 @@
   border: 1px solid #f0cf99;
   border-radius: 9px;
   background: #fff8ec;
-  color: #8a5708;
+  color: var(--warn);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -281,7 +281,7 @@
 }
 
 .editor label {
-  color: #566176;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
@@ -290,9 +290,9 @@
   min-height: 430px;
   width: 100%;
   padding: 16px 17px;
-  border: 1px solid #dbe0e8;
+  border: 1px solid var(--line);
   border-radius: 11px;
-  color: #303b4e;
+  color: var(--text);
   font: inherit;
   font-size: 14px;
   line-height: 1.7;
@@ -302,7 +302,7 @@
 .editorFooter {
   display: grid;
   gap: 10px;
-  color: #768195;
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -320,7 +320,7 @@
 
 @media (max-width: 700px) {
   .backdrop {
-    background: #fff;
+    background: var(--panel);
   }
 
   .drawer {

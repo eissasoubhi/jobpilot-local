@@ -50,6 +50,16 @@ describe('ApplicationGoalsPanel progress', () => {
     apiMock.mockResolvedValue(snapshot);
   });
 
+  it('uses the shared accessible skeleton contract while goals are loading', () => {
+    apiMock.mockReturnValue(new Promise(() => undefined));
+
+    render(<ApplicationGoalsPanel />);
+
+    const loading = screen.getByRole('status', { name: 'Chargement des objectifs de candidatures' });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    expect(loading.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
+  });
+
   it('exposes compact goal progress through the shared accessible progress bar', async () => {
     render(<ApplicationGoalsPanel />);
 

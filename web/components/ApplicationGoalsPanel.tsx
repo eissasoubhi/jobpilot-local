@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import { ProgressBar } from '@/components/UI';
 import { api } from '@/lib/api';
 import {
@@ -53,7 +54,20 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
   return (
     <section className={styles.compactPanel} aria-label="Progression des objectifs de candidatures">
       {snapshot === null && error === '' ? (
-        <p className={styles.compactState}>Chargement…</p>
+        <SkeletonGroup
+          className={styles.compactPeriods}
+          label="Chargement des objectifs de candidatures"
+        >
+          {[0, 1, 2].map((index) => (
+            <div className={styles.compactPeriod} key={index}>
+              <div className={styles.compactPeriodHeader}>
+                <Skeleton width="45%" height={12} />
+                <Skeleton width={54} height={11} />
+              </div>
+              <Skeleton width="100%" height={6} />
+            </div>
+          ))}
+        </SkeletonGroup>
       ) : error !== '' ? (
         <p className={styles.compactError} role="alert">{error}</p>
       ) : periods.length === 0 ? (

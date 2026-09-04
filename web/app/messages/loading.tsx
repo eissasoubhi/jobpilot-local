@@ -1,6 +1,8 @@
 import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import { Card, DataList, DataListItem, DataToolbar, PageHeader } from '@/components/UI';
 
+import styles from './page.module.css';
+
 export default function MessagesLoading() {
   return (
     <SkeletonGroup label="Chargement de la messagerie Gmail">
@@ -10,7 +12,7 @@ export default function MessagesLoading() {
         actions={<Skeleton width={164} height={38} />}
       />
 
-      <div className="grid grid-4" aria-hidden="true">
+      <div className={styles.statsGrid} aria-hidden="true">
         {[0, 1, 2, 3].map((index) => (
           <Card className="stat-card" key={index}>
             <Skeleton width={112} height={16} />

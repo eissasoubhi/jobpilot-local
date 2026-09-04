@@ -18,8 +18,8 @@ export function FilterTabs<T extends string>({ ariaLabel, options, value, onChan
 
     let nextIndex: number | null = null;
 
-    if (event.key === 'ArrowRight') nextIndex = (index + 1) % options.length;
-    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + options.length) % options.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % options.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length;
     if (event.key === 'Home') nextIndex = 0;
     if (event.key === 'End') nextIndex = options.length - 1;
 
@@ -32,12 +32,12 @@ export function FilterTabs<T extends string>({ ariaLabel, options, value, onChan
     }
 
     event.currentTarget.parentElement
-      ?.querySelectorAll<HTMLButtonElement>('button')[nextIndex]
+      ?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]
       ?.focus();
   };
 
   return (
-    <div className="tabs" role="group" aria-label={ariaLabel}>
+    <div className="tabs" role="radiogroup" aria-label={ariaLabel}>
       {options.map((option, index) => {
         const selected = option.value === value;
 
@@ -46,7 +46,9 @@ export function FilterTabs<T extends string>({ ariaLabel, options, value, onChan
             key={option.value}
             className={selected ? 'active' : ''}
             type="button"
-            aria-pressed={selected}
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(option.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
           >

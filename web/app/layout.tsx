@@ -7,6 +7,7 @@ import { Shell } from '@/components/Shell';
 import { SyncRunPanel } from '@/components/SyncRunPanel';
 
 import './globals.css';
+import './accessibility.css';
 
 export const metadata: Metadata = {
   title: 'JobPilot',

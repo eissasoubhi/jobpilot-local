@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FilterTabs } from '@/components/FilterTabs';
 
 describe('FilterTabs', () => {
-  it('exposes the selected filter and forwards changes', () => {
+  it('exposes the selected filter as an exclusive radio group and forwards changes', () => {
     const onChange = vi.fn();
 
     render(
@@ -19,16 +19,22 @@ describe('FilterTabs', () => {
       />,
     );
 
-    const group = screen.getByRole('group', { name: 'Filtres des offres' });
+    const group = screen.getByRole('radiogroup', { name: 'Filtres des offres' });
     expect(group).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Toutes' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'À examiner' })).toHaveAttribute('aria-pressed', 'false');
 
-    fireEvent.click(screen.getByRole('button', { name: 'À examiner' }));
+    const all = screen.getByRole('radio', { name: 'Toutes' });
+    const matched = screen.getByRole('radio', { name: 'À examiner' });
+
+    expect(all).toHaveAttribute('aria-checked', 'true');
+    expect(all).toHaveAttribute('tabindex', '0');
+    expect(matched).toHaveAttribute('aria-checked', 'false');
+    expect(matched).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.click(matched);
     expect(onChange).toHaveBeenCalledWith('matched');
   });
 
-  it('supports arrow, Home, and End keyboard navigation', () => {
+  it('supports arrow, Home, and End radio keyboard navigation', () => {
     const onChange = vi.fn();
 
     render(
@@ -44,16 +50,16 @@ describe('FilterTabs', () => {
       />,
     );
 
-    const all = screen.getByRole('button', { name: 'Toutes' });
-    const matched = screen.getByRole('button', { name: 'À examiner' });
-    const excluded = screen.getByRole('button', { name: 'Exclues' });
+    const all = screen.getByRole('radio', { name: 'Toutes' });
+    const matched = screen.getByRole('radio', { name: 'À examiner' });
+    const excluded = screen.getByRole('radio', { name: 'Exclues' });
 
     all.focus();
     fireEvent.keyDown(all, { key: 'ArrowRight' });
     expect(onChange).toHaveBeenLastCalledWith('matched');
     expect(matched).toHaveFocus();
 
-    fireEvent.keyDown(matched, { key: 'End' });
+    fireEvent.keyDown(matched, { key: 'ArrowDown' });
     expect(onChange).toHaveBeenLastCalledWith('excluded');
     expect(excluded).toHaveFocus();
 
@@ -61,8 +67,11 @@ describe('FilterTabs', () => {
     expect(onChange).toHaveBeenLastCalledWith('all');
     expect(all).toHaveFocus();
 
-    fireEvent.keyDown(all, { key: 'ArrowLeft' });
+    fireEvent.keyDown(all, { key: 'ArrowUp' });
     expect(onChange).toHaveBeenLastCalledWith('excluded');
+    expect(excluded).toHaveFocus();
+
+    fireEvent.keyDown(excluded, { key: 'End' });
     expect(excluded).toHaveFocus();
   });
 
@@ -82,7 +91,7 @@ describe('FilterTabs', () => {
       />,
     );
 
-    const all = screen.getByRole('button', { name: 'Toutes' });
+    const all = screen.getByRole('radio', { name: 'Toutes' });
     all.focus();
     const home = createEvent.keyDown(all, { key: 'Home' });
     fireEvent(all, home);
@@ -91,7 +100,7 @@ describe('FilterTabs', () => {
     expect(all).toHaveFocus();
     expect(onChange).not.toHaveBeenCalled();
 
-    const excluded = screen.getByRole('button', { name: 'Exclues' });
+    const excluded = screen.getByRole('radio', { name: 'Exclues' });
     excluded.focus();
     const end = createEvent.keyDown(excluded, { key: 'End' });
     fireEvent(excluded, end);

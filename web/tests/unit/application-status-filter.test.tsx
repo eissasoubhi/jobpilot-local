@@ -39,7 +39,7 @@ describe('ApplicationStatusFilter', () => {
     application(4, 'REJECTED'),
   ];
 
-  it('offers quick filters for all, prepared and submitted applications', () => {
+  it('offers an exclusive, accessible quick-filter radio group', () => {
     const onChange = vi.fn();
     render(
       <ApplicationStatusFilter
@@ -49,16 +49,48 @@ describe('ApplicationStatusFilter', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Toutes les candidatures (4)' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Prêtes à envoyer (2)' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'Envoyées (1)' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('radiogroup', { name: 'Filtres rapides des candidatures' })).toBeInTheDocument();
+
+    const all = screen.getByRole('radio', { name: 'Toutes les candidatures (4)' });
+    const ready = screen.getByRole('radio', { name: 'Prêtes à envoyer (2)' });
+    const submitted = screen.getByRole('radio', { name: 'Envoyées (1)' });
+
+    expect(all).toHaveAttribute('aria-checked', 'true');
+    expect(all).toHaveAttribute('tabindex', '0');
+    expect(ready).toHaveAttribute('aria-checked', 'false');
+    expect(ready).toHaveAttribute('tabindex', '-1');
+    expect(submitted).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText('4 candidature(s) affichée(s) sur 4.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Prêtes à envoyer (2)' }));
+    fireEvent.click(ready);
     expect(onChange).toHaveBeenCalledWith('READY_TO_SUBMIT');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Envoyées (1)' }));
+    fireEvent.click(submitted);
     expect(onChange).toHaveBeenCalledWith('SUBMITTED');
+  });
+
+  it('supports radio-group arrow navigation without adding extra tab stops', () => {
+    const onChange = vi.fn();
+    render(
+      <ApplicationStatusFilter
+        applications={applications}
+        value="ALL"
+        onChange={onChange}
+      />,
+    );
+
+    const all = screen.getByRole('radio', { name: 'Toutes les candidatures (4)' });
+    const ready = screen.getByRole('radio', { name: 'Prêtes à envoyer (2)' });
+    const submitted = screen.getByRole('radio', { name: 'Envoyées (1)' });
+
+    all.focus();
+    fireEvent.keyDown(all, { key: 'ArrowDown' });
+    expect(onChange).toHaveBeenLastCalledWith('READY_TO_SUBMIT');
+    expect(ready).toHaveFocus();
+
+    fireEvent.keyDown(ready, { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith('SUBMITTED');
+    expect(submitted).toHaveFocus();
   });
 
   it('allows every tracking status to be selected from the dropdown', () => {

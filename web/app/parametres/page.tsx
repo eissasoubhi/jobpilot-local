@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Badge, Button, ButtonLink, Card, DataList, DataListItem, DataToolbar, Empty, ErrorBox, Loading, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [testRefreshing, setTestRefreshing] = useState(false);
   const [testSending, setTestSending] = useState(false);
+  const [testSendConfirmationOpen, setTestSendConfirmationOpen] = useState(false);
   const [testError, setTestError] = useState('');
   const [testMessage, setTestMessage] = useState('');
 
@@ -227,15 +229,12 @@ export default function SettingsPage() {
 
   const sendTestEmail = async (): Promise<void> => {
     if (testBlocker !== null || emailPreview === null) {
+      setTestSendConfirmationOpen(false);
       setTestError(testBlocker ?? 'Le test n’est pas prêt.');
       return;
     }
 
-    const confirmed = window.confirm(
-      `Envoyer maintenant ce mail réel à ${testRecipient.trim()} avec le sujet « ${emailPreview.subject} » ? Le statut de la candidature ne sera pas modifié.`,
-    );
-    if (!confirmed) return;
-
+    setTestSendConfirmationOpen(false);
     setTestSending(true);
     setTestError('');
     setTestMessage('');
@@ -473,7 +472,7 @@ export default function SettingsPage() {
             <Button
               loading={testSending}
               disabled={testBlocker !== null}
-              onClick={() => void sendTestEmail()}
+              onClick={() => setTestSendConfirmationOpen(true)}
             >
               {testSending ? 'Envoi du test…' : 'Envoyer le mail de test'}
             </Button>
@@ -584,6 +583,19 @@ export default function SettingsPage() {
           </DataList>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={testSendConfirmationOpen && emailPreview !== null}
+        title="Envoyer ce mail de test ?"
+        description={emailPreview === null
+          ? ''
+          : `Un vrai e-mail sera envoyé à ${testRecipient.trim()} avec le sujet « ${emailPreview.subject} ». Le statut de la candidature et la limite quotidienne ne seront pas modifiés.`}
+        confirmLabel="Envoyer le mail"
+        confirmVariant="primary"
+        loading={testSending}
+        onCancel={() => setTestSendConfirmationOpen(false)}
+        onConfirm={() => void sendTestEmail()}
+      />
     </>
   );
 }

@@ -16,6 +16,7 @@ type ModalProps = {
   onClose: () => void;
   ariaLabel?: string;
   ariaLabelledBy?: string;
+  ariaDescribedBy?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
   closeOnBackdrop?: boolean;
   backdropClassName?: string;
@@ -25,6 +26,7 @@ type ModalProps = {
 export function Modal({
   ariaLabel,
   ariaLabelledBy,
+  ariaDescribedBy,
   backdropClassName = '',
   children,
   closeOnBackdrop = true,
@@ -113,6 +115,7 @@ export function Modal({
         aria-modal="true"
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
       >

@@ -1,0 +1,13 @@
+:root {
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  --shadow-floating: 0 16px 40px rgba(15, 23, 42, 0.16);
+  --motion-fast: 200ms;
+}

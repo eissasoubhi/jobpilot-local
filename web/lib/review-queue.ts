@@ -5,7 +5,7 @@ const REVIEW_QUEUE_WINDOW_MS = REVIEW_QUEUE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 export function isReadyToSubmitReviewItem(application: Application): boolean {
   return application.status === 'READY_TO_SUBMIT'
-    && application.jobOffer.status !== 'REJECTED_BY_FILTER';
+    && application.jobOffer?.status !== 'REJECTED_BY_FILTER';
 }
 
 export function isOfferWithinReviewWindow(job: Job, now = new Date()): boolean {

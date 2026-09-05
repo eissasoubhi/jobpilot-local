@@ -6,6 +6,60 @@
   box-shadow: var(--shadow-floating);
 }
 
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--bad) 32%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bad) 6%, var(--panel));
+  color: var(--text);
+  text-align: left;
+}
+
+.errorBoxContent {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.errorBoxTitle {
+  color: var(--bad);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.errorBoxMessage,
+.errorBoxImpact {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.errorBoxImpact {
+  color: var(--muted);
+}
+
+.errorBoxDetails {
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.errorBoxDetails summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.errorBoxDetails > div {
+  margin-top: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
 .inlineFeedback {
   margin-bottom: var(--space-4);
   padding: var(--space-3) var(--space-4);
@@ -197,6 +251,11 @@
 }
 
 @media (max-width: 700px) {
+  .errorBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .dataToolbar {
     flex-direction: column;
     align-items: stretch;

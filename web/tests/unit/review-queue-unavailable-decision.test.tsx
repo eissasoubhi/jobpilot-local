@@ -75,7 +75,7 @@ describe('ReviewQueue unavailable decision', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'First role' })).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer l’offre comme indisponible' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1/offer-unavailable', {
       method: 'POST',
@@ -103,7 +103,7 @@ describe('ReviewQueue unavailable decision', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'First role' })).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer l’offre comme indisponible' }));
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Second role' })).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Annuler la dernière action sur First role' }));
@@ -130,7 +130,7 @@ describe('ReviewQueue unavailable decision', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Only role' })).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'N’est plus disponible' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer l’offre comme indisponible' }));
 
     expect((await screen.findAllByText('Aucune candidature prête à envoyer dans la Review Queue.')).length).toBeGreaterThan(0);
     const undo = screen.getByRole('button', { name: 'Annuler la dernière action sur Only role' });

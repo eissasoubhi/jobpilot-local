@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
-import { Button, Empty, FormField } from '@/components/UI';
+import { Button, Empty, ErrorBox, FormField } from '@/components/UI';
 
 describe('shared UI primitives', () => {
   it('associates FormField labels with nested form controls', () => {
@@ -36,6 +36,29 @@ describe('shared UI primitives', () => {
     const emptyState = screen.getByRole('status');
     expect(emptyState).toHaveTextContent('Aucun résultat ne correspond aux critères.');
     expect(emptyState).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('explains recoverable errors and exposes diagnostics on demand', () => {
+    const retry = vi.fn();
+
+    render(
+      <ErrorBox
+        title="Synchronisation indisponible"
+        message="Les nouvelles offres n’ont pas pu être chargées."
+        impact="Les offres déjà enregistrées restent disponibles."
+        details="Le service local n’a pas répondu."
+        onRetry={retry}
+      />,
+    );
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Synchronisation indisponible');
+    expect(alert).toHaveTextContent('Les nouvelles offres n’ont pas pu être chargées.');
+    expect(alert).toHaveTextContent('Les offres déjà enregistrées restent disponibles.');
+    expect(screen.getByText('Voir le diagnostic')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 
   it('announces skeleton groups once while keeping decorative blocks hidden', () => {

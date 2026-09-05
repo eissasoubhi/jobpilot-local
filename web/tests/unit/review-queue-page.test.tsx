@@ -97,9 +97,10 @@ describe('ReviewQueuePage', () => {
     await waitFor(() => expect(screen.getByText('Carte complète Second Symfony role')).toBeInTheDocument());
     expect(screen.getByText('2 prêtes à envoyer')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Décision et navigation dans la Review Queue' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ne correspond pas' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Déjà postulé' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Envoyée' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marquer l’offre comme ne correspondant pas au profil' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marquer l’offre comme indisponible' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marquer comme déjà postulé en dehors de JobPilot' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marquer la candidature comme envoyée dans JobPilot' })).toBeInTheDocument();
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Offre 1 sur 2 : Second Symfony role');
     expect(screen.queryByText('Already sent role')).not.toBeInTheDocument();
@@ -128,7 +129,7 @@ describe('ReviewQueuePage', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Envoyée' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer la candidature comme envoyée dans JobPilot' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1', {
       method: 'PATCH',
@@ -172,7 +173,7 @@ describe('ReviewQueuePage', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Déjà postulé' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer comme déjà postulé en dehors de JobPilot' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1', {
       method: 'PATCH',
@@ -210,7 +211,7 @@ describe('ReviewQueuePage', () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText('Carte complète First Symfony role')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ne correspond pas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer l’offre comme ne correspondant pas au profil' }));
 
     await waitFor(() => expect(apiMock).toHaveBeenLastCalledWith('/applications/1', {
       method: 'PATCH',

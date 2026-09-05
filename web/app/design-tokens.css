@@ -1,17 +1,60 @@
 :root {
+  /* Spacing */
+  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
 
+  /* Shape */
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-pill: 999px;
 
-  --surface-muted: #f8fafc;
+  /* Semantic colors reuse the current JobPilot palette. */
+  --color-canvas: var(--bg);
+  --color-surface: var(--panel);
+  --color-surface-subtle: #f8fafc;
+  --color-surface-data: #fbfcfe;
+  --color-text: var(--text);
+  --color-text-muted: var(--muted);
+  --color-border: var(--line);
+  --color-border-strong: #cfd6e4;
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary2);
+  --color-success: var(--good);
+  --color-warning: var(--warn);
+  --color-danger: var(--bad);
+
+  /* AI-native / Aurora is an accent layer, never the default app surface. */
+  --color-ai: #665cf6;
+  --color-ai-secondary: #168f91;
+  --color-ai-border: #ddd9ff;
+  --color-ai-surface: #f7f5ff;
+  --gradient-ai-surface: linear-gradient(135deg, #ffffff 0%, #f7f5ff 58%, #effafa 100%);
+  --gradient-ai-accent: linear-gradient(90deg, var(--color-ai), var(--color-ai-secondary));
+
+  /* Existing shared surface aliases. */
+  --surface-muted: var(--color-surface-subtle);
   --surface-progress: #e5e7eb;
   --surface-skeleton: #f1f5f9;
 
+  /* Elevation stays intentionally restrained in operational screens. */
+  --shadow-card: 0 4px 18px rgba(25, 39, 77, 0.04);
+  --shadow-raised: 0 9px 24px rgba(25, 39, 77, 0.08);
   --shadow-floating: 0 16px 40px rgba(15, 23, 42, 0.16);
+
+  /* Composition contracts for the five JobPilot visual languages. */
+  --bento-gap: var(--space-4);
+  --data-row-min-height: 52px;
+  --editorial-measure: 78ch;
+  --editorial-line-height: 1.72;
+
+  /* Motion */
   --motion-fast: 200ms;
 }

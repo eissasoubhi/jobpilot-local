@@ -12,6 +12,7 @@ import {
   InlineFeedback,
   ProgressBar,
 } from './UI';
+import styles from './DesignSystem.stories.module.css';
 
 const meta = {
   title: 'Design System/Core contracts',
@@ -19,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Shared JobPilot V1 primitives used by dense operational screens. Stories exercise semantic variants, loading/feedback states, accessible form relationships and responsive list/toolbar behavior.',
+          'Shared JobPilot V1 primitives and visual-language contracts. Core stays calm and productive; Bento is reserved for dashboards, Data-dense for operational lists, Editorial for long reading, and AI-native/Aurora for genuine AI insight only.',
       },
     },
   },
@@ -27,6 +28,86 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const VisualLanguageMap: Story = {
+  name: 'Visual language map',
+  render: () => (
+    <div>
+      <div className={styles.languageIntro}>
+        <strong>Calm by default, powerful on demand.</strong>
+        <span>
+          JobPilot garde une base visuelle commune. Les styles ci-dessous ne sont pas cinq thèmes concurrents :
+          chacun répond à un type de tâche précis et réutilise les mêmes tokens, composants et règles d’accessibilité.
+        </span>
+      </div>
+
+      <div className={styles.languageGrid}>
+        <section className={styles.languageCard}>
+          <span className={styles.languageLabel}>Core · partout</span>
+          <h3>Minimal / Productivity</h3>
+          <p>Base de la navigation, des formulaires, actions et feedbacks. Peu de décoration, hiérarchie nette.</p>
+          <div className={styles.coreDemo}>
+            <Button size="small">Action principale</Button>
+            <Button size="small" variant="secondary">Secondaire</Button>
+            <Button size="small" variant="subtle">Discrète</Button>
+          </div>
+        </section>
+
+        <section className={styles.languageCard}>
+          <span className={styles.languageLabel}>Dashboard</span>
+          <h3>Bento</h3>
+          <p>Résumé, KPI et priorités. Les cartes organisent l’information sans transformer chaque écran en mosaïque.</p>
+          <div className={styles.bentoDemo} aria-label="Exemple de composition Bento">
+            <div className={styles.bentoTile}><span>Offres adaptées</span><strong>23</strong></div>
+            <div className={styles.bentoTile}><span>Entretiens</span><strong>4</strong></div>
+            <div className={styles.bentoTile}><span>Score moyen</span><strong>82</strong></div>
+          </div>
+        </section>
+
+        <section className={styles.languageCard}>
+          <span className={styles.languageLabel}>Offres · candidatures · CRM</span>
+          <h3>Data-dense</h3>
+          <p>Densité maîtrisée, lignes compactes, statut et action visibles. Priorité au scan rapide et aux décisions répétées.</p>
+          <div className={styles.dataDemo} role="table" aria-label="Exemple de liste opérationnelle">
+            <div className={styles.dataRow} role="row">
+              <strong>Senior Symfony / React</strong><span>Freelance · Paris</span><span>92/100</span>
+            </div>
+            <div className={styles.dataRow} role="row">
+              <strong>Full-stack PHP</strong><span>Remote</span><span>87/100</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.languageCard}>
+          <span className={styles.languageLabel}>Détail d’offre</span>
+          <h3>Editorial</h3>
+          <p>Pour les contenus longs : largeur de lecture contrôlée, rythme vertical et typographie avant les effets visuels.</p>
+          <div className={styles.editorialDemo}>
+            La mission recherche une expérience solide en Symfony et React. Le détail conserve une lecture confortable,
+            tandis que les métadonnées, le score et les actions restent distincts du corps de l’offre.
+          </div>
+        </section>
+
+        <section className={`${styles.languageCard} ${styles.aiCard} ${styles.fullWidth}`}>
+          <span className={styles.aiLabel}>IA · usage ciblé</span>
+          <h3>AI-native / Aurora</h3>
+          <p>
+            Réservé au matching, aux recommandations et aux explications générées par IA. Aurora signale une capacité IA ;
+            ce n’est jamais le fond visuel global du produit.
+          </p>
+          <div className={styles.aiScore}>
+            <strong>88 %</strong>
+            <span>Très bon match · Symfony · React · e-commerce</span>
+          </div>
+          <div className={styles.coreDemo}>
+            <Button size="small">Adapter mon CV</Button>
+            <Button size="small" variant="secondary">Pourquoi 88 % ?</Button>
+          </div>
+        </section>
+      </div>
+    </div>
+  ),
+};
 
 export const Buttons: Story = {
   render: () => (

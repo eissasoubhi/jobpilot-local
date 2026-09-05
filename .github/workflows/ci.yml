@@ -263,3 +263,18 @@ jobs:
         run: |
           cat /tmp/jobpilot-api.log || true
           cat /tmp/jobpilot-web.log || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop application servers
+        if: always()
+        run: |
+          test ! -f /tmp/jobpilot-web.pid || kill "$(cat /tmp/jobpilot-web.pid)" || true
+          test ! -f /tmp/jobpilot-api.pid || kill "$(cat /tmp/jobpilot-api.pid)" || true

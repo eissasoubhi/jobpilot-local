@@ -48,10 +48,20 @@ export function Modal({
     document.body.style.overflow = 'hidden';
 
     const panel = panelRef.current;
-    const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    (initialFocusRef?.current ?? firstFocusable ?? panel)?.focus();
+    const focusInside = (): void => {
+      const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      (initialFocusRef?.current ?? firstFocusable ?? panel)?.focus();
+    };
+    focusInside();
+
+    const handleFocusIn = (event: FocusEvent): void => {
+      if (!panel || panel.contains(event.target as Node)) return;
+      focusInside();
+    };
+    document.addEventListener('focusin', handleFocusIn);
 
     return () => {
+      document.removeEventListener('focusin', handleFocusIn);
       document.body.style.overflow = previousOverflow;
       restoreFocusRef.current?.focus();
     };

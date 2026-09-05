@@ -1,0 +1,85 @@
+name: Backup Restore
+
+on:
+  pull_request:
+    paths:
+      - scripts/postgres-backup.sh
+      - scripts/postgres-restore-verify.sh
+      - docs/operations/backup-restore-local.md
+      - docs/operations/backup-restore.md
+      - .github/workflows/backup-restore.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/postgres-backup.sh
+      - scripts/postgres-restore-verify.sh
+      - docs/operations/backup-restore-local.md
+      - docs/operations/backup-restore.md
+      - .github/workflows/backup-restore.yml
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      POSTGRES_USER: jobpilot
+      SOURCE_DB: jobpilot_backup_source_test
+      TARGET_DB: jobpilot_ci_restore_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start isolated PostgreSQL service
+        run: |
+          docker compose up -d db
+          for attempt in {1..30}; do
+            if docker compose exec -T db pg_isready --username="$POSTGRES_USER" --dbname=jobpilot; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs db
+          exit 1
+
+      - name: Seed isolated source database
+        run: |
+          docker compose exec -T db createdb --username="$POSTGRES_USER" "$SOURCE_DB"
+          docker compose exec -T db psql \
+            --username="$POSTGRES_USER" \
+            --dbname="$SOURCE_DB" \
+            --set=ON_ERROR_STOP=1 \
+            --command="CREATE TABLE backup_probe (id integer PRIMARY KEY, marker text NOT NULL);" \
+            --command="INSERT INTO backup_probe (id, marker) VALUES (1, 'jobpilot-backup-restore-ci');"
+
+      - name: Create backup and checksum
+        run: |
+          mkdir -p "$RUNNER_TEMP/jobpilot-backups"
+          POSTGRES_DB="$SOURCE_DB" bash scripts/postgres-backup.sh "$RUNNER_TEMP/jobpilot-backups"
+          backup_file=$(find "$RUNNER_TEMP/jobpilot-backups" -maxdepth 1 -name "${SOURCE_DB}-*.dump" -print -quit)
+          test -n "$backup_file"
+          test -s "$backup_file"
+          sha256sum --check "${backup_file}.sha256"
+          echo "BACKUP_FILE=$backup_file" >> "$GITHUB_ENV"
+
+      - name: Restore into a new isolated database
+        run: bash scripts/postgres-restore-verify.sh "$BACKUP_FILE" "$TARGET_DB"
+
+      - name: Verify restored data
+        run: |
+          marker=$(docker compose exec -T db psql \
+            --username="$POSTGRES_USER" \
+            --dbname="$TARGET_DB" \
+            --tuples-only \
+            --no-align \
+            --set=ON_ERROR_STOP=1 \
+            --command="SELECT marker FROM backup_probe WHERE id = 1;")
+          test "$marker" = "jobpilot-backup-restore-ci"
+
+      - name: Cleanup isolated databases
+        if: always()
+        run: |
+          docker compose exec -T db dropdb --username="$POSTGRES_USER" --if-exists "$TARGET_DB" || true
+          docker compose exec -T db dropdb --username="$POSTGRES_USER" --if-exists "$SOURCE_DB" || true
+          docker compose down -v

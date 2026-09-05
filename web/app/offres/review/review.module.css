@@ -1,5 +1,5 @@
 .workspace {
-  padding-bottom: 90px;
+  padding-bottom: 82px;
 }
 
 .screenReaderStatus {
@@ -72,39 +72,37 @@
   position: fixed;
   left: 286px;
   right: 34px;
-  bottom: 14px;
+  bottom: 12px;
   z-index: 40;
   max-width: 1432px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(160px, .9fr) minmax(195px, 1fr) auto minmax(160px, .9fr) minmax(160px, .9fr);
+  grid-template-columns: minmax(150px, .85fr) minmax(150px, .85fr) auto minmax(145px, .8fr) minmax(190px, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .97);
-  box-shadow: 0 14px 38px rgba(25, 39, 77, .18);
-  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 8px 24px rgba(25, 39, 77, .13);
+  backdrop-filter: blur(10px);
 }
 
 .decisionButton {
-  min-height: 52px;
-  border: 1px solid transparent;
-  border-radius: 11px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 800;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-}
-
-.decisionButton:not(:disabled):hover {
-  transform: translateY(-1px);
+  transition: border-color .12s ease, background .12s ease, color .12s ease, box-shadow .12s ease;
 }
 
 .decisionButton:disabled,
@@ -115,46 +113,47 @@
 
 .rejectButton {
   justify-self: stretch;
-  background: #fff0ef;
-  border-color: #f4c7c3;
-  color: #a61b13;
+  border-color: #e7c8c5;
+  color: #9b2c26;
 }
 
 .rejectButton:not(:disabled):hover {
-  box-shadow: 0 7px 18px rgba(180, 35, 24, .14);
+  border-color: #d9aaa6;
+  background: #fff8f7;
 }
 
 .unavailableButton {
   justify-self: stretch;
-  background: #fff8e8;
-  border-color: #f0d39c;
-  color: #8a5400;
+  border-color: #e7d3ac;
+  color: #80520a;
 }
 
 .unavailableButton:not(:disabled):hover {
-  box-shadow: 0 7px 18px rgba(154, 91, 0, .14);
+  border-color: #d8bd87;
+  background: #fffbf2;
 }
 
 .alreadyAppliedButton {
   justify-self: stretch;
-  background: #eef4ff;
-  border-color: #bfd0ff;
-  color: #3157b7;
+  border-color: #cbd6ee;
+  color: #3c5c9e;
 }
 
 .alreadyAppliedButton:not(:disabled):hover {
-  box-shadow: 0 7px 18px rgba(49, 87, 183, .16);
+  border-color: #afc0e3;
+  background: #f7f9ff;
 }
 
 .sentButton {
   justify-self: stretch;
-  background: var(--good);
   border-color: var(--good);
+  background: var(--good);
   color: var(--panel);
+  font-weight: 800;
 }
 
 .sentButton:not(:disabled):hover {
-  box-shadow: 0 7px 18px rgba(20, 125, 80, .2);
+  box-shadow: 0 5px 14px rgba(20, 125, 80, .18);
 }
 
 .secondaryNavigation {
@@ -229,17 +228,17 @@
 
 @media (max-width: 1250px) {
   .workspace {
-    padding-bottom: 136px;
+    padding-bottom: 124px;
   }
 
   .decisionBar {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+    gap: 7px;
   }
 
   .decisionButton {
-    padding-inline: 10px;
-    font-size: 13px;
+    padding-inline: 9px;
+    font-size: 12px;
   }
 
   .rejectButton {
@@ -280,7 +279,7 @@
 
 @media (max-width: 650px) {
   .workspace {
-    padding-bottom: 194px;
+    padding-bottom: 180px;
   }
 
   .undoNotice {
@@ -297,14 +296,14 @@
     right: 12px;
     bottom: 10px;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    padding: 8px;
+    gap: 7px;
+    padding: 7px;
   }
 
   .decisionButton {
-    min-height: 48px;
-    padding: 8px 10px;
-    font-size: 13px;
+    min-height: 44px;
+    padding: 8px 9px;
+    font-size: 12px;
   }
 
   .rejectButton {
@@ -348,9 +347,5 @@
   .decisionButton,
   .progressTrack span {
     transition: none;
-  }
-
-  .decisionButton:not(:disabled):hover {
-    transform: none;
   }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Application;
 use App\Entity\CandidateProfile;
 use App\Entity\JobOffer;
 use App\Entity\UserSettings;
@@ -12,6 +13,7 @@ final class JobProcessor
     public function __construct(
         private LanguageDetector $languageDetector,
         private MatchingScoreService $matching,
+        private SearchPreferenceMatcher $searchPreferences,
         private TjmCalculator $tjmCalculator,
         private SalaryExpectationCalculator $salaryCalculator,
         private CvSelector $cvSelector,
@@ -25,6 +27,12 @@ final class JobProcessor
     public function process(JobOffer $job, UserSettings $settings, CandidateProfile $profile): void
     {
         $language = $this->languageDetector->detect($job->getTitle().' '.$job->getDescription());
+        $preferenceEvaluation = $this->searchPreferences->evaluate($job, $profile);
+        if (!$preferenceEvaluation['eligible']) {
+            $this->rejectForSearchPreferences($job, $language, $preferenceEvaluation['reasons']);
+            return;
+        }
+
         $evaluation = $this->matching->evaluate($job, $settings);
         $score = (int) $evaluation['score'];
         $reasons = $evaluation['reasons'];
@@ -75,5 +83,40 @@ final class JobProcessor
         if ($status === 'PREPARED') {
             $this->preparation->prepare($job, $profile);
         }
+    }
+
+    public function refreshSearchPreferences(JobOffer $job, UserSettings $settings, CandidateProfile $profile): void
+    {
+        $application = $this->em->getRepository(Application::class)->findOneBy(['jobOffer' => $job]);
+        if ($application instanceof Application && (
+            $application->getSubmittedAt() !== null
+            || $application->getStatus() === 'SUBMISSION_PENDING'
+        )) {
+            return;
+        }
+
+        $wasPreferenceRejected = $this->searchPreferences->isPreferenceRejection($job);
+        $preferenceEvaluation = $this->searchPreferences->evaluate($job, $profile);
+
+        if (!$preferenceEvaluation['eligible']) {
+            if (!$wasPreferenceRejected || $job->getStatus() !== 'REJECTED_BY_FILTER') {
+                $language = $this->languageDetector->detect($job->getTitle().' '.$job->getDescription());
+                $this->rejectForSearchPreferences($job, $language, $preferenceEvaluation['reasons']);
+            }
+            return;
+        }
+
+        if ($wasPreferenceRejected) {
+            $this->process($job, $settings, $profile);
+        }
+    }
+
+    /** @param list<string> $reasons */
+    private function rejectForSearchPreferences(JobOffer $job, string $language, array $reasons): void
+    {
+        $job->setEvaluation($language, 0, $reasons, null, null, 'REJECTED_BY_FILTER', null);
+        $this->em->persist($job);
+        $this->matchingScoreVersionStore->mark($job);
+        $this->em->flush();
     }
 }

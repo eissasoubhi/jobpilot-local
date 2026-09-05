@@ -155,7 +155,16 @@ final class JobController
     #[Route('/{id}/prepare', methods: ['POST'])]
     public function prepare(JobOffer $job): JsonResponse
     {
-        $application = $this->preparation->prepare($job, $this->data->profile());
+        $profile = $this->data->profile();
+        $evaluation = $this->searchPreferences->evaluate($job, $profile);
+        if (!$evaluation['eligible']) {
+            return new JsonResponse([
+                'error' => 'Cette offre ne correspond pas aux préférences de recherche du profil.',
+                'reasons' => $evaluation['reasons'],
+            ], 422);
+        }
+
+        $application = $this->preparation->prepare($job, $profile);
 
         return new JsonResponse($application->toArray());
     }
@@ -210,7 +219,7 @@ final class JobController
             if (!is_array($row)) {
                 continue;
             }
-            $code = strtolower(trim((string) ($row['code'] ?? ''));
+            $code = strtolower(trim((string) ($row['code'] ?? '')));
             if ($code !== '') {
                 $performance[$code] = $row;
             }

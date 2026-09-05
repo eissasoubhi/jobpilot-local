@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup prepare-storage migrate-private-storage start stop logs reset test extension open-private db-shell
+.PHONY: setup prepare-storage migrate-private-storage start storybook stop logs reset test extension open-private db-shell
 
 setup:
 	@test -f .env || cp .env.example .env
@@ -22,6 +22,10 @@ migrate-private-storage:
 
 start: prepare-storage
 	docker compose up --build
+
+storybook:
+	@echo "Storybook: http://localhost:$${STORYBOOK_PORT:-6006}"
+	docker compose up --build storybook
 
 stop:
 	docker compose down

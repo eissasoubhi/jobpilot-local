@@ -46,6 +46,26 @@ services:
     tmpfs:
       - /app/.next
 
+  storybook:
+    build:
+      context: ./web
+    restart: unless-stopped
+    command: ["npm", "run", "storybook", "--", "--host", "0.0.0.0"]
+    environment:
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "127.0.0.1:${STORYBOOK_PORT:-6006}:6006"
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:6006').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
 volumes:
   api_vendor:
   api_cache:

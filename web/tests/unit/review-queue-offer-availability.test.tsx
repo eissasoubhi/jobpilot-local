@@ -63,7 +63,7 @@ describe('ReviewQueueApplicationCard offer availability', () => {
     expect(timing).toBeInTheDocument();
     expect(timing).toHaveAttribute('title', 'Publiée le 4 août 2026 à 18:00');
     expect(screen.getByText('Offre ancienne')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Offre indisponible' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marquer comme indisponible' })).toBeInTheDocument();
   });
 
   it('marks an unavailable offer immediately through the dedicated endpoint', async () => {
@@ -84,7 +84,7 @@ describe('ReviewQueueApplicationCard offer availability', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Offre indisponible' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marquer comme indisponible' }));
 
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith('/applications/41/offer-unavailable', { method: 'POST' });

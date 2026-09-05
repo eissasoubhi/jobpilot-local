@@ -47,6 +47,11 @@ final class SearchPreferenceMatcher
         ];
     }
 
+    public function isFreelanceContract(string $contractType): bool
+    {
+        return $this->canonicalContract($contractType) === 'FREELANCE';
+    }
+
     public function isPreferenceRejection(JobOffer $job): bool
     {
         $reasons = $job->toArray()['scoreReasons'] ?? [];
@@ -93,7 +98,7 @@ final class SearchPreferenceMatcher
         if (preg_match('/\b(cdd|contrat a duree determinee)\b/u', $value) === 1) {
             return 'CDD';
         }
-        if (preg_match('/freelance|independant|independent|mission|portage|sous traitance|non salarie/u', $value) === 1) {
+        if (preg_match('/freelance|independant|independent|contractor|self employed|\bb2b\b|mission|portage|sous traitance|prestation|non salarie/u', $value) === 1) {
             return 'FREELANCE';
         }
         if (preg_match('/alternance|apprentissage/u', $value) === 1) {

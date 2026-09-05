@@ -39,27 +39,31 @@ function ReusableAnswersSkeleton() {
         description="Bibliothèque utilisée par JobPilot Autofill pour reconnaître les questions récurrentes et proposer la bonne réponse."
       />
       <SkeletonGroup label="Chargement des réponses automatiques">
-        <Card aria-hidden="true">
-          <Skeleton width="34%" height={24} />
-          <div className="form-grid mt-3">
-            {[0, 1, 2, 3, 4, 5].map((index) => (
-              <div key={index}>
-                <Skeleton width="42%" height={16} />
-                <Skeleton height={42} className="mt-2" />
-              </div>
-            ))}
-          </div>
-        </Card>
-        {[0, 1].map((index) => (
-          <Card key={index} aria-hidden="true">
-            <Skeleton width="38%" height={24} />
-            <Skeleton width="62%" height={16} className="mt-2" />
+        <div aria-hidden="true">
+          <Card>
+            <Skeleton width="34%" height={24} />
             <div className="form-grid mt-3">
-              {[0, 1, 2, 3].map((field) => (
-                <Skeleton key={field} height={42} />
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <div key={index}>
+                  <Skeleton width="42%" height={16} />
+                  <Skeleton height={42} className="mt-2" />
+                </div>
               ))}
             </div>
           </Card>
+        </div>
+        {[0, 1].map((index) => (
+          <div aria-hidden="true" key={index}>
+            <Card>
+              <Skeleton width="38%" height={24} />
+              <Skeleton width="62%" height={16} className="mt-2" />
+              <div className="form-grid mt-3">
+                {[0, 1, 2, 3].map((field) => (
+                  <Skeleton key={field} height={42} />
+                ))}
+              </div>
+            </Card>
+          </div>
         ))}
       </SkeletonGroup>
     </>

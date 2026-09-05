@@ -164,7 +164,7 @@ export function GlobalSearchCriteriaPanel() {
       <h3 id="global-search-criteria-title" style={{ marginTop: 0 }}>Clés réellement utilisées</h3>
       <p className="muted">
         JobPilot transmet actuellement seulement <code>targetJobs</code> et <code>skills</code> aux connecteurs.
-        Les exclusions et le seuil sont appliqués localement après récupération des offres.
+        Les exclusions, le seuil et les préférences d’éligibilité du Profil sont appliqués localement après récupération des offres.
       </p>
 
       <div className="stack">
@@ -236,9 +236,9 @@ export function GlobalSearchCriteriaPanel() {
           </FormField>
 
           <div className="notice">
-            <strong>Données de profil non encore utilisées comme filtres :</strong>{' '}
-            contrats acceptés, mobilité, ville et préférence de télétravail restent modifiables dans le profil,
-            mais ne sont actuellement ni envoyés aux plateformes ni intégrés au score. Cette limite est affichée ici pour éviter un faux sentiment de filtrage.
+            <strong>Préférences du profil actives :</strong>{' '}
+            les contrats acceptés et la préférence télétravail / site sont des filtres locaux d’éligibilité.
+            Une offre hors de ces critères n’est ni préparée ni envoyée automatiquement. La mobilité et la ville restent des informations de profil et des signaux de classement, pas des filtres d’exclusion stricts.
           </div>
 
           <div className="actions">

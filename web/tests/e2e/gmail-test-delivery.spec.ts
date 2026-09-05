@@ -138,10 +138,6 @@ test('sends one concise automatic email without concatenating the cover letter',
       submittedPayload = payload;
     },
   });
-  page.on('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('destination@example.com');
-    await dialog.accept();
-  });
 
   await page.goto('/parametres');
 
@@ -156,6 +152,15 @@ test('sends one concise automatic email without concatenating the cover letter',
   const sendButton = page.getByRole('button', { name: 'Envoyer le mail de test' });
   await expect(sendButton).toBeEnabled();
   await sendButton.click();
+
+  const confirmation = page.getByRole('dialog');
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation.getByRole('heading', { name: 'Envoyer ce mail de test ?' })).toBeVisible();
+  await expect(confirmation).toContainText('destination@example.com');
+  await expect(confirmation).toContainText(preview.subject);
+  expect(submittedPayload).toBeNull();
+
+  await confirmation.getByRole('button', { name: 'Envoyer le mail' }).click();
 
   await expect(page.getByText(/Mail de test envoyé à destination@example.com/)).toBeVisible();
   expect(submittedPayload).toEqual({

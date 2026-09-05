@@ -1,21 +1,21 @@
 .floatingPanel {
-  padding: var(--space-4, 16px);
+  padding: var(--space-4);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--radius-lg);
   background: var(--panel);
-  box-shadow: var(--shadow-floating, 0 16px 40px rgba(15, 23, 42, 0.16));
+  box-shadow: var(--shadow-floating);
 }
 
 .inlineFeedback {
-  margin-bottom: var(--space-4, 16px);
-  padding: var(--space-3, 12px) var(--space-4, 16px);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md, 10px);
+  border-radius: var(--radius-md);
   line-height: 1.5;
 }
 
 .inlineFeedbackInfo {
-  background: var(--surface-muted, #f8fafc);
+  background: var(--surface-muted);
   color: var(--text);
 }
 
@@ -35,8 +35,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4, 16px);
-  margin-bottom: var(--space-4, 16px);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .dataToolbarContent {
@@ -49,7 +49,7 @@
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
   min-width: 0;
   max-width: 100%;
 }
@@ -64,8 +64,8 @@
 .dataListItem {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4, 16px);
-  padding: var(--space-4, 16px) 0;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--line);
   min-width: 0;
 }
@@ -86,7 +86,7 @@
 
 .formField {
   display: grid;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -121,7 +121,7 @@
   --progress-color: var(--primary);
   height: 8px;
   overflow: hidden;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: var(--line);
 }
 
@@ -146,7 +146,7 @@
 }
 
 .progressTrack[data-tone='default'] {
-  background: var(--surface-muted, #e5e7eb);
+  background: var(--surface-progress);
   --progress-color: currentColor;
 }
 
@@ -154,23 +154,23 @@
   width: var(--progress-value, 0%);
   height: 100%;
   background: var(--progress-color);
-  transition: width var(--motion-fast, 200ms) ease;
+  transition: width var(--motion-fast) ease;
 }
 
 .skeletonGroup {
   display: grid;
-  gap: var(--space-4, 16px);
+  gap: var(--space-4);
 }
 
 .skeleton {
   display: block;
   max-width: 100%;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
-    var(--surface-muted, #f1f5f9) 25%,
+    var(--surface-skeleton) 25%,
     color-mix(in srgb, var(--line) 55%, var(--panel)) 50%,
-    var(--surface-muted, #f1f5f9) 75%
+    var(--surface-skeleton) 75%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;

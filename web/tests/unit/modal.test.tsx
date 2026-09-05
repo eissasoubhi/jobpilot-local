@@ -57,6 +57,25 @@ describe('Modal', () => {
     expect(last).toHaveFocus();
   });
 
+  it('returns programmatic focus escapes to the dialog', () => {
+    render(
+      <>
+        <button type="button">Action extérieure</button>
+        <Modal ariaLabel="Candidature" onClose={vi.fn()}>
+          <button type="button">Fermer</button>
+          <button type="button">Enregistrer</button>
+        </Modal>
+      </>,
+    );
+
+    const first = screen.getByRole('button', { name: 'Fermer' });
+    const outside = screen.getByRole('button', { name: 'Action extérieure' });
+
+    expect(first).toHaveFocus();
+    outside.focus();
+    expect(first).toHaveFocus();
+  });
+
   it('keeps hidden inputs out of the modal focus order', async () => {
     const user = userEvent.setup();
 

@@ -24,6 +24,7 @@ final class PaginatedListingsApiTest extends WebTestCase
                 'title' => $title.' '.$status,
                 'company' => 'JobPilot',
                 'description' => 'Offre créée pour vérifier le contrat paginé.',
+                'contractType' => 'CDI',
                 'status' => $status,
             ]));
         }

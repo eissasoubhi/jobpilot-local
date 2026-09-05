@@ -15,6 +15,8 @@ final class AutomaticSubmissionService
         private GmailService $gmail,
         private ApplicationEmailFactory $emailFactory,
         private RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
+        private SearchPreferenceMatcher $searchPreferences,
+        private LocalDataService $data,
     ) {}
 
     /**
@@ -26,6 +28,14 @@ final class AutomaticSubmissionService
 
         if (!$settings->isAutoSubmitEnabled()) {
             return ['status' => 'skipped', 'reason' => 'disabled'];
+        }
+
+        if ($job->getStatus() !== 'PREPARED') {
+            return ['status' => 'skipped', 'reason' => 'job_not_prepared'];
+        }
+
+        if (!$this->searchPreferences->evaluate($job, $this->data->profile())['eligible']) {
+            return ['status' => 'skipped', 'reason' => 'profile_preferences_mismatch'];
         }
 
         if ($this->requiredTechnologyGuard->evaluate($job, $settings)['hardRejected']) {

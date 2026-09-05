@@ -15,6 +15,7 @@ use App\Service\JobProcessor;
 use App\Service\JobRankingOrderService;
 use App\Service\JobReactionPreferenceScoreService;
 use App\Service\LocalDataService;
+use App\Service\SearchPreferenceMatcher;
 use App\Service\SourceConversionReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,6 +35,7 @@ final class JobController
         private SourceConversionReportService $conversionReport,
         private JobRankingOrderService $rankingOrder,
         private JobReactionPreferenceScoreService $reactionPreferences,
+        private SearchPreferenceMatcher $searchPreferences,
     ) {
     }
 
@@ -56,6 +58,12 @@ final class JobController
             ->getResult();
         $applications = $this->em->getRepository(Application::class)->findAll();
         $profile = $this->data->profile();
+
+        $jobs = array_values(array_filter(
+            $jobs,
+            fn (JobOffer $job): bool => $this->searchPreferences->evaluate($job, $profile)['eligible'],
+        ));
+
         $sourcePerformance = $this->sourcePerformance();
         $reactions = $this->reactionPreferences->evaluateMany($jobs, $applications);
 
@@ -147,7 +155,16 @@ final class JobController
     #[Route('/{id}/prepare', methods: ['POST'])]
     public function prepare(JobOffer $job): JsonResponse
     {
-        $application = $this->preparation->prepare($job, $this->data->profile());
+        $profile = $this->data->profile();
+        $evaluation = $this->searchPreferences->evaluate($job, $profile);
+        if (!$evaluation['eligible']) {
+            return new JsonResponse([
+                'error' => 'Cette offre ne correspond pas aux préférences de recherche du profil.',
+                'reasons' => $evaluation['reasons'],
+            ], 422);
+        }
+
+        $application = $this->preparation->prepare($job, $profile);
 
         return new JsonResponse($application->toArray());
     }

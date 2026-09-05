@@ -97,6 +97,10 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
     ];
 
     private ?int $lastInputTokens = null;
+    /** @var array<string, mixed> */
+    private array $lastUsage = [];
+    private ?int $lastStatusCode = null;
+    private ?string $lastFailure = null;
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -110,8 +114,13 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
     public function analyze(JobOffer $job, UserSettings $settings): ?AiJobMatchAnalysis
     {
         $this->lastInputTokens = null;
+        $this->lastUsage = [];
+        $this->lastStatusCode = null;
+        $this->lastFailure = null;
 
         if (!$this->enabled || trim($this->apiKey) === '') {
+            $this->lastFailure = 'disabled';
+
             return null;
         }
 
@@ -134,7 +143,9 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
             ]);
 
             $status = $response->getStatusCode();
+            $this->lastStatusCode = $status;
             if ($status < 200 || $status >= 300) {
+                $this->lastFailure = 'http_error';
                 $this->logger->warning('Gemini matching request failed; deterministic matching will be used.', [
                     'status' => $status,
                     'model' => $this->model,
@@ -145,12 +156,14 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
 
             $payload = $response->toArray(false);
             $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : [];
+            $this->lastUsage = $usage;
             if (is_numeric($usage['total_input_tokens'] ?? null)) {
                 $this->lastInputTokens = max(1, (int) $usage['total_input_tokens']);
             }
 
             $text = $this->extractOutputText($payload);
             if ($text === null || trim($text) === '') {
+                $this->lastFailure = 'empty_output';
                 $this->logger->warning('Gemini matching response did not contain a model text output.', [
                     'model' => $this->model,
                 ]);
@@ -160,11 +173,14 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
 
             $data = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($data)) {
+                $this->lastFailure = 'invalid_output';
+
                 return null;
             }
 
             return AiJobMatchAnalysis::fromArray($data);
         } catch (ExceptionInterface|\JsonException|\InvalidArgumentException $exception) {
+            $this->lastFailure = $exception::class;
             $this->logger->warning('Gemini matching analysis failed; deterministic matching will be used.', [
                 'model' => $this->model,
                 'exception' => $exception::class,
@@ -183,6 +199,22 @@ final class GeminiJobMatchAnalyzer implements AiJobMatchAnalyzerInterface
     public function lastInputTokens(): ?int
     {
         return $this->lastInputTokens;
+    }
+
+    /** @return array<string, mixed> */
+    public function lastUsage(): array
+    {
+        return $this->lastUsage;
+    }
+
+    public function lastStatusCode(): ?int
+    {
+        return $this->lastStatusCode;
+    }
+
+    public function lastFailure(): ?string
+    {
+        return $this->lastFailure;
     }
 
     public function cacheFingerprint(JobOffer $job, UserSettings $settings): string

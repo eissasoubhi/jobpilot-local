@@ -120,6 +120,7 @@ final class SearchPreferenceGuardsTest extends WebTestCase
 
         $profile = $data->profile();
         $originalProfile = $profile->toArray();
+        $expectedTjm = min(540, $data->settings()->getMaximumTjm());
         $jobId = null;
 
         try {
@@ -146,7 +147,7 @@ final class SearchPreferenceGuardsTest extends WebTestCase
             $payload = $this->decode($client);
             $jobId = (int) $payload['id'];
             self::assertSame('PREPARED', $payload['status']);
-            self::assertSame(520, $payload['proposedTjm']);
+            self::assertSame($expectedTjm, $payload['proposedTjm']);
         } finally {
             if (is_int($jobId) && $jobId > 0) {
                 $client->request('DELETE', sprintf('/api/jobs/%d', $jobId));

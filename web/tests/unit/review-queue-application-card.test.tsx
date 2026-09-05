@@ -156,7 +156,7 @@ describe('ReviewQueueApplicationCard', () => {
     expect(within(dialog).getByRole('button', { name: 'Word (.docx)' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Description de la mission' })).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: 'Motivation' })).not.toBeInTheDocument();
   });
 

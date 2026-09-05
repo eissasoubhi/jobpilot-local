@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from '@/components/CoverLetterDrawer.module.css';
+import { Modal } from '@/components/Modal';
 import { API_URL, api } from '@/lib/api';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { getErrorMessage } from '@/lib/errors';
@@ -95,24 +96,6 @@ export function CoverLetterDrawer({
   useEffect(() => {
     if (!editing) setDraft(application.coverLetter);
   }, [application.coverLetter, editing]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [onClose, open]);
 
   if (!open) return null;
 
@@ -306,279 +289,273 @@ export function CoverLetterDrawer({
   };
 
   return (
-    <div
-      className={styles.backdrop}
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <Modal
+      ariaLabelledBy={`motivation-drawer-title-${application.id}`}
+      backdropClassName={styles.backdrop}
+      initialFocusRef={closeButtonRef}
+      onClose={onClose}
+      panelClassName={styles.drawer}
     >
-      <aside
-        className={styles.drawer}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`motivation-drawer-title-${application.id}`}
-      >
-        <header className={styles.header}>
-          <div className={styles.titleBlock}>
-            <div className={styles.eyebrow}>Candidature</div>
-            <h2 id={`motivation-drawer-title-${application.id}`}>Motivation</h2>
-            <div className={styles.meta}>
-              {activeTab === 'coverLetter' ? (
-                <>
-                  <span>{words} mots · {characters} caractères</span>
-                  <span className={styles.lengthBadge}>{lengthLabel(words)}</span>
-                  <span>
-                    {editableApplication.coverLetterManuallyEdited
-                      ? `Modifiée manuellement${editedAt ? ` · ${editedAt}` : ''}`
-                      : 'Générée automatiquement par JobPilot'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>{messageCharacters} caractères</span>
-                  <span className={`${styles.lengthBadge} ${messageOverCommonLimit ? styles.warningBadge : ''}`}>
-                    {messageOverCommonLimit ? 'Dépasse 400' : 'Format court'}
-                  </span>
-                  <span>Pour les formulaires de candidature courts</span>
-                </>
-              )}
-            </div>
-          </div>
-          <button
-            ref={closeButtonRef}
-            className={styles.closeButton}
-            type="button"
-            aria-label="Fermer les contenus de motivation"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </header>
-
-        <div className={styles.tabs} role="tablist" aria-label="Contenus de motivation">
-          <button
-            id={`cover-letter-tab-${application.id}`}
-            className={`${styles.tab} ${activeTab === 'coverLetter' ? styles.tabActive : ''}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'coverLetter'}
-            aria-controls={`cover-letter-panel-${application.id}`}
-            onClick={() => switchTab('coverLetter')}
-          >
-            Lettre de motivation
-          </button>
-          <button
-            id={`message-tab-${application.id}`}
-            className={`${styles.tab} ${activeTab === 'message' ? styles.tabActive : ''}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'message'}
-            aria-controls={`message-panel-${application.id}`}
-            onClick={() => switchTab('message')}
-          >
-            Message court
-          </button>
-        </div>
-
-        <div className={styles.toolbarArea}>
-          <div className={styles.toolbar}>
-            <div className={styles.regenerationControl}>
-              <label htmlFor={`motivation-target-company-${application.id}`}>Entreprise ciblée</label>
-              <input
-                id={`motivation-target-company-${application.id}`}
-                aria-label="Entreprise ciblée pour la motivation"
-                type="text"
-                maxLength={160}
-                value={targetCompany}
-                disabled={saving || regenerating || regeneratingMessage}
-                style={{ width: 'min(240px, 46vw)' }}
-                placeholder="Nom de l’entreprise"
-                onChange={(event) => setTargetCompany(event.target.value)}
-              />
-            </div>
+      <header className={styles.header}>
+        <div className={styles.titleBlock}>
+          <div className={styles.eyebrow}>Candidature</div>
+          <h2 id={`motivation-drawer-title-${application.id}`}>Motivation</h2>
+          <div className={styles.meta}>
             {activeTab === 'coverLetter' ? (
               <>
-                {!editing ? (
-                  <button className="btn small" type="button" disabled={regenerating || regeneratingMessage} onClick={startEditing}>
-                    Modifier
-                  </button>
-                ) : null}
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={regenerating || regeneratingMessage}
-                  onClick={() => void copyCoverLetter()}
-                >
-                  Copier
-                </button>
-                <details className={styles.downloadMenu}>
-                  <summary className="btn secondary small">Télécharger</summary>
-                  <div className={styles.downloadOptions}>
-                    <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('pdf')}>PDF</button>
-                    <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('docx')}>Word (.docx)</button>
-                  </div>
-                </details>
-                {editableApplication.coverLetterManuallyEdited && !editing ? (
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={saving || regenerating || regeneratingMessage}
-                    onClick={() => void reset()}
-                  >
-                    Réinitialiser
-                  </button>
-                ) : null}
-                <div className={styles.regenerationControl}>
-                  <label htmlFor={`cover-letter-max-characters-${application.id}`}>Longueur max.</label>
-                  <input
-                    id={`cover-letter-max-characters-${application.id}`}
-                    aria-label="Longueur maximale de la lettre"
-                    type="number"
-                    min={200}
-                    max={20_000}
-                    step={50}
-                    value={maxCharacters}
-                    disabled={saving || regenerating || regeneratingMessage}
-                    onChange={(event) => setMaxCharacters(Number(event.target.value))}
-                  />
-                  <span>caractères</span>
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={saving || regenerating || regeneratingMessage || maxCharacters < 200 || maxCharacters > 20_000}
-                    onClick={() => void regenerate()}
-                  >
-                    {regenerating ? 'Régénération…' : 'Régénérer'}
-                  </button>
-                </div>
+                <span>{words} mots · {characters} caractères</span>
+                <span className={styles.lengthBadge}>{lengthLabel(words)}</span>
+                <span>
+                  {editableApplication.coverLetterManuallyEdited
+                    ? `Modifiée manuellement${editedAt ? ` · ${editedAt}` : ''}`
+                    : 'Générée automatiquement par JobPilot'}
+                </span>
               </>
             ) : (
               <>
-                <button
-                  className="btn secondary small"
-                  type="button"
-                  disabled={!hasMessage || regenerating || regeneratingMessage}
-                  onClick={() => void copyMessage()}
-                >
-                  Copier
-                </button>
-                <div className={styles.regenerationControl}>
-                  <label htmlFor={`message-max-characters-${application.id}`}>Longueur max.</label>
-                  <input
-                    id={`message-max-characters-${application.id}`}
-                    aria-label="Longueur maximale du message court"
-                    type="number"
-                    min={50}
-                    max={5_000}
-                    step={25}
-                    value={messageMaxCharacters}
-                    disabled={saving || regenerating || regeneratingMessage}
-                    onChange={(event) => setMessageMaxCharacters(Number(event.target.value))}
-                  />
-                  <span>caractères</span>
-                  <button
-                    className="btn secondary small"
-                    type="button"
-                    disabled={saving
-                      || regenerating
-                      || regeneratingMessage
-                      || messageMaxCharacters < 50
-                      || messageMaxCharacters > 5_000}
-                    onClick={() => void regenerateMessage()}
-                  >
-                    {regeneratingMessage
-                      ? 'Régénération…'
-                      : messageOverSelectedLimit
-                        ? `Réduire à ${messageMaxCharacters}`
-                        : 'Régénérer'}
-                  </button>
-                </div>
+                <span>{messageCharacters} caractères</span>
+                <span className={`${styles.lengthBadge} ${messageOverCommonLimit ? styles.warningBadge : ''}`}>
+                  {messageOverCommonLimit ? 'Dépasse 400' : 'Format court'}
+                </span>
+                <span>Pour les formulaires de candidature courts</span>
               </>
             )}
           </div>
+        </div>
+        <button
+          ref={closeButtonRef}
+          className={styles.closeButton}
+          type="button"
+          aria-label="Fermer les contenus de motivation"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </header>
 
-          {targetCompany.trim() === '' && (
-            <div className={`small muted ${styles.feedback}`} role="status">
-              {targetCompanyMissingHint(application.jobOffer)}
-            </div>
+      <div className={styles.tabs} role="tablist" aria-label="Contenus de motivation">
+        <button
+          id={`cover-letter-tab-${application.id}`}
+          className={`${styles.tab} ${activeTab === 'coverLetter' ? styles.tabActive : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'coverLetter'}
+          aria-controls={`cover-letter-panel-${application.id}`}
+          onClick={() => switchTab('coverLetter')}
+        >
+          Lettre de motivation
+        </button>
+        <button
+          id={`message-tab-${application.id}`}
+          className={`${styles.tab} ${activeTab === 'message' ? styles.tabActive : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'message'}
+          aria-controls={`message-panel-${application.id}`}
+          onClick={() => switchTab('message')}
+        >
+          Message court
+        </button>
+      </div>
+
+      <div className={styles.toolbarArea}>
+        <div className={styles.toolbar}>
+          <div className={styles.regenerationControl}>
+            <label htmlFor={`motivation-target-company-${application.id}`}>Entreprise ciblée</label>
+            <input
+              id={`motivation-target-company-${application.id}`}
+              aria-label="Entreprise ciblée pour la motivation"
+              type="text"
+              maxLength={160}
+              value={targetCompany}
+              disabled={saving || regenerating || regeneratingMessage}
+              style={{ width: 'min(240px, 46vw)' }}
+              placeholder="Nom de l’entreprise"
+              onChange={(event) => setTargetCompany(event.target.value)}
+            />
+          </div>
+          {activeTab === 'coverLetter' ? (
+            <>
+              {!editing ? (
+                <button className="btn small" type="button" disabled={regenerating || regeneratingMessage} onClick={startEditing}>
+                  Modifier
+                </button>
+              ) : null}
+              <button
+                className="btn secondary small"
+                type="button"
+                disabled={regenerating || regeneratingMessage}
+                onClick={() => void copyCoverLetter()}
+              >
+                Copier
+              </button>
+              <details className={styles.downloadMenu}>
+                <summary className="btn secondary small">Télécharger</summary>
+                <div className={styles.downloadOptions}>
+                  <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('pdf')}>PDF</button>
+                  <button type="button" disabled={saving || regenerating || regeneratingMessage} onClick={() => void downloadCoverLetter('docx')}>Word (.docx)</button>
+                </div>
+              </details>
+              {editableApplication.coverLetterManuallyEdited && !editing ? (
+                <button
+                  className="btn secondary small"
+                  type="button"
+                  disabled={saving || regenerating || regeneratingMessage}
+                  onClick={() => void reset()}
+                >
+                  Réinitialiser
+                </button>
+              ) : null}
+              <div className={styles.regenerationControl}>
+                <label htmlFor={`cover-letter-max-characters-${application.id}`}>Longueur max.</label>
+                <input
+                  id={`cover-letter-max-characters-${application.id}`}
+                  aria-label="Longueur maximale de la lettre"
+                  type="number"
+                  min={200}
+                  max={20_000}
+                  step={50}
+                  value={maxCharacters}
+                  disabled={saving || regenerating || regeneratingMessage}
+                  onChange={(event) => setMaxCharacters(Number(event.target.value))}
+                />
+                <span>caractères</span>
+                <button
+                  className="btn secondary small"
+                  type="button"
+                  disabled={saving || regenerating || regeneratingMessage || maxCharacters < 200 || maxCharacters > 20_000}
+                  onClick={() => void regenerate()}
+                >
+                  {regenerating ? 'Régénération…' : 'Régénérer'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn secondary small"
+                type="button"
+                disabled={!hasMessage || regenerating || regeneratingMessage}
+                onClick={() => void copyMessage()}
+              >
+                Copier
+              </button>
+              <div className={styles.regenerationControl}>
+                <label htmlFor={`message-max-characters-${application.id}`}>Longueur max.</label>
+                <input
+                  id={`message-max-characters-${application.id}`}
+                  aria-label="Longueur maximale du message court"
+                  type="number"
+                  min={50}
+                  max={5_000}
+                  step={25}
+                  value={messageMaxCharacters}
+                  disabled={saving || regenerating || regeneratingMessage}
+                  onChange={(event) => setMessageMaxCharacters(Number(event.target.value))}
+                />
+                <span>caractères</span>
+                <button
+                  className="btn secondary small"
+                  type="button"
+                  disabled={saving
+                    || regenerating
+                    || regeneratingMessage
+                    || messageMaxCharacters < 50
+                    || messageMaxCharacters > 5_000}
+                  onClick={() => void regenerateMessage()}
+                >
+                  {regeneratingMessage
+                    ? 'Régénération…'
+                    : messageOverSelectedLimit
+                      ? `Réduire à ${messageMaxCharacters}`
+                      : 'Régénérer'}
+                </button>
+              </div>
+            </>
           )}
-          {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
-          {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
         </div>
 
-        <div className={styles.body}>
-          {activeTab === 'coverLetter' ? (
-            <div
-              id={`cover-letter-panel-${application.id}`}
-              role="tabpanel"
-              aria-labelledby={`cover-letter-tab-${application.id}`}
-            >
-              {editing ? (
-                <div className={styles.editor}>
-                  <label htmlFor={`cover-letter-editor-${application.id}`}>Texte de la lettre</label>
-                  <textarea
-                    id={`cover-letter-editor-${application.id}`}
-                    value={draft}
-                    disabled={saving || regenerating || regeneratingMessage}
-                    autoFocus
-                    onChange={(event) => setDraft(event.target.value)}
-                  />
-                  <div className={styles.editorFooter}>
-                    <span>Le téléchargement enregistre d’abord le texte actuellement affiché, puis exporte exactement cette version.</span>
-                    <div className={styles.editorActions}>
+        {targetCompany.trim() === '' && (
+          <div className={`small muted ${styles.feedback}`} role="status">
+            {targetCompanyMissingHint(application.jobOffer)}
+          </div>
+        )}
+        {notice !== '' && <div className={`success-box ${styles.feedback}`} role="status">{notice}</div>}
+        {error !== '' && <div className={`error-box ${styles.feedback}`} role="alert">{error}</div>}
+      </div>
+
+      <div className={styles.body}>
+        {activeTab === 'coverLetter' ? (
+          <div
+            id={`cover-letter-panel-${application.id}`}
+            role="tabpanel"
+            aria-labelledby={`cover-letter-tab-${application.id}`}
+          >
+            {editing ? (
+              <div className={styles.editor}>
+                <label htmlFor={`cover-letter-editor-${application.id}`}>Texte de la lettre</label>
+                <textarea
+                  id={`cover-letter-editor-${application.id}`}
+                  value={draft}
+                  disabled={saving || regenerating || regeneratingMessage}
+                  autoFocus
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+                <div className={styles.editorFooter}>
+                  <span>Le téléchargement enregistre d’abord le texte actuellement affiché, puis exporte exactement cette version.</span>
+                  <div className={styles.editorActions}>
+                    <button
+                      className="btn secondary small"
+                      type="button"
+                      disabled={saving || regenerating || regeneratingMessage}
+                      onClick={cancelEditing}
+                    >
+                      Annuler
+                    </button>
+                    {editableApplication.coverLetterManuallyEdited ? (
                       <button
                         className="btn secondary small"
                         type="button"
                         disabled={saving || regenerating || regeneratingMessage}
-                        onClick={cancelEditing}
+                        onClick={() => void reset()}
                       >
-                        Annuler
+                        Réinitialiser
                       </button>
-                      {editableApplication.coverLetterManuallyEdited ? (
-                        <button
-                          className="btn secondary small"
-                          type="button"
-                          disabled={saving || regenerating || regeneratingMessage}
-                          onClick={() => void reset()}
-                        >
-                          Réinitialiser
-                        </button>
-                      ) : null}
-                      <button
-                        className="btn small"
-                        type="button"
-                        disabled={saving || regenerating || regeneratingMessage || draft.trim() === ''}
-                        onClick={() => void save()}
-                      >
-                        {saving ? 'Enregistrement…' : 'Enregistrer'}
-                      </button>
-                    </div>
+                    ) : null}
+                    <button
+                      className="btn small"
+                      type="button"
+                      disabled={saving || regenerating || regeneratingMessage || draft.trim() === ''}
+                      onClick={() => void save()}
+                    >
+                      {saving ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className={styles.preview}>{application.coverLetter}</div>
-              )}
-            </div>
-          ) : (
-            <div
-              id={`message-panel-${application.id}`}
-              role="tabpanel"
-              aria-labelledby={`message-tab-${application.id}`}
-              className={styles.messagePanel}
-            >
-              <p className={styles.messageHint}>
-                Ce texte est prévu pour les formulaires qui demandent un message de motivation court. La limite courante est souvent de 400 caractères.
-              </p>
-              <div className={styles.preview}>{hasMessage ? application.message : 'Aucun message court préparé.'}</div>
-              {messageOverSelectedLimit && (
-                <div className={styles.messageWarning}>
-                  Ce message fait {messageCharacters} caractères et dépasse la limite choisie de {messageMaxCharacters}. Utilise « Réduire à {messageMaxCharacters} » pour générer une version compatible.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </aside>
-    </div>
+              </div>
+            ) : (
+              <div className={styles.preview}>{application.coverLetter}</div>
+            )}
+          </div>
+        ) : (
+          <div
+            id={`message-panel-${application.id}`}
+            role="tabpanel"
+            aria-labelledby={`message-tab-${application.id}`}
+            className={styles.messagePanel}
+          >
+            <p className={styles.messageHint}>
+              Ce texte est prévu pour les formulaires qui demandent un message de motivation court. La limite courante est souvent de 400 caractères.
+            </p>
+            <div className={styles.preview}>{hasMessage ? application.message : 'Aucun message court préparé.'}</div>
+            {messageOverSelectedLimit && (
+              <div className={styles.messageWarning}>
+                Ce message fait {messageCharacters} caractères et dépasse la limite choisie de {messageMaxCharacters}. Utilise « Réduire à {messageMaxCharacters} » pour générer une version compatible.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

@@ -109,6 +109,53 @@ final class SearchPreferenceGuardsTest extends WebTestCase
         }
     }
 
+    public function testIndependentContractAliasUsesFreelanceTjmRules(): void
+    {
+        $client = static::createClient();
+        $container = static::getContainer();
+        $em = $container->get(EntityManagerInterface::class);
+        $data = $container->get(LocalDataService::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $em);
+        self::assertInstanceOf(LocalDataService::class, $data);
+
+        $profile = $data->profile();
+        $originalProfile = $profile->toArray();
+        $jobId = null;
+
+        try {
+            $profile->fill([
+                'acceptedContracts' => ['Freelance'],
+                'workModePreference' => 'Aucune préférence',
+            ]);
+            $em->flush();
+
+            $client->jsonRequest('POST', '/api/jobs', [
+                'source' => 'Preference guard test',
+                'sourceUrl' => 'https://example.test/jobs/independent-'.bin2hex(random_bytes(6)),
+                'title' => 'Senior Symfony indépendant',
+                'company' => 'JobPilot',
+                'location' => 'Paris',
+                'contractType' => 'Indépendant',
+                'workMode' => 'Hybride',
+                'description' => 'Mission indépendante Symfony React avec TJM annoncé.',
+                'tjmMin' => 480,
+                'tjmMax' => 600,
+            ]);
+
+            self::assertResponseStatusCodeSame(201);
+            $payload = $this->decode($client);
+            $jobId = (int) $payload['id'];
+            self::assertSame('PREPARED', $payload['status']);
+            self::assertSame(520, $payload['proposedTjm']);
+        } finally {
+            if (is_int($jobId) && $jobId > 0) {
+                $client->request('DELETE', sprintf('/api/jobs/%d', $jobId));
+            }
+            $profile->fill($originalProfile);
+            $em->flush();
+        }
+    }
+
     /** @return array<string|int, mixed> */
     private function decode(object $client): array
     {

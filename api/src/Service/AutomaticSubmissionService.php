@@ -28,6 +28,10 @@ final class AutomaticSubmissionService
             return ['status' => 'skipped', 'reason' => 'disabled'];
         }
 
+        if ($job->getStatus() !== 'PREPARED') {
+            return ['status' => 'skipped', 'reason' => 'job_not_prepared'];
+        }
+
         if ($this->requiredTechnologyGuard->evaluate($job, $settings)['hardRejected']) {
             return ['status' => 'skipped', 'reason' => 'required_primary_stack_missing'];
         }

@@ -109,6 +109,38 @@ export const VisualLanguageMap: Story = {
   ),
 };
 
+export const DecisionFirstPattern: Story = {
+  name: 'Decision-first hierarchy',
+  render: () => (
+    <Card>
+      <DataToolbar actions={<Button size="small">Action principale</Button>}>
+        <div>
+          <strong>Décision à prendre</strong>
+          <div className="muted">Le résumé utile arrive avant le détail.</div>
+        </div>
+      </DataToolbar>
+
+      <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem', maxWidth: 720 }}>
+        <InlineFeedback tone="warning">
+          1 point à vérifier · aucun blocage détecté.
+        </InlineFeedback>
+        <div>
+          <strong>Résumé</strong>
+          <p>Les informations essentielles, les manques bloquants et le prochain geste doivent être scannables en quelques secondes.</p>
+        </div>
+        <details>
+          <summary>Voir le détail</summary>
+          <p>Les preuves secondaires, le texte long et les diagnostics restent disponibles sans concurrencer la décision principale.</p>
+        </details>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <Button size="small" variant="secondary">Action secondaire</Button>
+          <Button size="small" variant="subtle">Autre option</Button>
+        </div>
+      </div>
+    </Card>
+  ),
+};
+
 export const Buttons: Story = {
   render: () => (
     <Card>
@@ -133,7 +165,13 @@ export const FeedbackStates: Story = {
       <InlineFeedback>Information contextuelle.</InlineFeedback>
       <InlineFeedback tone="success">Modification enregistrée.</InlineFeedback>
       <InlineFeedback tone="warning">Une vérification est nécessaire avant de continuer.</InlineFeedback>
-      <ErrorBox message="Impossible de charger les données." />
+      <ErrorBox
+        title="Données indisponibles"
+        message="Impossible de charger les données."
+        impact="Le contenu affiché n’a pas été modifié."
+        details="Le service local n’a pas répondu à la dernière requête."
+        onRetry={() => undefined}
+      />
       <Empty>Aucun élément à afficher.</Empty>
     </div>
   ),

@@ -12,7 +12,42 @@ export function Card({ children, className='' }: { children:React.ReactNode; cla
 export function Badge({ children, tone='neutral' }: { children:React.ReactNode; tone?:'neutral'|'good'|'warn'|'bad'|'blue' }) { return <span className={`badge ${tone}`}>{children}</span>; }
 export function Empty({ children }: { children:React.ReactNode }) { return <div className="empty" role="status" aria-live="polite">{children}</div>; }
 export function Loading() { return <div className="loading" role="status" aria-live="polite" aria-busy="true">Chargement…</div>; }
-export function ErrorBox({ message }: { message:string }) { return <div className="error-box" role="alert">{message}</div>; }
+export function ErrorBox({
+  message,
+  title = 'Un problème est survenu',
+  impact,
+  details,
+  onRetry,
+  retryLabel = 'Réessayer',
+}: {
+  message: string;
+  title?: string;
+  impact?: string;
+  details?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
+  return (
+    <div className={`error-box ${uiStyles.errorBox}`} role="alert">
+      <div className={uiStyles.errorBoxContent}>
+        <strong className={uiStyles.errorBoxTitle}>{title}</strong>
+        <div className={uiStyles.errorBoxMessage}>{message}</div>
+        {impact && <div className={uiStyles.errorBoxImpact}>{impact}</div>}
+        {details && (
+          <details className={uiStyles.errorBoxDetails}>
+            <summary>Voir le diagnostic</summary>
+            <div>{details}</div>
+          </details>
+        )}
+      </div>
+      {onRetry && (
+        <Button variant="secondary" size="small" onClick={onRetry}>
+          {retryLabel}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export function InlineFeedback({
   children,

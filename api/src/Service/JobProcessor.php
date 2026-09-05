@@ -55,7 +55,7 @@ final class JobProcessor
             $job->setApplicationEmail($this->emailExtractor->extract($job->getTitle().' '.$job->getDescription()));
         }
 
-        $isFreelance = preg_match('/freelance|mission|portage|sous-traitance/i', $job->getContractType()) === 1;
+        $isFreelance = $this->searchPreferences->isFreelanceContract($job->getContractType());
         $hasAdvertisedTjm = $job->getTjmFixed() !== null || ($job->getTjmMin() !== null && $job->getTjmMax() !== null);
         $proposedTjm = $isFreelance
             ? $this->tjmCalculator->calculate($job->getTjmFixed(), $job->getTjmMin(), $job->getTjmMax(), $job->getLocation(), $job->getWorkMode(), $settings, false)

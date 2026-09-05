@@ -2,6 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
 import {
   Badge,
@@ -56,6 +57,7 @@ export default function CvPage() {
   const [documentsError, setDocumentsError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [pendingRemovalId, setPendingRemovalId] = useState<number | null>(null);
   const [uploadMessage, setUploadMessage] = useState('');
   const [documentsMessage, setDocumentsMessage] = useState('');
 
@@ -92,8 +94,6 @@ export default function CvPage() {
   };
 
   const remove = async (id: number): Promise<void> => {
-    if (!window.confirm('Supprimer ce CV ?')) return;
-
     setDocumentsError('');
     setDocumentsMessage('');
     setRemovingId(id);
@@ -102,6 +102,7 @@ export default function CvPage() {
       await api(`/cvs/${id}`, { method: 'DELETE' });
       await load();
       setDocumentsMessage('CV supprimé.');
+      setPendingRemovalId(null);
     } catch (caughtError: unknown) {
       setDocumentsError(getErrorMessage(caughtError));
     } finally {
@@ -186,7 +187,7 @@ export default function CvPage() {
                       size="small"
                       loading={removingId === cv.id}
                       disabled={removingId !== null && removingId !== cv.id}
-                      onClick={() => void remove(cv.id)}
+                      onClick={() => setPendingRemovalId(cv.id)}
                     >
                       Supprimer
                     </Button>
@@ -197,6 +198,17 @@ export default function CvPage() {
           )}
         </Card>
       </div>
+      <ConfirmDialog
+        open={pendingRemovalId !== null}
+        title="Supprimer ce CV ?"
+        description="Ce document sera supprimé de JobPilot. Cette action est irréversible."
+        confirmLabel="Supprimer"
+        loading={removingId !== null}
+        onCancel={() => setPendingRemovalId(null)}
+        onConfirm={() => {
+          if (pendingRemovalId !== null) void remove(pendingRemovalId);
+        }}
+      />
     </>
   );
 }

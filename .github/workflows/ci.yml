@@ -92,6 +92,8 @@ jobs:
           NEXT_PUBLIC_API_URL: /api
           API_INTERNAL_URL: http://127.0.0.1:8080
         run: npm run build
+      - name: Build Storybook
+        run: npm run build-storybook
 
   compose-config:
     name: Docker Compose configuration

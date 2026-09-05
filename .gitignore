@@ -7,6 +7,7 @@ api/config/reference.php
 api/.phpunit.cache/
 web/node_modules/
 web/.next/
+web/storybook-static/
 web/next-env.d.ts
 web/tsconfig.tsbuildinfo
 extension/dist/

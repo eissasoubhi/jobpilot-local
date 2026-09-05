@@ -8,7 +8,6 @@ import styles from '@/components/ReviewQueueApplicationCard.module.css';
 import { ReviewQueueTechnologyComparison, type JobProfileComparison } from '@/components/ReviewQueueTechnologyComparison';
 import { Badge, Button, ErrorBox, InlineFeedback } from '@/components/UI';
 import { api } from '@/lib/api';
-import { applicationBadgeLabel, applicationStatusTone } from '@/lib/application-status';
 import { getErrorMessage } from '@/lib/errors';
 import { jobDescriptionToPlainText } from '@/lib/job-description';
 import { offerPublicationTiming } from '@/lib/job-publication';
@@ -40,9 +39,41 @@ const TRACKING_STATUSES = [
   ['IGNORED_NOT_MATCH', 'Ne correspond pas au profil'],
 ] as const;
 
+const MESSAGE_RECOMMENDED_LIMIT = 400;
+const DESCRIPTION_PREVIEW_LENGTH = 760;
+
 function wordCount(value: string): number {
   const normalized = value.trim();
   return normalized === '' ? 0 : normalized.split(/\s+/).length;
+}
+
+function descriptionPreview(value: string): string {
+  if (value.length <= DESCRIPTION_PREVIEW_LENGTH) return value;
+
+  const candidate = value.slice(0, DESCRIPTION_PREVIEW_LENGTH);
+  const sentenceEnd = Math.max(candidate.lastIndexOf('. '), candidate.lastIndexOf('\n'));
+  const wordEnd = candidate.lastIndexOf(' ');
+  const cutAt = sentenceEnd > DESCRIPTION_PREVIEW_LENGTH * 0.55
+    ? sentenceEnd + 1
+    : wordEnd > 0 ? wordEnd : DESCRIPTION_PREVIEW_LENGTH;
+
+  return `${candidate.slice(0, cutAt).trim()}…`;
+}
+
+function humanizeScoreReason(reason: string): string {
+  const value = reason.trim();
+  const analysisMatch = value.match(/^Analyse IA\s*:\s*(MATCH|NO_MATCH)(?:\s*[·-]\s*confiance\s*(\d+)\s*%?)?/i);
+
+  if (analysisMatch) {
+    const decision = analysisMatch[1].toUpperCase() === 'MATCH' ? 'Correspondance forte' : 'Correspondance à vérifier';
+    return analysisMatch[2] ? `${decision} · confiance ${analysisMatch[2]} %` : decision;
+  }
+
+  return value
+    .replace(/^Rôle principal détecté par IA\s*:\s*/i, 'Rôle principal : ')
+    .replace(/^Stack principale détectée par IA\s*:\s*/i, 'Compétences clés : ')
+    .replace(/^Positionnement ([^:]+?) détecté par IA\s*:\s*/i, 'Positionnement $1 : ')
+    .replace(/^Explication IA\s*:\s*/i, '');
 }
 
 export function ReviewQueueApplicationCard({
@@ -107,7 +138,7 @@ export function ReviewQueueApplicationCard({
 
   const saveTrackingStatus = async (): Promise<void> => {
     if (selectedStatus === currentApplication.status) return;
-    await saveApplication(selectedStatus, 'Statut de suivi enregistré dans JobPilot.');
+    await saveApplication(selectedStatus, 'Statut de suivi enregistré.');
   };
 
   const markOfferUnavailable = async (): Promise<void> => {
@@ -149,14 +180,23 @@ export function ReviewQueueApplicationCard({
   const hasMessage = currentApplication.message.trim() !== '';
   const hasCoverLetter = currentApplication.coverLetter.trim() !== '';
   const hasCompensation = (currentApplication.compensationAnswer ?? '').trim() !== '';
+  const hasCv = Boolean(currentApplication.cvDocument);
   const scoreReasons = job.scoreReasons ?? [];
   const description = jobDescriptionToPlainText(job.description) || 'Description non disponible.';
-  const descriptionIsLong = description.length > 1_400 || description.split('\n').length > 18;
+  const compactDescription = descriptionPreview(description);
+  const descriptionIsLong = compactDescription !== description;
+  const visibleDescription = descriptionExpanded ? description : compactDescription;
   const isLowMatch = job.score < 60;
   const messageCharacters = currentApplication.message.length;
-  const messageOverCommonLimit = messageCharacters > 400;
+  const messageOverCommonLimit = messageCharacters > MESSAGE_RECOMMENDED_LIMIT;
   const coverLetterWords = wordCount(currentApplication.coverLetter);
   const publicationTiming = offerPublicationTiming(job.publishedAt, job.discoveredAt);
+  const readinessAttentionCount = [
+    !hasCv,
+    !hasMessage || messageOverCommonLimit,
+    !hasCoverLetter,
+    !hasCompensation,
+  ].filter(Boolean).length;
 
   return (
     <article className={styles.card} aria-label={`Offre à examiner : ${job.title}`}>
@@ -173,9 +213,6 @@ export function ReviewQueueApplicationCard({
           </div>
         </div>
         <div className={styles.badges}>
-          <Badge tone={applicationStatusTone(currentApplication.status)}>
-            {applicationBadgeLabel(currentApplication)}
-          </Badge>
           {publicationTiming.stale && <Badge tone="warn">Offre ancienne</Badge>}
           {isLowMatch && <Badge tone="warn">Match faible · {job.score}%</Badge>}
           <Badge tone={isCdi ? 'good' : 'neutral'}>{isCdi ? 'CDI' : 'Non-CDI'}</Badge>
@@ -189,7 +226,7 @@ export function ReviewQueueApplicationCard({
         <div className={styles.quickActions}>
           {job.sourceUrl && (
             <a className="btn small" href={job.sourceUrl} target="_blank" rel="noreferrer">
-              Ouvrir la plateforme
+              Ouvrir l’offre
             </a>
           )}
 
@@ -200,7 +237,7 @@ export function ReviewQueueApplicationCard({
             disabled={saving || decisionActionsDisabled}
             onClick={() => void markOfferUnavailable()}
           >
-            {markingUnavailable ? 'Enregistrement…' : 'Offre indisponible'}
+            {markingUnavailable ? 'Enregistrement…' : 'Marquer comme indisponible'}
           </Button>
 
           {currentApplication.cvDocument && (
@@ -212,7 +249,7 @@ export function ReviewQueueApplicationCard({
 
         <div className={styles.statusActions}>
           <label className={styles.statusControl}>
-            Statut de suivi
+            Suivi
             <select
               aria-label="Statut de suivi dans JobPilot"
               value={selectedStatus}
@@ -235,26 +272,31 @@ export function ReviewQueueApplicationCard({
               || selectedStatus === currentApplication.status}
             onClick={() => void saveTrackingStatus()}
           >
-            {saving ? 'Enregistrement…' : 'Appliquer'}
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
           </Button>
         </div>
       </section>
 
       {notice !== '' && <InlineFeedback className={styles.feedback} tone="success">{notice}</InlineFeedback>}
-      {error !== '' && <div className={styles.feedback}><ErrorBox message={error} /></div>}
+      {error !== '' && (
+        <div className={styles.feedback}>
+          <ErrorBox
+            title="Modification non enregistrée"
+            message={error}
+            impact="La candidature n’a pas été modifiée."
+          />
+        </div>
+      )}
 
       <section className={styles.mission} aria-labelledby={`mission-title-${currentApplication.id}`}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitleBlock}>
-            <div className={styles.eyebrow}>Contexte de décision</div>
-            <h3 id={`mission-title-${currentApplication.id}`}>Description de la mission</h3>
+            <div className={styles.eyebrow}>Mission</div>
+            <h3 id={`mission-title-${currentApplication.id}`}>Résumé de la mission</h3>
           </div>
         </div>
-        <div
-          className={`${styles.descriptionViewport} ${descriptionIsLong && !descriptionExpanded ? styles.descriptionViewportCollapsed : ''}`}
-          data-expanded={descriptionExpanded ? 'true' : 'false'}
-        >
-          <div className={styles.description}>{description}</div>
+        <div className={styles.descriptionViewport} data-expanded={descriptionExpanded ? 'true' : 'false'}>
+          <div className={styles.description}>{visibleDescription}</div>
         </div>
         {descriptionIsLong && (
           <button
@@ -263,7 +305,7 @@ export function ReviewQueueApplicationCard({
             aria-expanded={descriptionExpanded}
             onClick={() => setDescriptionExpanded((value) => !value)}
           >
-            {descriptionExpanded ? 'Voir moins' : 'Voir toute la description'}
+            {descriptionExpanded ? 'Réduire' : 'Voir le détail'}
           </button>
         )}
       </section>
@@ -274,7 +316,7 @@ export function ReviewQueueApplicationCard({
           <div className={styles.scoreHeader}>
             <div>
               <div className={styles.eyebrow}>Matching JobPilot</div>
-              <h3 id={`score-title-${currentApplication.id}`}>Pourquoi ce score ?</h3>
+              <h3 id={`score-title-${currentApplication.id}`}>Pourquoi cette note ?</h3>
               {isLowMatch && <div className={styles.lowMatchHint}>Correspondance faible : vérification recommandée avant envoi.</div>}
             </div>
           </div>
@@ -282,7 +324,7 @@ export function ReviewQueueApplicationCard({
 
         {scoreReasons.length > 0 ? (
           <ul className={styles.scoreReasons}>
-            {scoreReasons.map((reason) => <li key={reason}>{reason}</li>)}
+            {scoreReasons.map((reason) => <li key={reason}>{humanizeScoreReason(reason)}</li>)}
           </ul>
         ) : (
           <div className="muted">Aucune explication détaillée disponible.</div>
@@ -293,38 +335,42 @@ export function ReviewQueueApplicationCard({
         <div className={styles.applicationSummaryHeader}>
           <div>
             <div className={styles.eyebrow}>Candidature</div>
-            <h3 id={`application-summary-title-${currentApplication.id}`}>Contenu prêt à envoyer</h3>
+            <h3 id={`application-summary-title-${currentApplication.id}`}>Candidature prête</h3>
           </div>
-          {hasCoverLetter && (
-            <span className={styles.letterLength}>{coverLetterWords} mots dans la lettre</span>
-          )}
+          <Badge tone={readinessAttentionCount === 0 ? 'good' : 'warn'}>
+            {readinessAttentionCount === 0
+              ? 'Prête à envoyer'
+              : `${readinessAttentionCount} point${readinessAttentionCount > 1 ? 's' : ''} à vérifier`}
+          </Badge>
         </div>
 
         <div className={styles.applicationContent}>
           <div className={styles.applicationDocuments}>
             <div className={styles.applicationDocument}>
               <span>CV</span>
-              <strong>{currentApplication.cvDocument?.name || 'Non sélectionné'}</strong>
+              <strong>{hasCv ? `Prêt · ${currentApplication.cvDocument?.name}` : 'À sélectionner'}</strong>
             </div>
             <div className={styles.applicationDocument}>
-              <span>Message court de motivation</span>
+              <span>Message court</span>
               <strong>
-                {hasMessage
-                  ? `${messageCharacters} caractères${messageOverCommonLimit ? ' · à réduire' : ''}`
-                  : 'Non préparé'}
+                {!hasMessage
+                  ? 'À préparer'
+                  : messageOverCommonLimit
+                    ? `À raccourcir · ${messageCharacters} caractères`
+                    : `Prêt · ${messageCharacters} caractères`}
               </strong>
             </div>
             <div className={styles.applicationDocument}>
               <span>Lettre de motivation</span>
               <strong>
                 {hasCoverLetter
-                  ? editableApplication.coverLetterManuallyEdited ? 'Prête · modifiée' : 'Prête'
-                  : 'Non préparée'}
+                  ? `Prête${editableApplication.coverLetterManuallyEdited ? ' · modifiée' : ''} · ${coverLetterWords} mots`
+                  : 'À préparer'}
               </strong>
             </div>
             <div className={styles.applicationDocument}>
               <span>Rémunération</span>
-              <strong>{hasCompensation ? currentApplication.compensationAnswer : 'Non préparée'}</strong>
+              <strong>{hasCompensation ? `Renseignée · ${currentApplication.compensationAnswer}` : 'Non renseignée'}</strong>
             </div>
           </div>
 
@@ -332,12 +378,12 @@ export function ReviewQueueApplicationCard({
             <div className={styles.applicationActions}>
               {hasCoverLetter && (
                 <button className="btn small" type="button" onClick={() => openMotivationDrawer('coverLetter')}>
-                  Ouvrir les textes de motivation
+                  Voir les textes
                 </button>
               )}
               {!hasCoverLetter && hasMessage && (
                 <button className="btn small" type="button" onClick={() => openMotivationDrawer('message')}>
-                  Ouvrir le message court
+                  Voir le message
                 </button>
               )}
               {hasMessage && hasCoverLetter && (

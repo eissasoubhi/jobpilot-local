@@ -18,6 +18,7 @@ final class JobProcessor
         private ApplicationEmailExtractor $emailExtractor,
         private ApplicationPreparationService $preparation,
         private RequiredPrimaryTechnologyGuard $requiredTechnologyGuard,
+        private SearchPreferenceMatcher $searchPreferences,
         private MatchingScoreVersionStore $matchingScoreVersionStore,
         private EntityManagerInterface $em,
     ) {}
@@ -25,6 +26,14 @@ final class JobProcessor
     public function process(JobOffer $job, UserSettings $settings, CandidateProfile $profile): void
     {
         $language = $this->languageDetector->detect($job->getTitle().' '.$job->getDescription());
+        $preferenceEvaluation = $this->searchPreferences->evaluate($job, $profile);
+        if (!$preferenceEvaluation['eligible']) {
+            $job->setEvaluation($language, 0, $preferenceEvaluation['reasons'], null, null, 'REJECTED_BY_FILTER', null);
+            $this->em->persist($job);
+            $this->em->flush();
+            return;
+        }
+
         $evaluation = $this->matching->evaluate($job, $settings);
         $score = (int) $evaluation['score'];
         $reasons = $evaluation['reasons'];

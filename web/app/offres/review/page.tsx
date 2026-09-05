@@ -277,9 +277,22 @@ export default function ReviewQueuePage() {
         </div>
       )}
 
-      {decisionError !== '' && <ErrorBox message={decisionError} />}
+      {decisionError !== '' && (
+        <ErrorBox
+          title="Action non enregistrée"
+          message={decisionError}
+          impact="La décision n’a pas été appliquée. Vous pouvez réessayer."
+        />
+      )}
 
-      {error !== '' && <ErrorBox message={error} />}
+      {error !== '' && (
+        <ErrorBox
+          title="Review Queue indisponible"
+          message={error}
+          impact="Les candidatures à revoir n’ont pas pu être chargées."
+          onRetry={() => void load()}
+        />
+      )}
 
       {loading ? (
         <Card><Loading /></Card>
@@ -301,6 +314,7 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.rejectButton}`}
               type="button"
+              aria-label="Marquer l’offre comme ne correspondant pas au profil"
               disabled={decisionBusy}
               onClick={() => void persistDecision('IGNORED_NOT_MATCH')}
             >
@@ -311,11 +325,12 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.unavailableButton}`}
               type="button"
+              aria-label="Marquer l’offre comme indisponible"
               disabled={decisionBusy}
               onClick={() => void persistDecision('OFFER_UNAVAILABLE')}
             >
               <span aria-hidden="true">⊘</span>
-              <span>{decisionSaving === 'OFFER_UNAVAILABLE' ? 'Enregistrement…' : 'N’est plus disponible'}</span>
+              <span>{decisionSaving === 'OFFER_UNAVAILABLE' ? 'Enregistrement…' : 'Indisponible'}</span>
             </button>
 
             <div className={styles.secondaryNavigation}>
@@ -362,6 +377,7 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.alreadyAppliedButton}`}
               type="button"
+              aria-label="Marquer comme déjà postulé en dehors de JobPilot"
               disabled={decisionBusy}
               onClick={() => void persistDecision('ALREADY_APPLIED')}
             >
@@ -372,11 +388,13 @@ export default function ReviewQueuePage() {
             <button
               className={`${styles.decisionButton} ${styles.sentButton}`}
               type="button"
+              aria-label="Marquer la candidature comme envoyée dans JobPilot"
+              title="Met à jour le suivi JobPilot"
               disabled={decisionBusy}
               onClick={() => void persistDecision('SUBMITTED')}
             >
               <span aria-hidden="true">✓</span>
-              <span>{decisionSaving === 'SUBMITTED' ? 'Enregistrement…' : 'Envoyée'}</span>
+              <span>{decisionSaving === 'SUBMITTED' ? 'Enregistrement…' : 'Marquer comme envoyée'}</span>
             </button>
           </nav>
         </div>

@@ -1,0 +1,81 @@
+.status {
+  margin: 0 4px 12px;
+  min-height: 44px;
+  padding: 7px 9px;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #2c3854;
+  border-radius: 10px;
+  background: #161f34;
+  color: #eef2ff;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.status:hover,
+.status:focus-visible {
+  border-color: #6f85ff;
+  background: #1a2540;
+  outline: none;
+}
+
+.status:focus-visible {
+  box-shadow: 0 0 0 3px rgba(111, 133, 255, .28);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7d8aa8;
+  box-shadow: 0 0 0 3px rgba(125, 138, 168, .12);
+}
+
+.active .dot {
+  background: #42d392;
+  box-shadow: 0 0 0 3px rgba(66, 211, 146, .13);
+}
+
+.warning .dot {
+  background: #f5a524;
+  box-shadow: 0 0 0 3px rgba(245, 165, 36, .13);
+}
+
+.copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.copy strong {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.copy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8f9ab7;
+  font-size: 10px;
+}
+
+.quota {
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(245, 165, 36, .13);
+  color: #f6ba58;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+@media (max-width: 950px) {
+  .status {
+    margin: 10px 0 0;
+    max-width: 420px;
+  }
+}

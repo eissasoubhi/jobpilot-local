@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
-import { Card, ErrorBox, Loading, PageHeader } from '@/components/UI';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Skeleton, SkeletonGroup } from '@/components/Skeleton';
+import { Button, Card, ErrorBox, InlineFeedback, PageHeader } from '@/components/UI';
 import { api } from '@/lib/api';
 import type { ResolvedReusableAnswer, ResolvedReusableAnswerPayload } from '@/lib/autofill-types';
 import { getErrorMessage } from '@/lib/errors';
@@ -29,12 +31,49 @@ const emptyCreateDraft: CreateDraft = {
   questionPatternsEn: '',
 };
 
+function ReusableAnswersSkeleton() {
+  return (
+    <>
+      <PageHeader
+        title="Réponses automatiques"
+        description="Bibliothèque utilisée par JobPilot Autofill pour reconnaître les questions récurrentes et proposer la bonne réponse."
+      />
+      <SkeletonGroup label="Chargement des réponses automatiques">
+        <Card aria-hidden="true">
+          <Skeleton width="34%" height={24} />
+          <div className="form-grid mt-3">
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <div key={index}>
+                <Skeleton width="42%" height={16} />
+                <Skeleton height={42} className="mt-2" />
+              </div>
+            ))}
+          </div>
+        </Card>
+        {[0, 1].map((index) => (
+          <Card key={index} aria-hidden="true">
+            <Skeleton width="38%" height={24} />
+            <Skeleton width="62%" height={16} className="mt-2" />
+            <div className="form-grid mt-3">
+              {[0, 1, 2, 3].map((field) => (
+                <Skeleton key={field} height={42} />
+              ))}
+            </div>
+          </Card>
+        ))}
+      </SkeletonGroup>
+    </>
+  );
+}
+
 export default function ReusableAnswersPage() {
   const [answers, setAnswers] = useState<Draft[] | null>(null);
   const [createDraft, setCreateDraft] = useState<CreateDraft>(emptyCreateDraft);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Draft | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = async (): Promise<void> => {
     setError('');
@@ -124,20 +163,24 @@ export default function ReusableAnswersPage() {
   };
 
   const remove = async (answer: Draft): Promise<void> => {
-    if (!window.confirm(`Supprimer la réponse « ${answer.label} » ?`)) return;
-
+    setDeletingId(answer.id);
     setError('');
+    setMessage('');
+
     try {
       await api(`/reusable-answers/${answer.id}`, { method: 'DELETE' });
       setMessage(`Réponse « ${answer.label} » supprimée.`);
+      setPendingDelete(null);
       await load();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
+    } finally {
+      setDeletingId(null);
     }
   };
 
   if (answers === null) {
-    return error !== '' ? <ErrorBox message={error} /> : <Loading />;
+    return error !== '' ? <ErrorBox message={error} /> : <ReusableAnswersSkeleton />;
   }
 
   return (
@@ -147,7 +190,7 @@ export default function ReusableAnswersPage() {
         description="Bibliothèque utilisée par JobPilot Autofill pour reconnaître les questions récurrentes et proposer la bonne réponse."
       />
 
-      {message !== '' && <div className="notice">{message}</div>}
+      {message !== '' && <InlineFeedback tone="success">{message}</InlineFeedback>}
       {error !== '' && <ErrorBox message={error} />}
 
       <div style={{ height: 14 }} />
@@ -164,7 +207,7 @@ export default function ReusableAnswersPage() {
           <label>Questions EN<textarea placeholder="One wording per line" value={createDraft.questionPatternsEn} onChange={(event) => setCreateDraft({ ...createDraft, questionPatternsEn: event.target.value })} /></label>
         </div>
         <div style={{ marginTop: 12 }}>
-          <button className="btn" type="button" onClick={() => void create()}>Ajouter</button>
+          <Button onClick={() => void create()}>Ajouter</Button>
         </div>
       </Card>
 
@@ -229,15 +272,29 @@ export default function ReusableAnswersPage() {
               <label><input type="checkbox" checked={answer.sensitive} onChange={(event) => updateSensitive(answer.id, event.target.checked)} /> Sensible</label>
               <label><input type="checkbox" checked={answer.autoFillAllowed} onChange={(event) => updateLocal(answer.id, 'autoFillAllowed', event.target.checked)} /> Autoriser le remplissage automatique</label>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                <button className="btn secondary" type="button" onClick={() => void remove(answer)}>Supprimer</button>
-                <button className="btn" type="button" disabled={savingId === answer.id} onClick={() => void save(answer)}>
+                <Button variant="danger" onClick={() => setPendingDelete(answer)}>Supprimer</Button>
+                <Button loading={savingId === answer.id} onClick={() => void save(answer)}>
                   {savingId === answer.id ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
+                </Button>
               </div>
             </div>
           </Card>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Supprimer cette réponse automatique ?"
+        description={pendingDelete === null
+          ? ''
+          : `La réponse « ${pendingDelete.label} » sera supprimée de la bibliothèque Autofill. Cette action ne modifie pas le profil candidat.`}
+        confirmLabel="Supprimer"
+        loading={pendingDelete !== null && deletingId === pendingDelete.id}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete !== null) void remove(pendingDelete);
+        }}
+      />
     </>
   );
 }

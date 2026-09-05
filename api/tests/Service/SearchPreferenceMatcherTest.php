@@ -19,13 +19,15 @@ final class SearchPreferenceMatcherTest extends TestCase
         ]);
         $service = new SearchPreferenceMatcher();
 
-        foreach (['Mission freelance', 'Portage salarial', 'Sous-traitance'] as $contract) {
+        foreach (['Mission freelance', 'Portage salarial', 'Sous-traitance', 'Indépendant', 'B2B contractor'] as $contract) {
             $job = (new JobOffer())->fill(['contractType' => $contract, 'workMode' => 'Hybride']);
             self::assertTrue($service->evaluate($job, $profile)['eligible'], $contract);
+            self::assertTrue($service->isFreelanceContract($contract), $contract);
         }
 
         $cdi = (new JobOffer())->fill(['contractType' => 'CDI', 'workMode' => 'Hybride']);
         self::assertFalse($service->evaluate($cdi, $profile)['eligible']);
+        self::assertFalse($service->isFreelanceContract('CDI'));
     }
 
     public function testFullRemotePreferenceRejectsHybridButKeepsUnknownSourceData(): void

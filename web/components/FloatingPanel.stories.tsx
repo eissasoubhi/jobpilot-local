@@ -5,6 +5,9 @@ import { Button, FloatingPanel } from './UI';
 const meta = {
   title: 'Design System/Feedback/FloatingPanel',
   component: FloatingPanel,
+  args: {
+    children: null,
+  },
   parameters: {
     docs: {
       description: {

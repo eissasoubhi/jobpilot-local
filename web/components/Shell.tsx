@@ -52,6 +52,7 @@ const navigation: readonly NavigationGroup[] = [
     links: [
       ['/reporting', 'Reporting', '▥'],
       ['/reporting/sources', 'Conversion par source', '▥'],
+      ['/ia', 'Utilisation IA', '✦'],
     ],
   },
   {
@@ -90,6 +91,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <span>{mobileNavigationOpen ? 'Fermer' : 'Menu'}</span>
           </button>
         </div>
+        <AiSidebarStatus />
         <nav
           id="primary-navigation"
           className={`sidebar-nav${mobileNavigationOpen ? ' is-open' : ''}`}
@@ -114,7 +116,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className={`sidebar-details${mobileNavigationOpen ? ' is-open' : ''}`}>
-          <AiSidebarStatus />
           <div className="sidebar-footer">
             <div className="local-badge">● Données locales</div>
             <div className="job-source-links" aria-label="Sources des offres">

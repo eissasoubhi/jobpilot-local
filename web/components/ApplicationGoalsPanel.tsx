@@ -23,32 +23,17 @@ function progressTone(tone: ApplicationGoalPaceTone): 'neutral' | 'good' | 'warn
   return 'neutral';
 }
 
-export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [snapshot, setSnapshot] = useState<ApplicationGoalSnapshot | null>(null);
-  const [error, setError] = useState('');
-  const [now, setNow] = useState(() => Date.now());
+type ApplicationGoalsSummaryProps = {
+  snapshot: ApplicationGoalSnapshot | null;
+  error?: string;
+  now?: number;
+};
 
-  useEffect(() => {
-    let active = true;
-    void api<ApplicationGoalSnapshot>('/application-goals')
-      .then((result) => {
-        if (!active) return;
-        setSnapshot(result);
-        setNow(Date.now());
-        setError('');
-      })
-      .catch((caughtError: unknown) => {
-        if (active) setError(getErrorMessage(caughtError));
-      });
-
-    return () => { active = false; };
-  }, [refreshKey]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
-
+export function ApplicationGoalsSummary({
+  snapshot,
+  error = '',
+  now = Date.now(),
+}: ApplicationGoalsSummaryProps) {
   const periods = snapshot === null ? [] : enabledApplicationGoalPeriods(snapshot);
 
   return (
@@ -101,4 +86,33 @@ export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number 
       )}
     </section>
   );
+}
+
+export function ApplicationGoalsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+  const [snapshot, setSnapshot] = useState<ApplicationGoalSnapshot | null>(null);
+  const [error, setError] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    let active = true;
+    void api<ApplicationGoalSnapshot>('/application-goals')
+      .then((result) => {
+        if (!active) return;
+        setSnapshot(result);
+        setNow(Date.now());
+        setError('');
+      })
+      .catch((caughtError: unknown) => {
+        if (active) setError(getErrorMessage(caughtError));
+      });
+
+    return () => { active = false; };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return <ApplicationGoalsSummary snapshot={snapshot} error={error} now={now} />;
 }

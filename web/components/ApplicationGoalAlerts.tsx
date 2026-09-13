@@ -8,37 +8,14 @@ import type { ApplicationGoalSnapshot } from '@/lib/application-goals';
 
 import styles from './ApplicationGoals.module.css';
 
-export function ApplicationGoalAlerts() {
-  const [snapshot, setSnapshot] = useState<ApplicationGoalSnapshot | null>(null);
+type ApplicationGoalAlertsSummaryProps = {
+  snapshot: ApplicationGoalSnapshot;
+};
 
-  useEffect(() => {
-    let active = true;
-
-    const load = (): void => {
-      void api<ApplicationGoalSnapshot>('/application-goals')
-        .then((result) => {
-          if (active) setSnapshot(result);
-        })
-        .catch(() => {
-          // Goal reminders must never block the rest of the application.
-        });
-    };
-
-    load();
-    const interval = window.setInterval(load, 60_000);
-    window.addEventListener('jobpilot:application-goals-changed', load);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      window.removeEventListener('jobpilot:application-goals-changed', load);
-    };
-  }, []);
-
-  if (snapshot === null) return null;
-
+export function ApplicationGoalAlertsSummary({ snapshot }: ApplicationGoalAlertsSummaryProps) {
   const daily = snapshot.periods.daily;
   const showDailyReminder = daily.enabled && !daily.completed;
+
   if (snapshot.missed.length === 0 && !showDailyReminder) return null;
 
   return (
@@ -75,4 +52,36 @@ export function ApplicationGoalAlerts() {
       )}
     </section>
   );
+}
+
+export function ApplicationGoalAlerts() {
+  const [snapshot, setSnapshot] = useState<ApplicationGoalSnapshot | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const load = (): void => {
+      void api<ApplicationGoalSnapshot>('/application-goals')
+        .then((result) => {
+          if (active) setSnapshot(result);
+        })
+        .catch(() => {
+          // Goal reminders must never block the rest of the application.
+        });
+    };
+
+    load();
+    const interval = window.setInterval(load, 60_000);
+    window.addEventListener('jobpilot:application-goals-changed', load);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('jobpilot:application-goals-changed', load);
+    };
+  }, []);
+
+  if (snapshot === null) return null;
+
+  return <ApplicationGoalAlertsSummary snapshot={snapshot} />;
 }
